@@ -29,7 +29,7 @@ import type { CreativeJob, Rendition } from '@/types/criativos';
 describe('D2: o custo diz QUAL custo está na tela', () => {
   it('custo real apurado é declarado como apurado', () => {
     const frase = custoDoJobLegivel(0.042, 0.03);
-    expect(frase).toContain('0.0420');
+    expect(frase).toContain('0,0420');
     expect(frase).toMatch(/apurado/i);
     expect(frase).not.toMatch(/estimativa/i);
   });
@@ -39,7 +39,7 @@ describe('D2: o custo diz QUAL custo está na tela', () => {
     // `JobPage` e `Linhas`. Ela devolvia só "US$ 0,0300", indistinguível de
     // gasto realizado. Esta asserção é a que ela reprova.
     const frase = custoDoJobLegivel(null, 0.03);
-    expect(frase).toContain('0.0300');
+    expect(frase).toContain('0,0300');
     expect(frase).toMatch(/estimativa/i);
     expect(frase).toMatch(/não apurado/i);
   });
@@ -47,13 +47,13 @@ describe('D2: o custo diz QUAL custo está na tela', () => {
   it('os dois ausentes é "não apurado", nunca zero', () => {
     const frase = custoDoJobLegivel(null, null);
     expect(frase).toMatch(/não apurado/i);
-    expect(frase).not.toContain('0.0000');
+    expect(frase).not.toContain('0,0000');
     expect(frase).not.toContain('US$');
   });
 
   it('zero apurado continua sendo zero medido, e não ausência', () => {
     // Zero é medida. Achatar zero em "não apurado" seria o erro simétrico.
-    expect(custoLegivel(0)).toBe('US$ 0.0000');
+    expect(custoLegivel(0)).toBe('US$ 0,0000');
     expect(custoDoJobLegivel(0, null)).toMatch(/apurado/i);
   });
 });

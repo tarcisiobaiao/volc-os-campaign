@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils';
 import { SeloDaPeca } from '@/components/criativos/comum/Selo';
 import { SemArquivo } from '@/components/criativos/comum/Estados';
 import { Preview } from '@/components/criativos/comum/Preview';
+import { MolduraDeStories } from '@/components/criativos/job/MesaDeProporcoes';
+import { zonaSeguraDeStories } from '@/components/criativos/job/zonaSegura';
 import {
   custoLegivel,
   dimensoes,
@@ -32,7 +34,7 @@ import {
 import { lerProgresso } from '@/components/criativos/job/progresso';
 import { divergenciaDeDimensao } from '@/components/criativos/job/pecas';
 import { DESCRICAO_DA_CONEXAO, type EstadoDaConexao } from '@/hooks/useCriativosEventos';
-import { rotuloDoJob, type CreativeJob, type EventoDoJob, type Rendition } from '@/types/criativos';
+import { jobTerminou, rotuloDoJob, type CreativeJob, type EventoDoJob, type Rendition } from '@/types/criativos';
 
 export const PainelDeFase: React.FC<{
   job: CreativeJob;
@@ -40,7 +42,14 @@ export const PainelDeFase: React.FC<{
   conexao: EstadoDaConexao;
   falhaDoFluxo: string | null;
 }> = ({ job, eventos, conexao, falhaDoFluxo }) => {
-  const progresso = lerProgresso(eventos);
+  const lido = lerProgresso(eventos);
+  // Job terminado não abre o fluxo de eventos, então "nenhum evento" seria uma
+  // afirmação sobre o servidor que a tela não fez. O que ela sabe é o estado
+  // final; a frase diz isso e não contradiz o "já terminou" logo abaixo.
+  const progresso =
+    lido.fase === null && jobTerminou(job.estado)
+      ? { ...lido, frase: 'O trabalho já tinha terminado quando esta tela abriu. O estado final está no selo acima e nas peças abaixo.' }
+      : lido;
   // ⚠️ Consulta TOLERANTE. `ROTULO_DO_JOB[job.estado]` cru devolvia `undefined`
   // para um estado que esta versão não conhece, e a linha seguinte lia
   // `.palavra`: um oitavo estado no servidor trocava esta tela por tela branca.
@@ -104,10 +113,13 @@ export const PainelDeFase: React.FC<{
   );
 };
 
-export const PecaDoJob: React.FC<{ peca: Rendition; aoRenovar?: () => void }> = ({
-  peca,
-  aoRenovar,
-}) => {
+export const PecaDoJob: React.FC<{
+  peca: Rendition;
+  aoRenovar?: () => void;
+  /** Desenha a zona segura de Stories sobre a prévia, se a peça for 9:16. */
+  molduraLigada?: boolean;
+}> = ({ peca, aoRenovar, molduraLigada = false }) => {
+  const zona = zonaSeguraDeStories(peca.larguraPedida, peca.alturaPedida);
   const enquadramento = enquadramentoLegivel(peca.enquadramento);
   // ⚠️ A divergência precisa de FRASE, não de três números alinhados num `<dl>`
   // para o operador comparar de cabeça. Uma peça fora da dimensão pedida é fato
@@ -133,12 +145,25 @@ export const PecaDoJob: React.FC<{ peca: Rendition; aoRenovar?: () => void }> = 
             rel="noreferrer"
             className="block overflow-hidden rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <Preview
-              url={peca.previewUrl}
-              alt={`Peça ${peca.rotulo}, ${peca.larguraPedida} por ${peca.alturaPedida} pixels, do trabalho em produção`}
-              aoRenovar={aoRenovar}
-              classNameImagem="mx-auto max-h-64 w-auto max-w-full"
-            />
+            {zona ? (
+              <span className="flex justify-center">
+                <MolduraDeStories zona={zona} visivel={molduraLigada}>
+                  <Preview
+                    url={peca.previewUrl}
+                    alt={`Peça ${peca.rotulo}, ${peca.larguraPedida} por ${peca.alturaPedida} pixels, do trabalho em produção`}
+                    aoRenovar={aoRenovar}
+                    classNameImagem="block max-h-64 w-auto max-w-full"
+                  />
+                </MolduraDeStories>
+              </span>
+            ) : (
+              <Preview
+                url={peca.previewUrl}
+                alt={`Peça ${peca.rotulo}, ${peca.larguraPedida} por ${peca.alturaPedida} pixels, do trabalho em produção`}
+                aoRenovar={aoRenovar}
+                classNameImagem="mx-auto max-h-64 w-auto max-w-full"
+              />
+            )}
           </a>
         ) : peca.estado === 'pronta' ? (
           <SemArquivo motivo="A peça está pronta e o arquivo não veio nesta leitura. Recarregue para pedir uma nova URL." />

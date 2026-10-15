@@ -74,7 +74,7 @@ const Coluna: React.FC<{
         <span className={cn('flex h-5 w-5 items-center justify-center rounded-md', accent.pill)}>
           <Icon className={cn('h-3.5 w-3.5', tom === 'escrevendo' && n > 0 && 'animate-spin')} aria-hidden />
         </span>
-        <h2 className="kicker flex-1 truncate">{titulo}</h2>
+        <h2 className="kicker min-w-0 flex-1 leading-tight">{titulo}</h2>
         <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium tabular', accent.pill)}>
           {n}
         </span>
@@ -122,7 +122,11 @@ const CardParaEscrever: React.FC<{ c: CardPronto; onDisparar: () => void }> = ({
       <p className="text-[11px] leading-tight text-muted-foreground">
         ~US$ 2 e ~45 min para escrever as {c.paginas} páginas.
       </p>
-      <Button type="button" size="sm" className="w-full" onClick={onDisparar}>
+      {/* Secundário, não primário: a coluna tem um botão por card, e PRODUCT.md
+          §5 aceita uma ação primária por região. Três gradientes empilhados
+          gritavam mais alto que o próprio quadro. O peso de decisão está no
+          diálogo de disparo, que mostra custo e duplicata antes de gastar. */}
+      <Button type="button" size="sm" variant="secondary" className="w-full" onClick={onDisparar}>
         <Play className="h-3.5 w-3.5" aria-hidden /> escrever este funil
       </Button>
     </CardContent>
@@ -245,7 +249,7 @@ export const QuadroDeFunis: React.FC<{
       {quadro.interrompidos.length
         ? quadro.interrompidos.map((f) => (
             <CardDeFunil key={f.id} f={f} onExcluir={onExcluir} />))
-        : <Vazio>Nenhum.</Vazio>}
+        : <Vazio>Nenhum funil interrompido. Falhas e cancelamentos aparecem aqui com o que já foi pago.</Vazio>}
     </Coluna>
   </div>
 );

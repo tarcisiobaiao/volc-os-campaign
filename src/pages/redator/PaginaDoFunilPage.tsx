@@ -23,6 +23,16 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Camera, ExternalLink, Lock, PenLine, Upload } from 'lucide-react';
 
 import { Layout } from '@/components/layout/Layout';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { LpEmSlots, ProsaDaPagina } from '@/components/redator/ProsaDaPagina';
 import { PainelDoDestinoPago } from '@/components/landing-policy/PainelDoDestinoPago';
 import { pautadorApi } from '@/lib/pautadorApi';
@@ -514,6 +524,13 @@ const EnviarAoWordPress: React.FC<{
 }> = ({ runRowId, pagina, aoPublicar }) => {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // A confirmação é um diálogo do produto, não o `window.confirm` do
+  // navegador: ela nomeia o objeto, o efeito e o que não tem desfazer
+  // (PRODUCT.md §5, ação confirmatória), e herda tema, foco e teclado.
+  // ⚠️ Antes do `return` da página bloqueada: hook depois de retorno
+  // antecipado quebra a ordem dos hooks ao navegar de uma página
+  // desbloqueada para uma bloqueada, e a tela fica em branco.
+  const [confirmando, setConfirmando] = useState(false);
 
   if (pagina.bloqueada) {
     return (
@@ -526,10 +543,7 @@ const EnviarAoWordPress: React.FC<{
   }
 
   const enviar = async () => {
-    if (!window.confirm(
-      `Enviar a página ${pagina.page_number} ("${pagina.h1 || pagina.slug}") `
-      + 'ao WordPress?\n\nEla sobe como RASCUNHO — quem publica de verdade é '
-      + 'você, no WP.')) return;
+    setConfirmando(false);
     setEnviando(true);
     setErro(null);
     try {
@@ -549,7 +563,7 @@ const EnviarAoWordPress: React.FC<{
         Esta página foi escrita e passou pelos portões, mas ainda não foi
         enviada ao WordPress.
       </p>
-      <button type="button" onClick={() => void enviar()} disabled={enviando}
+      <button type="button" onClick={() => setConfirmando(true)} disabled={enviando}
               className={cn('mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs transition-[opacity,border-color] duration-150',
                 enviando
                   ? 'border-border text-muted-foreground'
@@ -571,6 +585,38 @@ const EnviarAoWordPress: React.FC<{
         apontar, por igualdade de string exata — só nasce quando você publicar
         de verdade no WordPress.
       </p>
+
+      <AlertDialog open={confirmando} onOpenChange={setConfirmando}>
+        <AlertDialogContent className="rounded-[14px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display">
+              Enviar a página {pagina.page_number} ao WordPress?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-left text-sm">
+                <p>
+                  <b className="text-foreground">{pagina.h1 || pagina.slug}</b>
+                </p>
+                <p>
+                  Ela sobe como <b className="text-foreground">rascunho</b>, invisível para o
+                  público. Quem publica de verdade é você, no WordPress.
+                </p>
+                <p>
+                  O envio cria um post no site. Enviar de novo não substitui este: o WordPress
+                  aceitaria um segundo post com outro endereço, e por isso o servidor barra a
+                  duplicata.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>manter só no VOLC</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void enviar()}>
+              enviar como rascunho
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

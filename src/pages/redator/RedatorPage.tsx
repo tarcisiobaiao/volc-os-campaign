@@ -19,7 +19,10 @@ import { Link } from 'react-router-dom';
 import { PenLine, RefreshCw, SlidersHorizontal } from 'lucide-react';
 
 import { Layout } from '@/components/layout/Layout';
+import { CabecalhoDePagina } from '@/components/sistema/CabecalhoDePagina';
 import { EstadoOperacional } from '@/components/sistema/EstadoOperacional';
+import { Metrica } from '@/components/sistema/Metrica';
+import { FaixaDeMetricas, PainelInstrumento } from '@/components/sistema/PainelInstrumento';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DispararRedatorDialog } from '@/components/pautador-pro/entity/DispararRedatorDialog';
@@ -40,6 +43,7 @@ function moeda2(v: number): string {
 
 const RedatorPage: React.FC = () => {
   const [quadro, setQuadro] = useState<QuadroDoRedator | null>(null);
+  const [lidoEm, setLidoEm] = useState<Date | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [disparando, setDisparando] = useState<CardPronto | null>(null);
@@ -49,6 +53,7 @@ const RedatorPage: React.FC = () => {
   const buscar = useCallback(async () => {
     try {
       setQuadro(await pautadorApi.quadroDoRedator());
+      setLidoEm(new Date());
       setErro(null);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falhei ao ler o quadro.');
@@ -77,71 +82,47 @@ const RedatorPage: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-6 p-4 md:p-6">
-        <header className="flex flex-wrap items-start justify-between gap-3 reveal" style={{ ['--i' as never]: 0 }}>
-          <div className="min-w-0">
-            <div className="kicker mb-2 flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <PenLine className="h-3.5 w-3.5" aria-hidden />
-              </span>
-              motor de redação
-            </div>
-            <h1 className="font-display text-3xl font-bold tracking-tight leading-[1.05] sm:text-4xl">
-              Redator <span className="text-aurora">Editorial</span>
-            </h1>
-            <div className="mt-3 aurora-rule w-16" />
-            <p className="mt-3 max-w-[62ch] text-pretty text-sm text-muted-foreground">
-              O Pautador aprova a pauta e arquiteta o funil. Aqui ele vira texto,
-              imagem e rascunho no WordPress — pronto para a campanha apontar.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="hover-lift" onClick={() => void buscar()}>
-              <RefreshCw className={cn('h-4 w-4', carregando && 'animate-spin')} aria-hidden />
-              atualizar
-            </Button>
-            <Link to="/redator/config">
-              <Button variant="outline" size="sm" className="hover-lift">
-                <SlidersHorizontal className="h-4 w-4" aria-hidden />
-                configuração
+        <CabecalhoDePagina
+          className="reveal"
+          kicker="motor de redação"
+          icone={<PenLine className="h-3.5 w-3.5" aria-hidden />}
+          titulo={<>Redator <span className="text-aurora">Editorial</span></>}
+          proposito="O Pautador aprova a pauta e arquiteta o funil. Aqui ele vira texto, imagem e rascunho no WordPress, pronto para a campanha apontar."
+          acao={
+            <>
+              <Button variant="outline" size="sm" className="hover-lift" onClick={() => void buscar()}>
+                <RefreshCw className={cn('h-4 w-4', carregando && 'animate-spin')} aria-hidden />
+                atualizar
               </Button>
-            </Link>
-          </div>
-        </header>
+              <Button asChild variant="outline" size="sm" className="hover-lift">
+                <Link to="/redator/config">
+                  <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                  configuração
+                </Link>
+              </Button>
+            </>
+          }
+        />
 
-        {/* Os três números que resumem o módulo. Uma superfície, não três
-            cartões iguais com ícone em caixa — o pulso do QG é o padrão. */}
+        {/* Os três números que resumem o módulo, como faixa de instrumento
+            (V3, D0): uma métrica dominante e duas de apoio, não três cartões
+            iguais. Lidos do servidor a cada atualização. */}
         {quadro && (
-          <section
-            aria-label="Pulso do Redator"
-            className="overflow-hidden rounded-lg border border-border bg-card shadow-card"
-          >
-            <div className="grid gap-px bg-border sm:grid-cols-3">
-              <div className="bg-card px-4 py-3">
-                <p className="text-lg font-semibold tabular-nums text-foreground">
-                  {moeda2(quadro.totais.gasto_usd)}
-                </p>
-                <p className="mt-1 text-xs leading-4 text-muted-foreground">
-                  gasto acumulado · {quadro.totais.runs} execuç{quadro.totais.runs === 1 ? 'ão' : 'ões'}, inclusive as que falharam
-                </p>
-              </div>
-              <div className="bg-card px-4 py-3">
-                <p className="text-lg font-semibold tabular-nums text-foreground">
-                  {quadro.totais.paginas_no_ar}
-                </p>
-                <p className="mt-1 text-xs leading-4 text-muted-foreground">
-                  páginas no WordPress · como rascunho
-                </p>
-              </div>
-              <div className="bg-card px-4 py-3">
-                <p className="text-lg font-semibold tabular-nums text-foreground">
-                  {quadro.prontos.length}
-                </p>
-                <p className="mt-1 text-xs leading-4 text-muted-foreground">
-                  esperando escrita · cards aprovados no Pautador
-                </p>
-              </div>
-            </div>
-          </section>
+          <PainelInstrumento aria-label="Pulso do Redator">
+            <FaixaDeMetricas>
+              <Metrica tamanho="hero" rotulo="Páginas no WordPress · rascunho"
+                       valor={quadro.totais.paginas_no_ar} formato={{ tipo: 'inteiro' }}
+                       verdade="real" lidoEm={lidoEm} fonte="servidor do Redator" />
+              <Metrica rotulo={`Gasto acumulado · ${quadro.totais.runs} execuç${quadro.totais.runs === 1 ? 'ão' : 'ões'}`}
+                       valor={quadro.totais.gasto_usd} formato={{ tipo: 'moeda', moeda: 'USD', casas: 2 }}
+                       verdade="real" />
+              <Metrica rotulo="Esperando escrita" valor={quadro.prontos.length}
+                       formato={{ tipo: 'inteiro' }} verdade="real" />
+            </FaixaDeMetricas>
+            <p className="mt-3 text-micro text-muted-foreground">
+              O gasto inclui as execuções que falharam: dinheiro gasto é dinheiro gasto.
+            </p>
+          </PainelInstrumento>
         )}
 
         {erro && (
@@ -149,10 +130,23 @@ const RedatorPage: React.FC = () => {
             tom="erro"
             titulo="A leitura do quadro falhou"
             explicacao={erro}
+            acao={{ rotulo: 'Ler de novo', onClick: () => void buscar() }}
           />
         )}
+        {/* Esqueleto com a forma do quadro: quatro poços com cartões. O texto
+            "Lendo o quadro" sozinho deixava a tela vazia e sem orientação. */}
         {carregando && !quadro && (
-          <p className="text-sm text-muted-foreground" aria-live="polite">Lendo o quadro</p>
+          <div role="status" aria-live="polite" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <span className="sr-only">Lendo o quadro</span>
+            {[2, 1, 3, 1].map((n, col) => (
+              <div key={col} className="space-y-2 rounded-xl border border-border bg-muted p-2">
+                <div className="h-6 w-28 skeleton" />
+                {Array.from({ length: n }).map((_, i) => (
+                  <div key={i} className="h-28 skeleton" />
+                ))}
+              </div>
+            ))}
+          </div>
         )}
 
         {quadro && (
@@ -172,7 +166,7 @@ const RedatorPage: React.FC = () => {
             <AlertDialogDescription className="space-y-2 text-left">
               <span className="block">
                 <b>{excluindo?.titulo}</b> · {excluindo?.dominio || '—'} ·{' '}
-                {moeda2(excluindo?.custo_usd ?? 0)} já gastos.
+                {excluindo?.custo_usd == null ? 'custo não medido' : `${moeda2(excluindo.custo_usd)} já gastos`}.
               </span>
               <span className="block">
                 Ela some do quadro e do gasto acumulado. Como não publicou nada,

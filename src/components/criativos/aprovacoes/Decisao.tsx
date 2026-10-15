@@ -38,7 +38,9 @@ export const FormularioDeDecisao: React.FC<{
   erro: unknown;
   aoDecidir: (pedido: PedidoDeAprovacao) => void;
 }> = ({ prefixo, aprovavel, enviando, erro, aoDecidir }) => {
-  const [decisao, setDecisao] = React.useState<DecisaoDeAprovacao>('aprovado');
+  // Nenhuma decisão pré-marcada: aprovação é o ato que autoriza uma peça a sair,
+  // e um "Aprovado" já selecionado transforma pressa em autorização.
+  const [decisao, setDecisao] = React.useState<DecisaoDeAprovacao | null>(null);
   const [finalidade, setFinalidade] = React.useState('');
   const [motivo, setMotivo] = React.useState('');
   const [tentou, setTentou] = React.useState(false);
@@ -47,13 +49,15 @@ export const FormularioDeDecisao: React.FC<{
     tentou && finalidade.trim().length < 3
       ? 'Declare para que a peça está sendo autorizada. A aprovação vale para a finalidade escrita aqui.'
       : undefined;
+  const erroDecisao = tentou && decisao === null ? 'Escolha a decisão.' : undefined;
   const erroMotivo =
-    tentou && motivoObrigatorio(decisao) && motivo.trim().length < 5
+    tentou && decisao !== null && motivoObrigatorio(decisao) && motivo.trim().length < 5
       ? 'Escreva o motivo. Sem ele, quem recebe a peça de volta não sabe o que corrigir.'
       : undefined;
 
   const enviar = () => {
     setTentou(true);
+    if (decisao === null) return;
     if (finalidade.trim().length < 3) return;
     if (motivoObrigatorio(decisao) && motivo.trim().length < 5) return;
     aoDecidir({
@@ -74,7 +78,7 @@ export const FormularioDeDecisao: React.FC<{
 
   return (
     <div className="space-y-4">
-      <fieldset>
+      <fieldset aria-describedby={erroDecisao ? `${prefixo}-decisao-erro` : undefined}>
         <legend className="text-[13px] font-medium text-foreground">Decisão</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
           {DECISOES.map((d) => {
@@ -108,6 +112,11 @@ export const FormularioDeDecisao: React.FC<{
             );
           })}
         </div>
+        {erroDecisao && (
+          <p id={`${prefixo}-decisao-erro`} className="mt-2 text-[12px] text-destructive">
+            {erroDecisao}
+          </p>
+        )}
       </fieldset>
 
       <div className="space-y-1.5">
@@ -144,7 +153,7 @@ export const FormularioDeDecisao: React.FC<{
         <label htmlFor={`${prefixo}-motivo`} className="block text-[13px] font-medium text-foreground">
           Motivo{' '}
           <span className="text-muted-foreground">
-            {motivoObrigatorio(decisao) ? '(obrigatório)' : '(opcional)'}
+            {decisao !== null && motivoObrigatorio(decisao) ? '(obrigatório)' : '(opcional)'}
           </span>
         </label>
         <textarea

@@ -368,7 +368,7 @@ export const Laboratorio: React.FC<{ parque: Parque }> = ({ parque }) => {
                     </span>
                   ) : (
                     <>
-                      US$ {receita.custoEstimadoUsd.toFixed(4)}{' '}
+                      US$ {receita.custoEstimadoUsd.toFixed(4).replace('.', ',')}{' '}
                       <span className="text-muted-foreground">
                         · estimativa, não medição{receita.custoFonte ? ` · ${receita.custoFonte}` : ''}
                       </span>

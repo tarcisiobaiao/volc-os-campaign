@@ -38,6 +38,7 @@ import React from 'react';
 
 import { AcaoDeReauditoria } from '@/components/landing-policy/AcaoDeReauditoria';
 import { Selo } from '@/components/landing-policy/Selo';
+import { cn } from '@/lib/utils';
 import type { ClienteDeReauditoria } from '@/lib/landing-policy/reauditoria';
 import {
   EXIGENCIA_DA_PERGUNTA,
@@ -224,7 +225,7 @@ export const PainelDoDestinoPago: React.FC<{
         {leitura.nota_do_google}
       </p>
 
-      <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className={cn('mt-3 grid gap-2', !compacto && 'sm:grid-cols-2 lg:grid-cols-3')}>
         {ORDEM_DAS_PERGUNTAS.map((p) => (
           <Pergunta key={p} nome={p} estado={leitura.perguntas[p]} />
         ))}

@@ -791,9 +791,11 @@ export function useEntityPautador() {
     const gold = cards.filter((c) => c.gold_tier === 'S').length;
     const aTier = cards.filter((c) => c.gold_tier === 'A').length;
     const ready = cards.filter((c) => c.status === 'ready').length;
-    const scores = cards.map((c) => c.score || 0);
-    const avg = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100 : 0;
-    return { total, gold, aTier, ready, avg };
+    // Ausência não vira zero (PRODUCT.md §4): card sem nota fica fora da
+    // média, e sem nenhuma nota a média é desconhecida (`null`), não 0.
+    const scores = cards.map((c) => c.score).filter((v): v is number => typeof v === 'number');
+    const avg = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100 : null;
+    return { total, gold, aTier, ready, avg, comNota: scores.length };
   }, [cards]);
 
   return {

@@ -71,7 +71,7 @@ describe('a formatação de ausência já tinha dono, e ele continua sendo o don
   it('custo não apurado não vira grátis', () => {
     // Um relatório de COGS que soma zeros inventados fecha bonito e erra.
     expect(custoLegivel(null)).toBe('custo não apurado');
-    expect(custoLegivel(0)).toBe('US$ 0.0000');
+    expect(custoLegivel(0)).toBe('US$ 0,0000');
   });
 
   it('MIME ausente é declarado, não vazio', () => {

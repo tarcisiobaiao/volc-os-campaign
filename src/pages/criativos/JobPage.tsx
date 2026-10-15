@@ -29,6 +29,7 @@ import { CabecalhoDoEstudio, Corpo, Secao } from '@/components/criativos/comum/P
 import { Carregando, ErroDeLeitura, Indisponivel } from '@/components/criativos/comum/Estados';
 import { SeloDoJob, SeloDeProcedencia } from '@/components/criativos/comum/Selo';
 import { PainelDeFase, PecaDoJob } from '@/components/criativos/job/Acompanhamento';
+import { MesaDeProporcoes } from '@/components/criativos/job/MesaDeProporcoes';
 import {
   estadoDoCancelamento,
   frasePecas,
@@ -58,6 +59,9 @@ const JobPage: React.FC = () => {
   const video = useCriativosVideo(buildSlug, Boolean(observado));
 
   const acoes = useAcoesDoJob(creativeJobId);
+  // Ligada por padrão: a 9:16 vai para Stories e Reels, e o que a interface
+  // cobre é a primeira coisa a conferir nela. A escolha vale para a tela toda.
+  const [molduraLigada, setMolduraLigada] = React.useState(true);
 
   const aoAtualizarJob = React.useCallback(
     (novo: CreativeJob) => cliente.setQueryData(chaveDoJob(novo.id), novo),
@@ -265,11 +269,23 @@ const JobPage: React.FC = () => {
               )}
 
               {job.renditions.length ? (
-                <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  {job.renditions.map((peca) => (
-                    <PecaDoJob key={peca.id} peca={peca} aoRenovar={renovarPrevias} />
-                  ))}
-                </ul>
+                <div className="space-y-4">
+                  <MesaDeProporcoes
+                    pecas={job.renditions}
+                    molduraLigada={molduraLigada}
+                    aoAlternarMoldura={() => setMolduraLigada((v) => !v)}
+                  />
+                  <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    {job.renditions.map((peca) => (
+                      <PecaDoJob
+                        key={peca.id}
+                        peca={peca}
+                        aoRenovar={renovarPrevias}
+                        molduraLigada={molduraLigada}
+                      />
+                    ))}
+                  </ul>
+                </div>
               ) : (
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
                   Nenhuma peça foi registrada neste trabalho ainda. Assim que o motor aceitar o

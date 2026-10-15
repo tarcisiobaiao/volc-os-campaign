@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
+import { CabecalhoDePagina } from '@/components/sistema/CabecalhoDePagina';
 import { EstadoOperacional } from '@/components/sistema/EstadoOperacional';
 import { Button } from '@/components/ui/button';
 import { CountryCombobox } from '@/components/pautador-pro/CountryCombobox';
@@ -7,8 +8,7 @@ import { NicheMultiSelect } from '@/components/pautador-pro/NicheMultiSelect';
 import { AddNicheModal } from '@/components/pautador-pro/AddNicheModal';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { RefreshCw, Radar, Columns3, Globe2, Loader2, Database, AlertTriangle, Plus } from 'lucide-react';
+import { RefreshCw, Radar, Columns3, Globe2, Loader2, Database, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 import { useEntityPautador } from '@/hooks/pautador/useEntityPautador';
@@ -104,26 +104,18 @@ const PautadorProContent: React.FC = () => {
   return (
     <Layout>
       <div className="p-4 md:p-6 space-y-6">
-        <div className="flex items-start justify-between flex-wrap gap-3 reveal" style={{ ['--i' as never]: 0 }}>
-          <div className="min-w-0">
-            <div className="kicker mb-2 flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Radar className="h-3.5 w-3.5" />
-              </span>
-              Descoberta entity-first
-            </div>
-            <h1 className="font-display text-3xl font-bold tracking-tight leading-[1.05]">
-              Pautador <span className="text-aurora">Pro</span>
-            </h1>
-            <div className="mt-3 aurora-rule w-16" />
-            <p className="text-sm text-muted-foreground mt-3">
-              Entidades por país · dores · keywords · funis
-            </p>
-          </div>
-          <Button variant="outline" size="sm" className="hover-lift" onClick={refresh} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} /> Atualizar
-          </Button>
-        </div>
+        <CabecalhoDePagina
+          className="reveal"
+          kicker="Descoberta entity-first"
+          icone={<Radar className="h-3.5 w-3.5" aria-hidden />}
+          titulo={<>Pautador <span className="text-aurora">Pro</span></>}
+          proposito="Ache a entidade, a dor e o recorte de cada país antes de escrever. O quadro vai da descoberta à pauta validada e arquitetada."
+          acao={
+            <Button variant="outline" size="sm" className="hover-lift" onClick={refresh} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} aria-hidden /> Atualizar
+            </Button>
+          }
+        />
 
         <div className="flex items-center gap-3 flex-wrap">
           <CountryCombobox value={selectedCountry} onChange={(name) => setSelectedCountry(name)} />
@@ -151,7 +143,7 @@ const PautadorProContent: React.FC = () => {
           </Button>
 
           {source === 'ephemeral' && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-warning border border-warning/30 bg-warning/10 rounded-full px-2.5 py-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-demo/40 bg-demo/8 px-2.5 py-1 text-xs font-semibold text-demo">
               <Database className="h-3 w-3" /> modo demo (não persistido)
             </span>
           )}
@@ -160,20 +152,29 @@ const PautadorProContent: React.FC = () => {
           )}
         </div>
 
+        {/* PRODUCT.md §4: nome de tabela, caminho de SQL e variável de
+            ambiente não aparecem para o operador. O que ele precisa saber é o
+            efeito e quem resolve; o detalhe técnico mora no README do SQL. */}
         {migrationPending && (
-          <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span>Tabelas <code>pautador_entit*</code> não encontradas. Rode <code>src/sql/v7_03_pautador_entities.sql</code> no Supabase para persistir as entidades.</span>
-          </div>
+          <EstadoOperacional
+            tom="indisponivel"
+            titulo="O quadro não está gravando"
+            explicacao="O banco ainda não tem o armazenamento das entidades do Pautador. As descobertas aparecem nesta sessão e se perdem ao recarregar. Peça ao administrador para aplicar a migração do Pautador."
+          />
         )}
         {!apiConfigured && (
-          <div className="flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span>Backend não configurado. Defina <code>VITE_PAUTADOR_API_URL</code> para disparar descobertas.</span>
-          </div>
+          <EstadoOperacional
+            tom="indisponivel"
+            titulo="Descoberta indisponível neste ambiente"
+            explicacao="O serviço que dispara descobertas não está ligado aqui. O quadro abaixo continua legível; disparar, minerar e validar ficam fora do ar até o administrador configurar o serviço."
+          />
         )}
 
-        <KpiCards {...kpis} />
+        <KpiCards
+          {...kpis}
+          verdade={source === 'ephemeral' ? 'demo' : source === 'supabase' ? 'real' : 'desconhecido'}
+          carregando={loading && cards.length === 0}
+        />
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
@@ -184,7 +185,12 @@ const PautadorProContent: React.FC = () => {
           <TabsContent value="kanban" className="mt-4 space-y-3">
             {discoveryRunning && <DiscoveryBanner country={selectedCountry} />}
             {loading ? (
-              <div className="flex items-center justify-center py-16"><LoadingSpinner /></div>
+              // PRODUCT.md §10: leitura acima de 300ms usa o esqueleto do quadro
+              // final, não um spinner solto no vazio.
+              <div role="status" aria-live="polite">
+                <span className="sr-only">Lendo as entidades</span>
+                <DiscoverySkeleton />
+              </div>
             ) : cards.length === 0 ? (
               discoveryRunning ? (
                 <DiscoverySkeleton />
