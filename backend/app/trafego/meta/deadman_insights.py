@@ -47,7 +47,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any, Mapping, Sequence
 
 from volc_ads.inteligencia_google.saude import (
@@ -150,8 +150,20 @@ def _config(workflow: Mapping[str, Any]) -> dict[str, str]:
     return {}
 
 
-def job_do_workflow_meta(workflow: Mapping[str, Any], arquivo: str) -> JobInsightsMeta:
-    """Extrai a expectativa do workflow Meta versionado. Não adivinha nada."""
+def job_do_workflow_meta(
+    workflow: Mapping[str, Any],
+    arquivo: str,
+    *,
+    ativo_na_instancia: bool | None = None,
+) -> JobInsightsMeta:
+    """Extrai a expectativa do workflow Meta versionado. Não adivinha nada.
+
+    ⚠️ O artefato versionado nasce SEMPRE `active: false` (o gerador fixa e o
+    validador exige). Ligado ou não é fato da INSTÂNCIA n8n, não do arquivo: quem
+    consulta e leu a instância passa `ativo_na_instancia`. Sem isso, o deadman
+    responde DESABILITADO para sempre — o que é verdade sobre o arquivo e
+    silêncio sobre um workflow ligado que falha.
+    """
     volc = ((workflow.get("meta") or {}).get("volc") or {})
     if volc.get("provider") != "META_ADS":
         raise ValueError(f"{arquivo}: nao e um workflow de insights Meta")
@@ -196,6 +208,10 @@ def job_do_workflow_meta(workflow: Mapping[str, Any], arquivo: str) -> JobInsigh
     ativo = workflow.get("active")
     if not isinstance(ativo, bool):
         ativo = False
+    if ativo_na_instancia is not None:
+        if not isinstance(ativo_na_instancia, bool):
+            raise TypeError("ativo_na_instancia deve ser bool")
+        ativo = ativo_na_instancia
 
     fuso = (cfg.get("TZ_DO_DISPARO", "").strip()
             or ((workflow.get("settings") or {}).get("timezone") or "").strip())
@@ -299,6 +315,9 @@ def diagnosticar_insights_meta(
         tipo_coletor="META_INSIGHTS_CONJUNTO_DIA",
     )
 
+    # `None` é "não li", não "li e não havia": sem a lista, a fonte não respondeu.
+    if fechamentos is None and fonte == FonteMeta.DISPONIVEL:
+        fonte = FonteMeta.LEITURA_FALHOU
     if fonte != FonteMeta.DISPONIVEL:
         mensagem = (
             "a tabela trafego_meta_sync_run nao existe neste banco (schema Meta "
@@ -330,8 +349,23 @@ def diagnosticar_insights_meta(
         return _publica(job, projetar_saude_coletor(
             ReciboColetor(identidade=identidade, schedule=schedule), now=now))
 
-    minimo = datetime.min.replace(tzinfo=timezone.utc)
-    ultima = max(linhas, key=lambda l: _instante(l.get("concluido_em")) or minimo)
+    # Instante sem fuso ou ilegível não é comparável com os outros: ele vai ao
+    # contrato de saúde, que responde INDETERMINADO, em vez de explodir aqui ou
+    # ser descartado em silêncio.
+    suspeitas = [l for l in linhas
+                 if (t := _instante(l.get("concluido_em"))) is None or t.tzinfo is None]
+    if suspeitas:
+        ultima = suspeitas[0]
+        if _instante(ultima.get("concluido_em")) is None:
+            return _publica(job, ProjecaoSaudeColetor(
+                identidade=identidade,
+                estado=EstadoSaudeColetor.INDETERMINADO,
+                motivo=MotivoDiagnostico.INCONSISTENCIA_TEMPORAL,
+                mensagem="fechamento sem concluido_em legivel",
+                calculado_em=now,
+            ))
+    else:
+        ultima = max(linhas, key=lambda l: _instante(l.get("concluido_em")))
     concluida = _instante(ultima.get("concluido_em"))
     falha = _falha(ultima) if concluida is not None else None
     # ⚠️ Sucesso é SÓ fechamento completo. Promover parcial a sucesso é o falso

@@ -572,8 +572,10 @@ if (modo === 'D-1') {
     throw new Error('REPROCESSO_NAO_SE_APLICA_A_RECOLETA: DIAS_DE_REPROCESSO tem de ser 0');
   }
   diasDeRecoleta = Number(bruto);
-  // `hoje-2` e o fim: o D-1 (`hoje-1`) e do outro workflow, e reler o mesmo dia
-  // nas duas rodadas faria a recoleta disputar a revisao com a coleta do dia.
+  // `hoje-2` e o fim: o D-1 (`hoje-1`) e do outro workflow. Na MESMA data da
+  // conta as duas rodadas nunca leem o mesmo dia; numa conta cuja data vira
+  // entre os dois disparos (ex.: Auckland em horario de verao) a recoleta rele o
+  // dia do D-1 — uma revisao a mais, com chave propria, nunca gasto somado.
   fimOffset = 2;
   diasNaJanela = diasDeRecoleta;
   if (diasNaJanela > teto) {
@@ -1021,6 +1023,13 @@ for (const linha of dados) {
     throw new Error('IDENTIDADE_DIVERGENTE: a resposta trouxe outra conta Meta');
   }
 
+  // Sem data na linha, o unico grao honesto e a janela pedida — e isso so vale
+  // quando a janela e UM dia. Numa janela de varios dias (recoleta, ou D-1 com
+  // reprocesso) o fallback poria o gasto de um dia num grao de N dias (W15).
+  if ((texto(linha.date_start) === null || texto(linha.date_stop) === null)
+      && String(ctx.janela_inicio) !== String(ctx.janela_fim)) {
+    throw new Error('META_INVALID_RESPONSE: linha sem date_start/date_stop numa janela de varios dias');
+  }
   const inicio = texto(linha.date_start) || String(ctx.janela_inicio);
   const fim = texto(linha.date_stop) || String(ctx.janela_fim);
   let objeto;
@@ -1299,8 +1308,21 @@ const idempotencia = 'meta_sync_' + sha256Hex(
 // tudo depois da primeira pagina seria descartado em silencio. A pagina e "que
 // pedaco do pedido", nao "quando a resposta chegou": duas leituras da mesma
 // janela paginam igual.
+// ⚠️ PAPEL E DIA DO DISPARO ENTRAM (W15). Sem eles, a recoleta de hoje que
+// cobre um dia ja lido pelo D-1 de ontem (N=1, ou D-1 com reprocesso) gerava a
+// MESMA chave, a RPC devolvia `repetido: true` e a revisao madura nunca era
+// gravada — com recibo verde. Os dois sao rotulos de calendario, nao instante:
+// dois cliques no mesmo dia continuam sendo uma unidade de trabalho.
+for (const campo of ['job', 'origem_janela', 'data_do_disparo']) {
+  if (typeof ctx[campo] !== 'string' || ctx[campo].trim() === '') {
+    throw new Error(`CHAVE_SEM_PAPEL: o contexto da pagina perdeu ${campo}`);
+  }
+}
 const pedidoEstavel = [
   'META_ADS',
+  String(ctx.job),
+  String(ctx.origem_janela),
+  String(ctx.data_do_disparo),
   String(ctx.conta_externa),
   janela,
   String(ctx.nivel),
@@ -1692,6 +1714,15 @@ if (contasRecusadas.length === 0 && rejeitadas === 0 && incompletas === 0) {
   motivo = `todas as ${contasRecusadas.length} contas falharam;`
     + ` ${rejeitadas} linhas rejeitadas`;
 }
+// ⚠️ CONTA RECUSADA NA SELECAO (sem fuso, fuso desconhecido, id torto) nunca
+// entrou no laco, mas e conta que devia ter sido lida. Fechar `ok` com ela de
+// fora seria declarar cobertura inteira de uma rodada que pulou contas (W15).
+const recusadasNaSelecao = Array.isArray(base.contas_recusadas_na_selecao)
+  ? base.contas_recusadas_na_selecao.length : 0;
+if (resultado === 'ok' && recusadasNaSelecao > 0) {
+  resultado = 'parcial';
+  motivo = `${recusadasNaSelecao} conta(s) recusada(s) na selecao e nao lida(s)`;
+}
 // `falhou` significa "nada aproveitavel". Se linha verde existe, o desfecho
 // honesto e parcial.
 if (resultado === 'falhou' && aceitas > 0) {
@@ -2041,8 +2072,11 @@ def construir(papel: str, contrato_sha: str) -> dict:
             "**A janela e a RECOLETA MADURA `[hoje-1-N, hoje-2]` NO FUSO DA CONTA** "
             "(`trafego_meta_ad_account.timezone_name`), com N = `DIAS_DE_RECOLETA` "
             f"(padrao {p['dias_de_recoleta']}, aceito {DIAS_DE_RECOLETA_MIN}..{DIAS_DE_RECOLETA_MAX}; "
-            "fora disso a execucao e recusada antes de falar com a Meta). Nunca rele o "
-            "D-1, que e do outro workflow. Cada releitura grava REVISAO nova do mesmo "
+            "fora disso a execucao e recusada antes de falar com a Meta). O fim `hoje-2` "
+            "deixa fora o dia que o D-1 le na MESMA data da conta. Em conta muito a leste "
+            "(ex.: Pacific/Auckland em horario de verao) a data da conta vira entre 07:00 e "
+            "08:30 de Sao Paulo, e a recoleta rele o dia que o D-1 acabou de ler: e so uma "
+            "revisao a mais, nunca gasto somado. Cada releitura grava REVISAO nova do mesmo "
             "grao; `vw_trafego_meta_insight_latest` expoe a mais recente. "
             "`TZ_DO_DISPARO` so rotula a rodada.\n\n")
 

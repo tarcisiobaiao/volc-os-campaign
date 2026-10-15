@@ -586,7 +586,12 @@ out.fechamento = {
   texto: JSON.stringify(fech.snapshot.contas),
 };
 
-const fechOk = rodar('Fechar execucao', { entrada: [{ ...rec, motivo_incompleto: null }] })[0].json;
+// A seleção acima recusou a conta sem fuso. Rodada saudável é a que não pulou
+// conta nenhuma; com a recusa, o desfecho honesto é parcial (W15).
+const fechOk = rodar('Fechar execucao',
+  { entrada: [{ ...rec, motivo_incompleto: null, contas_recusadas_na_selecao: [] }] })[0].json;
+out.resultado_com_conta_recusada_na_selecao = rodar('Fechar execucao',
+  { entrada: [{ ...rec, motivo_incompleto: null }] })[0].json.resumo.resultado;
 out.saude = {
   bloqueado: rodar('Batimento e saude', {
     entrada: [{ chave_de_idempotencia: fech.resumo.idempotencia_fechamento,
@@ -988,6 +993,8 @@ def test_sim_saudavel_nunca_sai_de_autoatestado(simulacao):
     assert s["bloqueado"] == "BLOQUEADO_AUTORIZACAO"
     assert s["sem_releitura"] == "INDETERMINADO"
     assert s["com_releitura"]["estado_saude"] == "SAUDAVEL"
+    # Conta recusada na seleção não lida: nunca `ok` (W15).
+    assert simulacao["resultado_com_conta_recusada_na_selecao"] == "parcial"
     assert s["com_releitura"]["alerta"] is False
     assert s["com_releitura"]["persistencia_confirmada"] is True
     # O que vai para o alerta não carrega id cru nem valor financeiro.

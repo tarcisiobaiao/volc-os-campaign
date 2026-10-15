@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import copy
 import json
-from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -32,7 +31,7 @@ def _wf(rel: str) -> dict:
 
 
 def _job(rel: str, *, ativo: bool = True):
-    return replace(job_do_workflow_meta(_wf(rel), rel), ativo=ativo)
+    return job_do_workflow_meta(_wf(rel), rel, ativo_na_instancia=ativo)
 
 
 def _fech(data: str, origem: str, concluido: str, *, completa=True, aceitas=1,
@@ -213,3 +212,30 @@ def test_fechamento_parcial_nao_conta_como_ultimo_sucesso():
                          completa=False, aceitas=2)], now=AGORA)
     assert p.tempo_desde_ultima_tentativa is not None
     assert p.tempo_desde_ultimo_sucesso is None
+
+
+def test_workflow_ligado_na_instancia_e_falhando_nao_se_esconde_atras_do_arquivo():
+    """Achado da revisão: só com o arquivo versionado, tudo é DESABILITADO."""
+    linhas = [_fech("2026-10-01", "RECOLETA", "2026-10-01T11:40:00+00:00")]
+    arquivo = job_do_workflow_meta(_wf(RECOLETA), RECOLETA)
+    assert diagnosticar_insights_meta(arquivo, linhas, now=AGORA).estado \
+        is EstadoSaudeColetor.DESABILITADO
+    vivo = job_do_workflow_meta(_wf(RECOLETA), RECOLETA, ativo_na_instancia=True)
+    assert diagnosticar_insights_meta(vivo, linhas, now=AGORA).estado \
+        is EstadoSaudeColetor.ATRASADO
+    with pytest.raises(TypeError):
+        job_do_workflow_meta(_wf(RECOLETA), RECOLETA, ativo_na_instancia="sim")
+
+
+def test_lista_ausente_e_nao_li_e_nao_nunca_executado():
+    p = diagnosticar_insights_meta(_job(D1), None, now=AGORA)
+    assert p.estado is EstadoSaudeColetor.INDETERMINADO
+
+
+@pytest.mark.parametrize("ruim", ["2026-10-15T10:05:00", None, "ontem"])
+def test_instante_ruim_misturado_com_bom_e_indeterminado_e_nao_excecao(ruim):
+    linhas = [_fech("2026-10-15", "D-1", "2026-10-15T10:05:00+00:00"),
+              _fech("2026-10-15", "D-1", "2026-10-15T10:05:00+00:00")]
+    linhas[1]["concluido_em"] = ruim
+    p = diagnosticar_insights_meta(_job(D1), linhas, now=AGORA)
+    assert p.estado is EstadoSaudeColetor.INDETERMINADO

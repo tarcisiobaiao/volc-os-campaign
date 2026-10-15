@@ -169,6 +169,8 @@ function rodada(wf, cfg) {
     janelas,
     pedido: pag.pedido,
     parametros: pag.parametros_graph,
+    pagina_estavel: v.snapshot.stable_idempotency_key,
+    pagina_janela: `${pag.pedido.periodo_inicio}..${pag.pedido.periodo_fim}`,
     fechamento_estavel: f.snapshot.stable_idempotency_key,
     fechamento_window: f.snapshot.window,
     fechamento_execucao: f.snapshot.execucao,
@@ -194,7 +196,36 @@ out.erro_modo = erro(rec.code, { ...rec.cfg, JANELA_MODO: 'D0' });
 // Um N torto que vaze para o Config do D-1 NAO pode derrubar o D-1.
 out.d1_com_recoleta_torta = rodada(d1, { ...d1.cfg, DIAS_DE_RECOLETA: 'abc' }).janelas;
 
-// O mesmo dia de disparo, dois papeis: chaves de fechamento distintas.
+// ── O MESMO DIA DE DADO, LIDO EM DOIS DISPAROS ─────────────────────────────
+// Hoje (06/09 em SP) o D-1 le 05/09. Amanha (07/09 em SP) a recoleta N=1 le
+// 05/09 de novo. Mesma janela, papeis e dias de disparo diferentes: a chave da
+// pagina TEM de mudar, senao a RPC devolve `repetido` e a revisao madura some.
+out.colisao = { d1_hoje: { janela: out.d1.pagina_janela, chave: out.d1.pagina_estavel } };
+RELOGIO = new RealDate('2026-09-08T02:00:00.000Z');
+const amanha = rodada(rec, { ...rec.cfg, DIAS_DE_RECOLETA: '1' });
+out.colisao.recoleta_amanha = { janela: amanha.pagina_janela, chave: amanha.pagina_estavel };
+// E a recoleta repetida no MESMO dia continua sendo UMA unidade de trabalho.
+RELOGIO = new RealDate('2026-09-08T02:40:00.000Z');  // 23:40 do mesmo dia em SP
+out.colisao.recoleta_amanha_de_novo = rodada(rec, { ...rec.cfg, DIAS_DE_RECOLETA: '1' }).pagina_estavel;
+RELOGIO = new RealDate('2026-09-07T02:00:00.000Z');
+
+// ── LINHA SEM DATA ──────────────────────────────────────────────────────────
+function linhaSemData(wf) {
+  const ident = rodar(wf.code, 'Identidade da execucao', { nos: { Config: wf.cfg, Agenda: {} } })[0].json;
+  const sel = rodar(wf.code, 'Selecionar contas',
+    { entrada: contas, nos: { Config: wf.cfg, 'Identidade da execucao': ident } })[0].json;
+  const ctx = rodar(wf.code, 'Identidade VOLC por conta',
+    { entrada: [], nos: { 'Selecionar contas': sel } }).map((i) => i.json)
+    .find((m) => m.fuso_da_conta === 'America/Sao_Paulo');
+  const pag = rodar(wf.code, 'Pagina: preparar pedido', { entrada: [ctx], nos: { Config: wf.cfg } })[0].json;
+  try {
+    const n = rodar(wf.code, 'Pagina: normalizar', { entrada: [{ ...pag, paging: {}, data: [{
+      account_id: 'act_1234567890', campaign_id: '111', adset_id: '1111', spend: '10.50' }] }] })[0].json;
+    return n.fatos.map((f) => `${f.periodo_inicio}..${f.periodo_fim}`);
+  } catch (e) { return String(e.message).split(':')[0]; }
+}
+out.sem_data = { d1: linhaSemData(d1), rec: linhaSemData(rec) };
+
 console.log(JSON.stringify(out));
 """
 
@@ -276,3 +307,18 @@ def test_sim_a_identidade_da_recoleta_nao_colide_com_a_do_d1(sim):
     # é por ele que o deadman Meta acha o fechamento de cada um.
     assert d1["fechamento_window"].endswith(":D-1")
     assert rec["fechamento_window"].endswith(":RECOLETA")
+
+
+def test_sim_reler_o_mesmo_dia_noutro_disparo_grava_revisao_e_nao_replay(sim):
+    """Achado da revisão adversarial: com N=1 (ou D-1 com reprocesso) a chave da
+    página era a mesma do D-1 de ontem, e a RPC descartava a releitura como
+    replay, com recibo verde."""
+    c = sim["colisao"]
+    assert c["d1_hoje"]["janela"] == c["recoleta_amanha"]["janela"] == "2026-09-05..2026-09-05"
+    assert c["d1_hoje"]["chave"] != c["recoleta_amanha"]["chave"]
+    assert c["recoleta_amanha_de_novo"] == c["recoleta_amanha"]["chave"]
+
+
+def test_sim_linha_sem_data_nunca_vira_grao_de_varios_dias(sim):
+    assert sim["sem_data"]["d1"] == ["2026-09-05..2026-09-05"]
+    assert sim["sem_data"]["rec"] == "META_INVALID_RESPONSE"
