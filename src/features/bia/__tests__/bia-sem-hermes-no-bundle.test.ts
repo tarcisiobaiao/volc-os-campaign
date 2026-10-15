@@ -25,7 +25,7 @@ const listar = (dir: string): string[] =>
 export const MARCAS_DO_HERMES: Array<[string, RegExp]> = [
   ['rota de sessão do Hermes', /\/api\/sessions\b/],
   ['rota OpenAI do Hermes', /\/v1\/(chat\/completions|responses|runs|toolsets|capabilities)\b/],
-  ['porta do API Server', /:(8642|8643|18643)\b/],
+  ['porta do API Server', /:(8642|8643|18642|18643)\b/],
   ['variável da chave do Hermes', /API_SERVER_KEY|BIA_HERMES_API_KEY|HERMES_API_KEY/],
   ['base do Hermes', /BIA_HERMES_BASE_URL|HERMES_BASE_URL/],
   ['host da VPS do Hermes', /76\.13\.161\.49|srv1546019|hstgr\.cloud/],
@@ -59,7 +59,7 @@ describe('fonte da Bia no front', () => {
   });
 
   it('o detector acha o que deve', () => {
-    expect(achados('fetch("http://127.0.0.1:8643/api/sessions")')).toEqual(
+    expect(achados('fetch("http://127.0.0.1:8642/api/sessions")')).toEqual(
       ['rota de sessão do Hermes', 'porta do API Server']);
     expect(achados('/api/agent/conversations')).toEqual([]);
   });

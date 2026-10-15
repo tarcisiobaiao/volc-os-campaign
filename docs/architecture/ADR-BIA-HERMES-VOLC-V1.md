@@ -1,6 +1,6 @@
 # ADR: Bia V1, a conversa autenticada do VOLC O.S. com o Hermes privado
 
-- **Estado:** aceito para a branch `feat/bia-hermes-volc-v1` em 15/10/2026. Código e prova hermética estão prontos. A prova real aguarda dois checkpoints externos: aplicar a migration v27_01 e subir o profile `volcweb`.
+- **Estado:** aceito para a branch `feat/bia-hermes-volc-v1` em 15/10/2026. Código e prova hermética estão prontos. **Revisado em 15/10/2026 (decisão do dono):** a Bia do VOLC é a MESMA Bia do Telegram (profile `default`), numa sessão web separada. Ver a seção 7.
 - **Tarefas do roadmap:** P09-T04 (Bia em modo leitura e sugestão) e P09-T06 (gateway agêntico somente leitura).
 - **Nós do grafo:** `cap_bia_copilot`, `system:hermes`, `concept:ads_agent_gateway` e `doc:bia-proposal`.
 - **Insumo considerado:** `TUTORIAL_BIA_VOLC_HERMES.docx`. Foi tratado como proposta, não como autoridade.
@@ -34,7 +34,7 @@ O `bridge.py` do tutorial traria um segundo FastAPI, uma segunda validação de 
 
 ### 2. O FastAPI alcança o Hermes pelo loopback, por um túnel SSH local
 
-A topologia real mostra que o backend existente consegue alcançar o Hermes sem expor nada: um túnel SSH aberto a partir do Mac (`ssh -N -L 127.0.0.1:18643:127.0.0.1:8643 hermes`). Isso dispensa Nginx, DNS, firewall e Tailscale. A base do Hermes aceita `http` **somente em loopback**; qualquer outro host exige `https` (`configuracao.validar_base_hermes`). Quando o FastAPI for implantado num servidor (proposta do ADR-RUNTIME), o mesmo contrato vale com túnel persistente ou Tailscale Serve. Funnel e porta pública ficam fora.
+A topologia real mostra que o backend existente consegue alcançar o Hermes sem expor nada: um túnel SSH aberto a partir do Mac (`ssh -N -L 127.0.0.1:18642:127.0.0.1:8642 hermes`). Isso dispensa Nginx, DNS, firewall e Tailscale. A base do Hermes aceita `http` **somente em loopback**; qualquer outro host exige `https` (`configuracao.validar_base_hermes`). Quando o FastAPI for implantado num servidor (proposta do ADR-RUNTIME), o mesmo contrato vale com túnel persistente ou Tailscale Serve. Funnel e porta pública ficam fora.
 
 ### 3. O ledger da conversa fica num schema privado do Supabase oficial (v27_01). SQLite foi descartado.
 
@@ -60,7 +60,7 @@ O adaptador nunca envia `instructions`, `system_message`, `model` ou `X-Hermes-S
 
 ### 6. VOLC Agent Gateway: capacidade tipada, invocada pelo servidor, injetada como dado
 
-O profile `volcweb` não recebe ferramenta, MCP nem credencial. Quando o operador pede contexto de campanha, o **backend** invoca `volc_get_campaign_context` em nome do usuário autenticado e manda o resultado ao Hermes como bloco delimitado e marcado como dado não confiável. Essa escolha:
+A superfície `api_server` do profile não recebe ferramenta, MCP nem credencial. Quando o operador pede contexto de campanha, o **backend** invoca `volc_get_campaign_context` em nome do usuário autenticado e manda o resultado ao Hermes como bloco delimitado e marcado como dado não confiável. Essa escolha:
 
 - mantém o Hermes sem caminho de ação;
 - deixa a autorização no servidor, com o papel do usuário real e não um token de serviço do agente;
@@ -72,7 +72,7 @@ O catálogo (`gateway/catalogo.py`) recusa no registro qualquer capacidade cujo 
 
 | Papel | Componente | Pode mutar? |
 |---|---|---|
-| Interface conversacional e coordenadora | Hermes (profile `volcweb`, depois perfis por domínio) | Não. Propõe. |
+| Interface conversacional e coordenadora | Hermes (profile `default`, superfície `api_server` sem ferramentas) | Não. Propõe. |
 | Capacidades de negócio tipadas | VOLC Agent Gateway (`backend/app/agente_bia/gateway/`) | Não. Lê e, na fase 2, registra proposta. |
 | Worker interno para missões delimitadas | Codex SDK ou app-server (interface `WorkerInterno` em `gateway/execucao.py`) | Não diretamente. Missão tipada com recibo, nunca shell exposto ao Hermes. |
 | Mutação | Execution plane (`PlanoDeExecucao`; modelo: `trafego/ledger.py`, v10_02) | **Só ele**, depois de aprovação humana vinculada ao sha256 do payload, com read-back e recibo |
@@ -82,7 +82,7 @@ Autonomia não se decide por prompt: é dado do execution plane, por ação e po
 ## Consequências
 
 - O widget só funciona com o FastAPI no ar, ou seja, hoje só no Mac do operador. É coerente com o resto do FastAPI. Implantar o backend é decisão do ADR-RUNTIME.
-- A prova real depende de dois atos externos autorizados: aplicar a v27_01 e subir o `volcweb`. Os comandos estão em `docs/bia-hermes/RUNBOOK-IMPLANTACAO.md`.
+- A prova real depende de dois atos externos: aplicar a v27_01 e ligar a superfície API do `default`. Os comandos estão em `docs/bia-hermes/RUNBOOK-IMPLANTACAO.md`.
 - O papel `postgres` da imagem Supabase lê o schema via `pg_read_all_data`, porque é administração do banco e não papel da API. Ele não escreve. Ver o threat model.
 
 ## Alternativas recusadas
@@ -91,3 +91,25 @@ Autonomia não se decide por prompt: é dado do execution plane, por ação e po
 - **Navegador falando direto com o Hermes:** a chave do profile iria para o bundle.
 - **Dar ferramentas ou MCP ao Hermes na V1:** o modelo passaria a decidir quando ler dado de negócio, com credencial própria. A injeção pelo servidor é mais estreita.
 - **Reaproveitar a sessão do Telegram:** misturaria memória pessoal e operacional. O próprio Hermes recusa sessão de outra superfície nas rotas de API.
+
+## 7. Revisão de 15/10/2026: a mesma Bia, profile `default`, sessão web separada
+
+O dono recusou um segundo agente (`volcweb`). A Bia do VOLC passa a ser **a mesma do Telegram**: profile `default`, com a mesma identidade (SOUL), a mesma memória longa e o mesmo modelo, sem clone. O que separa as superfícies:
+
+| Aspecto | Telegram | VOLC (web) |
+|---|---|---|
+| Profile | `default` | `default` |
+| Sessão | sessões `source=telegram` | uma sessão `volc_<hex32>` por conversa, `source=api_server`, criada pelo backend |
+| Ferramentas | `hermes-telegram` (17 toolsets, inalterados) | `platform_toolsets.api_server: []` (zero) |
+| Memória longa | do profile | a mesma, declarada na interface |
+| Acesso | bot do Telegram | só pelo FastAPI, no loopback, via túnel SSH |
+
+**Prova de viabilidade na v0.18.0, lida no código instalado e executada sem tocar no gateway:**
+
+1. O agente da API resolve as ferramentas por `_get_platform_tools(config, "api_server")`; a resolução é por plataforma.
+2. `enabled_toolsets=[]` resulta em nenhuma ferramenta (`get_tool_definitions` testa `is not None`). As ferramentas do motor de contexto respeitam o mesmo gate.
+3. Com a configuração real do `default` e `api_server: []`, a API fica com **zero** toolsets e o Telegram com os **mesmos 17**.
+4. Não há MCP configurado. O `/v1/toolsets` não mostra MCP, então a auditoria por turno do backend é o que fecha essa lacuna.
+5. Ligar a API exige reiniciar o gateway (variáveis lidas na subida). O restart é único e controlado, com rollback automático.
+
+**O que muda em relação à versão anterior deste ADR:** não existe profile novo; a chave do API Server passa a ser do `default` (R1 do threat model); a memória é compartilhada por decisão (R3); o restart afeta o Telegram por alguns segundos (R6). As garantias do VOLC (flag, ADMIN, ledger, idempotência, incerteza, ausência de mutação) não mudam.

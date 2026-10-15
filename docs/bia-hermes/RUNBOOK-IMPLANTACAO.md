@@ -1,6 +1,6 @@
 # Bia V1: runbook de implantação
 
-Ordem obrigatória: **CP0** (local, já feito) → **CP1** (banco) → **CP2** (Hermes) → **CP3** (túnel e backend local) → **CP4** (prova real).
+Ordem obrigatória: **CP0** (local) → **CP1** (banco) → **CP2** (superfície API do profile `default`) → **CP3** (túnel e ambiente local) → **CP4** (prova real).
 
 CP1 e CP2 são **checkpoints externos**: nenhum deles foi executado nesta branch. Cada um precisa de autorização explícita do Tarcisio, e este documento descreve, para cada um, a operação exata, o alvo, o diff, o rollback e a evidência de que o Telegram não é afetado.
 
@@ -13,7 +13,7 @@ CP1 e CP2 são **checkpoints externos**: nenhum deles foi executado nesta branch
 | Papel `postgres` | não superusuário, membro de `pg_read_all_data` |
 | Postgres | 15.8 |
 | Profiles Hermes | só `default` (gateway `hermes-gateway.service`, Telegram) |
-| Listener do API Server | nenhum. 8642 e 8643 estão livres; 127.0.0.1:9119 é o painel |
+| Listener do API Server (antes da CP2) | nenhum. 8642 livre; 127.0.0.1:9119 é o painel |
 
 ---
 
@@ -74,71 +74,62 @@ Recarregue o schema do PostgREST (o protocolo faz isso; à mão: `NOTIFY pgrst, 
 
 ---
 
-## CP2: profile `volcweb` no Hermes (checkpoint externo)
+## CP2: superfície API do profile `default` (a mesma Bia do Telegram)
 
-- **Alvo:** VPS `srv1546019` (alias SSH `hermes`), usuário root, `/root/.hermes/profiles/volcweb`. O profile default e `/root/.hermes/` **não são tocados**.
-- **Não muda:** Nginx/Traefik, DNS, firewall, systemd do default e Tailscale. O API Server escuta só em 127.0.0.1:8643.
+Decisão do Tarcisio (15/10/2026): **não** se cria outro profile. O VOLC usa o profile `default`, com a mesma identidade, a mesma memória longa e o mesmo modelo, numa **sessão web separada** (`volc_<hex32>`, source `api_server`). Telegram e VOLC nunca escrevem na mesma sessão.
 
-### 2.1 Antes (somente leitura): evidência do Telegram
+- **Alvo:** VPS `srv1546019` (alias SSH `hermes`), `/root/.hermes/config.yaml` e `/root/.hermes/.env`, unit `hermes-gateway`.
+- **Script:** `deploy/hermes-default-api/api_default.py`, copiado para `/root/bia-volc/` e rodado com `/usr/local/lib/hermes-agent/venv/bin/python`.
+- **Não muda:** token, toolsets e sessões do Telegram, memória, skills, SOUL, modelo, MCPs, outros `platform_toolsets`, a unit do systemd, Nginx/Traefik, DNS, firewall e Tailscale. **Nunca** `hermes gateway restart --system`.
 
-```bash
-ssh hermes 'systemctl is-active hermes-gateway; systemctl show -p MainPID --value hermes-gateway; hermes profile list'
-```
-
-Guarde o PID como `PID_DEFAULT_ANTES`.
-
-### 2.2 Criar e configurar (escrita só em `/root/.hermes/profiles/volcweb`)
-
-```bash
-scp deploy/hermes-volcweb/configure_profile.py deploy/hermes-volcweb/smoke_hermes.py hermes:/root/bia-volcweb/
-ssh -t hermes
-  hermes profile create volcweb --no-skills --no-alias --description "Bia VOLC — consulta, sem ferramentas"
-  hermes -p volcweb setup model           # interativo: provedor/modelo do profile (sem copiar do default)
-  /usr/local/lib/hermes-agent/venv/bin/python /root/bia-volcweb/configure_profile.py
-```
-
-**Diff do profile** (`configure_profile.py` faz backup `.bak-bia-<ts>` antes):
+**Diff** (inserção textual; o YAML inteiro é comparado e só a chave nova pode diferir):
 
 ```diff
-# /root/.hermes/profiles/volcweb/.env
+# /root/.hermes/config.yaml
+ platform_toolsets:
++  api_server: []        # medido: zero toolsets na v0.18.0; telegram continua hermes-telegram (17 toolsets)
+   cli:
+# /root/.hermes/.env
++# Bia VOLC (15/10/2026): API Server só em loopback, sem ferramentas
 +API_SERVER_ENABLED=true
 +API_SERVER_HOST=127.0.0.1
-+API_SERVER_PORT=8643
-+API_SERVER_KEY=<gerada, não impressa>
-# /root/.hermes/profiles/volcweb/config.yaml
-+platform_toolsets:
-+  api_server: []          # medido: conjunto vazio na v0.18.0
-+mcp_servers: {}
-+gateway:
-+  api_server:
-+    max_concurrent_runs: 1
++API_SERVER_PORT=8642
++API_SERVER_KEY=<gerada no servidor, nunca impressa>
 ```
 
-O script **recusa** se o `.env` do volcweb tiver `TELEGRAM_*`, `DISCORD_*`, `SLACK_*` ou `WHATSAPP_*`.
+Por que `api_server: []` é **obrigatório**: sem essa chave, a superfície API herdaria 13 toolsets, entre eles `terminal`, `file`, `cronjob`, `browser` e `delegation` (medido no preflight).
 
-### 2.3 Primeiro em foreground, sem tocar no serviço do default
+**Sequência:**
 
 ```bash
-# sessão SSH 1
-hermes -p volcweb gateway run
-# sessão SSH 2
-PID_DEFAULT_ANTES=<pid de 2.1> /usr/local/lib/hermes-agent/venv/bin/python /root/bia-volcweb/smoke_hermes.py
+ssh hermes 'install -d -m 700 /root/bia-volc'
+scp deploy/hermes-default-api/api_default.py hermes:/root/bia-volc/
+ssh hermes '/usr/local/lib/hermes-agent/venv/bin/python /root/bia-volc/api_default.py preflight'  # leitura
+ssh hermes '/usr/local/lib/hermes-agent/venv/bin/python /root/bia-volc/api_default.py ensaio'     # cópias; rollback exato
+ssh hermes 'setsid nohup /usr/local/lib/hermes-agent/venv/bin/python /root/bia-volc/api_default.py aplicar \
+              > /root/bia-volc/aplicar.log 2>&1 < /dev/null &'                                     # sobrevive a queda do SSH
 ```
 
-O smoke exige 8643 só em 127.0.0.1, auth obrigatória, `/v1/toolsets` sem nenhum habilitado, 401 sem chave e o `hermes-gateway` default ativo **com o mesmo PID**.
+O modo `aplicar`:
 
-### 2.4 Persistir (depois do smoke verde)
+1. **Recusa** se o gateway não estiver ativo com Telegram, se houver agente ativo, se a superfície já estiver configurada ou se a porta 8642 estiver ocupada.
+2. Faz backup privado (`/root/.hermes/backups-bia/<ts>/`, 700) e registra os hashes antes e depois.
+3. Edita, confere e roda `systemctl restart hermes-gateway`, o único restart.
+4. Espera até 120 s pelos gates:
+   - unit ativa com PID novo;
+   - Telegram `connected`;
+   - um único `gateway run`;
+   - 8642 escutando **só** em `127.0.0.1`;
+   - `/health` 200;
+   - `/v1/toolsets` sem nenhum habilitado;
+   - `/v1/models` sem chave → 401;
+   - toolsets do Telegram iguais aos de antes;
+   - zero MCP.
+5. Com **qualquer** gate falho: restaura os dois arquivos, reinicia, espera o Telegram e registra no recibo.
 
-```bash
-hermes -p volcweb gateway install      # confira o NOME da unidade que ele mostra
-hermes -p volcweb gateway start
-hermes -p volcweb gateway status
-PID_DEFAULT_ANTES=<pid> /usr/local/lib/hermes-agent/venv/bin/python /root/bia-volcweb/smoke_hermes.py
-```
+O recibo fica em `/root/.hermes/backups-bia/<ts>/recibo.json`.
 
-⚠️ O `hermes gateway status` do default avisa "Installed gateway service definition is outdated — Run: sudo hermes gateway restart --system". **Não rode isso nesta missão**: reiniciaria o Telegram.
-
-**Rollback:** `RUNBOOK-ROLLBACK-ROTACAO.md` §3.
+**Rollback manual:** `RUNBOOK-ROLLBACK-ROTACAO.md` §3.
 
 ---
 
@@ -146,15 +137,15 @@ PID_DEFAULT_ANTES=<pid> /usr/local/lib/hermes-agent/venv/bin/python /root/bia-vo
 
 ```bash
 # 1. túnel só para o loopback (não abre porta na VPS nem fora do Mac)
-ssh -N -L 127.0.0.1:18643:127.0.0.1:8643 hermes &
+ssh -N -L 127.0.0.1:18642:127.0.0.1:8642 hermes &
 
-# 2. chave do volcweb para o .env do backend, SEM passar pelo terminal/histórico:
-ssh hermes "grep '^API_SERVER_KEY=' /root/.hermes/profiles/volcweb/.env | cut -d= -f2-" \
+# 2. chave do default para o .env do backend, SEM passar pelo terminal/histórico:
+ssh hermes "grep '^API_SERVER_KEY=' /root/.hermes/.env | cut -d= -f2-" \
   | { read -r k; printf 'BIA_HERMES_API_KEY=%s\n' "$k" >> backend/.env.local; }
 
 # 3. demais variáveis (backend/.env.local; ver backend/.env.example)
 BIA_ENABLED=1
-BIA_HERMES_BASE_URL=http://127.0.0.1:18643
+BIA_HERMES_BASE_URL=http://127.0.0.1:18642
 BIA_ALLOWED_ORIGINS=http://localhost:8080
 
 # 4. front (.env.local)
@@ -164,7 +155,7 @@ VITE_BIA_ENABLED=true
 ./start-dev.sh
 ```
 
-Endurecimento recomendado, não aplicado: uma chave SSH dedicada ao túnel, com `permitopen="127.0.0.1:8643",no-pty,command="/bin/false"` em `authorized_keys`.
+Endurecimento recomendado, não aplicado: uma chave SSH dedicada ao túnel, com `permitopen="127.0.0.1:8642",no-pty,command="/bin/false"` em `authorized_keys`.
 
 ---
 
@@ -185,8 +176,8 @@ BIA_CAMPANHA=<volc_campaign_id opcional> python3 scripts/bia_prova_real.py > rec
 | nova conversa → "qual é o código?" | não sabe |
 | id aleatório | 404 |
 | `model` no corpo | 422 |
-| `curl http://76.13.161.49:8643/v1/models` (de fora) | conexão recusada (nada escuta fora do loopback) |
+| `curl http://76.13.161.49:8642/v1/models` (de fora) | conexão recusada (nada escuta fora do loopback) |
 | `/v1/toolsets` | nenhum habilitado (o portão também confere a cada envio) |
 | read-back da sessão | nenhuma `tool_calls` |
 
-Registre o modelo (de `/v1/capabilities` no smoke), a duração (`_duracao_s` e o evento `concluida.duracao_ms`), o estado e os tokens (evento `concluida`). O custo em moeda **não** é informado pela rota de sessão: anote o do painel do provedor.
+Registre o modelo (`/v1/capabilities`), a duração (`_duracao_s` e o evento `concluida.duracao_ms`), o estado e os tokens (evento `concluida`). O custo em moeda **não** é informado pela rota de sessão: anote o do painel do provedor.

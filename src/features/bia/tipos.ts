@@ -46,6 +46,7 @@ export interface ExecucaoDaBia {
 export interface EstadoDaBia {
   modo: 'consulta';
   aviso: string;
+  memoria: { compartilhada_com: 'telegram'; aviso: string };
   motor_configurado: boolean;
   limites: { max_caracteres: number; envios_por_minuto: number; espera_maxima_s: number };
   capacidades: string[];

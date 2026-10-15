@@ -272,11 +272,12 @@ class Settings(BaseSettings):
     # Flag estrita: só "1" monta as rotas `/api/agent/*` em modo operante. Fora
     # disso elas respondem 404 antes de tocar no auth ou no Hermes.
     bia_enabled: str = ""
-    # Base do API Server do profile `volcweb`. Só loopback em http; qualquer
-    # outro host exige https (ver agente_bia/configuracao.py).
+    # Base do API Server do profile `default` do Hermes (a mesma Bia do
+    # Telegram), pelo túnel SSH local. Só loopback em http; qualquer outro host
+    # exige https (ver agente_bia/configuracao.py).
     bia_hermes_base_url: Optional[str] = None
-    # ⚠️ API_SERVER_KEY do profile `volcweb`. Server-side apenas: não tem e não
-    # pode ganhar equivalente VITE_*.
+    # ⚠️ API_SERVER_KEY do profile `default`. Dá acesso administrativo ao API
+    # Server do Hermes (sessões, jobs): server-side apenas, nunca VITE_*.
     bia_hermes_api_key: Optional[str] = None
     # Origens EXATAS do front que podem chamar `/api/agent/*`. Sem curinga.
     bia_allowed_origins: str = ""

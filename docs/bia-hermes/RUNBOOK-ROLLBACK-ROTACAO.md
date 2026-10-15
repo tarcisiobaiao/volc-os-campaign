@@ -8,6 +8,8 @@ Cada camada desliga sozinha, da mais barata para a mais cara. Pare na primeira q
 - Backend: `BIA_ENABLED=` (vazio) e reinicie o uvicorn. Todas as rotas `/api/agent/*` respondem 404 antes do auth.
 - Hermes: feche o túnel (`kill` do `ssh -N -L …`). Os envios passam a `failed: hermes_indisponivel` antes de sair, e o histórico continua legível.
 
+**Depois da prova real, o rollback operacional é este, nesta ordem:** desligar a flag, interromper novas chamadas, preservar os recibos e reconciliar `queued`/`running`/`uncertain`. Só então se decide sobre remover o schema. O histórico da prova **não** é apagado para facilitar rollback.
+
 ## 2. Reverter a migration v27_01
 
 Antes de tudo, exporte o que estiver `uncertain` e precisar de reconciliação:
@@ -28,44 +30,37 @@ scripts/migracao-protocolo.sh reverter --alvo producao --versao v27_01_agente_bi
 - O rollback é idempotente: sem o schema, não faz nada.
 - Ele só remove `agente_bia` e `public.volc_agente_*`. Fingerprint provado no lab: volta ao anterior, e reaplicar dá o mesmo.
 
-## 3. Desfazer o profile `volcweb` (VPS)
+## 3. Desligar a superfície API do profile `default` (VPS)
+
+O `aplicar` já faz isso sozinho quando algum gate falha. À mão, a partir do backup do próprio `aplicar`:
 
 ```bash
-hermes -p volcweb gateway stop
-hermes -p volcweb gateway uninstall          # se foi instalado como serviço
-# opcional, só depois de reconciliar incertas (o read-back usa a sessão):
-hermes profile delete volcweb
+ssh hermes '/usr/local/lib/hermes-agent/venv/bin/python /root/bia-volc/api_default.py reverter /root/.hermes/backups-bia/<ts>'
 ```
 
-**Nunca** `hermes gateway stop/restart` sem `-p volcweb`: isso derruba o Telegram do default. Confira depois:
+O script restaura `config.yaml` e `.env` byte a byte (hash igual ao de antes), roda `systemctl restart hermes-gateway` e espera o Telegram voltar a `connected`. Nunca use `hermes gateway restart --system`.
 
-```bash
-systemctl is-active hermes-gateway
-systemctl show -p MainPID --value hermes-gateway
-```
+**Antes de reverter, reconcilie as incertas** (o read-back precisa da API no ar). Sessões web antigas continuam no `state.db` do profile, com `source=api_server`; elas não são apagadas.
 
-O PID tem de ser o mesmo de antes.
+## 4. Rotação da `API_SERVER_KEY` do profile `default`
 
-Para voltar a configuração do volcweb sem apagar: copie `config.yaml.bak-bia-<ts>` e `.env.bak-bia-<ts>` de volta.
+Faça quando houver suspeita de vazamento, saída de quem tinha acesso ao Mac ou a cada 90 dias. A chave dá acesso administrativo ao API Server do `default` (sessões, jobs), mesmo só em loopback.
 
-## 4. Rotação da `API_SERVER_KEY` do volcweb
-
-Faça quando houver suspeita de vazamento, saída de quem tinha acesso ao Mac ou a cada 90 dias.
-
-1. Na VPS: gere uma chave nova sem imprimir e troque a linha no `.env` do volcweb.
+1. Na VPS: faça backup do `.env` e troque só a linha, sem imprimir.
    ```bash
+   cp -p /root/.hermes/.env /root/.hermes/backups-bia/env.antes-rotacao-$(date +%s)
    python3 - <<'PY'
    import secrets, pathlib
-   p = pathlib.Path('/root/.hermes/profiles/volcweb/.env')
+   p = pathlib.Path('/root/.hermes/.env')
    l = [x for x in p.read_text().splitlines() if not x.startswith('API_SERVER_KEY=')]
    p.write_text('\n'.join(l + ['API_SERVER_KEY=' + secrets.token_urlsafe(48)]) + '\n')
    PY
    ```
-2. `hermes -p volcweb gateway restart`. Só o volcweb.
-3. No Mac: atualize `BIA_HERMES_API_KEY` pelo mesmo pipe do runbook de implantação (CP3, passo 2), sem passar pelo terminal, e reinicie o backend.
-4. Valide com `smoke_hermes.py` e com um envio pela UI. A chave antiga tem de dar 401.
+2. Rode `systemctl restart hermes-gateway`, que reinicia o Telegram por alguns segundos. Depois rode `api_default.py verificar`.
+3. No Mac: atualize `BIA_HERMES_API_KEY` pelo pipe do runbook de implantação (CP3, passo 2) e reinicie o backend.
+4. Confira que a chave antiga dá 401.
 
-Entre os passos 2 e 3 os envios falham com `hermes_autenticacao` (failed, nada sai). Nada fica incerto.
+Entre os passos 2 e 3 os envios falham com `hermes_autenticacao` (failed; nada sai e nada fica incerto).
 
 ## 5. Retenção
 

@@ -31,6 +31,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional
 
 from app.agente_bia import dominio as dom
 from app.agente_bia.portas import (
+    MensagemDoMotor,
     RESERVA_NOVA,
     RESERVA_REPETIDA,
     Conversa,
@@ -100,6 +101,31 @@ def marcador_da_execucao(execucao_id: str) -> str:
     execução incerta — revisão de 15/10/2026, achado #1.
     """
     return f"[ref VOLC {execucao_id}]"
+
+
+def auditar_turno(mensagens: List["MensagemDoMotor"], marcador: str) -> tuple[Optional[str], bool, bool]:
+    """(resposta, usou_ferramenta, achou_o_turno) do turno marcado na sessão.
+
+    O turno vai da mensagem do usuário que começa com `marcador` até a próxima
+    mensagem do usuário. Qualquer chamada ou resultado de ferramenta nesse
+    intervalo conta como uso — a superfície do VOLC não tem ferramenta, e um
+    uso é sinal de configuração fora do lugar (ex.: MCP global, que o
+    `/v1/toolsets` não mostra).
+    """
+    alvo = next((i for i, m in enumerate(mensagens)
+                 if m.papel == "user" and m.texto.startswith(marcador)), None)
+    if alvo is None:
+        return None, False, False
+    respostas: List[str] = []
+    usou = False
+    for m in mensagens[alvo + 1:]:
+        if m.papel == "user":
+            break
+        if m.ferramenta:
+            usou = True
+        elif m.papel == "assistant" and m.texto.strip():
+            respostas.append(m.texto)
+    return (respostas[-1] if respostas else None), usou, True
 
 
 def montar_mensagem_ao_motor(texto: str, contexto: Optional[ContextoLido], *,
@@ -256,11 +282,30 @@ class CasosDeUso:
             return await self._fechar(dono, execucao_id, dom.Estado.UNCERTAIN, None,
                                       "hermes_resposta_ilegivel", inicio, {})
 
+        # Auditoria do turno (read-back, sem chamar o modelo): nenhuma ferramenta
+        # pode ter sido usada. Falhar em auditar é incerteza, não sucesso.
+        try:
+            mensagens = await asyncio.wait_for(self._motor.mensagens(preparo.sessao_motor), TETO_SESSAO_S)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("auditoria do turno indisponível (execução %s): %s",
+                        execucao_id, type(exc).__name__)
+            return await self._fechar(dono, execucao_id, dom.Estado.UNCERTAIN, None,
+                                      "auditoria_indisponivel", inicio, {})
+        _, usou, achou = auditar_turno(mensagens, marcador_da_execucao(execucao_id))
+        if usou:
+            log.error("Hermes usou ferramenta no turno da execução %s; resposta descartada", execucao_id)
+            return await self._fechar(dono, execucao_id, dom.Estado.FAILED, None,
+                                      "hermes_usou_ferramenta", inicio, {"ferramenta": True})
+        if not achou:
+            return await self._fechar(dono, execucao_id, dom.Estado.UNCERTAIN, None,
+                                      "auditoria_indisponivel", inicio, {})
+
         detalhe = {
             "modelo": resposta.modelo,
             "tokens_entrada": resposta.tokens_entrada,
             "tokens_saida": resposta.tokens_saida,
             "duracao_motor_ms": resposta.duracao_ms,
+            "ferramentas_no_turno": 0,
         }
         return await self._fechar(dono, execucao_id, dom.Estado.SUCCEEDED,
                                   dom.filtrar_resposta(resposta.texto), None, inicio, detalhe)
@@ -297,19 +342,10 @@ class CasosDeUso:
 
         # Só a mensagem do usuário com o marcador DESTA execução vale; a resposta
         # é a última do assistente depois dela e antes do próximo turno do usuário.
-        marcador = marcador_da_execucao(execucao_id)
-        alvo = next((i for i, m in enumerate(mensagens)
-                     if m.papel == "user" and m.texto.startswith(marcador)), None)
-        resposta = None
-        if alvo is not None:
-            depois: List[str] = []
-            for m in mensagens[alvo + 1:]:
-                if m.papel == "user":
-                    break
-                if m.papel == "assistant" and m.texto.strip():
-                    depois.append(m.texto)
-            if depois:
-                resposta = depois[-1]
+        resposta, usou, _ = auditar_turno(mensagens, marcador_da_execucao(execucao_id))
+        if usou:
+            return await self._ledger.reconciliar(dono, execucao_id, dom.Estado.FAILED.value, None,
+                                                  {"via": "read_back_sessao", "ferramenta": True})
         if resposta is None:
             e = await self._ledger.execucao(dono, execucao_id)
             assert e is not None

@@ -48,7 +48,7 @@ ADMIN_A = "11111111-1111-4111-8111-111111111111"
 ADMIN_B = "22222222-2222-4222-8222-222222222222"
 OPERADOR = "33333333-3333-4333-8333-333333333333"
 ORIGEM = "https://volc.example"
-BASE_HERMES = "http://127.0.0.1:18643"
+BASE_HERMES = "http://127.0.0.1:18642"
 SESSAO_RE = re.compile(r"volc_[0-9a-f]{32}")
 AGORA = datetime(2026, 10, 15, 15, 0, tzinfo=timezone.utc)
 
@@ -533,15 +533,15 @@ def test_origem_com_curinga_ou_caminho_e_recusada(origem):
         configuracao.ler(_settings(bia_allowed_origins=origem))
 
 
-@pytest.mark.parametrize("url", ["http://76.13.161.49:8643", "http://hermes.example",
-                                 "https://user:pw@hermes.example", "http://127.0.0.1:8643/v1"])
+@pytest.mark.parametrize("url", ["http://76.13.161.49:8642", "http://hermes.example",
+                                 "https://user:pw@hermes.example", "http://127.0.0.1:8642/v1"])
 def test_base_do_hermes_fora_do_loopback_exige_https(url):
     with pytest.raises(configuracao.ConfiguracaoInvalida):
         configuracao.ler(_settings(bia_hermes_base_url=url))
 
 
 def test_base_do_hermes_no_loopback_ou_https_e_aceita():
-    for url in ("http://127.0.0.1:18643", "http://localhost:8643", "https://bia.tailnet.ts.net"):
+    for url in ("http://127.0.0.1:18642", "http://localhost:8642", "https://bia.tailnet.ts.net"):
         assert configuracao.ler(_settings(bia_hermes_base_url=url)).hermes_base_url
 
 
@@ -868,3 +868,58 @@ def test_falha_no_recibo_do_contexto_nao_prende_a_execucao(monkeypatch):
         assert e["estado"] == "succeeded"
     finally:
         b.fechar()
+
+
+# ── profile default compartilhado (decisão de 15/10/2026) ───────────────────
+
+def test_turno_com_ferramenta_e_descartado_mesmo_que_o_toolsets_diga_zero(banca):
+    """Defesa em profundidade: /v1/toolsets não enxerga MCP global. A auditoria
+    do turno (read-back) pega qualquer chamada de ferramenta e descarta a resposta."""
+    banca.hermes.modo = "usa_ferramenta"
+    cid = banca.nova()
+    r = banca.enviar(cid)
+    [e] = banca.historico(cid).json()["execucoes"]
+    assert e["estado"] == "failed" and e["erro"]["codigo"] == "hermes_usou_ferramenta"
+    assert e["resposta"] is None
+    assert "SAIDA-DA-FERRAMENTA" not in banca.historico(cid).text
+    assert r.status_code == 202
+
+
+def test_sem_auditoria_a_resposta_fica_incerta(banca):
+    banca.hermes.modo = "sem_readback"
+    cid = banca.nova()
+    banca.enviar(cid)
+    [e] = banca.historico(cid).json()["execucoes"]
+    assert e["estado"] == "uncertain" and e["erro"]["codigo"] == "auditoria_indisponivel"
+    assert e["resposta"] is None
+
+
+def test_turno_limpo_registra_zero_ferramentas_no_recibo(banca):
+    cid = banca.nova()
+    banca.enviar(cid)
+    ev = [x for x in banca.ledger.eventos if x["tipo"] == "concluida"][-1]
+    assert ev["para"] == "succeeded" and ev["detalhe"]["ferramentas_no_turno"] == 0
+
+
+def test_estado_declara_a_memoria_compartilhada_com_o_telegram(banca):
+    corpo = banca.cliente.get("/api/agent/estado", headers=banca.h()).json()
+    assert corpo["memoria"]["compartilhada_com"] == "telegram"
+    assert "mesma Bia do Telegram" in corpo["memoria"]["aviso"]
+
+
+def test_cada_conversa_tem_sessao_propria_criada_pelo_backend(banca):
+    a, b = banca.nova(), banca.nova()
+    banca.enviar(a)
+    banca.enviar(b)
+    sa, sb = banca.ledger.sessao_de(a), banca.ledger.sessao_de(b)
+    assert sa != sb and set(banca.hermes.sessoes) == {sa, sb}
+    criacoes = [json.loads(r.content) for r in banca.hermes.pedidos if r.url.path == "/api/sessions"]
+    assert {c["id"] for c in criacoes} == {sa, sb}
+
+
+def test_admin_revogado_perde_o_acesso_na_proxima_requisicao(banca):
+    cid = banca.nova()
+    assert banca.historico(cid).status_code == 200
+    banca.auth.tokens["tok-admin-a"] = (ADMIN_A, "OPERATOR")  # papel revogado no banco
+    assert banca.historico(cid).status_code == 403
+    assert banca.enviar(cid).status_code == 403

@@ -220,6 +220,7 @@ async def estado(cfg: configuracao.ConfiguracaoDaBia = Depends(configuracao_da_b
     return {
         "modo": "consulta",
         "aviso": dom.AVISO_MODO_CONSULTA,
+        "memoria": {"compartilhada_com": "telegram", "aviso": dom.AVISO_MEMORIA_COMPARTILHADA},
         "motor_configurado": cfg.motor_configurado,
         "limites": {"max_caracteres": cfg.max_caracteres,
                     "envios_por_minuto": cfg.limite_por_minuto,

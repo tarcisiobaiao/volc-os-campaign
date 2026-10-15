@@ -64,7 +64,7 @@ Nós esperados na camada técnica: `backend/app/agente_bia/*`, `src/features/bia
 ## 6. O que continua pendente (fora desta branch)
 
 1. CP1: aplicar a v27_01 (e decidir a v20_01, o ledger de migrations, que também não está em produção).
-2. CP2: criar e configurar o `volcweb`, rodar o smoke em foreground e instalar o serviço.
+2. CP2: ligar a superfície API do profile `default` (`api_default.py aplicar`).
 3. CP3/CP4: túnel, `.env.local` e `scripts/bia_prova_real.py`.
 4. Endurecimento do túnel (chave SSH dedicada com `permitopen`).
 5. Fase 2: expor o catálogo ao Hermes como MCP, com token por execução, e `registrar_proposta`.

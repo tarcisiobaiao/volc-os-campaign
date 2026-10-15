@@ -197,7 +197,7 @@ class HermesFalso:
     """API Server v0.18.0, no lugar do socket. Conta e guarda tudo o que recebeu."""
     chave: str = "chave-hermes-de-teste-NUNCA-SAI"
     resposta: str = "conexão VOLC funcionando"
-    modo: str = "ok"  # ok | timeout | conexao_recusada | http500 | http401 | ilegivel | fora_do_ar
+    modo: str = "ok"  # ok | timeout | conexao_recusada | http500 | http401 | ilegivel | fora_do_ar | usa_ferramenta | sem_readback
     ferramentas: List[str] = field(default_factory=list)  # toolsets habilitados no profile
     sessoes: Dict[str, List[Dict[str, str]]] = field(default_factory=dict)
     pedidos: List[httpx.Request] = field(default_factory=list)
@@ -229,6 +229,8 @@ class HermesFalso:
             self.sessoes[sid] = []
             return httpx.Response(201, json={"object": "hermes.session", "session": {"id": sid}})
         if caminho.startswith("/api/sessions/") and caminho.endswith("/messages"):
+            if self.modo == "sem_readback":
+                return httpx.Response(503, json={})
             sid = caminho.split("/")[3]
             if sid not in self.sessoes:
                 return httpx.Response(404, json={})
@@ -258,6 +260,11 @@ class HermesFalso:
             if "Qual é o código" in texto:
                 anteriores = " ".join(historico[:-1])
                 resposta = "O código é AMBAR." if "AMBAR" in anteriores else "Não sei o código."
+            if self.modo == "usa_ferramenta":
+                self.sessoes[sid].append({"role": "assistant", "content": None,
+                                          "tool_calls": [{"function": {"name": "terminal"}}]})
+                self.sessoes[sid].append({"role": "tool", "content": "SAIDA-DA-FERRAMENTA",
+                                          "tool_name": "terminal"})
             self.sessoes[sid].append({"role": "assistant", "content": resposta})
             return httpx.Response(200, json={
                 "object": "hermes.session.chat.completion", "session_id": sid,

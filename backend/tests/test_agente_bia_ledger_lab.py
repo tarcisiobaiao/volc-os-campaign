@@ -102,7 +102,7 @@ def dono():
 def _montar(hermes: HermesFalso, limite: int = 6) -> CasosDeUso:
     ledger = LedgerSupabase("https://lab.invalid", "service-do-lab",
                             transport=httpx.MockTransport(_postgrest_do_lab))
-    motor = HermesHttp("http://127.0.0.1:18643", hermes.chave, timeout_s=120,
+    motor = HermesHttp("http://127.0.0.1:18642", hermes.chave, timeout_s=120,
                        transport=hermes.transporte())
     return CasosDeUso(ledger, motor, limite_por_minuto=limite, max_caracteres=4000,
                       timeout_motor_s=120)

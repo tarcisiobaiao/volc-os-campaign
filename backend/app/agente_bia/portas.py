@@ -117,8 +117,10 @@ class RespostaDoMotor:
 
 @dataclass(frozen=True)
 class MensagemDoMotor:
-    papel: str
+    papel: str               # user | assistant | tool
     texto: str
+    #: a mensagem é chamada ou resultado de ferramenta (role=tool ou tool_calls)
+    ferramenta: bool = False
 
 
 class FalhaDoMotor(Exception):

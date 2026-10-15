@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Roteiro de aceite REAL da Bia V1, ponta a ponta, contra o backend rodando.
 
-⚠️ Faz inferência real (consome franquia/crédito do provedor do profile
-`volcweb`). Só rodar depois dos checkpoints autorizados (migration v27_01
-aplicada, profile volcweb no ar, túnel aberto) — ver
+⚠️ Faz inferência real (consome crédito do provedor do profile `default`, a
+mesma Bia do Telegram, em sessão web separada). Só rodar depois dos checkpoints
+(migration v27_01 aplicada, superfície API do default ligada, túnel aberto) — ver
 docs/bia-hermes/RUNBOOK-IMPLANTACAO.md.
 
 Entrada (ambiente, nunca argumento de linha de comando, para não ir ao histórico):

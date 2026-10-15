@@ -160,7 +160,9 @@ CODIGOS_DE_ERRO: Mapping[str, str] = {
     "hermes_sessao_ausente": "A sessão desta conversa não existe mais no Hermes.",
     "processo_interrompido": "O backend reiniciou durante o envio. O resultado é incerto.",
     "contexto_indisponivel": "O contexto VOLC pedido não pôde ser lido.",
-    "hermes_com_ferramentas": "O profile do Hermes expõe ferramentas; a Bia V1 recusa enviar.",
+    "hermes_com_ferramentas": "A superfície API do Hermes expõe ferramentas; a Bia V1 recusa enviar.",
+    "hermes_usou_ferramenta": "O Hermes usou ferramenta neste turno; a resposta foi descartada.",
+    "auditoria_indisponivel": "A resposta chegou, mas não foi possível auditar o turno. O resultado é incerto.",
 }
 
 
@@ -171,3 +173,7 @@ def mensagem_de_erro(codigo: Optional[str]) -> Optional[str]:
 
 
 AVISO_MODO_CONSULTA = "Bia em modo de consulta — nenhuma ação operacional será executada."
+AVISO_MEMORIA_COMPARTILHADA = (
+    "É a mesma Bia do Telegram: mesma identidade e memória longa. Esta conversa é "
+    "uma sessão separada; o que for dito aqui pode ser lembrado lá."
+)

@@ -25,6 +25,9 @@ import type { EstadoDaExecucao, ExecucaoDaBia, JanelaDeContexto } from './tipos'
 import { useBia } from './useBia';
 
 export const AVISO_MODO_CONSULTA = 'Bia em modo de consulta — nenhuma ação operacional será executada.';
+/** A mesma Bia do Telegram (profile `default`), em sessão separada. */
+export const AVISO_MEMORIA_COMPARTILHADA =
+  'É a mesma Bia do Telegram: mesma identidade e memória longa. Esta conversa é uma sessão separada; o que for dito aqui pode ser lembrado lá.';
 
 const ROTULO_DO_ESTADO: Record<EstadoDaExecucao, string> = {
   queued: 'Na fila',
@@ -199,6 +202,9 @@ export const BiaWidget: React.FC<Props> = ({ userId, api }) => {
             className="border-b border-border bg-muted px-4 py-2 text-xs font-medium text-foreground"
           >
             {AVISO_MODO_CONSULTA}
+            <span className="mt-1 block font-normal text-muted-foreground">
+              {bia.servico?.memoria?.aviso ?? AVISO_MEMORIA_COMPARTILHADA}
+            </span>
           </p>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">

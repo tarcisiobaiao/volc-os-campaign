@@ -1,4 +1,11 @@
-"""Adaptador do API Server do Hermes (profile `volcweb`), v0.18.0.
+"""Adaptador do API Server do Hermes v0.18.0 — profile `default` (a mesma Bia do Telegram).
+
+A superfície `api_server` do profile `default` é configurada SEM ferramentas
+(`platform_toolsets.api_server: []`, medido como conjunto vazio na v0.18.0),
+enquanto o Telegram mantém as suas (`hermes-telegram`). Cada conversa do VOLC
+é uma sessão própria do Hermes (`volc_<hex32>`, source `api_server`), separada
+das sessões do Telegram; identidade (SOUL), modelo e memória longa são os do
+profile.
 
 Contrato conferido no código instalado na VPS em 15/10/2026
 (`gateway/platforms/api_server.py`, somente leitura):
@@ -174,8 +181,11 @@ class HermesHttp:
             if not isinstance(m, dict):
                 continue
             papel, conteudo = m.get("role"), m.get("content")
-            # Só user/assistant com texto. tool_calls, reasoning e resultados de
-            # ferramenta nunca saem deste adaptador.
+            # Chamada ou resultado de ferramenta vira só um SINAL (para a
+            # auditoria do turno); o conteúdo dela nunca sai deste adaptador.
+            if papel == "tool" or m.get("tool_calls") or m.get("tool_name"):
+                saida.append(MensagemDoMotor(papel="tool", texto="", ferramenta=True))
+                continue
             if papel in ("user", "assistant") and isinstance(conteudo, str):
                 saida.append(MensagemDoMotor(papel=papel, texto=conteudo))
         return saida

@@ -28,7 +28,7 @@ vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => mobile.valor }));
 vi.mock('@/lib/supabase', () => ({ supabase: { auth: { getSession: vi.fn() } } }));
 
 import { BiaNoLayout } from '../BiaNoLayout';
-import { AVISO_MODO_CONSULTA } from '../BiaWidget';
+import { AVISO_MEMORIA_COMPARTILHADA, AVISO_MODO_CONSULTA } from '../BiaWidget';
 import { chaveDaConversa } from '../useBia';
 
 const A = '11111111-1111-4111-8111-111111111111';
@@ -43,6 +43,7 @@ const exe = (p: Partial<ExecucaoDaBia>): ExecucaoDaBia => ({
 
 const SERVICO = {
   modo: 'consulta', aviso: AVISO_MODO_CONSULTA, motor_configurado: true,
+  memoria: { compartilhada_com: 'telegram', aviso: AVISO_MEMORIA_COMPARTILHADA },
   limites: { max_caracteres: 4000, envios_por_minuto: 6, espera_maxima_s: 240 }, capacidades: ['volc_get_campaign_context'],
 };
 
@@ -107,6 +108,7 @@ describe('portão da Bia no Layout', () => {
     render(<BiaNoLayout />);
     const painel = await abrir();
     expect(painel.textContent).toContain(AVISO_MODO_CONSULTA);
+    expect(painel.textContent).toContain('mesma Bia do Telegram');
   });
 
   it('logout desmonta o widget', async () => {

@@ -7,7 +7,8 @@ Camadas, na regra da casa:
     aplicacao.py      casos de uso: conversa, histórico, envio, reconciliação
     configuracao.py   leitura e validação da configuração (flag, Hermes, CORS)
     infra_ledger.py   ledger no Supabase oficial, só por RPC nomeada
-    infra_hermes.py   API Server do profile `volcweb`, só rotas de sessão
+    infra_hermes.py   API Server do profile `default` do Hermes (a mesma Bia do
+                      Telegram), sessão web própria, superfície sem ferramenta
     cors.py           CORS exato, só para `/api/agent/*`
     rotas.py          HTTP `/api/agent/*`
     gateway/          VOLC Agent Gateway: capacidades tipadas, só leitura na V1
