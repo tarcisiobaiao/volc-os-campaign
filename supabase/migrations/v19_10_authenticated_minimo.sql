@@ -351,10 +351,34 @@ BEGIN
   IF to_regprocedure('public.volc_pode_editar_funil(text,text)') IS NOT NULL THEN
     RAISE EXCEPTION 'v19_10: public.volc_pode_editar_funil já existe — não reaplica';
   END IF;
+  IF to_regprocedure('public.volc_host_normalizado(text)') IS NOT NULL THEN
+    RAISE EXCEPTION 'v19_10: public.volc_host_normalizado já existe — não reaplica';
+  END IF;
 END
 $guarda_papel$;
 
 -- a) quem pode escrever uma URL de funil
+--    host normalizado: minúsculas, sem espaço nas pontas, sem esquema, path, query
+--    ou fragmento, sem porta, sem ponto final e sem "www." — a mesma regra para a
+--    URL gravada e para domain/main_url de todos os projetos
+CREATE FUNCTION public.volc_host_normalizado(p text)
+RETURNS text LANGUAGE sql IMMUTABLE SET search_path = '' AS $h$
+  SELECT regexp_replace(
+           regexp_replace(
+             regexp_replace(
+               split_part(split_part(split_part(
+                 regexp_replace(lower(btrim(coalesce(p, ''), E' \t\r\n')), '^[a-z][a-z0-9+.-]*://', ''),
+                 '/', 1), '?', 1), '#', 1),
+               ':[0-9]*$', ''),
+             '\.+$', ''),
+           '^www\.', '')
+$h$;
+COMMENT ON FUNCTION public.volc_host_normalizado(text) IS
+  'v19_10 (W4): host normalizado de uma URL ou domínio, usado por volc_pode_editar_funil. Removida pelo v19_10_rollback.sql.';
+ALTER FUNCTION public.volc_host_normalizado(text) OWNER TO supabase_admin;
+REVOKE ALL ON FUNCTION public.volc_host_normalizado(text) FROM PUBLIC, anon, authenticated, service_role;
+INSERT INTO app_auth.w4_auth_criados VALUES ('funcao', 'public.volc_host_normalizado(text)');
+
 CREATE FUNCTION public.volc_pode_editar_funil(p_campaign text, p_url text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $f$
   SELECT public.volc_current_admin()
@@ -369,24 +393,26 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $f$
                                JOIN public.campaigns c ON c.project_id = up.project_id
                               WHERE up.user_id = u.id AND c.campaign_id = p_campaign)))
         AND (p_url IS NULL OR EXISTS (
+          -- hosts de cada projeto: domain E main_url, normalizados (vazio fica de fora)
           WITH dom AS (
-            SELECT pr.id, split_part(regexp_replace(regexp_replace(lower(coalesce(nullif(pr.domain, ''), pr.main_url)),
-                                     '^[a-z]+://', ''), '^www\.', ''), '/', 1) AS d
+            SELECT pr.id, h.d
               FROM public.projects pr
+              CROSS JOIN LATERAL (VALUES (public.volc_host_normalizado(pr.domain)),
+                                         (public.volc_host_normalizado(pr.main_url))) AS h(d)
+             WHERE h.d <> ''
           )
           SELECT 1 FROM public.campaigns c JOIN dom ON dom.id = c.project_id
            WHERE c.campaign_id = p_campaign
-             AND dom.d <> ''
-             AND split_part(regexp_replace(regexp_replace(lower(p_url), '^[a-z]+://', ''), '^www\.', ''), '/', 1) = dom.d
-             -- domínio repetido entre projetos (projects.domain não é único): nega para não-ADMIN
+             AND public.volc_host_normalizado(p_url) = dom.d
+             -- host repetido entre projetos (projects.domain não é único): nega para não-ADMIN
              AND NOT EXISTS (SELECT 1 FROM dom o WHERE o.d = dom.d AND o.id <> dom.id)))
       )
 $f$;
 COMMENT ON FUNCTION public.volc_pode_editar_funil(text, text) IS
   'v19_10 (W4): ADMIN, ou operador vinculado à campanha (user_campaigns ou user_projects '
   'do projeto), identificado por public.users.id = auth.uid() (o e-mail do JWT não '
-  'identifica), e — com p_url — URL do domínio do projeto da campanha, desde que nenhum '
-  'outro projeto tenha o mesmo domínio (repetido ou vazio: só ADMIN). Usada pela RLS '
+  'identifica), e — com p_url — URL cujo host normalizado é o domain ou o main_url do '
+  'projeto da campanha, desde que nenhum outro projeto tenha esse host (repetido: só ADMIN). Usada pela RLS '
   'de campaign_funnel_urls. Removida pelo v19_10_rollback.sql.';
 ALTER FUNCTION public.volc_pode_editar_funil(text, text) OWNER TO supabase_admin;
 REVOKE ALL ON FUNCTION public.volc_pode_editar_funil(text, text) FROM PUBLIC, anon, service_role;

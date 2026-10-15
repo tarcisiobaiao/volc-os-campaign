@@ -285,6 +285,25 @@ eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','ht
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$ADMIN")" "ok:t" "escopo: domínio repetido → ADMIN segue editando"
 PA -c "DELETE FROM public.projects WHERE id = 9003" >/dev/null
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$OPER")" "ok:t" "escopo: sem a duplicata, operador volta a editar"
+# H2 parcial (re-revisão db8fd4c5): mesma colisão com o host escrito em outra grafia, um ataque por grafia
+dup() {  # dup <domain> <main_url> <descrição>
+  PA -c "INSERT INTO public.projects (id, project_name, main_url, domain, start_date, status, revshare) VALUES (9004, 'p1-grafia', \$m\$$2\$m\$, \$d\$$1\$d\$, current_date - 30, 'Active', 0.2)" >/dev/null
+  eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$OPER")" "ok:f" "escopo: host repetido em outra grafia ($3) → operador não edita"
+  PA -c "DELETE FROM public.projects WHERE id = 9004" >/dev/null
+}
+dup ' p1.example' 'https://outro9004.example' "espaço antes"
+dup 'p1.example ' 'https://outro9004.example' "espaço depois"
+dup 'p1.example.' 'https://outro9004.example' "ponto final"
+dup 'p1.example:443' 'https://outro9004.example' "porta :443"
+dup 'p1.example:80' 'https://outro9004.example' "porta :80"
+dup 'HTTPS://P1.Example/caminho?x=1' 'https://outro9004.example' "esquema, maiúsculas e path"
+dup 'www.p1.example' 'https://outro9004.example' "www."
+dup 'outro9004.example' 'https://p1.example:443/' "só no main_url, com domain preenchido"
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$OPER")" "ok:t" "escopo: sem as duplicatas, operador volta a editar"
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789',' HTTPS://P1.example.:443/z?q=1')" "$OPER")" "ok:t" "escopo: URL do próprio domínio em outra grafia é aceita (mesma normalização)"
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://p1.example@p2v.example/x')" "$OPER")" "ok:f" "escopo: userinfo não vira host do projeto"
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://p1.example.p2v.example/x')" "$OPER")" "ok:f" "escopo: sufixo de outro domínio não casa"
+eq "$(estado authenticated "select public.volc_host_normalizado('x')" "$OPER" | cut -c1-5)" "42501" "volc_host_normalizado: sem EXECUTE para authenticated"
 PA -c "UPDATE public.projects SET domain = '', main_url = '' WHERE id = 9001" >/dev/null
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','/x')" "$OPER")" "ok:f" "escopo: projeto sem domínio → URL sem host não casa"
 PA -c "UPDATE public.projects SET domain = 'p1.example', main_url = 'https://p1.example' WHERE id = 9001" >/dev/null
