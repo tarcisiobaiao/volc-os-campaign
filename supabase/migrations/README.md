@@ -2,6 +2,20 @@
 
 Arquivos de migration da **contenção de segurança** do VOLC O.S.
 
+## Receita datada e câmbio versionado: v23_01 (W12) — PROPOSTA, não aplicada
+
+`v23_01_receita_datada_cambio.sql` e `v23_01_rollback.sql`. Prova:
+`tools/freedom-lab/db/suites/v23_w12.sh` pelo `lab.sh recriar-prod`, no Mac.
+Handoff: `/mnt/project-files/handoffs/W12-receita-cambio.md`.
+
+- **Quem aplica e reverte:** o dono das tabelas (`supabase_admin` em produção).
+- **Ordem com o W4:** aplicar o W4 (v19, depois v19_10) **antes** da v23_01, para
+  o retrato de ACL que a v23_01 guarda já ser o do W4. Reverter **só em ordem
+  inversa**: v23_01 antes do v19_10.
+- O rollback da v23_01 **nunca** devolve privilégio a `anon` nem a `PUBLIC` em
+  `exchange_rate_history`, mesmo que estivesse no retrato (política do W4:
+  anon não escreve). O que deixa de devolver sai num `NOTICE`.
+
 ## Google Ads: v17_01 fatos granulares — 08/10/2026
 
 `v17_01_gads_fatos_granulares.sql` (SHA-256

@@ -10,6 +10,11 @@
 -- (receita_observacao e exchange_rate_history WHERE as_of IS NOT NULL) e
 -- apague à mão, com autorização, se o descarte for a decisão.
 -- Idempotente: rodar de novo depois de revertido não faz nada.
+--
+-- ORDEM COM O W4: aplicar o W4 (v19 e v19_10) ANTES da v23_01 e reverter em
+-- ordem inversa (v23_01 antes do v19_10). Este rollback nunca devolve
+-- privilégio a anon nem a PUBLIC em exchange_rate_history, mesmo que estivesse
+-- no retrato guardado (ver bloco $acl$).
 
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -43,15 +48,23 @@ BEGIN
 END
 $pre$;
 
--- Devolve a escrita que anon/authenticated tinham no câmbio antes da v23_01.
+-- Devolve a escrita que a v23_01 tirou no câmbio, MENOS a de anon e PUBLIC.
+-- De propósito (incidente W4): a política é que anon não escreve. Se o W4
+-- fechou a anon depois da v23_01, devolver o retrato antigo reabriria a
+-- escrita anon (e sem leitura). O que deixou de ser devolvido vai num NOTICE.
+-- Ordem: W4 (v19, v19_10) antes da v23_01; reverter só em ordem inversa (LIFO).
 DO $acl$
 DECLARE
   r record;
 BEGIN
   IF to_regclass('public.v23_01_acl_anterior') IS NOT NULL THEN
-    FOR r IN SELECT papel, privilegio FROM public.v23_01_acl_anterior LOOP
-      EXECUTE format('GRANT %s ON TABLE public.exchange_rate_history TO %s', r.privilegio,
-                     CASE WHEN r.papel = 'PUBLIC' THEN 'PUBLIC' ELSE quote_ident(r.papel) END);
+    FOR r IN SELECT papel, privilegio FROM public.v23_01_acl_anterior ORDER BY papel, privilegio LOOP
+      IF r.papel IN ('anon', 'PUBLIC') THEN
+        RAISE NOTICE 'v23_01 rollback: % em exchange_rate_history NÃO devolvido a % (política W4: anon não escreve)',
+          r.privilegio, r.papel;
+      ELSE
+        EXECUTE format('GRANT %s ON TABLE public.exchange_rate_history TO %I', r.privilegio, r.papel);
+      END IF;
     END LOOP;
   END IF;
 END

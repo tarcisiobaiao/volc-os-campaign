@@ -137,6 +137,14 @@ w12_suite() {
   eq "$(w12_aplicada)" "f" "v23 · antes: v23_01 não aplicada"
   local gatilhos_antes
   gatilhos_antes=$(w12_sql "select string_agg(tgrelid::regclass || '.' || tgname, ',' order by 1) from pg_trigger where tgrelid in ('public.joinads_metrics'::regclass, 'public.gam_metrics'::regclass) and not tgisinternal")
+  # Ordem exigida (README das migrations): W4 fecha a escrita da anon ANTES da
+  # v23_01. O lab simula isso aqui e devolve o ACL original no fim.
+  W12_ACL_ORIG=$(w12_sql "select string_agg(case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end || ':' || a.privilege_type, ' ')
+                            from pg_class c, aclexplode(c.relacl) a
+                           where c.oid = 'public.exchange_rate_history'::regclass and a.privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE')
+                             and (a.grantee = 0 or pg_get_userbyid(a.grantee) = 'anon')")
+  PA -c "REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.exchange_rate_history FROM anon, PUBLIC" >/dev/null 2>&1 \
+    && ok "v23 · W4 simulado antes da v23_01: anon sem escrita no câmbio" || nao "v23 · simular W4 (REVOKE anon)"
   w12_fp antes
 
   echo "▶ v23 · semente anterior à migration (carga inicial)"
@@ -169,21 +177,21 @@ w12_suite() {
   local cots
   cots="$(w12_cot 2026-10-13 5.40 '2026-10-13 13:10:00-03') $(w12_cot 2026-10-13 5.41 '2026-10-13 13:15:00-03')
         SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate', 9.99, 'effective_date', '2026-10-13'));"
-  eq "$(w12_bloco "$cots SELECT modo||'|'||taxa||'|'||fonte||'|'||defasagem_dias FROM public.cambio_resolver('2026-10-13');")" "exata|5.41|bcb_ptax|0" \
+  eq "$(w12_bloco "$cots SELECT modo||'|'||trim_scale(taxa)||'|'||fonte||'|'||defasagem_dias FROM public.cambio_resolver('2026-10-13');")" "exata|5.41|bcb_ptax|0" \
      "v23 · data exata: última publicação da fonte, e a coletada vence a manual do mesmo dia"
-  eq "$(w12_bloco "$cots SELECT modo||'|'||taxa||'|'||data_cotacao||'|'||defasagem_dias FROM public.cambio_resolver('2026-10-15');")" "anterior|5.41|2026-10-13|2" \
+  eq "$(w12_bloco "$cots SELECT modo||'|'||trim_scale(taxa)||'|'||data_cotacao||'|'||defasagem_dias FROM public.cambio_resolver('2026-10-15');")" "anterior|5.41|2026-10-13|2" \
      "v23 · sem cotação no dia: última anterior, marcada como anterior e com defasagem"
-  eq "$(w12_bloco "$cots SELECT modo||'|'||coalesce(taxa::text,'NULL')||'|'||defasagem_dias FROM public.cambio_resolver('2026-10-30');")" "defasada|NULL|17" \
+  eq "$(w12_bloco "$cots SELECT modo||'|'||coalesce(trim_scale(taxa)::text,'NULL')||'|'||defasagem_dias FROM public.cambio_resolver('2026-10-30');")" "defasada|NULL|17" \
      "v23 · cotação mais velha que 7 dias: recusa (taxa NULL), não usa constante"
-  eq "$(w12_bloco "$cots SELECT modo||'|'||coalesce(taxa::text,'NULL') FROM public.cambio_resolver('2026-10-30', 'USD/BRL', 30);")" "anterior|5.41" \
+  eq "$(w12_bloco "$cots SELECT modo||'|'||coalesce(trim_scale(taxa)::text,'NULL') FROM public.cambio_resolver('2026-10-30', 'USD/BRL', 30);")" "anterior|5.41" \
      "v23 · limite de defasagem é parâmetro explícito"
-  eq "$(w12_bloco "SELECT modo||'|'||taxa||'|'||fonte FROM public.cambio_resolver('2026-02-20');")" "anterior|5.25|legado_manual" \
+  eq "$(w12_bloco "SELECT modo||'|'||trim_scale(taxa)||'|'||fonte FROM public.cambio_resolver('2026-02-20');")" "anterior|5.25|legado_manual" \
      "v23 · cotação manual legada continua elegível, identificada como legado_manual"
-  eq "$(w12_bloco "SELECT modo||'|'||coalesce(taxa::text,'NULL')||'|'||coalesce(cotacao_id::text,'NULL') FROM public.cambio_resolver('2025-01-01');")" "sem_cotacao|NULL|NULL" \
+  eq "$(w12_bloco "SELECT modo||'|'||coalesce(trim_scale(taxa)::text,'NULL')||'|'||coalesce(cotacao_id::text,'NULL') FROM public.cambio_resolver('2025-01-01');")" "sem_cotacao|NULL|NULL" \
      "v23 · nenhuma cotação até a data: sem_cotacao, taxa NULL"
   eq "$(w12_bloco "$cots SELECT modo FROM public.cambio_resolver('2026-10-13', 'EUR/BRL');")" "sem_cotacao" \
      "v23 · par sem cotação não herda o USD/BRL"
-  eq "$(w12_bloco "$cots SELECT modo||'|'||coalesce(taxa::text,'NULL') FROM public.cambio_resolver('2026-10-13', 'USD/BRL', 7, now() - interval '1 second');")" "sem_cotacao|NULL" \
+  eq "$(w12_bloco "$cots SELECT modo||'|'||coalesce(trim_scale(taxa)::text,'NULL') FROM public.cambio_resolver('2026-10-13', 'USD/BRL', 7, now() - interval '1 second');")" "sem_cotacao|NULL" \
      "v23 · replay por conhecido_ate não enxerga cotação coletada depois, nem linha manual (não se sabe quando entrou)"
   eq "$(w12_bloco "SELECT count(*) FROM public.cambio_resolver(NULL);")" "ERRO:22023" "v23 · data nula é recusada"
 
@@ -213,7 +221,7 @@ w12_suite() {
      "v23 · linha manual nova com taxa 0 é recusada"
   eq "$(w12_bloco "SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate',5.4,'effective_date','2026-10-13','fonte','bcb_ptax')); SELECT 1;")" "ERRO:23514" \
      "v23 · fonte coletada sem as_of é recusada"
-  eq "$(w12_bloco "SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate',5.39,'effective_date','2026-10-13')); $(w12_cot 2026-10-13 5.41 '2026-10-13 13:15:00-03') SELECT fonte||'|'||taxa FROM public.cambio_resolver('2026-10-13');")" "bcb_ptax|5.41" \
+  eq "$(w12_bloco "SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate',5.39,'effective_date','2026-10-13')); $(w12_cot 2026-10-13 5.41 '2026-10-13 13:15:00-03') SELECT fonte||'|'||trim_scale(taxa) FROM public.cambio_resolver('2026-10-13');")" "bcb_ptax|5.41" \
      "v23 · no mesmo dia a PTAX vence a manual, mesmo a manual sendo gravada depois"
   eq "$(w12_bloco "UPDATE public.exchange_rate_history SET rate = 0 WHERE fonte = 'legado_manual' AND rate = 5.25; SELECT 1;")" "ERRO:23514" \
      "v23 · linha legada não passa a ter taxa 0 por UPDATE (CHECK vale para toda escrita nova)"
@@ -238,8 +246,8 @@ w12_suite() {
 
   echo "▶ v23 · receita: versões, data de referência e câmbio usado"
   local base_rec="$cots $(w12_jads 2026-10-13 10)"
-  eq "$(w12_bloco "$base_rec SELECT operacao||'|'||data_referencia||'|'||receita||'|'||cambio_modo||'|'||cambio_taxa||'|'||receita_brl||'|'||(coletado_em = now())||'|'||(cambio_cotacao_id = (SELECT max(id) FROM public.exchange_rate_history WHERE fonte='bcb_ptax')) FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" \
-     "INSERT|2026-10-13|10|exata|5.41|54.10|true|true" \
+  eq "$(w12_bloco "$base_rec SELECT operacao||'|'||data_referencia||'|'||trim_scale(receita)||'|'||cambio_modo||'|'||trim_scale(cambio_taxa)||'|'||trim_scale(receita_brl)||'|'||(coletado_em = now())||'|'||(cambio_cotacao_id = (SELECT max(id) FROM public.exchange_rate_history WHERE fonte='bcb_ptax')) FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" \
+     "INSERT|2026-10-13|10|exata|5.41|54.1|true|true" \
      "v23 · insert vira versão com data de referência, coletado_em, cotação usada e receita em BRL"
   eq "$(w12_bloco "$base_rec SELECT receita_convertida_legado IS NOT NULL FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" "t" \
      "v23 · revenue_converted legado fica registrado ao lado"
@@ -250,18 +258,18 @@ w12_suite() {
   # shellcheck disable=SC2059
   eq "$(w12_bloco "$base_rec $(printf "$upsert" 12) $W12_OBS; ")" "2" "v23 · mudança de receita cria versão nova"
   # shellcheck disable=SC2059
-  eq "$(w12_bloco "$base_rec $(printf "$upsert" 12) SELECT receita FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" "12" \
+  eq "$(w12_bloco "$base_rec $(printf "$upsert" 12) SELECT trim_scale(receita) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" "12" \
      "v23 · vw_receita_vigente mostra a última versão"
   eq "$(w12_bloco "$base_rec UPDATE public.joinads_metrics SET utm_campaign_value='w12-lab-utm2' WHERE utm_campaign_value='w12-lab-utm';
         SELECT string_agg(operacao||':'||removida||':'||(chave->>'utm_campaign_value'), ',' ORDER BY id) FROM public.receita_observacao WHERE chave->>'utm_campaign_value' like 'w12-lab-utm%';")" \
      "INSERT:false:w12-lab-utm,UPDATE:true:w12-lab-utm,UPDATE:false:w12-lab-utm2" \
      "v23 · troca de chave encerra a chave antiga e abre a nova"
   eq "$(w12_bloco "$base_rec DELETE FROM public.joinads_metrics WHERE utm_campaign_value='w12-lab-utm';
-        SELECT (SELECT count(*) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm')||'|'||(SELECT operacao||':'||removida||':'||coalesce(receita::text,'NULL') FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm' ORDER BY id DESC LIMIT 1);")" \
+        SELECT (SELECT count(*) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm')||'|'||(SELECT operacao||':'||removida||':'||coalesce(trim_scale(receita)::text,'NULL') FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm' ORDER BY id DESC LIMIT 1);")" \
      "0|DELETE:true:NULL" "v23 · delete vira versão removida e sai da vigente"
-  eq "$(w12_bloco "$cots $(w12_jads 2026-12-01 7) SELECT (SELECT count(*) FROM public.joinads_metrics WHERE utm_campaign_value='w12-lab-utm')||'|'||cambio_modo||'|'||coalesce(receita_brl::text,'NULL')||'|'||receita FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" \
+  eq "$(w12_bloco "$cots $(w12_jads 2026-12-01 7) SELECT (SELECT count(*) FROM public.joinads_metrics WHERE utm_campaign_value='w12-lab-utm')||'|'||cambio_modo||'|'||coalesce(trim_scale(receita_brl)::text,'NULL')||'|'||trim_scale(receita) FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" \
      "1|defasada|NULL|7" "v23 · sem câmbio válido a ingestão segue e a receita em BRL fica NULL (ausência, não zero)"
-  eq "$(w12_bloco "$cots $(w12_jads 2026-10-15 1 w12-lab-ant) SELECT cambio_modo||'|'||cambio_defasagem_dias||'|'||receita_brl FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-ant';")" \
+  eq "$(w12_bloco "$cots $(w12_jads 2026-10-15 1 w12-lab-ant) SELECT cambio_modo||'|'||cambio_defasagem_dias||'|'||trim_scale(receita_brl) FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-ant';")" \
      "anterior|2|5.41" "v23 · fim de semana/feriado: usa a anterior e grava a defasagem"
   eq "$(w12_bloco "$base_rec SELECT proveniencia->>'papel' FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" "service_role" \
      "v23 · proveniência registra o papel de quem gravou"
@@ -271,13 +279,13 @@ w12_suite() {
   eq "$(w12_bloco "$cots SET LOCAL request.headers = 'isto não é json'; $(w12_jads 2026-10-13 10) $W12_OBS;")" "1" \
      "v23 · cabeçalho malformado não derruba a ingestão"
   eq "$(w12_bloco "$cots SELECT pg_temp.w12_semear('public.gam_metrics', jsonb_build_object('date','2026-10-13','utm_campaign_value','w12-lab-gam','gam_accounts_id', pg_temp.w12_conta_gam(),'revenue',2));
-        SELECT fonte||'|'||data_referencia||'|'||cambio_modo||'|'||receita_brl FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-gam';")" \
+        SELECT fonte||'|'||data_referencia||'|'||cambio_modo||'|'||trim_scale(receita_brl) FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-gam';")" \
      "gam|2026-10-13|exata|10.82" "v23 · gam_metrics também versiona, com a chave (date, utm, conta GAM)"
 
   echo "▶ v23 · câmbio impossível, escala numérica e TRUNCATE"
-  eq "$(w12_bloco "$cots $(w12_jads 2026-10-20 4 w12-lab-zero) SELECT (SELECT count(*) FROM public.joinads_metrics WHERE utm_campaign_value='w12-lab-zero')||'|'||cambio_modo||'|'||cambio_taxa||'|'||cambio_defasagem_dias FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-zero';")" \
+  eq "$(w12_bloco "$cots $(w12_jads 2026-10-20 4 w12-lab-zero) SELECT (SELECT count(*) FROM public.joinads_metrics WHERE utm_campaign_value='w12-lab-zero')||'|'||cambio_modo||'|'||trim_scale(cambio_taxa)||'|'||cambio_defasagem_dias FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-zero';")" \
      "1|anterior|5.41|7" "v23 · linha manual legada com taxa 0 no dia não derruba o upsert do service_role (ignorada; usa a anterior válida)"
-  eq "$(w12_bloco "$(w12_jads 2026-10-20 4 w12-lab-zero) SELECT cambio_modo||'|'||coalesce(receita_brl::text,'NULL') FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-zero';")" \
+  eq "$(w12_bloco "$(w12_jads 2026-10-20 4 w12-lab-zero) SELECT cambio_modo||'|'||coalesce(trim_scale(receita_brl)::text,'NULL') FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-zero';")" \
      "defasada|NULL" "v23 · sem PTAX: taxa 0 ignorada, a manual de fevereiro fica defasada e receita_brl NULL"
   # shellcheck disable=SC2059
   eq "$(w12_bloco "$base_rec $(printf "$upsert" 10.00) $(printf "$upsert" 10.0000) $W12_OBS;")" "1" \
@@ -285,7 +293,7 @@ w12_suite() {
   eq "$(w12_bloco "$base_rec SET LOCAL ROLE anon; TRUNCATE public.joinads_metrics; RESET ROLE;
         SELECT (SELECT count(*) FROM public.vw_receita_vigente WHERE tabela_origem='joinads_metrics')||'|'||(SELECT operacao||':'||removida||':'||(proveniencia->>'papel') FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm' ORDER BY id DESC LIMIT 1);")" \
      "0|TRUNCATE:true:anon" "v23 · TRUNCATE na origem vira versão removida de cada chave, com o papel, e a vigente acompanha"
-  eq "$(w12_bloco "$base_rec TRUNCATE public.joinads_metrics; $(w12_jads 2026-10-13 10) SELECT count(*)||'|'||max(receita) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" \
+  eq "$(w12_bloco "$base_rec TRUNCATE public.joinads_metrics; $(w12_jads 2026-10-13 10) SELECT count(*)||'|'||trim_scale(max(receita)) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" \
      "1|10" "v23 · reingestão depois do TRUNCATE volta a ficar vigente"
 
   echo "▶ v23 · as-of e append-only"
@@ -293,7 +301,7 @@ w12_suite() {
   local asof="$obs ('joinads','joinads_metrics','{\"k\":\"w12-lab-asof\"}','2026-10-10','INSERT',false,'USD',5,'sem_cotacao','2026-10-11 03:00Z','{}','a'),
                     ('joinads','joinads_metrics','{\"k\":\"w12-lab-asof\"}','2026-10-10','UPDATE',false,'USD',8,'sem_cotacao','2026-10-12 03:00Z','{}','b'),
                     ('joinads','joinads_metrics','{\"k\":\"w12-lab-asof\"}','2026-10-10','DELETE',true,'USD',NULL,'sem_receita','2026-10-13 03:00Z','{}','c');"
-  eq "$(w12_bloco "$asof SELECT coalesce((SELECT receita::text FROM public.receita_as_of('2026-10-11 12:00Z') WHERE chave->>'k'='w12-lab-asof'),'-')||'|'||coalesce((SELECT receita::text FROM public.receita_as_of('2026-10-12 12:00Z') WHERE chave->>'k'='w12-lab-asof'),'-')||'|'||coalesce((SELECT receita::text FROM public.receita_as_of('2026-10-13 12:00Z') WHERE chave->>'k'='w12-lab-asof'),'-')||'|'||coalesce((SELECT receita::text FROM public.receita_as_of('2026-10-10 12:00Z') WHERE chave->>'k'='w12-lab-asof'),'-');")" \
+  eq "$(w12_bloco "$asof SELECT coalesce((SELECT trim_scale(receita)::text FROM public.receita_as_of('2026-10-11 12:00Z') WHERE chave->>'k'='w12-lab-asof'),'-')||'|'||coalesce((SELECT trim_scale(receita)::text FROM public.receita_as_of('2026-10-12 12:00Z') WHERE chave->>'k'='w12-lab-asof'),'-')||'|'||coalesce((SELECT trim_scale(receita)::text FROM public.receita_as_of('2026-10-13 12:00Z') WHERE chave->>'k'='w12-lab-asof'),'-')||'|'||coalesce((SELECT trim_scale(receita)::text FROM public.receita_as_of('2026-10-10 12:00Z') WHERE chave->>'k'='w12-lab-asof'),'-');")" \
      "5|8|-|-" "v23 · receita_as_of devolve o que se sabia em cada instante (antes, depois, removida)"
   eq "$(w12_bloco "$asof UPDATE public.receita_observacao SET receita = 1; SELECT 1;")" "ERRO:23001" "v23 · diário não aceita UPDATE"
   eq "$(w12_bloco "$asof DELETE FROM public.receita_observacao; SELECT 1;")" "ERRO:23001" "v23 · diário não aceita DELETE"
@@ -354,7 +362,25 @@ w12_suite() {
   diff -q "$RECIBOS/w12-fp-antes.out" "$RECIBOS/w12-fp-depois1.out" >/dev/null && nao "v23 · fingerprint não mudou com a migration" || ok "v23 · fingerprint muda com a migration"
   w12_aplicar por-cima && nao "v23 · reaplicar por cima passou" || \
     { grep -q 'não reaplica por cima' "$RECIBOS/w12-por-cima.out" && ok "v23 · reaplicar por cima recusado pela pré-checagem" || nao "v23 · reaplicar por cima falhou por outro motivo"; }
-  w12_reverter limpeza >/dev/null && ok "v23 · lab devolvido ao estado anterior" || nao "v23 · limpeza final"
+  w12_reverter limpeza >/dev/null && ok "v23 · rollback de limpeza" || nao "v23 · limpeza final"
+
+  echo "▶ v23 · ordem errada com o W4: o rollback da v23 nunca reabre a anon"
+  PA -c "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.exchange_rate_history TO anon" >/dev/null 2>&1   # retrato do incidente
+  w12_aplicar w4-depois && ok "v23 · v23_01 aplicada com a anon ainda aberta (ordem errada)" || nao "v23 · aplicar w4-depois ($(tail -1 "$RECIBOS/w12-w4-depois.out"))"
+  eq "$(w12_sql "select count(*) from public.v23_01_acl_anterior where papel = 'anon'")" "4" "v23 · o retrato guardado tem a escrita da anon"
+  PA -c "REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.exchange_rate_history FROM anon" >/dev/null 2>&1   # W4 fecha a escrita da anon depois da v23
+  w12_reverter w4-depois-reverter && ok "v23 · rollback aplicou" || nao "v23 · rollback w4-depois ($(tail -1 "$RECIBOS/w12-w4-depois-reverter.out"))"
+  eq "$(w12_sql "select has_table_privilege('anon','public.exchange_rate_history','INSERT') or has_table_privilege('anon','public.exchange_rate_history','UPDATE') or has_table_privilege('anon','public.exchange_rate_history','DELETE') or has_table_privilege('anon','public.exchange_rate_history','TRUNCATE')")" "f" \
+     "v23 · com a anon fechada depois da v23, o rollback da v23 deixa a anon fechada"
+  grep -q 'NÃO devolvido a anon' "$RECIBOS/w12-w4-depois-reverter.out" && ok "v23 · o que não foi devolvido à anon fica registrado (NOTICE)" || nao "v23 · rollback sem NOTICE do que não devolveu"
+  eq "$(w12_sql "select has_table_privilege('authenticated','public.exchange_rate_history','INSERT,UPDATE,DELETE,TRUNCATE')")" "t" "v23 · authenticated recebe de volta o que tinha"
+
+  # Devolve o ACL da anon/PUBLIC de antes da suíte (o lab sai como entrou).
+  local par_acl
+  for par_acl in $W12_ACL_ORIG; do
+    PA -c "GRANT ${par_acl#*:} ON public.exchange_rate_history TO ${par_acl%%:*}" >/dev/null 2>&1 || nao "v23 · devolver $par_acl"
+  done
+  ok "v23 · ACL de anon/PUBLIC no câmbio devolvido ao de antes da suíte"
   w12_limpa "DELETE FROM public.exchange_rate_history WHERE (rate, effective_date) IN ((5.25, '2026-02-18'), (0, '2026-10-20'));" limpa-semente
 }
 
