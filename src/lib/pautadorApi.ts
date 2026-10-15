@@ -113,7 +113,7 @@ import type {
   RevisaoDoConjuntoPago, AprovacaoDoConjuntoPago,
 } from '@/types/trafego';
 import type { RespostaDoDiagnostico } from '@/types/diagnostico';
-import type { RecomendacaoShadow } from '@/types/recomendacaoShadow';
+import type { CarteiraShadow, RecomendacaoShadow } from '@/types/recomendacaoShadow';
 import type { RespostaDoDecisionLab } from '@/types/inteligenciaDecisao';
 import type { GraphStatusLive, InboxLive, InboxReceipt, InboxTriage, WorkRoadExecutionsLive, WorkRoadLive } from '@/features/work-road/live';
 
@@ -2030,6 +2030,11 @@ export const pautadorApi = {
     return request(
       `/api/trafego/laboratorio/inteligencia/${encodeURIComponent(scenarioId)}`,
     );
+  },
+
+  /** Carteira em sombra: uma linha por campanha, do experimento mais recente. */
+  carteiraShadow(): Promise<CarteiraShadow> {
+    return request('/api/trafego/recomendacao-shadow');
   },
 
   /** Recomendação em sombra (contrato v1). 404 = não há experimento para a campanha. */

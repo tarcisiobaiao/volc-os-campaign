@@ -51,6 +51,7 @@ import QuadroDeOportunidades from "./components/trafego/oportunidades/QuadroDeOp
 import NovaCampanhaPage from "./pages/trafego/NovaCampanhaPage";
 import CampanhaCanonPage from "./pages/trafego/CampanhaCanonPage";
 import DecisionIntelligenceLabPage from "./pages/trafego/DecisionIntelligenceLabPage";
+import SombraDaCarteiraPage from "./pages/trafego/SombraDaCarteiraPage";
 import MetaCriacaoPage from "./pages/trafego/MetaCriacaoPage";
 import MetaObjetoPage from "./pages/trafego/MetaObjetoPage";
 // Estúdio Criativo — área de PRODUÇÃO, não subaba de Tráfego (SPEC §6).
@@ -207,6 +208,7 @@ const App = () => (
             <Route path="/trafego/meta/packs/:packId" element={<RotaDoAssistente><CreativePackPage /></RotaDoAssistente>} />
             <Route path="/trafego/meta/assistente-criativo/:projectRef" element={<RotaDoAssistente><AssistenteCriativoPage /></RotaDoAssistente>} />
             <Route path="/trafego/meta/:tipo/:objetoId" element={<ProtectedRoute><MetaObjetoPage /></ProtectedRoute>} />
+            <Route path="/trafego/sombra" element={<ProtectedRoute><SombraDaCarteiraPage /></ProtectedRoute>} />
             <Route path="/trafego/laboratorio/inteligencia/:scenarioId" element={<ProtectedRoute><DecisionIntelligenceLabPage /></ProtectedRoute>} />
             <Route path="/trafego/campanhas/:volcCampaignId" element={<ProtectedRoute><CampanhaCanonPage /></ProtectedRoute>} />
             <Route path="/trafego/nova/:opportunityId" element={<ProtectedRoute><NovaCampanhaPage /></ProtectedRoute>} />

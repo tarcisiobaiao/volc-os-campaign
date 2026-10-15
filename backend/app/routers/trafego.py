@@ -161,6 +161,30 @@ async def laboratorio_de_inteligencia(scenario_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="cenário sintético não encontrado.") from exc
 
 
+@router.get("/recomendacao-shadow")
+async def carteira_em_sombra() -> Dict[str, Any]:
+    """A carteira em sombra: uma linha por campanha, do experimento mais recente.
+
+    Mesma fonte e mesmas recusas da leitura por campanha: 409
+    `integridade_quebrada` se qualquer resultado não bate com o manifesto (não
+    dá para saber de que campanha ele é), 503 `fonte_indisponivel` se a pasta
+    não existe. Empate de `as_of` vira linha `ambigua`, sem direção. Nada aqui
+    é executável e nenhuma linha traz valor sugerido.
+    """
+    try:
+        return recomendacao_shadow.listar()
+    except recomendacao_shadow.IntegridadeQuebrada as exc:
+        raise HTTPException(status_code=409, detail={
+            "codigo": "integridade_quebrada",
+            "mensagem": f"um experimento em sombra não passou na conferência de integridade: {exc}",
+        }) from exc
+    except recomendacao_shadow.FonteIndisponivel as exc:
+        raise HTTPException(status_code=503, detail={
+            "codigo": "fonte_indisponivel",
+            "mensagem": f"não é possível listar a carteira em sombra: {exc}",
+        }) from exc
+
+
 @router.get("/recomendacao-shadow/{campaign_id}")
 async def recomendacao_shadow_da_campanha(campaign_id: str) -> Dict[str, Any]:
     """Recomendação em sombra de uma campanha real, lida de experimento versionado.

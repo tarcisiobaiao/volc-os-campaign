@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { pautadorApi } from '@/lib/pautadorApi';
-import type { RecomendacaoShadow } from '@/types/recomendacaoShadow';
+import type { CarteiraShadow, RecomendacaoShadow } from '@/types/recomendacaoShadow';
 
 export const CHAVE_RECOMENDACAO_SHADOW = ['trafego', 'recomendacao-shadow'] as const;
 
@@ -62,6 +62,38 @@ export function useRecomendacaoShadow(idExterno: string | null | undefined): Lei
     }
     if (status === 409 && codigoDe(consulta.error) === 'experimentos_ambiguos') {
       return { estado: 'ambiguo', mensagem };
+    }
+    if (status === 503 && codigoDe(consulta.error) === 'fonte_indisponivel') {
+      return { estado: 'fonte_indisponivel', mensagem };
+    }
+    return { estado: 'falhou', mensagem, status };
+  }
+  return { estado: 'carregando' };
+}
+
+/** A carteira: mesmas formas de não saber, menos `ausente` (a lista vazia já diz). */
+export type LeituraCarteiraShadow =
+  | { estado: 'carregando' }
+  | { estado: 'integridade'; mensagem: string }
+  | { estado: 'fonte_indisponivel'; mensagem: string }
+  | { estado: 'falhou'; mensagem: string; status: number | null }
+  | { estado: 'pronta'; carteira: CarteiraShadow };
+
+export function useCarteiraShadow(): LeituraCarteiraShadow {
+  const consulta = useQuery({
+    queryKey: [...CHAVE_RECOMENDACAO_SHADOW, 'carteira'],
+    queryFn: () => pautadorApi.carteiraShadow(),
+    retry: false,
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchOnWindowFocus: false,
+  });
+  if (consulta.data) return { estado: 'pronta', carteira: consulta.data };
+  if (consulta.isError) {
+    const status = statusDe(consulta.error);
+    const mensagem =
+      consulta.error instanceof Error ? consulta.error.message : 'A leitura não pôde ser feita.';
+    if (status === 409 && codigoDe(consulta.error) === 'integridade_quebrada') {
+      return { estado: 'integridade', mensagem };
     }
     if (status === 503 && codigoDe(consulta.error) === 'fonte_indisponivel') {
       return { estado: 'fonte_indisponivel', mensagem };

@@ -45,6 +45,9 @@ WORKFLOWS_META = [
     RAIZ / "n8n" / "volc_meta_insights_dia_d1.json",
 ]
 UNITS = [
+    # motor shadow da carteira (W13, 15/10/2026): lê o fato e a receita, não o Google
+    "volc-sombra-carteira.service",
+    "volc-sombra-carteira.timer",
     "volc-google-intelligence@frequente.service",
     "volc-google-intelligence@completa.service",
     "volc-google-intelligence-frequente.timer",
@@ -104,7 +107,8 @@ else:
     t = subprocess.run(["systemctl", "list-timers", "--all", "--no-pager"],
                        capture_output=True, text=True)
     agendados = [ln for ln in t.stdout.splitlines()
-                 if "volc-google-intelligence" in ln or "volc-gads" in ln]
+                 if "volc-google-intelligence" in ln or "volc-gads" in ln
+                 or "volc-sombra-carteira" in ln]
     prova("nenhum timer da família aparece em list-timers", not agendados,
           "; ".join(agendados))
 
@@ -158,6 +162,9 @@ for arquivo in rastreados():
 # Os dois workflows desta entrega são a autoridade escolhida (e nascem inativos);
 # o pacote systemd está versionado como ALTERNATIVA declarada e não instalada.
 ESPERADOS = {
+    # Motor shadow da carteira (W13): agenda versionada, não instalada e desligada
+    # por configuração; lê o fato de custo e a receita, nunca a API do Google.
+    "deploy/sombra-carteira/volc-sombra-carteira.timer",
     "n8n/volc_gads_campanha_dia_d0.json",
     "n8n/volc_gads_campanha_dia_d1.json",
     "n8n/volc_meta_insights_dia_d1.json",

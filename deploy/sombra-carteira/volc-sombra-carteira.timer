@@ -1,0 +1,13 @@
+[Unit]
+Description=VOLC sombra da carteira — 08:00 em São Paulo, depois do D-1 (06:30) e da recoleta (07:15)
+
+[Timer]
+# Horário configurável por drop-in (systemctl edit volc-sombra-carteira.timer),
+# sem mexer neste arquivo. NÃO INSTALADO: ver deploy/sombra-carteira/README.md.
+OnCalendar=*-*-* 08:00:00 America/Sao_Paulo
+RandomizedDelaySec=5m
+Persistent=true
+Unit=volc-sombra-carteira.service
+
+[Install]
+WantedBy=timers.target
