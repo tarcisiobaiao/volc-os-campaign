@@ -17,6 +17,7 @@
 import type { CapacidadesDoOperador } from '@/types/trafego';
 import type { Proposta as PropostaDoDiagnostico, DependenciaDeAplicacao } from '@/types/diagnostico';
 import type { GrupoDeAcao, PropostaDoPainel, StatusGerivel } from '@/types/gestao';
+import type { EstadoDeProposta } from '@/lib/instrumento';
 
 import { alvoDaEstrategia, semAlvoPorque } from './acoes';
 
@@ -109,6 +110,36 @@ export const ESTADO_LEGIVEL: Record<string, string> = {
   expirada: 'expirada',
   cancelada: 'cancelada',
 };
+
+/**
+ * O estado do ledger no vocabulário do selo V3 (`SeloDeProposta`), ou `null`
+ * quando o selo afirmaria mais do que o ledger sabe.
+ *
+ * ⚠️ `aplicada` só vira "Aplicada · com recibo" quando o próximo passo já não é
+ * conferir: o selo diz que a mudança foi lida de volta, e uma aplicação que
+ * ainda pede `verificar` não foi. `cancelada` não tem palavra no ciclo P09 e
+ * fica com o texto do ledger. A vencida ganha do estado: uma aprovação vencida
+ * não autoriza mais nada.
+ */
+export function seloDoLedger(
+  p: Pick<PropostaDoPainel, 'estado' | 'vencida' | 'proximo_passo'>,
+): EstadoDeProposta | null {
+  if (p.vencida || p.estado === 'expirada') return 'vencida';
+  switch (p.estado) {
+    case 'aguardando_aprovacao':
+      return 'aguardando';
+    case 'aprovada':
+      return 'aprovada';
+    case 'recusada':
+      return 'recusada';
+    case 'revertida':
+      return 'revertida';
+    case 'aplicada':
+      return p.proximo_passo === 'acompanhar' || p.proximo_passo === 'nada' ? 'aplicada' : null;
+    default:
+      return null;
+  }
+}
 
 export const DESFECHO_LEGIVEL: Record<string, string> = {
   em_voo: 'em voo — enviada, sem resposta ainda',
