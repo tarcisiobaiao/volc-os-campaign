@@ -1,27 +1,36 @@
-  ✓ passo 1 gravou RECEIPT-20261015-104050.json
-  ✓ recibo do passo 1: ok, 5 eventos
-  ✓ recibo de laboratório sem --aceitar-lab → recusado
-  ✓ evento com sha256 ≠ arquivo do repositório → recusado
-  ✓ recibo com resultado falhou → recusado
-  ✓ nenhuma recusa escreveu arquivo
-  ✓ v20_02 gerada do recibo do passo 1
-  ✓ âncora constante no arquivo = fingerprint_depois do recibo
-  ✓ âncora não vem de GUC
-  ✓ geração determinística (mesmo recibo → mesmo arquivo e sha256)
   ✓ v20_01 aplicada pelo protocolo
-  ✓ fingerprint do ledger = fingerprint_depois do recibo (mesma SQL, mesma âncora)
-  ✓ v20_02 pré-v19 (âncora 695e913a) recusa depois da v19
-  ✓ v20_02 gerada aplica pelo protocolo
-  ✓ ledger: v20_02, linha de base, os 5 eventos da v19 na ordem do recibo, v20_01
-  ✓ cada evento v19 leva o par de rollback v19_99 aprovado
-  ✓ linha de base guarda o fingerprint pré-v19 de produção
-  ✓ passo 2 gravou RECEIPT-20261015-104056.json
+  ✓ gerador aceita a forma do recibo forjado (sha certos, alvo=producao)
+  ✓ …mas o banco recusa ao aplicar
+  ✓ recusa pelo efeito ausente da v19 (anon ainda lê users)
+  ✓ ledger intocado pela forja
+  ✓ passo 1 gravou o recibo
+  ✓ recibo do passo 1: ok, 5 eventos
+  ✓ fingerprint do ledger = fingerprint_depois do recibo
+  ✓ evento com sha256 ≠ repositório → recusado
+  ✓ …com a mensagem do sha256
+  ✓ quebra de linha no alvo → recusado
+  ✓ …pela validação de formato
+  ✓ nenhuma recusa escreveu arquivo
+  ✓ saída sobre a v20_02 versionada → recusada
+  ✓ v20_02 versionada intacta (git diff limpo)
+  ✓ v20_02 pós-v19 gerada do recibo real
+  ✓ âncora constante = fingerprint_depois do recibo
+  ✓ v20_02 versionada (pré-v19) recusa
+  ✓ …pela âncora 695e913a (no lab a base já difere de produção: prova não discriminante sozinha)
+  ✓ v20_02 pós-v19 aplica pelo protocolo
+  ✓ ledger: v20_02 pós-v19, linha de base, os 5 eventos da v19 na ordem, v20_01
+  ✓ cada evento v19 leva o par v19_99
+  ✓ aprovador do protocolo; fingerprint só no 1º evento (os outros não foram medidos)
+  ✓ passo 2 gravou o recibo
   ✓ importação do passo 2 gerada
-  ✓ importação do passo 2 aplicada
+  ✓ importação sem aprovador → recusada
+  ✓ importação do passo 2 aplicada com aprovador
   ✓ ledger: v8_06 aplicada
-  ✓ reimportar o mesmo recibo → recusado pelo gatilho
-  ✓ rollback gravou RECEIPT-20261015-104057.json
+  ✓ reimportar o passo 2 → recusado
+  ✓ importar de novo para o mesmo arquivo → recusado (nunca sobrescreve)
+  ✓ rollback gravou o recibo
   ✓ importação do rollback gerada
   ✓ importação do rollback aplicada
   ✓ ledger: as 6 versões do incidente revertidas
+  ✓ reimportar o rollback → recusado (nada a importar)
   ✓ reverter de novo, pulando o importador → recusado pelo banco
