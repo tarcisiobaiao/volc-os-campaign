@@ -1,0 +1,12 @@
+{
+  "imagem": "supabase/postgres:15.8.1.085", "versao": "15.8",
+  "migration": "v19_01_anon_fecha_public.sql", "migration_sha256": "e7b0c9ba20fa96e7190a740d6f713fa8eac4cbd4b13a446d433c83378e4f858c",
+  "rollback": "v19_99_rollback.sql", "rollback_sha256": "3abff0a814e1db384daaaa9181cbefb8865047ea98025393e4f4fe22293c8fdd",
+  "semente_sha256": "ee23cede9a6f7c0851e66ad6a3ae933d7bc94f794a2085cd3c09eb54afd40acd",
+  "harness_sha256": {"lab.sh": "c66ce9ab060aa09ae39d364684b0b603f254648b478943a29b02cb81f4386e7f", "sonda_acesso.sql": "7c78d7864f498d5001108cb68da07b1f2d160a8947905613d4bae392b0b27656", "fingerprint_schema.sql": "0f6c05509466e9bc92474465d4427cf5fe426a477d15fc50a31871317e30d2c7"},
+  "suite": "tools/freedom-lab/db/suites/v19_incidente_anon.sh", "suite_sha256": "958aa43fcb6d740c09de59c8f234686b61e6493082e9572898cf253bb5aec5a8", "suite_versionada": "sim",
+  "base": "prod-schema:2c70b4a4b5c6616d54c126c2a5e2be6d13d1f29e424f1ed2660d58f39e4c833c",
+  "semente_aplicada_sha256": "ebe2b1827150a7ee37266c60740658cad74e441f40a8fb9e27802de62207c432",
+  "fingerprint_total_pos": "_TOTAL|5944|fd7bcebd51ab4a0325e620fca62f5b1c",
+  "verificacoes": 93, "falhas": 0, "producao_acessada": false, "producao_acessada_motivo": "estrutural: lab.sh não lê .env nem usa SSH, o container não tem rede e a suíte é versionada"
+}

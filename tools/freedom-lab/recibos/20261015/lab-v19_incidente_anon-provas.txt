@@ -1,0 +1,93 @@
+  ✓ fingerprint · tabelas idêntico a produção
+  ✓ fingerprint · colunas idêntico a produção
+  ✓ fingerprint · indices idêntico a produção
+  ✓ fingerprint · views idêntico a produção
+  ✓ fingerprint · funcoes idêntico a produção
+  ✓ fingerprint · gatilhos idêntico a produção
+  ✓ fingerprint · extensoes idêntico a produção
+  ✓ fingerprint · grants_funcao idêntico a produção
+  ✓ fingerprint · constraints mesma contagem que produção (md5 diverge — ver handoff)
+  ✓ fingerprint · policies mesma contagem que produção (md5 diverge — ver handoff)
+  ✓ fingerprint · grants mesma contagem que produção (md5 diverge — ver handoff)
+  ✓ sonda · S7/S7b (GRANT × RLS por tabela) idêntica a produção
+  ✓ sonda · S9 (SECURITY DEFINER executáveis) idêntica a produção
+  ✓ sonda · S10 (default ACL) idêntica a produção
+  ✓ sonda · S5 anon com os 7 privilégios em public
+  ✓ sonda · S5 anon em 62 relações (produção: 62)
+  ✓ preflight roda como supabase_read_only_user, sessão read-only
+  ✓ preflight · nenhum bloqueio na base
+  ✓ preflight · P0 sessão read-only, sem supabase_admin
+  ✓ preflight · P1
+  ✓ preflight · P3 corpo do gatilho = produção (md5)
+  ✓ preflight · P6 = 62 relações
+  ✓ preflight · P4 BLOQUEIA com ADMIN sem papel em app_auth
+  ✓ verificação como anon (postgres, read-only) vê o buraco no estado inseguro
+  ✓ verificação como supabase_read_only_user não finge FECHADO (não assume anon)
+  ✓ anon · lê public.users
+  ✓ anon · lê password_hash
+  ✓ anon · promove operador a ADMIN
+  ✓ anon · lê projects
+  ✓ anon · SELECT real alcança 62 relações
+  ✓ v19_00 aplicou (supabase_admin)
+  ✓ v8_03 aplicou (supabase_admin)
+  ✓ v19_01 aplicou (supabase_admin)
+  ✓ v8_05 aplicou (postgres)
+  ✓ v19_02 aplicou (supabase_admin)
+  ✓ anon · SELECT real alcança 0 relações de public
+  ✓ anon · users negado
+  ✓ anon · users_safe negado
+  ✓ anon · INSERT em users negado
+  ✓ anon · TRUNCATE negado
+  ✓ anon · INSERT em raw_events negado
+  ✓ anon · RPC invoker sobre tabela fechada negada
+  ✓ sonda S8 · anon vê linha em 0 relações
+  ✓ verificação como anon: FECHADO depois do pacote
+  ✓ sonda S5 · anon sem grant em public
+  ✓ admin · vê todos os usuários
+  ✓ admin · users_safe vê todos
+  ✓ admin · edita outro usuário
+  ✓ admin · projects (frontend) continua
+  ✓ admin · campaigns (frontend) continua
+  ✓ admin · CRUD de operational_cost_categories continua
+  ✓ admin · update de system_settings (câmbio) continua
+  ✓ admin · RPC get_dashboard_totals continua
+  ✓ admin · TRUNCATE negado (ignoraria RLS)
+  ✓ admin · escrita em password_hash negada ao browser
+  ✓ operador · vê só a própria linha
+  ✓ operador · não vê o admin
+  ✓ operador · autopromoção barrada pelo gatilho (v19_00)
+  ✓ operador · não altera a própria comissão
+  ✓ admin · altera role de outro (gatilho reconhece ADMIN)
+  ✓ service_role · altera role (backend)
+  ✓ operador · ChangePassword (needs_password_change) continua
+  ✓ operador · DELETE em outro usuário afeta 0 linhas
+  ✓ operador · select de useUserProfile (colunas nominais) devolve o perfil
+  ✓ operador · user_projects (escopo) continua
+  ✓ service_role · lê users (BYPASSRLS)
+  ✓ service_role · api/users/create continua
+  ✓ service_role · escreve coluna sensível (fluxo de senha do servidor)
+  ✓ service_role · INSERT/UPDATE/SELECT em joinads_metrics mantidos
+  ✓ postgres · lê users
+  ✓ nova tabela de postgres · anon negado
+  ✓ nova tabela de postgres · authenticated lê
+  ✓ nova tabela de postgres · authenticated sem TRUNCATE
+  ✓ nova tabela de postgres · service_role lê
+  ✓ v8_06 aplicou
+  ✓ v8_06 · select('*') do browser quebra (por isso o frontend vai antes)
+  ✓ v8_06 · colunas nominais (useUserProfile corrigido) continuam
+  ✓ v8_06 · nem admin lê password_hash pelo browser
+  ✓ v8_06 · service_role continua lendo
+  ✓ rollback ABORTA se a ACL mudou depois (campaigns), sem desfazer nada
+  ✓ endurecimento posterior preservado após o rollback abortado
+  ✓ v19_99 aplicou (sessão com search_path=auth,public)
+  ✓ rollback não toca auth.users mesmo com auth no search_path (nomes qualificados)
+  ✓ verificação como anon: ABERTO de novo depois do rollback
+  ✓ rollback devolve o fingerprint EXATO da base (12/12 categorias)
+  ✓ rollback · anon volta a alcançar 62 relações (estado anterior)
+  ✓ rollback idempotente (2ª execução passa)
+  ✓ 2ª execução do rollback não muda nada
+  ✓ pacote reaplicou após rollback
+  ✓ fingerprint idêntico entre 1ª e 2ª aplicação
+  ✓ pacote muda o schema (só grants, policies, constraints, índices, views, gatilhos de users)
+  ✓ v19_01 por cima recusada pela guarda
+  ✓ estado final · anon alcança 0 relações
