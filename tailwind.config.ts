@@ -98,6 +98,28 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			/* V3 "Instrumento" — escala de dado (design.md §V3). Números usam
+			   IBM Plex Sans + `.numero`; Outfit não tem algarismos tabulares. */
+			fontSize: {
+				'kpi-hero': ['2.5rem', { lineHeight: '1.05', letterSpacing: '-0.02em', fontWeight: '600' }],
+				'kpi': ['1.75rem', { lineHeight: '1.1', letterSpacing: '-0.015em', fontWeight: '600' }],
+				'metrica': ['1.125rem', { lineHeight: '1.3', fontWeight: '600' }],
+				'denso': ['0.8125rem', { lineHeight: '1.35' }],
+				'micro': ['0.6875rem', { lineHeight: '1.3', letterSpacing: '0.04em', fontWeight: '500' }],
+			},
+			height: {
+				'linha-compacta': 'var(--linha-compacta)',
+				'linha': 'var(--linha-padrao)',
+				'linha-confortavel': 'var(--linha-confortavel)',
+			},
+			transitionDuration: {
+				'dado': 'var(--motion-dado)',
+			},
+			transitionTimingFunction: {
+				'dado': 'var(--ease-dado)',
+				'enter': 'var(--ease-enter)',
+				'move': 'var(--ease-move)',
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
@@ -182,7 +204,8 @@ export default {
 				'sticky': 'var(--shadow-sticky)',
 				'elevated': 'var(--shadow-elevated)',
 				'modal': 'var(--shadow-modal)',
-				'glow': 'var(--shadow-glow)'
+				'glow': 'var(--shadow-glow)',
+				'instrumento': 'var(--shadow-instrumento)'
 			}
 		}
 	},
