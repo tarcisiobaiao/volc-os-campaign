@@ -43,6 +43,8 @@ WORKFLOWS = [
 # fluxos Google, tem de nascer INATIVO.
 WORKFLOWS_META = [
     RAIZ / "n8n" / "volc_meta_insights_dia_d1.json",
+    # recoleta da janela madura Meta (W15, 15/10/2026): mesmo gerador, inativa
+    RAIZ / "n8n" / "volc_meta_insights_dia_recoleta.json",
 ]
 UNITS = [
     "volc-google-intelligence@frequente.service",
@@ -164,6 +166,7 @@ ESPERADOS = {
     "n8n/volc_gads_campanha_dia_d0.json",
     "n8n/volc_gads_campanha_dia_d1.json",
     "n8n/volc_meta_insights_dia_d1.json",
+    "n8n/volc_meta_insights_dia_recoleta.json",
     "n8n/joinads_report_day_before.json",
     "n8n/joinads_report_intraday.json",
     "n8n/joinads_day_before_simplificado.json",

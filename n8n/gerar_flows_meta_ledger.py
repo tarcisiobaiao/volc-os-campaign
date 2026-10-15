@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Gera o workflow n8n de leitura diaria de insights Meta Ads (conjunto-dia, D-1).
+"""Gera os workflows n8n de leitura de insights Meta Ads (conjunto-dia).
+
+Dois papeis, um so codigo: o D-1 (`volc_meta_insights_dia_d1.json`) e a
+recoleta da janela madura `[hoje-1-N, hoje-2]` (`volc_meta_insights_dia_recoleta.json`,
+W15). Ver `PAPEIS`.
 
 Este gerador e irmao de `n8n/gerar_flows_gads_ledger_v12.py` e copia o desenho
 dele de proposito: mesmos nos de defesa, mesma ordem, mesmos ids deterministicos
@@ -456,7 +460,13 @@ if (!fusoUtilizavel(tzDisparo)) {
   throw new Error(`FUSO_DO_DISPARO_INVALIDO: ${tzDisparo}`);
 }
 const modo = String(cfg.JANELA_MODO || '').toUpperCase();
-if (modo !== 'D-1') {
+// Dois modos, dois workflows, um so codigo:
+//   • D-1      — le ontem NA CONTA (mais `DIAS_DE_REPROCESSO` para tras);
+//   • RECOLETA — rele a janela MADURA `[hoje-1-N, hoje-2]` NA CONTA, para pegar
+//                as conversoes que a Meta ainda atribui a impressao de dias ja
+//                fechados (action_report_time=impression). Espelha a recoleta
+//                Google da W11 (`volc_ads/coleta/contrato.py::janela_recoleta`).
+if (modo !== 'D-1' && modo !== 'RECOLETA') {
   throw new Error(`JANELA_MODO_INVALIDO: ${cfg.JANELA_MODO}`);
 }
 
@@ -530,12 +540,48 @@ if (!passo) throw new Error('PASSO_INDETERMINADO: PASSOS vazio no Config');
 const job = String(cfg.JOB || '');
 if (!/^[a-z0-9_]{3,40}$/.test(job)) throw new Error(`JOB_INVALIDO: ${job}`);
 
-const diasDeReprocesso = Math.max(0, Number(cfg.DIAS_DE_REPROCESSO) || 0);
 const tetos = JSON.parse(String(cfg.MAX_DIAS_POR_PEDIDO || '{}'));
 const teto = Number(tetos[timeIncrement] || tetos['1'] || 92);
-if (diasDeReprocesso + 1 > teto) {
-  throw new Error(`REPROCESSO_ACIMA_DO_TETO: ${diasDeReprocesso + 1} dias excede`
-    + ` o teto local de ${teto} para time_increment=${timeIncrement}`);
+
+// A janela de cada conta e (fim = hoje_na_conta - fimOffset, N dias para tras).
+// `DIAS_DE_RECOLETA` so e lido no modo RECOLETA: um valor torto ali nunca pode
+// derrubar o D-1, que e a coleta que alimenta o painel do dia.
+let diasDeReprocesso = 0;
+let diasDeRecoleta = null;
+let fimOffset;
+let diasNaJanela;
+if (modo === 'D-1') {
+  diasDeReprocesso = Math.max(0, Number(cfg.DIAS_DE_REPROCESSO) || 0);
+  if (diasDeReprocesso + 1 > teto) {
+    throw new Error(`REPROCESSO_ACIMA_DO_TETO: ${diasDeReprocesso + 1} dias excede`
+      + ` o teto local de ${teto} para time_increment=${timeIncrement}`);
+  }
+  fimOffset = 1;
+  diasNaJanela = diasDeReprocesso + 1;
+} else {
+  // Falha fechada, sem `|| padrao`: um N ausente ou torto NAO vira 7 calado —
+  // vira execucao recusada, antes de qualquer pedido a Meta.
+  const bruto = String(cfg.DIAS_DE_RECOLETA === undefined || cfg.DIAS_DE_RECOLETA === null
+    ? '' : cfg.DIAS_DE_RECOLETA).trim();
+  if (!/^[0-9]{1,2}$/.test(bruto) || Number(bruto) < 1 || Number(bruto) > 28) {
+    throw new Error(`DIAS_DE_RECOLETA_INVALIDO: ${bruto || '(vazio)'} fora de 1..28`);
+  }
+  // O reprocesso e do D-1. Aceitar os dois aqui deixaria a janela com dois
+  // donos — e o recibo nao saberia dizer qual dos dois a definiu.
+  if (String(cfg.DIAS_DE_REPROCESSO || '0').trim() !== '0') {
+    throw new Error('REPROCESSO_NAO_SE_APLICA_A_RECOLETA: DIAS_DE_REPROCESSO tem de ser 0');
+  }
+  diasDeRecoleta = Number(bruto);
+  // `hoje-2` e o fim: o D-1 (`hoje-1`) e do outro workflow. Na MESMA data da
+  // conta as duas rodadas nunca leem o mesmo dia; numa conta cuja data vira
+  // entre os dois disparos (ex.: Auckland em horario de verao) a recoleta rele o
+  // dia do D-1 — uma revisao a mais, com chave propria, nunca gasto somado.
+  fimOffset = 2;
+  diasNaJanela = diasDeRecoleta;
+  if (diasNaJanela > teto) {
+    throw new Error(`RECOLETA_ACIMA_DO_TETO: ${diasNaJanela} dias excede`
+      + ` o teto local de ${teto} para time_increment=${timeIncrement}`);
+  }
 }
 
 const execucaoChave = `${job}:${modo}:${dataDoDisparo}:${passo}`;
@@ -563,6 +609,9 @@ return [{
     origem_janela: modo,
     data_do_disparo: dataDoDisparo,
     dias_de_reprocesso: diasDeReprocesso,
+    dias_de_recoleta: diasDeRecoleta,
+    janela_fim_offset: fimOffset,
+    janela_dias: diasNaJanela,
     passo,
     execucao_chave: execucaoChave,
     api_versao: String(cfg.GRAPH_API_VERSION || ''),
@@ -610,6 +659,12 @@ const ident = $('Identidade da execucao').first().json;
 const cfg = $('Config').first().json;
 const permitidas = ident.contas_permitidas || [];
 const agora = new Date();
+// Sem offset valido nao ha janela: `subtrairDias(hoje, undefined)` devolveria
+// HOJE — um dia que a conta ainda nao fechou, lido como se fosse maduro.
+if (!Number.isInteger(ident.janela_fim_offset) || ident.janela_fim_offset < 1
+    || !Number.isInteger(ident.janela_dias) || ident.janela_dias < 1) {
+  throw new Error('JANELA_INDETERMINADA: a Identidade nao declarou fim e tamanho da janela');
+}
 
 const vistas = new Set();
 const contas = [];
@@ -639,10 +694,11 @@ for (const item of $input.all()) {
     continue;
   }
 
-  // Hoje NA CONTA, e so entao o dia anterior — aritmetica de calendario.
+  // Hoje NA CONTA, e so entao o fim da janela — aritmetica de calendario.
+  // D-1: fim = hoje-1. RECOLETA: fim = hoje-2. Os dois saem da Identidade.
   const hojeNaConta = dataNaZona(agora, fuso);
-  const janelaFim = subtrairDias(hojeNaConta, 1);
-  const janelaInicio = subtrairDias(janelaFim, ident.dias_de_reprocesso);
+  const janelaFim = subtrairDias(hojeNaConta, ident.janela_fim_offset);
+  const janelaInicio = subtrairDias(janelaFim, ident.janela_dias - 1);
   contas.push({
     conta_ativo_id: ativo,
     // Referencia OPACA: e o sufixo estavel do ativo do cofre
@@ -967,6 +1023,13 @@ for (const linha of dados) {
     throw new Error('IDENTIDADE_DIVERGENTE: a resposta trouxe outra conta Meta');
   }
 
+  // Sem data na linha, o unico grao honesto e a janela pedida — e isso so vale
+  // quando a janela e UM dia. Numa janela de varios dias (recoleta, ou D-1 com
+  // reprocesso) o fallback poria o gasto de um dia num grao de N dias (W15).
+  if ((texto(linha.date_start) === null || texto(linha.date_stop) === null)
+      && String(ctx.janela_inicio) !== String(ctx.janela_fim)) {
+    throw new Error('META_INVALID_RESPONSE: linha sem date_start/date_stop numa janela de varios dias');
+  }
   const inicio = texto(linha.date_start) || String(ctx.janela_inicio);
   const fim = texto(linha.date_stop) || String(ctx.janela_fim);
   let objeto;
@@ -1245,8 +1308,21 @@ const idempotencia = 'meta_sync_' + sha256Hex(
 // tudo depois da primeira pagina seria descartado em silencio. A pagina e "que
 // pedaco do pedido", nao "quando a resposta chegou": duas leituras da mesma
 // janela paginam igual.
+// ⚠️ PAPEL E DIA DO DISPARO ENTRAM (W15). Sem eles, a recoleta de hoje que
+// cobre um dia ja lido pelo D-1 de ontem (N=1, ou D-1 com reprocesso) gerava a
+// MESMA chave, a RPC devolvia `repetido: true` e a revisao madura nunca era
+// gravada — com recibo verde. Os dois sao rotulos de calendario, nao instante:
+// dois cliques no mesmo dia continuam sendo uma unidade de trabalho.
+for (const campo of ['job', 'origem_janela', 'data_do_disparo']) {
+  if (typeof ctx[campo] !== 'string' || ctx[campo].trim() === '') {
+    throw new Error(`CHAVE_SEM_PAPEL: o contexto da pagina perdeu ${campo}`);
+  }
+}
 const pedidoEstavel = [
   'META_ADS',
+  String(ctx.job),
+  String(ctx.origem_janela),
+  String(ctx.data_do_disparo),
   String(ctx.conta_externa),
   janela,
   String(ctx.nivel),
@@ -1638,6 +1714,15 @@ if (contasRecusadas.length === 0 && rejeitadas === 0 && incompletas === 0) {
   motivo = `todas as ${contasRecusadas.length} contas falharam;`
     + ` ${rejeitadas} linhas rejeitadas`;
 }
+// ⚠️ CONTA RECUSADA NA SELECAO (sem fuso, fuso desconhecido, id torto) nunca
+// entrou no laco, mas e conta que devia ter sido lida. Fechar `ok` com ela de
+// fora seria declarar cobertura inteira de uma rodada que pulou contas (W15).
+const recusadasNaSelecao = Array.isArray(base.contas_recusadas_na_selecao)
+  ? base.contas_recusadas_na_selecao.length : 0;
+if (resultado === 'ok' && recusadasNaSelecao > 0) {
+  resultado = 'parcial';
+  motivo = `${recusadasNaSelecao} conta(s) recusada(s) na selecao e nao lida(s)`;
+}
 // `falhou` significa "nada aproveitavel". Se linha verde existe, o desfecho
 // honesto e parcial.
 if (resultado === 'falhou' && aceitas > 0) {
@@ -1929,16 +2014,71 @@ def _se_booleano(nome: str, pos: list[int], expressao: str) -> dict:
     })
 
 
+#: Os dois workflows que este gerador produz. O CODIGO dos nos e um so; o que
+#: muda e o papel: job, modo da janela, agenda e nome.
+#:
+#: ⚠️ RECOLETA (W15, 15/10/2026). O D-1 le cada dia UMA vez. Com
+#: `action_report_time=impression`, a conversao de um clique de hoje entra no
+#: dia da IMPRESSAO quando chega — dias depois, dentro da janela de atribuicao
+#: da conta (7d_click/1d_view por padrao). Sem reler, o dia fica com as acoes
+#: de D-1 para sempre. A recoleta rele `[hoje-1-N, hoje-2]` no fuso da conta e
+#: grava REVISAO nova (`observado_em` na identidade do fato); a projecao
+#: `vw_trafego_meta_insight_latest` passa a expor a revisao madura. Nada e
+#: apagado nem somado.
+#:
+#: Agendas, todas em America/Sao_Paulo: Google D-1 06:00, Meta D-1 07:00,
+#: recoleta Google (W11) 07:15, recoleta Meta 08:30. Hora propria para nao
+#: disputar a mesma cota da Graph com o D-1 Meta da mesma manha.
+PAPEIS = {
+    "d1": {
+        "job": "meta_insights_dia_d1",
+        "modo": "D-1",
+        # 07:00 e nao 06:00: o fluxo Google D-1 ja ocupa as 06h, e duas leituras
+        # pesadas no mesmo minuto competem por recurso do mesmo host.
+        "cron": "0 7 * * *",
+        "passos": "07",
+        "nome": "VOLC · Meta Ads insights conjunto-dia · D-1 (fuso da conta)",
+        "artefato": "volc_meta_insights_dia_d1.json",
+        "dias_de_recoleta": None,
+    },
+    "recoleta": {
+        "job": "meta_insights_dia_recoleta",
+        "modo": "RECOLETA",
+        "cron": "30 8 * * *",
+        "passos": "08",
+        "nome": ("VOLC · Meta Ads insights conjunto-dia · recoleta da janela "
+                 "madura (fuso da conta)"),
+        "artefato": "volc_meta_insights_dia_recoleta.json",
+        # 7 = a janela de clique padrao da Meta. 1..28 e o que a Identidade
+        # aceita; 28 cobre a maior janela de atribuicao pedivel (28d_click).
+        "dias_de_recoleta": "7",
+    },
+}
+DIAS_DE_RECOLETA_MIN = 1
+DIAS_DE_RECOLETA_MAX = 28
+
+
 def construir(papel: str, contrato_sha: str) -> dict:
-    if papel != "d1":
+    if papel not in PAPEIS:
         raise ValueError(f"papel desconhecido: {papel!r}")
-    job = "meta_insights_dia_d1"
-    modo = "D-1"
-    # 07:00 e nao 06:00: o fluxo Google D-1 ja ocupa as 06h, e duas leituras
-    # pesadas no mesmo minuto competem por recurso do mesmo host.
-    cron = "0 7 * * *"
-    passos = "07"
-    nome = "VOLC · Meta Ads insights conjunto-dia · D-1 (fuso da conta)"
+    p = PAPEIS[papel]
+    job, modo, cron, passos, nome = p["job"], p["modo"], p["cron"], p["passos"], p["nome"]
+    if modo == "D-1":
+        texto_janela = (
+            "**A janela e D-1 NO FUSO DA CONTA** (`trafego_meta_ad_account.timezone_name`), "
+            "nunca no fuso do servidor n8n. `TZ_DO_DISPARO` so rotula a rodada.\n\n")
+    else:
+        texto_janela = (
+            "**A janela e a RECOLETA MADURA `[hoje-1-N, hoje-2]` NO FUSO DA CONTA** "
+            "(`trafego_meta_ad_account.timezone_name`), com N = `DIAS_DE_RECOLETA` "
+            f"(padrao {p['dias_de_recoleta']}, aceito {DIAS_DE_RECOLETA_MIN}..{DIAS_DE_RECOLETA_MAX}; "
+            "fora disso a execucao e recusada antes de falar com a Meta). O fim `hoje-2` "
+            "deixa fora o dia que o D-1 le na MESMA data da conta. Em conta muito a leste "
+            "(ex.: Pacific/Auckland em horario de verao) a data da conta vira entre 07:00 e "
+            "08:30 de Sao Paulo, e a recoleta rele o dia que o D-1 acabou de ler: e so uma "
+            "revisao a mais, nunca gasto somado. Cada releitura grava REVISAO nova do mesmo "
+            "grao; `vw_trafego_meta_insight_latest` expoe a mais recente. "
+            "`TZ_DO_DISPARO` so rotula a rodada.\n\n")
 
     config = [
         ("SUPABASE_URL", SUPABASE),
@@ -1969,6 +2109,12 @@ def construir(papel: str, contrato_sha: str) -> dict:
         # (uma linha por dia). Reler nao duplica gasto: gera outra REVISAO do
         # mesmo grao, resolvida pela projecao mais recente.
         ("DIAS_DE_REPROCESSO", "0"),
+    ]
+    if p["dias_de_recoleta"] is not None:
+        # So o workflow de recoleta carrega o campo; no D-1 ele nem existe, e a
+        # Identidade so o le no modo RECOLETA.
+        config.append(("DIAS_DE_RECOLETA", p["dias_de_recoleta"]))
+    config += [
         ("PRONTIDOES_ACEITAS",
          "READY_FOR_READ,READY_FOR_VALIDATION,READY_FOR_CREATE_PAUSED,READY_FOR_ACTIVATION"),
         # Vazio = todas as contas prontas do read model. O canario preenche com UMA.
@@ -2159,8 +2305,7 @@ def construir(papel: str, contrato_sha: str) -> dict:
                 "item do cofre), como ja acontece com `supabaseApi`.\n\n"
                 "Gerado por `n8n/gerar_flows_meta_ledger.py`. **Nao edite este JSON a mao** — "
                 "edite o gerador e regere.\n\n"
-                "**A janela e D-1 NO FUSO DA CONTA** (`trafego_meta_ad_account.timezone_name`), "
-                "nunca no fuso do servidor n8n. `TZ_DO_DISPARO` so rotula a rodada.\n\n"
+                + texto_janela +
                 "`action_report_time`, `time_increment`, `breakdown` e as janelas de atribuicao "
                 "sao pedidos explicitos e voltam no recibo. Sem janela pedida, o fato carimba "
                 "`default` — nunca uma janela nominal que ninguem solicitou.\n\n"
@@ -2268,7 +2413,7 @@ def construir(papel: str, contrato_sha: str) -> dict:
                 # por (gerador, dono, contrato_sha256) — origem, dono e hash —, e
                 # so trata como "o mesmo artefato" quem bate nos tres.
                 "dono": "volc-os/trafego-meta",
-                "artefato": "n8n/volc_meta_insights_dia_d1.json",
+                "artefato": f"n8n/{p['artefato']}",
                 "contrato": CONTRATO_VERSAO,
                 "contrato_sha256": contrato_sha,
                 "provider": "META_ADS",
@@ -2344,9 +2489,7 @@ def contrato_sha256() -> str:
     return hashlib.sha256(corpo.encode("utf-8")).hexdigest()
 
 
-ALVOS = {
-    "d1": "volc_meta_insights_dia_d1.json",
-}
+ALVOS = {papel: p["artefato"] for papel, p in PAPEIS.items()}
 
 
 def main() -> int:

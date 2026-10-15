@@ -45,8 +45,20 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 ALVOS = [
     RAIZ / "n8n" / "volc_meta_insights_dia_d1.json",
+    RAIZ / "n8n" / "volc_meta_insights_dia_recoleta.json",
 ]
-AGENDAS = {"volc_meta_insights_dia_d1.json": "0 7 * * *"}
+AGENDAS = {
+    "volc_meta_insights_dia_d1.json": "0 7 * * *",
+    # Recoleta da janela madura (W15): hora propria, longe do D-1 Google (06h),
+    # do D-1 Meta (07h) e da recoleta Google da W11 (07:15).
+    "volc_meta_insights_dia_recoleta.json": "30 8 * * *",
+}
+#: O papel de cada artefato: rotulo do relatorio, job, modo da janela e passo.
+PAPEIS = {
+    "volc_meta_insights_dia_d1.json": ("META-D1", "meta_insights_dia_d1", "D-1", "07"),
+    "volc_meta_insights_dia_recoleta.json": (
+        "META-RECOLETA", "meta_insights_dia_recoleta", "RECOLETA", "08"),
+}
 
 DESTINO_OFICIAL = "database.agenciavolc.com.br"
 META_HOST = "graph.facebook.com"
@@ -677,8 +689,12 @@ def validar_fuso_da_conta(wf: dict, r: Relatorio, rotulo: str) -> None:
             "timezone_name" in js)
     r.prova(f"{rotulo} · hoje é calculado NA ZONA DA CONTA",
             "dataNaZona(agora, fuso)" in js)
-    r.prova(f"{rotulo} · D-1 sai de aritmética de calendário sobre a data local",
-            "subtrairDias(hojeNaConta, 1)" in js)
+    # O fim da janela e `hoje_na_conta - offset`, e o offset e da Identidade:
+    # 1 no D-1, 2 na recoleta (W15). Os dois numeros sao conferidos la.
+    js_ident = _sem_comentarios(_code(wf, "Identidade da execucao"))
+    r.prova(f"{rotulo} · o fim da janela sai de aritmética de calendário sobre a data local",
+            "subtrairDias(hojeNaConta, ident.janela_fim_offset)" in js
+            and "fimOffset = 1;" in js_ident and "fimOffset = 2;" in js_ident)
     r.prova(f"{rotulo} · conta sem fuso é RECUSADA, não cai num padrão",
             "CONTA_SEM_FUSO" in js and "FUSO_DESCONHECIDO" in js)
     r.prova(f"{rotulo} · a janela NÃO sai do fuso do disparo",
@@ -1055,11 +1071,45 @@ def validar_agenda(wf: dict, r: Relatorio, rotulo: str, esperado: str) -> None:
     r.prova(f"{rotulo} · existe gatilho de agenda", False)
 
 
+def validar_papel(wf: dict, r: Relatorio, rotulo: str, arquivo: str) -> None:
+    """Cada artefato declara o papel que o nome promete — e so ele.
+
+    ⚠️ Os dois workflows carregam o MESMO codigo. O que os separa e o Config:
+    um D-1 com `JANELA_MODO=RECOLETA` releria a janela madura as 07h com o job
+    do D-1, e o deadman veria um D-1 verde que nao leu ontem.
+    """
+    _, job, modo, passos = PAPEIS[arquivo]
+    cfg = _config(wf)
+    r.prova(f"{rotulo} · JOB e `{job}`", cfg.get("JOB") == job, str(cfg.get("JOB")))
+    r.prova(f"{rotulo} · JANELA_MODO e `{modo}`", cfg.get("JANELA_MODO") == modo,
+            str(cfg.get("JANELA_MODO")))
+    r.prova(f"{rotulo} · PASSOS e a hora do cron", cfg.get("PASSOS") == passos,
+            str(cfg.get("PASSOS")))
+    volc = wf.get("meta", {}).get("volc", {})
+    r.prova(f"{rotulo} · meta.volc aponta para o proprio artefato",
+            volc.get("artefato") == f"n8n/{arquivo}" and volc.get("papel") == modo)
+    js = _sem_comentarios(_code(wf, "Identidade da execucao"))
+    if modo == "D-1":
+        r.prova(f"{rotulo} · o D-1 nao carrega DIAS_DE_RECOLETA",
+                "DIAS_DE_RECOLETA" not in cfg)
+    else:
+        bruto = cfg.get("DIAS_DE_RECOLETA", "")
+        r.prova(f"{rotulo} · DIAS_DE_RECOLETA e inteiro em 1..28",
+                bruto.isdigit() and 1 <= int(bruto) <= 28, bruto)
+        r.prova(f"{rotulo} · a recoleta nao herda reprocesso do D-1",
+                cfg.get("DIAS_DE_REPROCESSO") == "0")
+    r.prova(f"{rotulo} · a Identidade recusa N fora de 1..28 por nome",
+            "DIAS_DE_RECOLETA_INVALIDO" in js and "REPROCESSO_NAO_SE_APLICA_A_RECOLETA" in js)
+    r.prova(f"{rotulo} · o fim da janela da conta vem da Identidade, nao de constante",
+            "subtrairDias(hojeNaConta, ident.janela_fim_offset)"
+            in _sem_comentarios(_code(wf, "Selecionar contas")))
+
+
 def main() -> int:
     r = Relatorio()
 
     for caminho in ALVOS:
-        rotulo = "META-D1"
+        rotulo = PAPEIS[caminho.name][0]
         print(f"\n── {caminho.relative_to(RAIZ)}")
         if not caminho.exists():
             r.prova(f"{rotulo} · arquivo existe", False)
@@ -1098,6 +1148,7 @@ def main() -> int:
         validar_erros_e_autorizacao(wf, r, rotulo)
         validar_recibo(wf, r, rotulo)
         validar_agenda(wf, r, rotulo, AGENDAS[caminho.name])
+        validar_papel(wf, r, rotulo, caminho.name)
 
     print()
     print("════════════════════════════════════════════════════════")

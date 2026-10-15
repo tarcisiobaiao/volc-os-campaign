@@ -242,7 +242,11 @@ def test_a_janela_nunca_sai_do_fuso_do_servidor():
     js = _sem_comentarios(_code(_wf(), "Selecionar contas"))
     assert "timezone_name" in js
     assert "dataNaZona(agora, fuso)" in js
-    assert "subtrairDias(hojeNaConta, 1)" in js
+    # O fim é `hoje na conta - offset`; o offset do D-1 é 1 (W15 trouxe o 2 da
+    # recoleta para o mesmo código). A janela D-1 executada está em
+    # `test_sim_a_janela_e_d1_no_fuso_da_conta_e_nao_do_servidor`.
+    assert "subtrairDias(hojeNaConta, ident.janela_fim_offset)" in js
+    assert "fimOffset = 1;" in _sem_comentarios(_code(_wf(), "Identidade da execucao"))
     assert "CONTA_SEM_FUSO" in js and "FUSO_DESCONHECIDO" in js
     # O fuso do disparo é só rótulo da rodada; ele não pode encostar na janela.
     assert "TZ_DO_DISPARO" not in js and "tz_do_disparo" not in js
@@ -582,7 +586,12 @@ out.fechamento = {
   texto: JSON.stringify(fech.snapshot.contas),
 };
 
-const fechOk = rodar('Fechar execucao', { entrada: [{ ...rec, motivo_incompleto: null }] })[0].json;
+// A seleção acima recusou a conta sem fuso. Rodada saudável é a que não pulou
+// conta nenhuma; com a recusa, o desfecho honesto é parcial (W15).
+const fechOk = rodar('Fechar execucao',
+  { entrada: [{ ...rec, motivo_incompleto: null, contas_recusadas_na_selecao: [] }] })[0].json;
+out.resultado_com_conta_recusada_na_selecao = rodar('Fechar execucao',
+  { entrada: [{ ...rec, motivo_incompleto: null }] })[0].json.resumo.resultado;
 out.saude = {
   bloqueado: rodar('Batimento e saude', {
     entrada: [{ chave_de_idempotencia: fech.resumo.idempotencia_fechamento,
@@ -984,6 +993,8 @@ def test_sim_saudavel_nunca_sai_de_autoatestado(simulacao):
     assert s["bloqueado"] == "BLOQUEADO_AUTORIZACAO"
     assert s["sem_releitura"] == "INDETERMINADO"
     assert s["com_releitura"]["estado_saude"] == "SAUDAVEL"
+    # Conta recusada na seleção não lida: nunca `ok` (W15).
+    assert simulacao["resultado_com_conta_recusada_na_selecao"] == "parcial"
     assert s["com_releitura"]["alerta"] is False
     assert s["com_releitura"]["persistencia_confirmada"] is True
     # O que vai para o alerta não carrega id cru nem valor financeiro.
