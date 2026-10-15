@@ -4,8 +4,12 @@
 -- Contexto (15/10/2026): /api/meta-capi/sites responde 500 porque a tabela não
 -- existe em produção — `src/sql/v7_13_meta_capi_sites.sql` nunca foi aplicada.
 --
--- ORDEM: aplicar `src/sql/v7_13_meta_capi_sites.sql` e, em seguida, ESTE
--- arquivo. Cada um com `psql -1 -v ON_ERROR_STOP=1`.
+-- NÃO APLICAR SOZINHO. Este arquivo é PARTE de
+-- `supabase/migrations/v21_pacote_aplicar.sql` (montado por
+-- `scripts/montar-pacote-v21.sh`), que roda v7_13 + v21_01 + v6_01..v6_05 +
+-- v21_02 numa transação só. Aplicado à parte, a v7_13 confirmaria antes deste
+-- arquivo, e nesse intervalo a anon teria SELECT, DELETE e TRUNCATE na tabela.
+-- Uso isolado só como remédio, se a tabela já existir sem estes privilégios.
 --
 -- POR QUE ESTE ARQUIVO EXISTE: em produção o default ACL de `public` concede
 -- `arwdDxt` a anon e authenticated em toda tabela nova (medido em 24/08 e

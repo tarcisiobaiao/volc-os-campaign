@@ -7,8 +7,13 @@
 -- existem em produção — as v6_01..v6_05 de `src/sql/` nunca foram aplicadas no
 -- self-hosted. A página responde 404 nas três primeiras.
 --
--- ORDEM: `src/sql/v6_01` → `v6_02` → `v6_03` → `v6_04` → `v6_05` → ESTE.
--- Cada um com `psql -1 -v ON_ERROR_STOP=1`. Os backfills v6_08/v6_09 são
+-- NÃO APLICAR SOZINHO. Este arquivo é PARTE de
+-- `supabase/migrations/v21_pacote_aplicar.sql` (montado por
+-- `scripts/montar-pacote-v21.sh`): v7_13 + v21_01 + v6_01..v6_05 + ESTE numa
+-- transação só. Aplicadas uma por vez, as v6_0x confirmariam antes deste
+-- arquivo, e nesse intervalo a anon leria, apagaria e truncaria as quatro
+-- tabelas (sem RLS). Uso isolado só como remédio, sobre tabelas já existentes.
+-- Os backfills v6_08/v6_09 ficam fora do pacote e são
 -- opcionais: em 15/10 `user_campaigns` tem 0 linhas e nenhum usuário tem
 -- `commission_percentage > 0`, então não inserem nada.
 --

@@ -4,7 +4,8 @@
 -- Só derruba a tabela se ela estiver VAZIA: uma linha ali é um site cadastrado
 -- com token da Meta, e apagá-la sem querer desliga o rastreamento daquele site.
 -- `set_pautador_updated_at()` já existia em produção antes da v7_13 e fica.
--- Rodar com `psql -1 -v ON_ERROR_STOP=1`.
+-- PARTE de `supabase/migrations/v21_pacote_reverter.sql` (transação única,
+-- depois do v21_02_rollback). Não rodar sozinho.
 -- =============================================================================
 
 DO $guarda$

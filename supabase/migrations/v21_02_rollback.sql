@@ -3,7 +3,9 @@
 -- =============================================================================
 -- Só derruba se vínculos, comissões e payouts estiverem VAZIOS: são dado de
 -- negócio (quem opera o quê e quanto recebe). campaign_roles só tem o
--- catálogo semeado pela v6_01 e cai junto. Rodar com `psql -1 -v ON_ERROR_STOP=1`.
+-- catálogo semeado pela v6_01 e cai junto. PARTE de
+-- `supabase/migrations/v21_pacote_reverter.sql` (transação única, antes do
+-- v21_01_rollback). Não rodar sozinho.
 -- =============================================================================
 
 DO $guarda$
