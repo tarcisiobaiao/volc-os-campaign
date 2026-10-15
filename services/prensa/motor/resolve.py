@@ -112,6 +112,13 @@ def valida(spec: dict, tokens: dict) -> list:
     base = spec["artboard"]["base"]
     if base["w"] <= 0 or base["h"] <= 0:
         err("artboard inválido")
+    # variants: validadas aqui, pré-custo. Antes o campo passava calado e o
+    # render o ignorava — ver variantes.py.
+    from variantes import VarianteInvalida, valida_variantes
+    try:
+        valida_variantes(spec)
+    except VarianteInvalida as exc:
+        err(str(exc))
     # fontes: a SKIN é dona das fontes; spec só as usa (marca é dado, engine é lei)
     fontes = tokens.get("fonts") or spec.get("fonts") or err("nem skin nem spec declaram fontes")
     valida_fontes(fontes)
