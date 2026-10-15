@@ -16,6 +16,7 @@
  * scripts/console, mas a página deve usar o hook (que cacheia).
  */
 import { supabase } from '@/lib/supabase';
+import { garantirListaCompletaDeUsuarios } from '@/v6/services/visaoDeAdmin';
 import { fetchAllPaginated } from '@/v6/services/_pagination';
 import type {
   DailyCampaignMemberPayout,
@@ -67,6 +68,7 @@ class MemberPayoutsService {
         .range(from, to);
       return { data: result.data as UserLite[] | null, error: result.error };
     });
+    await garantirListaCompletaDeUsuarios(rows);
     return new Map(rows.map((u) => [u.id, u]));
   }
 

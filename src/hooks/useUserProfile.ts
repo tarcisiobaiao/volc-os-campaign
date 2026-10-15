@@ -12,6 +12,10 @@ export interface UserProfile {
   updated_at?: string;
 }
 
+// Colunas nominais, nunca '*': depois da v8_06 o grant de SELECT em users é por
+// coluna e '*' (que inclui password_hash/token_*) devolve 42501.
+const COLUNAS_PERFIL = 'id, name, email, role, created_at, updated_at';
+
 export function useUserProfile() {
   const { user, userProfile: contextUserProfile } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -60,7 +64,7 @@ export function useUserProfile() {
       // Try to get user profile from users table using auth.uid()
       const { data: profile, error: profileError } = await supabase
         .from('users')
-        .select('*')
+        .select(COLUNAS_PERFIL)
         .eq('id', user.id)
         .single();
 
@@ -70,7 +74,7 @@ export function useUserProfile() {
         // Try alternative query by email
         const { data: profileAlt, error: errorAlt } = await supabase
           .from('users')
-          .select('*')
+          .select(COLUNAS_PERFIL)
           .eq('email', user.email)
           .single();
           

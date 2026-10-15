@@ -11,6 +11,7 @@
  * Não escreve em nada. Não cria mutations.
  */
 import { supabase } from '@/lib/supabase';
+import { garantirListaCompletaDeUsuarios } from '@/v6/services/visaoDeAdmin';
 import { fetchAllPaginated } from '@/v6/services/_pagination';
 import { normalizeRole } from '@/v6/hooks/useCampaignRoles';
 import type {
@@ -135,7 +136,7 @@ class CampaignMembersService {
           .order('id', { ascending: true })
           .range(from, to);
         return { data: result.data as UserLite[] | null, error: result.error };
-      }),
+      }).then(async (u) => { await garantirListaCompletaDeUsuarios(u); return u; }),
       // campaigns paginado (740 hoje, cresce)
       fetchAllPaginated<CampaignLite>(async (from, to) => {
         const result = await supabase

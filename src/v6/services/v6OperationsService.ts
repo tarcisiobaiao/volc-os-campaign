@@ -17,6 +17,7 @@
  * já faz esse dual-write internamente.
  */
 import { supabase } from '@/lib/supabase';
+import { garantirContagemDeAdminsConfiavel } from '@/v6/services/visaoDeAdmin';
 import { secureApi } from '@/lib/secureApi';
 import { usersService } from '@/services/usersService';
 import type { User as LegacyUser } from '@/services/usersService';
@@ -292,6 +293,7 @@ class V6OperationsService {
         .select('id', { count: 'exact', head: true })
         .eq('role', 'ADMIN');
       if (countErr) throw countErr;
+      await garantirContagemDeAdminsConfiavel(adminCount ?? 0);
       if ((adminCount ?? 0) <= 1) {
         throw new Error(
           'Não é possível excluir o último administrador do sistema.'

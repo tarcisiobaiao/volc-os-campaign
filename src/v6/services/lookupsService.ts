@@ -9,6 +9,7 @@
  * apenas em `v6OperationsService.ts` para criação/edição de usuário.)
  */
 import { supabase } from '@/lib/supabase';
+import { garantirListaCompletaDeUsuarios } from '@/v6/services/visaoDeAdmin';
 import { fetchAllPaginated } from '@/v6/services/_pagination';
 import { normalizeRole } from '@/v6/hooks/useCampaignRoles';
 import type {
@@ -30,7 +31,7 @@ interface CampaignRowWithProject {
 class LookupsService {
   /** Todos os usuários do sistema (paginado para futuro-proof). */
   async listUsers(): Promise<UserLite[]> {
-    return fetchAllPaginated<UserLite>(async (from, to) => {
+    const usuarios = await fetchAllPaginated<UserLite>(async (from, to) => {
       const result = await supabase
         .from('users')
         .select('id, name, email, role, commission_percentage')
@@ -39,6 +40,8 @@ class LookupsService {
         .range(from, to);
       return { data: result.data as UserLite[] | null, error: result.error };
     });
+    await garantirListaCompletaDeUsuarios(usuarios);
+    return usuarios;
   }
 
   /** Todas as campanhas do sistema (paginado). */
