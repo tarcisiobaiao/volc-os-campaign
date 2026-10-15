@@ -991,6 +991,18 @@
           "id": "P07-T02",
           "title": "Definir evento e valor elegíveis para envio",
           "status": "todo",
+          "latest_evidence": "14/10/2026 · Proposta compra × monetização preservada integralmente e confrontada com documentação primária, sem execução externa. ADR-CICLO-ECONOMICO-COMPRA-MONETIZACAO.md define P07-T02 como próxima ação: inventário de um site, evento/valor observado vs estimado, owner/identidade/grão e prova de reconciliação. Não usar o maior bid Prebid como receita AdX garantida; não imputar total diário como receita exata por sessão; não tratar Active View como prova de humano. P06-T03/P06-T04 precedem a economia líquida; P14-T02/P14-T09 recebem cenário marginal read-only; P07-T03/P07-T04 continuam dependendo do aceite do evento. Pisos, RSOC e IVT preservados como experimentos posteriores, não requisitos para começar. Nenhum envio, goal, lance, floor ou exclusão alterado; status todo mantido.",
+          "acceptance": [
+            "Um site e uma origem de compra inventariados com owner, consentimento, eventos realmente acessíveis e grão de custo/receita demonstrado",
+            "Valor observado, estimado e reconciliado separados por fonte, moeda, fuso, data do fato e data da observação; sem dupla contagem GAM × intermediário",
+            "Ação e caminho de importação identificados com sua elegibilidade; ausência de receita por sessão não pode ser ocultada por rateio chamado de exato",
+            "Recibo com limitações e decisão do operador antes de alimentar bidding; observação/shadow não exige converter cada sinal em conversão"
+          ],
+          "links": [
+            "docs/architecture/ADR-CICLO-ECONOMICO-COMPRA-MONETIZACAO.md",
+            "docs/reference/buy-sell-loop/AVALIACAO.json",
+            "docs/reference/buy-sell-loop/PROPOSTA-ORIGINAL-2026-10-14.txt"
+          ],
           "proof": "fila permanece vazia; contrato deve seguir a Data Manager API sem promover todo evento observado a conversão elegível · 01/09/2026: contrato de evento fixado contra a doc oficial, sem envio. Doutrina oficial fixada em docs/architecture/evidence/GOOGLE-ADS-DOCS-2026-09-01.md (leitura direta de developers.google.com em 01/09/2026, API v25). Campos reais confirmados: `conversionValue` (NÃO `value`), `currency` (NÃO `currencyCode` dentro do Event), `transactionId`, `eventTimestamp` (Required), `consent`, `adIdentifiers` com gclid/gbraid/wbraid/sessionAttributes, `userData`. Regra de validade: um Event exige ao menos um de `ad_identifiers` OU `user_data`. Segue todo: nenhum evento foi definido como elegível e nenhum foi enviado."
         },
         {
@@ -1066,7 +1078,7 @@
           "id": "P08-T06",
           "title": "Unificar sinais existentes num Topic Radar",
           "status": "partial",
-          "proof": "03/09/2026 · A elegibilidade paga passou a viajar ao lado da oportunidade editorial, sem fundir as duas escalas; ponte_editorial entrega as duas respostas com seus bloqueadores. Continua partial: o Topic Radar ainda não unifica Trends, Search Console, GA4, termos, RPM, geo e sazonalidade numa saída única. · 14/10/2026 · Recuperado o protótipo Python R3 a partir do histórico Claude, fora do main, em ../producao/attention-validacao-20261014/. Estado histórico não recuperado. Validação nova: 96 sinais públicos coletados, 6 selecionados; duas chamadas reais Gemini, mesmo modelo servido gemini-3.6-flash embora solicitado gemini-3.5-flash. Padrão 16,516 s/5539 tokens; low 4,031 s/2967 tokens; decisões iguais em 6/6 (uma promoção). Fixtures isoladas de gravação atômica e deduplicação pós-queda passaram. Não prova recall, cache pago histórico, estabilidade diária ou ROI; nenhuma integração, default ou produção alterados. Recibo: ../producao/attention-validacao-20261014/recovered/resultado.json. Permanece partial."
+          "proof": "03/09/2026 · A elegibilidade paga passou a viajar ao lado da oportunidade editorial, sem fundir as duas escalas; ponte_editorial entrega as duas respostas com seus bloqueadores. Continua partial: o Topic Radar ainda não unifica Trends, Search Console, GA4, termos, RPM, geo e sazonalidade numa saída única. · 14/10/2026 · Recuperado o protótipo Python R3 a partir do histórico Claude, fora do main, em ../producao/attention-validacao-20261014/. Estado histórico não recuperado. Validação nova: 96 sinais públicos coletados, 6 selecionados; duas chamadas reais Gemini, mesmo modelo servido gemini-3.6-flash embora solicitado gemini-3.5-flash. Padrão 16,516 s/5539 tokens; low 4,031 s/2967 tokens; decisões iguais em 6/6 (uma promoção). Fixtures isoladas de gravação atômica e deduplicação pós-queda passaram. Não prova recall, cache pago histórico, estabilidade diária ou ROI; nenhuma integração, default ou produção alterados. Recibo: ../producao/attention-validacao-20261014/recovered/resultado.json. Permanece partial. · 14–15/10/2026 · Rodada única real: partida, um ciclo nos sete países e fechamento; 602 sinais julgados, 21 cards estruturalmente válidos, dois alertas locais, 611,95 s de parede. DataForSEO: 113 chamadas, US$1,798 informado pelo provedor; Gemini: 46 chamadas em gemini-3.8-flash servido igual ao pedido, US$0,848581 estimado e fatura não informada; total contabilizado US$2,646581 sob teto US$3. Vinte séries RO/TH recusadas por date_to; apenas uma de 18 pesquisas retornou grounding com fontes. Falha no executor paralelo do ciclo TH corrigida e retomada apenas nesse país, preservando a primeira passagem; quatro respostas pagas reaproveitadas. Sem cron, publicação, notificações externas ou escrita em banco. Não prova precisão comercial, cobertura de eventos ou ROI; permanece partial. Artefatos: ../producao/attention-rodada-unica-20261014/resultado.json e RELATORIO.md; painel local 8767. · 15/10/2026 · Prova curta encerrada: replay sem API recuperou histórico mensal para 86/94 entidades (161/176 resultados preenchidos), com filas consultivas de próximas janelas e perenes, sem CPC na ordenação. Duas consultas Trends RO/TH com date_to recuado um dia passaram (251 pontos cada; somente 1 não ausente em RO e 92 em TH); causa exclusiva não demonstrada. A/B real gemini-3.8-flash servido igual ao pedido: 40 sinais BR/TH, quatro chamadas, 39/40 decisões concordantes; low reduziu latência 40,89% e custo estimado 30,53%, mas descartou serviço potencialmente útil dos Correios por demanda massiva não exigida. Default preservado, sem adoção global de low. Duas fontes oficiais não confirmaram as datas: INSS redirecionou a login com HTTP 200 e SSA retornou 403. Seis chamadas pagas em 94,292 s, total US$0,06985225 (DataForSEO US$0,022 informado; Gemini US$0,04785225 estimado). 164 arquivos originais intactos por SHA; sem cron, escrita externa, commit ou push. P08-T06 permanece partial: não prova ROI, recall independente ou integração operacional. Auditoria: docs/audits/ATTENTION-REPLAY-PROVA-AB-2026-10-15.md; artefatos ../producao/attention-fechamento-20261015/."
         },
         {
           "id": "P08-T07",
@@ -2442,6 +2454,9 @@
         {
           "id": "P14-T09",
           "title": "Expor simulador read-only de planned_spend",
+          "links": [
+            "docs/architecture/ADR-CICLO-ECONOMICO-COMPRA-MONETIZACAO.md#2-custo-marginal-de-expansão"
+          ],
           "status": "todo",
           "proof": "A ideia existe no Bola de Cristal, mas o resultado morre na execução manual do n8n.",
           "acceptance": "Cockpit consulta grid gasto→receita/ROAS com intervalo, modelo, baseline, data e premissas; zero proposta automática e zero ação externa.",

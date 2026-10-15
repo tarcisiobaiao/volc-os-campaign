@@ -1,0 +1,111 @@
+{
+  "arquitetura_finale": "Closed-Loop Programmatic & Search Arbitrage Engine (Buy-Side + Sell-Side Unification)",
+  "principio_central": "A verdadeira vantagem assimétrica na arbitragem programática não está em adivinhar lances no escuro, mas em quebrar a latência de 24 horas entre o leilão de venda (Prebid/GAM/RSOC) e o leilão de compra (Google Ads), operando sobre custo marginal real e protegendo o Smart Bidding contra contaminação por tráfego inválido.",
+  "1_os_cinco_motores_de_vantagem_injusta": [
+    {
+      "id": "motor_1",
+      "nome": "Injeção de Receita Sub-Minuto por Limite Inferior de Leilão (Prebid + GPT -> OCI + Restatement)",
+      "o_problema_real": "Relatórios oficiais do Google Ad Manager (GAM), AdSense e feeds de busca (RSOC/AFS) levam de 4 a 24 horas para consolidar receita. Enquanto isso, o Smart Bidding (tROAS) do Google Ads opera cego durante picos de leilão ou otimiza apenas para micro-conversões (pageviews/cliques) que não refletem o CPM/RPC real da sessão.",
+      "a_mecanica_validada": {
+        "captura_exata_prebid": "No navegador, o evento nativo `pbjs.onEvent('bidWon', function(data) { ... })` do Prebid.js entrega instantaneamente o `data.cpm` exato ganho por qualquer SSP no Header Bidding.",
+        "inferencia_deterministica_adx": "Quando o Google AdX/AdSense vence a impressão via Dynamic Allocation / First-Price Auction no GAM, o navegador não recebe o CPM vencedor do AdX por restrição do Google. Porém, no evento `googletag.pubads().addEventListener('slotRenderEnded', ...)` + `impressionViewable` (Active View validado), você conhece duas variáveis exatas no cliente: (1) o maior lance perdedor do Prebid para aquele slot (`pbjs.getHighestCpmBids(adUnitCode)[0].cpm`) e (2) o piso da sua regra de preço (Unified Pricing Rule - UPR) ativa para aquele segmento. Como o leilão é de primeiro preço unificado, se o AdX venceu, matematicamente a receita daquela impressão é maior ou igual a `max(Maior_Bid_Prebid, Floor_UPR) / 1000`.",
+        "fechamento_do_loop_com_restatement": "Um coletor leve recebe esses eventos via `navigator.sendBeacon()` atrelados ao `gclid`/`gbraid`/`wbraid` e a um `order_id` único da sessão. Ao atingir o limiar mínimo de sessão (ou no encerramento da janela de inatividade de 3 minutos), o motor dispara a receita acumulada via `ConversionUploadService.UploadClickConversions`. Horas depois, quando o relatório reconciliado da API de monetização fecha o valor exato ao centavo, o motor dispara `ConversionAdjustmentUploadService.UploadConversionAdjustments` com `adjustment_type = RESTATEMENT` usando o mesmo `order_id`, corrigindo o valor no histórico do Smart Bidding sem duplicar a conversão."
+      },
+      "efeito_pratico": "O Smart Bidding passa a enxergar a variação real de CPM/RPM por dispositivo, horário e geografia em menos de 5 minutos após o clique, com correção contábil exata no D+1."
+    },
+    {
+      "id": "motor_2",
+      "nome": "Arbitragem de Custo Marginal via Curvas de Simulação Nativas (GAQL Simulation Points)",
+      "o_problema_real": "99% dos compradores de mídia olham para o CPC Médio vs. EPC Médio. Exemplo clássico de armadilha: com lance de $0.10 você compra 1.000 cliques a um CPC médio de $0.08 (custo $80). Ao subir o lance para $0.15, você compra 1.200 cliques a um CPC médio de $0.10 (custo $120). Se o seu EPC na ponta final é $0.14, o painel mostra ROAS positivo ($0.14 > $0.10). Porém, os 200 cliques extras custaram $40 ($120 - $80), ou seja, um CPC Marginal de $0.20 por clique incremental — você teve prejuízo de $0.06 em cada um dos 200 cliques adicionais.",
+      "a_mecanica_validada": {
+        "recursos_gaql_oficiais": "A Google Ads API proíbe consultar Auction Insights de concorrentes, mas expõe nativamente a curva de oferta do leilão através dos recursos `ad_group_criterion_simulation` (`cpc_bid_point_list.points`), `ad_group_simulation` e `campaign_simulation` (`target_roas_point_list.points` e `budget_point_list.points`).",
+        "calculo_da_derivada_discreta": "Cada objeto `CpcBidSimulationPoint` ou `TargetRoasSimulationPoint` retorna pares projetados de `(cost_micros, clicks, impressions, top_slot_impressions)` para múltiplos níveis de lance/meta. Seu motor em Python calcula a derivada discreta entre os pontos adjacentes $i$ e $i+1$: `Marginal_CPC = (cost_micros[i+1] - cost_micros[i]) / (clicks[i+1] - clicks[i])`.",
+        "ponto_otimo_de_lucro": "O motor fixa o lance ou o `Target ROAS` exatamente no último ponto onde `Marginal_CPC <= Net_EPC_Esperado`, maximizando o Lucro Líquido Total em dólares em vez de perseguir volume cego ou ROAS percentual sub-ótimo."
+      },
+      "efeito_pratico": "Elimina o 'overbidding invisível' na cauda superior do leilão e extrai o lucro líquido máximo de cada grupo de anúncios."
+    },
+    {
+      "id": "motor_3",
+      "nome": "Defesa contra Bid Shading: Pisos Dinâmicos Guiados pelo Custo de Aquisição (Buy-Cost-Aware Floors)",
+      "o_problema_real": "DSPs compradoras (DV360, The Trade Desk, Criteo) usam algoritmos de *Bid Shading* em leilões de primeiro preço: se um usuário vale $8.00 de CPM para o anunciante, mas a DSP estima que o piso (floor) do seu site é $1.20, ela reduz o lance para $1.25. Se você usa pisos estáticos no GAM, você entrega tráfego caro que comprou no Google Ads a preço de banana.",
+      "a_mecanica_validada": {
+        "sinal_de_custo_na_borda": "Na chegada do clique pago, a URL contém um parâmetro assinado (ou consulta rápida em cache local via `campaign_id`/`adgroup_id`) que identifica a faixa de CPC pago na origem (ex: `cpc_bucket = high | mid | low`).",
+        "atuacao_simultanea_prebid_e_gam": "Antes de iniciar o leilão na página, o script injeta a chave no Google Publisher Tag via `googletag.pubads().setTargeting('acq_bucket', bucket)` e ajusta dinamicamente a matriz do **Prebid Price Floors Module** (`pbjs.setConfig({ floors: { ... } })`). No Google Ad Manager, regras de **Unified Pricing Rules (UPR)** vinculadas à key-value `acq_bucket` elevam o piso de reserva para sessões compradas com CPC alto.",
+        "exploracao_continua": "Para evitar queda excessiva de *Fill Rate* (taxa de preenchimento), 10% do tráfego roda em *holdout* com pisos escalonados (Multi-Armed Bandit sobre a variável `Floor_Price`), medindo a métrica real que importa: `RPM de Sessão = Fill_Rate * Clearing_CPM * Impressoes_Viewable_Por_Sessao`."
+      },
+      "efeito_pratico": "Força as DSPs compradoras a pagarem próximo ao valor máximo de reserva quando você injeta tráfego qualificado e caro, protegendo a margem da operação."
+    },
+    {
+      "id": "motor_4",
+      "nome": "Engenharia de Yield Semântico para RSOC / Search Arbitrage (KeywordPlanIdeaService + Restrição de Cosseno)",
+      "o_problema_real": "Na arbitragem de busca moderna (RSOC - Related Search on Content e AFS), o lucro depende do RPC (Revenue Per Click) quando o usuário clica em um termo sugerido dentro do seu artigo. Se você deixa a rede escolher os termos sozinha, o RPC é mediano. Se você força termos de CPC altíssimo (ex: seguros, advogados, crédito) sem relação estrita com o artigo e com o anúncio de entrada, os sistemas automatizados de qualidade das redes de feed aplicam *clawbacks* severos (deduções de receita no fim do mês) ou suspendem a conta por *Keyword Stuffing / Non-Contextual Traffic*.",
+      "a_mecanica_validada": {
+        "extracao_de_lances_reais_do_leilao": "Use o serviço oficial `KeywordPlanIdeaService.GenerateKeywordIdeas` e `GenerateKeywordHistoricalMetrics` da Google Ads API para mapear milhares de variações de termos no país/idioma alvo, extraindo diretamente `high_top_of_page_bid_micros` (percentil 80 dos lances vencedores de topo de página), `low_top_of_page_bid_micros` (percentil 20) e `competition_index` (0 a 100).",
+        "otimizacao_restrita_por_embedding": "Gere os vetores densos (embeddings) do texto do seu artigo/anúncio ($\vec{v}_{page}$) e de todas as keywords candidatas ($\vec{v}_k$). Para escolher os $N$ termos que preencherão o bloco RSOC, resolva um problema de otimização determinística simples em Python: maximizar `high_top_of_page_bid_micros * (competition_index / 100)` sujeito a duas travas rígidas: (1) `cosine_similarity(v_page, v_k) >= limiar_minimo_compliance` (garante aderência semântica estrita ao conteúdo) e (2) `cosine_similarity(v_k_i, v_k_j) <= limiar_maximo_redundancia` (evita colocar 5 botões dizendo exatamente a mesma coisa, o que derruba o CTR do bloco)."
+      },
+      "efeito_pratico": "Maximiza matematicamente o valor do leilão secundário de busca mantendo 100% de conformidade semântica com as diretrizes de conteúdo de RSOC."
+    },
+    {
+      "id": "motor_5",
+      "nome": "Firewall Anti-Clawback e Descontaminação do Smart Bidding (ActiveView Gating + Account IP Blocking)",
+      "o_problema_real": "Em campanhas de PMax, GDN e Demand Gen (e mesmo Search Partners), parte do tráfego vem de fazendas de cliques, apps fraudulentos ou bots residenciais. Se o seu pixel/servidor dispara conversão para o Google Ads antes de provar que o usuário é humano e que os anúncios da página foram realmente *viewable*, você ensina a rede neural do Google Ads a comprar mais bots — e só descobre o rombo quando o AdSense/ADX ou o parceiro de Search desconta 30% da sua receita por Tráfego Inválido (IVT).",
+      "a_mecanica_validada": {
+        "trava_de_conversao_por_active_view": "O motor de postback NUNCA envia conversão para o Google Ads apenas por carregamento de página ou clique simples sem verificação. A conversão só é elegível para envio à API do Google Ads se: (1) o IP não pertencer a ASN de Datacenter/Hosting/Proxy (verificado localmente em <1ms via banco binário MMDB do IPinfo/MaxMind), (2) houver entropia mínima de interação física (eventos de scroll/pointer compatíveis com viewport real) e (3) para arbitragem de conteúdo, pelo menos um slot tiver disparado o evento oficial `impressionViewable` da Google Publisher Tag.",
+        "bloqueio_programatico_em_nivel_de_conta": "Quando um IP ou sub-rede CIDR dispara múltiplas sessões suspeitas ou discrepância aguda entre cliques reportados no Google Ads e sessões válidas, o motor aciona o recurso `CustomerNegativeCriterion` preenchendo o campo `ip_block` (suportado nativamente em nível de Conta/Customer na Google Ads API desde a v16.1, superando a antiga limitação de gerenciar listas de IP apenas campanha por campanha), além de negativar o `placement` ou `mobile_application` ofensivo após X cliques sem nenhuma impressão *viewable*."
+      },
+      "efeito_pratico": "Derruba drasticamente as deduções de fim de mês (IVT Clawbacks) e blinda o modelo de Machine Learning do Google Ads para comprar exclusivamente usuários reais que geram impressões válidas."
+    }
+  ],
+  "2_arquitetura_de_dados_enxuta_e_verificada": {
+    "borda_e_coleta_first_party": "Endpoint próprio no mesmo domínio raiz da página (FastAPI/Go ou Server-Side GTM em First-Party Mode) que grava um `Click Ledger` (GCLID/WBRAID/GBRAID + Timestamp UTC + Geo + Device + Campaign/AdGroup/Keyword ID) e recebe os beacons de `bidWon` e `impressionViewable` sem ser bloqueado por Safari ITP ou listas de AdBlock.",
+    "armazenamento_e_cruzamento": "PostgreSQL/Supabase para estado transacional das entidades e configurações de pisos/regras; DuckDB + arquivos Parquet locais (ou ClickHouse se o volume passar de dezenas de milhões de eventos/dia) para unir em segundos o `Click Ledger` com as curvas de `ad_group_criterion_simulation` e relatórios reconciliados.",
+    "atuadores_oficiais_google_ads_api": [
+      "GoogleAdsService.SearchStream (leitura rápida de métricas, `ad_group_criterion_simulation`, `campaign_simulation` e `detail_placement_view`)",
+      "KeywordPlanIdeaService (extração de `high_top_of_page_bid_micros` e `competition_index` para matrizes RSOC/Conteúdo)",
+      "ConversionUploadService & ConversionAdjustmentUploadService (envio de receita em tempo quase real via `UploadClickConversions` e reconciliação exata D+1 via `RESTATEMENT`)",
+      "CustomerNegativeCriterionService & CampaignCriterionService (bloqueio automático de `ip_block` e placements sem Active View)",
+      "BiddingSeasonalityAdjustmentService (modulação temporária de taxa de conversão esperada quando há mudança abrupta de RPM na ponta vendedora)"
+    ]
+  },
+  "3_sequencia_de_implementacao_sem_desperdicio": [
+    "Passo 1 (Semanas 1-2): Instrumentar o navegador na ponta de monetização (`pbjs.onEvent('bidWon')` + `googletag` `impressionViewable`) enviando beacons para o seu `Click Ledger` atrelados ao `gclid`, e ativar a trava que impede envio de conversões de sessões sem Active View ou vindas de ASNs de datacenter.",
+    "Passo 2 (Semanas 3-4): Ativar o envio de receita real por sessão via `ConversionUploadService` (com `order_id` único) seguido da rotina diária de `RESTATEMENT` via `ConversionAdjustmentUploadService` quando o relatório fechado da rede parceira for processado.",
+    "Passo 3 (Semanas 5-6): Implementar o coletor de `ad_group_criterion_simulation` e `campaign_simulation` via GAQL para substituir decisões baseadas em CPC médio pelo cálculo de CPC Marginal vs. EPC Líquido, e conectar a seleção semântica de termos (`KeywordPlanIdeaService` + embeddings) para as páginas de RSOC/Conteúdo."
+  ],
+  "4_referencias_tecnicas_verificadas": [
+    {
+      "componente": "Google Ads API - Bid Simulations (Campaign, AdGroup, Criterion)",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/bid-simulations",
+      "fato_validado": "Fornece pontos simulados (`CpcBidSimulationPoint`, `TargetRoasSimulationPoint`, `BudgetSimulationPoint`) permitindo o cálculo exato do custo marginal por clique ou conversão adicional."
+    },
+    {
+      "componente": "Google Ads API - KeywordPlanIdeaService & Historical Metrics",
+      "url": "https://developers.google.com/google-ads/api/docs/keyword-planning/generate-historical-metrics",
+      "fato_validado": "Retorna `low_top_of_page_bid_micros`, `high_top_of_page_bid_micros` e `competition_index` para até 10.000 keywords por requisição em `GenerateKeywordHistoricalMetrics`."
+    },
+    {
+      "componente": "Google Ads API - Conversion Adjustments (Restatement & Retraction)",
+      "url": "https://developers.google.com/google-ads/api/docs/conversions/upload-adjustments",
+      "fato_validado": "Permite atualizar o valor de uma conversão previamente enviada (`RESTATEMENT`) ou removê-la (`RETRACTION`) usando `order_id` ou `gclid_date_time_pair`."
+    },
+    {
+      "componente": "Prebid.js - Eventos de Leilão (`bidWon`) e Price Floors Module",
+      "url": "https://docs.prebid.org/dev-docs/publisher-api-reference/onEvent.html",
+      "fato_validado": "Expõe no cliente o CPM exato vencedor do Header Bidding e permite definir pisos dinâmicos em tempo de execução antes da chamada de lances."
+    },
+    {
+      "componente": "Google Publisher Tag (GPT) - `impressionViewable` & `slotRenderEnded`",
+      "url": "https://developers.google.com/publisher-tag/reference#googletag.events.ImpressionViewableEvent",
+      "fato_validado": "Dispara callback no navegador no exato momento em que o anúncio cumpre os critérios oficiais de visibilidade Active View do Google."
+    }
+  ]
+}
+Sources
+help
+prebid.org
+tencent.com
+google.com
+google.com
+google.com
+google.com
+googleblog.com

@@ -1,0 +1,254 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-14",
+  "verdict": "direction_valuable_mechanics_require_correction",
+  "status": "proposal_preserved_not_implemented",
+  "business_goal": "maximize comparable net contribution; do not optimize proxies as revenue",
+  "scope": "documentation and primary-source verification, no account or database audit",
+  "original": "PROPOSTA-ORIGINAL-2026-10-14.txt",
+  "decision_record": "../../architecture/ADR-CICLO-ECONOMICO-COMPRA-MONETIZACAO.md",
+  "next_task": "P07-T02",
+  "sources": [
+    {
+      "id": "prebid_events",
+      "url": "https://docs.prebid.org/dev-docs/publisher-api-reference/onEvent.html",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "prebid_highest",
+      "url": "https://docs.prebid.org/dev-docs/publisher-api-reference/getHighestCpmBids.html",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "gpt_events",
+      "url": "https://developers.google.com/publisher-tag/reference#googletag.events.ImpressionViewableEvent",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "conversion_import",
+      "url": "https://developers.google.com/google-ads/api/docs/conversions/upload-offline",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "conversion_adjustments",
+      "url": "https://developers.google.com/google-ads/api/docs/conversions/upload-adjustments",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "bid_simulations",
+      "url": "https://developers.google.com/google-ads/api/docs/bid-simulations/overview",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "prebid_floors",
+      "url": "https://docs.prebid.org/dev-docs/modules/floors.html",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "keyword_metrics",
+      "url": "https://developers.google.com/google-ads/api/docs/keyword-planning/generate-historical-metrics",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "rsoc",
+      "url": "https://support.google.com/adsense/answer/10233819?hl=en",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "ip_block_account",
+      "url": "https://developers.google.com/google-ads/api/reference/rpc/v25/CustomerNegativeCriterion",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "ip_block",
+      "url": "https://developers.google.com/google-ads/api/reference/rpc/v25/IpBlockInfo",
+      "verified": "2026-10-14"
+    },
+    {
+      "id": "seasonality",
+      "url": "https://support.google.com/google-ads/answer/10369906?hl=en",
+      "verified": "2026-10-14"
+    }
+  ],
+  "claims": [
+    {
+      "id": "M1_PREBID_EVENT",
+      "original": "bidWon reveals exact final publisher revenue",
+      "disposition": "capability_confirmed_economic_claim_overstated",
+      "sources": [
+        "prebid_events"
+      ],
+      "correction": "Event reports the Prebid bid CPM, not settled net session revenue after partner fees and IVT.",
+      "account_proven": false
+    },
+    {
+      "id": "M1_ADX_LOWER_BOUND",
+      "original": "AdX revenue is mathematically at least max(highest Prebid bid, UPR floor)/1000",
+      "disposition": "not_demonstrated_do_not_upload_as_actual_revenue",
+      "sources": [
+        "prebid_highest",
+        "gpt_events"
+      ],
+      "correction": "Client methods do not establish the eligible losing GAM bid, applied floor and final net settlement for this impression.",
+      "account_proven": false
+    },
+    {
+      "id": "M1_VIEWABILITY",
+      "original": "impressionViewable verifies human traffic and payable revenue",
+      "disposition": "unsupported_inference",
+      "sources": [
+        "gpt_events"
+      ],
+      "correction": "Event certifies the stated visibility condition only; it is neither IVT verdict nor revenue settlement.",
+      "account_proven": false
+    },
+    {
+      "id": "M1_UPLOAD_RESTATEMENT",
+      "original": "all click IDs support exact session revenue correction D+1",
+      "disposition": "supported_mechanism_with_material_conditions",
+      "sources": [
+        "conversion_import",
+        "conversion_adjustments"
+      ],
+      "correction": "Need action ownership, supported ID/action path, original recognition, stable identity and compatible actual revenue grain. WBRAID adjustments are not equivalent to GCLID/GBRAID. Aggregate daily exports cannot create exact session amounts.",
+      "account_proven": false
+    },
+    {
+      "id": "M1_SUBFIVE_MINUTES",
+      "original": "Smart Bidding responds in less than five minutes",
+      "disposition": "not_demonstrated",
+      "sources": [
+        "conversion_import"
+      ],
+      "correction": "Collection, upload acceptance, attribution and bidding reaction have separate latency. Measure each; no guaranteed five-minute learning claim.",
+      "account_proven": false
+    },
+    {
+      "id": "M2_MARGINAL",
+      "original": "simulation identifies exact profit-maximizing bid",
+      "disposition": "valuable_read_only_hypothesis",
+      "sources": [
+        "bid_simulations"
+      ],
+      "correction": "Projected finite differences need micros conversion, positive incremental clicks, compatible scenario, incremental revenue uncertainty and observed validation.",
+      "account_proven": false
+    },
+    {
+      "id": "M3_FLOORS",
+      "original": "higher acquisition-aware floor forces buyers to pay more and protects margin",
+      "disposition": "experiment_not_guarantee",
+      "sources": [
+        "prebid_floors"
+      ],
+      "correction": "Can reduce fill and revenue. Need partner control, supported GAM targeting, observed cost buckets and one-lever holdout. UPR acq_bucket support not proven.",
+      "account_proven": false
+    },
+    {
+      "id": "M4_KEYWORDS",
+      "original": "top-of-page bids times competition predicts feed yield; cosine ensures full compliance",
+      "disposition": "unsupported_economic_and_compliance_guarantees",
+      "sources": [
+        "keyword_metrics",
+        "rsoc"
+      ],
+      "correction": "Metrics are historical buyer-side statistics. Embeddings aid ranking but do not prove feed eligibility, displayed terms, relevance compliance or RPC.",
+      "account_proven": false
+    },
+    {
+      "id": "M5_IP_BLOCK",
+      "original": "account-level IP blocking can be used",
+      "disposition": "capability_confirmed_account_channel_and_limits_unproven",
+      "sources": [
+        "ip_block_account",
+        "ip_block"
+      ],
+      "correction": "v25 exposes account IP exclusions. Current per-level limits and channel support require verification; no automatic ASN/CIDR exclusion from heuristics.",
+      "account_proven": false
+    },
+    {
+      "id": "M5_IVT",
+      "original": "ASN, interaction and Active View make traffic exclusively human",
+      "disposition": "unsupported_guarantee",
+      "sources": [
+        "gpt_events"
+      ],
+      "correction": "These are imperfect risk signals; measure false positives and mature network deductions.",
+      "account_proven": false
+    },
+    {
+      "id": "ARCH_FIRST_PARTY",
+      "original": "same-domain sendBeacon is not blocked by privacy tools",
+      "disposition": "unsupported_guarantee",
+      "sources": [],
+      "correction": "Same-domain collection may help but consent, browser policy, blockers, network loss and spoofing still apply; require durable receiver receipts.",
+      "account_proven": false
+    },
+    {
+      "id": "ACTUATOR_SEASONALITY",
+      "original": "seasonality adjustment is a generic reaction to sell-side RPM",
+      "disposition": "wrong_control_variable",
+      "sources": [
+        "seasonality"
+      ],
+      "correction": "Seasonality adjusts expected conversion rate; a revenue-per-session shock alone is not justification.",
+      "account_proven": false
+    }
+  ],
+  "execution_order": [
+    {
+      "step": 1,
+      "task": "P07-T02",
+      "deliverable": "Inventory one site and one acquisition source; define observed/estimated value and identity/grain without sending."
+    },
+    {
+      "step": 2,
+      "task": "P06-T03",
+      "deliverable": "Compare initial signal with mature same-grain net revenue including overlap and revisions."
+    },
+    {
+      "step": 3,
+      "task": "P14-T02",
+      "deliverable": "Shadow-only incremental contribution using existing simulation collector."
+    },
+    {
+      "step": 4,
+      "task": "P07-T04",
+      "deliverable": "After explicit separate approval, validate eligible upload path and later correction with receipts."
+    }
+  ],
+  "preserved_future_experiments": [
+    "acquisition-aware floors",
+    "RSOC relevant-term ranking",
+    "IVT diagnostics and reversible exclusions"
+  ],
+  "not_authorized": [
+    "new dependencies",
+    "production scripts or beacons",
+    "conversion imports",
+    "conversion goal changes",
+    "bids or budgets",
+    "pricing rules",
+    "IP exclusions",
+    "migrations",
+    "deployment"
+  ],
+  "evidence_limits": [
+    "No live Ads, GAM, Prebid, partner or database test in this review.",
+    "No monetary gain, IVT reduction or model-latency gain demonstrated.",
+    "SDK/API capability is distinct from active account eligibility."
+  ],
+  "current_repo_evidence": [
+    {
+      "path": "volc_ads/inteligencia_google/coletor.py",
+      "finding": "campaign_simulation reader exists"
+    },
+    {
+      "path": "supabase/migrations/v17_04_arbitragem_reconciliada.sql",
+      "finding": "reconciliation and overlapping source checks exist as SQL; this review did not verify deployment"
+    },
+    {
+      "path": "docs/architecture/GADS-AUTONOMIA-ESTADO.md",
+      "finding": "existing autonomy boundaries must not be bypassed"
+    }
+  ]
+}
