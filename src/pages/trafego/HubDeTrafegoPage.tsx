@@ -47,6 +47,7 @@ import { Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FaixaEconomica } from '@/components/trafego/hub/FaixaEconomica';
 import { cn } from '@/lib/utils';
 import { type LeituraDoInventario } from '@/hooks/useInventario';
 import { useEstadoDoHub } from '@/hooks/useEstadoDoHub';
@@ -620,6 +621,16 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
             <span />
           </div>
         </header>
+
+          {/* A economia da carteira fica ACIMA das abas: é a resposta para
+              "quanto isso está custando?", e ela não muda quando o operador
+              troca de tarefa. Sem recorte (`situacao`): a carteira inteira. */}
+          {google && (
+            <FaixaEconomica
+              inventario={inventario.inventario}
+              carregando={inventario.carregando}
+            />
+          )}
 
           {/* Rede define o ECOSSISTEMA — some quando não há segunda rede a
               escolher, e nunca ganha uma faixa própria de largura inteira. */}

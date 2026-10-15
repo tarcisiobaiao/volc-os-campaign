@@ -13,6 +13,7 @@ import React from 'react';
 import { RefreshCw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { SeloDeProposta } from '@/components/sistema/SeloDeProposta';
 import { cn } from '@/lib/utils';
 import { horaExata } from '@/components/trafego/inventario/formato';
 import { ROTULO_DO_TIPO } from '@/lib/trafego/gestao/acoes';
@@ -23,6 +24,7 @@ import {
   ESTADO_LEGIVEL,
   confereLegivel,
   ofertaDaLinha,
+  seloDoLedger,
   type GestoDaFila,
   type Permissoes,
 } from '@/lib/trafego/gestao/fila';
@@ -147,6 +149,7 @@ export const LinhaDaFila: React.FC<{
   };
 
   const idBase = `fila-${p.proposta_id}`;
+  const selo = seloDoLedger(p);
 
   return (
     <li className="border-b border-border py-3" aria-labelledby={`${idBase}-titulo`}>
@@ -155,18 +158,27 @@ export const LinhaDaFila: React.FC<{
           {rotulo}
           <span className="ml-2 text-[11px] font-normal text-muted-foreground">{p.alvo_nivel}</span>
         </p>
-        <span className="text-[11px] font-medium" data-estado={p.estado}>
-          {ESTADO_LEGIVEL[p.estado] ?? p.estado}
-          {p.vencida && ' · vencida'}
-        </span>
+        {selo ? (
+          <SeloDeProposta estado={selo} className="text-[12px]" />
+        ) : (
+          <span className="text-[11px] font-medium" data-estado={p.estado}>
+            {ESTADO_LEGIVEL[p.estado] ?? p.estado}
+            {p.vencida && ' · vencida'}
+          </span>
+        )}
       </div>
       {p.explicacao && <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">“{p.explicacao}”</p>}
 
       <AntesDepois linhas={linhas} legenda={`o que muda se a proposta de ${rotulo} for aplicada`} />
       <p className="mt-1.5 text-[11px] text-muted-foreground">
         {p.delta_pct != null && <>variação {p.delta_pct.toLocaleString('pt-BR')}% · </>}
-        antes lido {horaExata(p.valor_atual_lido_em) ?? 'sem data'} · regra {p.regra_chave ?? '—'}
-        {p.regra_versao != null && ` v${p.regra_versao}`} · evidência {p.evidencia_suficiencia ?? 'não avaliada'}
+        antes lido {horaExata(p.valor_atual_lido_em) ?? 'sem data'} · regra{' '}
+        {/* O objetivo é a frase que o operador entende; a chave fica no title
+            para quem precisa achá-la no ledger. */}
+        <span title={p.regra_chave ? `${p.regra_chave}${p.regra_versao != null ? ` v${p.regra_versao}` : ''}` : undefined}>
+          {p.regra_objetivo ?? p.regra_chave ?? '—'}
+        </span>
+        {!p.regra_objetivo && p.regra_versao != null && ` v${p.regra_versao}`} · evidência {p.evidencia_suficiencia ?? 'não avaliada'}
         {p.expira_em && ` · vence ${horaExata(p.expira_em)}`}
       </p>
       {p.aprovacao_decisao && (
