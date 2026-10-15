@@ -142,6 +142,33 @@ def test_suite_v26_w15_passa_no_stub_fiel(base_schema_only, tmp_path):
     assert "aplicar não mexe em COMMENT, ACL nem dono" in saida, saida
     assert "rollback devolve COMMENT, ACL e dono de antes" in saida, saida
     if base == "producao":
-        assert "COMMENT | ACL | dono antes: <sem> | " in saida, saida
+        assert "COMMENT | ACL | dono antes: <sem COMMENT> | " in saida, saida
         assert "aplicada no container" not in saida, saida
     assert int(m.group(1)) == 42, saida
+
+
+def test_leituras_da_suite_falham_com_erro_ou_acl_nula(base_schema_only, tmp_path):
+    # Antes, duas leituras com erro (ou com ACL nula) davam a mesma string e a
+    # igualdade passava. Agora toda leitura inválida faz a comparação FALHAR.
+    base, dsn = base_schema_only
+    if base == "producao":
+        # ACL nula na view (o padrão do dono, sem entradas explícitas)
+        p = _psql(dsn, "-c", "UPDATE pg_class SET relacl = NULL "
+                             "WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass")
+        assert p.returncode == 0, p.stderr
+    # na base so_cofre a view nem existe: as leituras dão erro do psql
+    corpo = (
+        f'RAIZ="{RAIZ}"; RECIBOS="{tmp_path / "recibos"}"; W15_SO_FUNCOES=1\n'
+        f'source "{SUITE}"\n'
+        'a=$(w15_fp); b=$(w15_fp); m=$(w15_meta)\n'
+        'echo "fp=$a"; echo "meta=$m"\n'
+        'w15_igual "$a" "$b" "fp igual a si mesmo"\n'
+        'w15_igual "$m" "$m" "meta igual a si mesma"\n'
+        'echo "ok=$OKS falhou=$NAOS"\n'
+    )
+    p = _rodar_stub(corpo, dsn, tmp_path)
+    saida = p.stdout + p.stderr
+    assert "fp=INVALIDO[" in saida and "meta=INVALIDO[" in saida, saida
+    assert "FALHOU fp igual a si mesmo (leitura inválida" in saida, saida
+    assert "FALHOU meta igual a si mesma (leitura inválida" in saida, saida
+    assert p.stdout.strip().endswith("ok=0 falhou=2"), saida

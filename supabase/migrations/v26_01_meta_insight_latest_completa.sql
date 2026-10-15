@@ -1,9 +1,17 @@
 -- =============================================================================
 -- v26_01 — Meta: a projecao corrente do insight prefere a revisao COMPLETA (W15)
 -- =============================================================================
--- ⚠️ MIGRATION CANDIDATA. NAO APLICADA. Provada so em PostgreSQL 16 descartavel
---    (backend/tests/test_meta_v26_01_latest_completa.py) e pela suite
---    tools/freedom-lab/db/suites/v26_w15.sh, que roda no lab.sh do Mac.
+-- ⚠️ MIGRATION CANDIDATA. NAO APLICADA EM PRODUCAO. Provas:
+--    - lab.sh recriar-prod no Mac (dump schema-only do Supabase oficial), com
+--      a suite tools/freedom-lab/db/suites/v26_w15.sh: 42/42 em 2448627;
+--    - testes hermeticos backend/tests/test_meta_v26_01_latest_completa.py e
+--      backend/tests/test_meta_v26_w15_suite_lab.py, em PostgreSQL descartavel.
+--    Na base de producao a view ja existe (dono postgres, sem COMMENT).
+--
+-- LOCK: CREATE OR REPLACE VIEW pede AccessExclusiveLock na view. Com
+--   lock_timeout = 5s, uma leitura longa em curso faz a migration FALHAR (e o
+--   BEGIN/COMMIT desfaz tudo) em vez de enfileirar todas as leituras seguintes
+--   atras dela. Basta rodar de novo.
 --
 -- DEPENDE DE (nesta ordem): v13_01 → v15_01 → v15_02 →
 --   20260907210000_meta_read_model_consistency.sql (cria a view) →
@@ -40,6 +48,9 @@
 \set ON_ERROR_STOP on
 
 BEGIN;
+
+-- Nao enfileira leitores atras de um AccessExclusiveLock: falha e desfaz.
+SET LOCAL lock_timeout = '5s';
 
 DO $guarda$
 DECLARE

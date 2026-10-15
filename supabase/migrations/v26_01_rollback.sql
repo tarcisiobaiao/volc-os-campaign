@@ -10,10 +10,15 @@
 -- rollback devolve o estado exato de antes, com ou sem COMMENT: em producao a
 -- view nao tem COMMENT e o repositorio tem. A guarda recusa rodar se reloptions
 -- nao forem exatamente security_invoker=true, que o WITH reescreveria.
+-- lock_timeout = 5s, como na v26_01: com leitura longa em curso, falha e
+-- desfaz em vez de travar os leitores seguintes.
 -- =============================================================================
 \set ON_ERROR_STOP on
 
 BEGIN;
+
+-- Nao enfileira leitores atras de um AccessExclusiveLock: falha e desfaz.
+SET LOCAL lock_timeout = '5s';
 
 DO $guarda$
 BEGIN

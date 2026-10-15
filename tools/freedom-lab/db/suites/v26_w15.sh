@@ -13,12 +13,13 @@
 # Usa só o que o lab.sh dá: P (psql como postgres), PA (psql como
 # supabase_admin), ok / nao / eq, RAIZ, RECIBOS, MIGRATION, ROLLBACK.
 #
-# Base: o schema Meta NÃO está no Supabase oficial (SCHEMA-APPLY-RECEIPT de
-# 07/09). Por isso a suíte aplica, NO CONTAINER DESCARTÁVEL, a cadeia Meta do
-# repositório que faltar (v13_01 → v15_01 → v15_02 → 20260907210000 →
-# 20260908000000 → 20260908120000), cada arquivo só se o objeto-chave dele não
-# existir. Isso NÃO é ensaio da janela de produção do schema Meta; é o mínimo
-# para a v26_01 ter onde rodar.
+# Base: o recriar-prod parte de um dump schema-only do Supabase oficial. Na
+# prova de 2448627 no Mac, a view vw_trafego_meta_insight_latest JÁ estava
+# no dump (dono postgres, sem COMMENT); o recibo SCHEMA-APPLY de 07/09, que a
+# dava como ausente, está defasado. A suíte confere a cadeia Meta
+# (v13_01 → v15_01 → v15_02 → 20260907210000 → 20260908000000 →
+# 20260908120000) pelo objeto-chave de cada arquivo e só aplica, NO CONTAINER
+# DESCARTÁVEL, o que faltar. Numa base que já tem tudo, nada é aplicado.
 #
 # Prova, sobre v26_01_meta_insight_latest_completa.sql e v26_01_rollback.sql:
 #   1. antes: o defeito medido (a incompleta mais nova vence a completa)
@@ -27,6 +28,11 @@
 #   3. security_invoker preservado; anon/authenticated sem SELECT; service_role só SELECT
 #   4. reaplicar por cima é recusado sem mudar o fingerprint
 #   5. rollback devolve o fingerprint de antes; é idempotente; reaplicar é idêntico
+#   6. COMMENT (ou a falta dele), ACL e dono sobrevivem a aplicar e a reverter
+#
+# As leituras de fingerprint e de COMMENT/ACL/dono são fail-closed: erro do
+# psql, saída vazia ou ACL nula viram leitura INVÁLIDA, e comparar uma leitura
+# inválida sempre FALHA (duas falhas iguais não passam por igualdade).
 #
 # Referência: o dump é schema-only, então cofre_gaveta e cofre_tipo chegam
 # vazias. A suíte semeia via PA só a gaveta paid_media e o tipo
@@ -55,21 +61,35 @@ W15_ATIVO="meta_account_metaacct_w15lab"
 w15_sql() { P -Atc "$1" < /dev/null 2>&1 | head -1; }
 w15_aplicar()  { PA -v ON_ERROR_STOP=1 -f - < "$W15_APLICAR"  > "$RECIBOS/w15-$1.out" 2>&1; }
 w15_reverter() { PA -v ON_ERROR_STOP=1 -f - < "$W15_REVERTER" > "$RECIBOS/w15-$1.out" 2>&1; }
+# Fingerprint da view: definição, reloptions, ACL, COMMENT e colunas. Com ACL
+# nula o SELECT devolve NULL (saída vazia), que w15_fp marca como inválida.
 w15_fp() {
-  w15_sql "SELECT md5(concat_ws('|',
-    pg_get_viewdef('public.vw_trafego_meta_insight_latest'::regclass, true),
-    (SELECT array_to_string(reloptions, ',') FROM pg_class WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass),
-    (SELECT array_to_string(relacl, ',') FROM pg_class WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass),
-    obj_description('public.vw_trafego_meta_insight_latest'::regclass, 'pg_class'),
-    (SELECT string_agg(attname || ':' || format_type(atttypid, atttypmod), ',' ORDER BY attnum)
-       FROM pg_attribute WHERE attrelid = 'public.vw_trafego_meta_insight_latest'::regclass AND attnum > 0)))"
+  local v
+  v=$(w15_sql "SELECT CASE WHEN c.relacl IS NULL THEN NULL ELSE md5(concat_ws('|',
+      pg_get_viewdef(c.oid, true),
+      coalesce(array_to_string(c.reloptions, ','), '<sem reloptions>'),
+      array_to_string(c.relacl, ','),
+      coalesce(obj_description(c.oid, 'pg_class'), '<sem COMMENT>'),
+      (SELECT string_agg(attname || ':' || format_type(atttypid, atttypmod), ',' ORDER BY attnum)
+         FROM pg_attribute WHERE attrelid = c.oid AND attnum > 0))) END
+    FROM pg_class c WHERE c.oid = 'public.vw_trafego_meta_insight_latest'::regclass")
+  if [[ "$v" =~ ^[0-9a-f]{32}$ ]]; then echo "$v"; else echo "INVALIDO[${v:-vazio ou ACL nula}]"; fi
 }
 # COMMENT (ou a falta dele), ACL e dono. A v26_01 e o rollback só trocam a
 # definição; em produção a view não tem COMMENT, e isso tem de sobreviver.
 w15_meta() {
-  w15_sql "SELECT coalesce(obj_description('public.vw_trafego_meta_insight_latest'::regclass, 'pg_class'), '<sem>')
-    || ' | ' || coalesce(array_to_string(relacl, ','), '<padrão>') || ' | ' || pg_get_userbyid(relowner)
-    FROM pg_class WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass"
+  local v
+  v=$(w15_sql "SELECT 'meta=' || coalesce(obj_description(oid, 'pg_class'), '<sem COMMENT>')
+      || ' | ' || array_to_string(relacl, ',') || ' | ' || pg_get_userbyid(relowner)
+    FROM pg_class WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass")
+  if [[ "$v" == meta=* ]]; then echo "${v#meta=}"; else echo "INVALIDO[${v:-vazio ou ACL nula}]"; fi
+}
+# Igualdade que FALHA se qualquer lado for leitura inválida.
+w15_igual() {  # $1 obtido  $2 esperado  $3 rótulo
+  case "$1$2" in
+    *INVALIDO\[*) nao "$3 (leitura inválida: obtido=$1 | esperado=$2)"; return 1 ;;
+  esac
+  eq "$1" "$2" "$3"
 }
 W15_CORRENTE="SELECT string_agg(objeto_externo || '=' || meta_insight_daily_id || ':' || completo, ',' ORDER BY objeto_externo)
   FROM public.vw_trafego_meta_insight_latest WHERE ad_account_ativo_id = '$W15_ATIVO'"
@@ -163,6 +183,9 @@ w15-d3 1004 2026-10-15T11:30:00Z 11.00 true"
   local fp_antes fp_depois meta_antes
   fp_antes=$(w15_fp)
   meta_antes=$(w15_meta)
+  case "$fp_antes$meta_antes" in
+    *INVALIDO\[*) nao "v26 · leitura de antes inválida (fp=$fp_antes | meta=$meta_antes)"; return 1 ;;
+  esac
   echo "  ·    COMMENT | ACL | dono antes: $meta_antes"
   eq "$(w15_sql "$W15_CORRENTE")" "$W15_ESPERADO_ANTES" "v26 · antes: a incompleta mais nova vencia a completa (o defeito)"
 
@@ -170,7 +193,7 @@ w15-d3 1004 2026-10-15T11:30:00Z 11.00 true"
   w15_aplicar aplicar && ok "v26 · v26_01 aplicou" || { nao "v26 · aplicar ($(tail -1 "$RECIBOS/w15-aplicar.out"))"; return 1; }
   eq "$(w15_sql "$W15_CORRENTE")" "$W15_ESPERADO_DEPOIS" \
      "v26 · completa mais recente vence; sem completa, a incompleta mais recente com completo=false"
-  eq "$(w15_meta)" "$meta_antes" "v26 · aplicar não mexe em COMMENT, ACL nem dono"
+  w15_igual "$(w15_meta)" "$meta_antes" "v26 · aplicar não mexe em COMMENT, ACL nem dono"
   eq "$(w15_sql "select count(*) from public.vw_trafego_meta_insight_latest where ad_account_ativo_id = '$W15_ATIVO'")" "4" \
      "v26 · uma linha por grão"
   eq "$(w15_sql "select to_regclass('public.vw_trafego_meta_financeiro_conjunto_dia') is not null and to_regclass('public.vw_trafego_meta_financeiro_campanha_dia') is not null")" "t" \
@@ -184,18 +207,22 @@ w15-d3 1004 2026-10-15T11:30:00Z 11.00 true"
 
   echo "▶ v26 · por cima, rollback, reaplicar"
   fp_depois=$(w15_fp)
+  case "$fp_depois" in
+    INVALIDO\[*) nao "v26 · fingerprint depois de aplicar inválido ($fp_depois)"; return 1 ;;
+  esac
   w15_aplicar por-cima && nao "v26 · reaplicar por cima passou" || \
     { grep -q 'ja parece aplicada' "$RECIBOS/w15-por-cima.out" && ok "v26 · reaplicar por cima recusado pela guarda" || nao "v26 · por cima falhou por outro motivo"; }
-  eq "$(w15_fp)" "$fp_depois" "v26 · a recusa não mudou nada"
+  w15_igual "$(w15_fp)" "$fp_depois" "v26 · a recusa não mudou nada"
   w15_reverter reverter && ok "v26 · rollback aplicou" || nao "v26 · rollback ($(tail -1 "$RECIBOS/w15-reverter.out"))"
-  eq "$(w15_fp)" "$fp_antes" "v26 · rollback devolve o fingerprint de antes"
-  eq "$(w15_meta)" "$meta_antes" "v26 · rollback devolve COMMENT, ACL e dono de antes"
+  w15_igual "$(w15_fp)" "$fp_antes" "v26 · rollback devolve o fingerprint de antes"
+  w15_igual "$(w15_meta)" "$meta_antes" "v26 · rollback devolve COMMENT, ACL e dono de antes"
   eq "$(w15_sql "$W15_CORRENTE")" "$W15_ESPERADO_ANTES" "v26 · rollback devolve a ordem antiga"
   w15_reverter reverter-2 && ok "v26 · rollback idempotente" || nao "v26 · rollback 2 ($(tail -1 "$RECIBOS/w15-reverter-2.out"))"
-  eq "$(w15_fp)" "$fp_antes" "v26 · fingerprint estável no 2º rollback"
+  w15_igual "$(w15_fp)" "$fp_antes" "v26 · fingerprint estável no 2º rollback"
   w15_aplicar reaplicar && ok "v26 · reaplicou" || nao "v26 · reaplicar ($(tail -1 "$RECIBOS/w15-reaplicar.out"))"
-  eq "$(w15_fp)" "$fp_depois" "v26 · reaplicar dá o fingerprint da 1ª aplicação"
+  w15_igual "$(w15_fp)" "$fp_depois" "v26 · reaplicar dá o fingerprint da 1ª aplicação"
   [ "$fp_antes" != "$fp_depois" ] && ok "v26 · fingerprint muda com a migration" || nao "v26 · fingerprint não mudou"
 }
 
-w15_suite
+# W15_SO_FUNCOES=1 só define as funções (usado pelo teste das leituras fail-closed).
+[ "${W15_SO_FUNCOES:-0}" = "1" ] || w15_suite

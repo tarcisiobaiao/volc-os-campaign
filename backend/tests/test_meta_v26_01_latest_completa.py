@@ -12,6 +12,8 @@ Dados 100% sintéticos (conta `9990001`, ativo `meta_account_metaacct_w15lab`).
 from __future__ import annotations
 
 import os
+import re
+import time
 import shutil
 import subprocess
 import uuid
@@ -94,13 +96,16 @@ FATOS = [
 CORRENTE = """SELECT string_agg(objeto_externo || '=' || meta_insight_daily_id || ':' || completo, ',' ORDER BY objeto_externo)
   FROM public.vw_trafego_meta_insight_latest WHERE ad_account_ativo_id = '""" + ATIVO + "'"
 
-FINGERPRINT = """SELECT md5(concat_ws('|',
-  pg_get_viewdef('public.vw_trafego_meta_insight_latest'::regclass, true),
-  (SELECT array_to_string(reloptions, ',') FROM pg_class WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass),
-  (SELECT array_to_string(relacl, ',') FROM pg_class WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass),
-  obj_description('public.vw_trafego_meta_insight_latest'::regclass, 'pg_class'),
+# Fail-closed: ACL nula vira NULL (leitura vazia) e Banco.fp() recusa; COMMENT
+# nulo é marcado, não some do concat_ws.
+FINGERPRINT = """SELECT CASE WHEN c.relacl IS NULL THEN NULL ELSE md5(concat_ws('|',
+  pg_get_viewdef(c.oid, true),
+  coalesce(array_to_string(c.reloptions, ','), '<sem reloptions>'),
+  array_to_string(c.relacl, ','),
+  coalesce(obj_description(c.oid, 'pg_class'), '<sem COMMENT>'),
   (SELECT string_agg(attname || ':' || format_type(atttypid, atttypmod), ',' ORDER BY attnum)
-     FROM pg_attribute WHERE attrelid = 'public.vw_trafego_meta_insight_latest'::regclass AND attnum > 0)))"""
+     FROM pg_attribute WHERE attrelid = c.oid AND attnum > 0))) END
+  FROM pg_class c WHERE c.oid = 'public.vw_trafego_meta_insight_latest'::regclass"""
 
 
 class Banco:
@@ -120,6 +125,16 @@ class Banco:
     def inserir(self, insert: str) -> int:
         """Roda um INSERT (sem ';') e devolve quantas linhas entraram."""
         return int(self.valor(f"WITH w15_ins AS ({insert} RETURNING 1) SELECT count(*) FROM w15_ins"))
+
+    def fp(self) -> str:
+        v = self.valor(FINGERPRINT)
+        assert re.fullmatch(r"[0-9a-f]{32}", v), f"fingerprint invalido (erro ou ACL nula): {v!r}"
+        return v
+
+    def meta(self) -> str:
+        v = self.valor(COMMENT_E_ACL)
+        assert v, "COMMENT/ACL/dono invalido (ACL nula)"
+        return v
 
     def valor(self, sql: str, **kw) -> str:
         p = self.run(sql, **kw)
@@ -143,7 +158,7 @@ ESTADOS = {
     ),
 }
 
-COMMENT_E_ACL = """SELECT coalesce(obj_description('public.vw_trafego_meta_insight_latest'::regclass, 'pg_class'), '<sem>')
+COMMENT_E_ACL = """SELECT coalesce(obj_description('public.vw_trafego_meta_insight_latest'::regclass, 'pg_class'), '<sem COMMENT>')
   || ' | ' || array_to_string(relacl, ',') || ' | ' || pg_get_userbyid(relowner)
   FROM pg_class WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass"""
 
@@ -194,10 +209,10 @@ def banco(request):
 
 def test_ciclo_completo_da_v26_01(banco):
     # ── antes: o defeito, medido ────────────────────────────────────────────
-    fp_antes = banco.valor(FINGERPRINT)
-    meta_antes = banco.valor(COMMENT_E_ACL)
+    fp_antes = banco.fp()
+    meta_antes = banco.meta()
     if banco.estado != "repositorio":
-        assert meta_antes.startswith("<sem> | "), meta_antes
+        assert meta_antes.startswith("<sem COMMENT> | "), meta_antes
     assert banco.valor(CORRENTE) == (
         "1001=w15-a2:false,1002=w15-b2:true,1003=w15-c2:false,1004=w15-d3:true")
 
@@ -207,7 +222,7 @@ def test_ciclo_completo_da_v26_01(banco):
     assert banco.valor(CORRENTE) == (
         "1001=w15-a1:true,1002=w15-b2:true,1003=w15-c2:false,1004=w15-d3:true")
     # só a definição muda: COMMENT, grants e dono ficam exatamente como estavam
-    assert banco.valor(COMMENT_E_ACL) == meta_antes
+    assert banco.meta() == meta_antes
     # uma linha por grão, nunca duas
     assert banco.valor(f"SELECT count(*) FROM public.vw_trafego_meta_insight_latest "
                        f"WHERE ad_account_ativo_id = '{ATIVO}'") == "4"
@@ -230,25 +245,25 @@ def test_ciclo_completo_da_v26_01(banco):
                        "'public.vw_trafego_meta_insight_latest', 'INSERT')") == "f"
 
     # ── reaplicar por cima é recusado, e a recusa não muda nada ─────────────
-    fp_depois = banco.valor(FINGERPRINT)
+    fp_depois = banco.fp()
     p = banco.run(arquivo=APLICAR)
     assert p.returncode != 0 and "ja parece aplicada" in p.stderr
-    assert banco.valor(FINGERPRINT) == fp_depois
+    assert banco.fp() == fp_depois
 
     # ── reverter devolve exatamente o antes, e é idempotente ────────────────
     p = banco.run(arquivo=REVERTER)
     assert p.returncode == 0, p.stderr
-    assert banco.valor(FINGERPRINT) == fp_antes
-    assert banco.valor(COMMENT_E_ACL) == meta_antes
+    assert banco.fp() == fp_antes
+    assert banco.meta() == meta_antes
     assert banco.valor(CORRENTE).startswith("1001=w15-a2:false")
     p = banco.run(arquivo=REVERTER)
     assert p.returncode == 0, p.stderr
-    assert banco.valor(FINGERPRINT) == fp_antes
+    assert banco.fp() == fp_antes
 
     # ── reaplicar depois do rollback dá o mesmo estado de antes ─────────────
     p = banco.run(arquivo=APLICAR)
     assert p.returncode == 0, p.stderr
-    assert banco.valor(FINGERPRINT) == fp_depois
+    assert banco.fp() == fp_depois
     assert banco.valor(CORRENTE) == (
         "1001=w15-a1:true,1002=w15-b2:true,1003=w15-c2:false,1004=w15-d3:true")
 
@@ -267,11 +282,58 @@ def test_reloptions_diferentes_sao_recusadas_sem_mudar_nada(banco):
     p = banco.run("ALTER VIEW public.vw_trafego_meta_insight_latest SET (security_barrier = true);")
     assert p.returncode == 0, p.stderr
     try:
-        fp = banco.valor(FINGERPRINT)
+        fp = banco.fp()
         for arquivo in (APLICAR, REVERTER):
             p = banco.run(arquivo=arquivo)
             assert p.returncode != 0 and "reloptions da view nao sao exatamente" in p.stderr, arquivo
-            assert banco.valor(FINGERPRINT) == fp
+            assert banco.fp() == fp
     finally:
         p = banco.run("ALTER VIEW public.vw_trafego_meta_insight_latest RESET (security_barrier);")
         assert p.returncode == 0, p.stderr
+
+
+def test_lock_timeout_falha_e_desfaz_em_vez_de_esperar(banco):
+    # Uma leitura longa segura AccessShareLock na view. O CREATE OR REPLACE
+    # pede AccessExclusiveLock: com lock_timeout = 5s a migration e o rollback
+    # falham, desfazem e não mudam nada, em vez de esperar indefinidamente.
+    # Parte da view revertida, para a guarda da v26_01 deixar chegar ao lock.
+    p = banco.run(arquivo=REVERTER)
+    assert p.returncode == 0, p.stderr
+    fp = banco.fp()
+    leitor = subprocess.Popen(
+        ["psql", banco.dsn, "-X", "-q", "-v", "ON_ERROR_STOP=1"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        leitor.stdin.write("BEGIN; SELECT count(*) FROM public.vw_trafego_meta_insight_latest; "
+                           "SELECT pg_sleep(60);\n")
+        leitor.stdin.flush()
+        for _ in range(50):
+            if banco.valor("SELECT count(*) FROM pg_locks l JOIN pg_class c ON c.oid = l.relation "
+                           "WHERE c.relname = 'vw_trafego_meta_insight_latest' AND l.granted "
+                           "AND l.pid <> pg_backend_pid()") != "0":
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("o leitor não chegou a segurar a view")
+        for arquivo in (APLICAR, REVERTER):
+            t0 = time.monotonic()
+            try:
+                p = subprocess.run(["psql", banco.dsn, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-At",
+                                    "-f", str(arquivo)], capture_output=True, text=True, timeout=30)
+            except subprocess.TimeoutExpired:
+                pytest.fail(f"{arquivo.name} esperou o lock por 30s: sem lock_timeout")
+            gasto = time.monotonic() - t0
+            assert p.returncode != 0 and "lock timeout" in p.stderr, (arquivo, p.stderr)
+            assert 4 <= gasto < 30, (arquivo, gasto)
+            assert banco.fp() == fp
+    finally:
+        # matar o psql não encerra o backend parado em pg_sleep: termina-o
+        banco.valor("SELECT count(pg_terminate_backend(l.pid)) FROM pg_locks l "
+                    "JOIN pg_class c ON c.oid = l.relation "
+                    "WHERE c.relname = 'vw_trafego_meta_insight_latest' AND l.pid <> pg_backend_pid()")
+        leitor.kill()
+        leitor.wait()
+    # sem o leitor, as duas voltam a passar
+    p = banco.run(arquivo=APLICAR)
+    assert p.returncode == 0, p.stderr
+    assert banco.fp() != fp
