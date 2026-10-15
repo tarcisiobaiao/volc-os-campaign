@@ -1,0 +1,11 @@
+[Unit]
+Description=VOLC recoleta Google Ads — N dias fechados antes do D-1, 07:15 em São Paulo
+
+[Timer]
+OnCalendar=*-*-* 07:15:00 America/Sao_Paulo
+RandomizedDelaySec=3m
+Persistent=true
+Unit=volc-gads-coleta@recoleta.service
+
+[Install]
+WantedBy=timers.target
