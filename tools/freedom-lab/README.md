@@ -53,15 +53,18 @@ tools/freedom-lab/lab.sh criar | semear | migrar | testar | destruir | status
   série v8–v17 e aplicaria os rollbacks timestampados para frente.
 - Base "do zero" = imagem + semente. Base "estado de produção" = `lab.sh base-prod`
   com `LAB_DUMP` (dump `--schema-only` de produção, fora do repo, sem COPY/INSERT) e
-  `LAB_DUMP_SHA256`: tira o default ACL da imagem, cria os pré-requisitos
+  `LAB_DUMP_SHA256`; o dump passa por `db/verificar_dump_schema.py` (recusa COPY/\copy, INSERT, DO, setval, large object e TOC de dado no nível de comando, aceitando INSERT dentro de corpo de função) e os blocos ficam em `mktemp` fora do repo, apagados no fim. Tira o default ACL da imagem, cria os pré-requisitos
   (`db/base_prod_prereqs.sql`) e restaura como `supabase_admin` em blocos
   (`db/restaurar_em_blocos.py`). Com o dump de 15/10, 8 de 11 categorias do
   fingerprint batem com produção por md5; constraints, policies e grants batem em
-  contagem (o md5 difere por deparse/grantor). `recriar-prod` faz o ciclo inteiro.
+  contagem (o md5 difere por deparse/grantor; recibo em `recibos/20261015/fingerprint-producao-vs-base.json`). `recriar-prod` faz o ciclo inteiro.
 - `criar` só devolve depois do init da imagem (auth.uid criado, postgres rebaixado).
 - `PA` executa como `supabase_admin` (migrations de users e default ACL).
 - `MIGRATION_SUITE=<arquivo>` troca a suíte do `testar` (padrão
-  `db/suites/v18_01.sh`); `estado <papel> <sql> [claims]` exercita policy por JWT.
+  `db/suites/v18_01.sh`). Só suíte de `db/suites/` commitada e sem alteração local
+  dá ao recibo `producao_acessada: false`; outra exige `LAB_SUITE_LIVRE=1` e o recibo
+  diz `nao_garantido`. `LAB_SEMENTE` passa pelo mesmo gate anti-PII da semente
+  sintética e tem o hash registrado; `estado <papel> <sql> [claims]` exercita policy por JWT.
 - Não criar outro laboratório Postgres em `scripts/`: suítes novas entram em
   `db/suites/` e usam este ciclo de vida.
 

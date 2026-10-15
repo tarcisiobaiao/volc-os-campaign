@@ -35,6 +35,7 @@ SONDA="$AQUI/db/sonda_acesso.sql"
 FP="$AQUI/db/fingerprint_schema.sql"
 RECIBOS="${RECIBOS:-$AQUI/runs/$(date +%Y%m%d-%H%M%S)}"
 SUITE="${MIGRATION_SUITE:-$AQUI/db/suites/v18_01.sh}"
+SUITE_GARANTIDA="nao"
 PREREQS_PROD="$AQUI/db/base_prod_prereqs.sql"
 
 # Toda execução de SQL exige o container do LAB (nome + rótulo) e sem rede:
@@ -83,17 +84,27 @@ destruir() {
   if existe; then docker rm -f "$NOME" >/dev/null && echo "▶ destruído $NOME"; else echo "nada a destruir"; fi
 }
 
+gate_semente() {
+  if grep -nEi '@agenciavolc|eyJ[A-Za-z0-9_-]{10,}\.|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2}|[0-9]{2}\.[0-9]{3}\.[0-9]{3}/[0-9]{4}-[0-9]{2}|@(gmail|hotmail|outlook|yahoo|uol|bol|icloud)\.' "$1" >/dev/null; then
+    echo "ERRO: semente $(basename "$1") contém material proibido; nada aplicado" >&2; return 1; fi
+}
 semear() {
   exigir_lab || return $?
-  if grep -nEi '@agenciavolc|eyJ[A-Za-z0-9_-]{10,}\.|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2}|[0-9]{2}\.[0-9]{3}\.[0-9]{3}/[0-9]{4}-[0-9]{2}|@(gmail|hotmail|outlook)\.' "$SEMENTE"; then
-    echo "ERRO: semente contém material proibido; nada aplicado"; return 1; fi
+  gate_semente "$SEMENTE" || return 1
   P -f - < "$SEMENTE" >/dev/null && echo "▶ semente sintética aplicada (sha256 $(sha "$SEMENTE"))"
+}
+semear_prod() {  # LAB_SEMENTE sobre a base de produção, como supabase_admin, pelo mesmo gate
+  exigir_lab || return $?
+  gate_semente "$LAB_SEMENTE" || return 1
+  PA -f - < "$LAB_SEMENTE" >/dev/null && export SEMENTE_APLICADA_SHA="$(sha "$LAB_SEMENTE")" && \
+    echo "▶ semente $(basename "$LAB_SEMENTE") aplicada (sha256 $SEMENTE_APLICADA_SHA)"
 }
 
 
 # estado <papel> <sql> [claims-json] → SQLSTATE do 1º erro, ou ok:<1ª linha>; sempre em ROLLBACK.
 # Com claims, define request.jwt.claims como o PostgREST faz, para exercitar policy por auth.uid().
 estado() {
+  exigir_lab >/dev/null 2>&1 || { echo "ERRO_HARNESS_LAB"; return; }
   local out st claims=""
   [ -n "${3:-}" ] && claims="SET LOCAL request.jwt.claims = '$3';"
   out=$(printf '\\set VERBOSITY verbose\nBEGIN; SET LOCAL ROLE %s; %s %s; ROLLBACK;\n' "$1" "$claims" "$2" \
@@ -106,6 +117,7 @@ estado() {
 # de papéis novos, e um SET ROLE negado devolveria 42501 pelo motivo errado. O pg_hba da
 # imagem confia em 127.0.0.1: prova a IDENTIDADE e a configuração, não a senha.
 login_como() {
+  exigir_lab >/dev/null 2>&1 || { echo "ERRO_HARNESS_LAB"; return; }
   local out st
   out=$(printf '\\set VERBOSITY verbose\n%s;\n' "$2" \
         | docker exec -i "$NOME" psql -h localhost -U "$1" -d postgres -X -A -t 2>&1)
@@ -116,18 +128,10 @@ login_como() {
 
 # base-prod: restaura o dump --schema-only de PRODUÇÃO (fora do repo, conferido por sha256)
 # sobre a imagem, para provar migration contra o estado imediatamente anterior real.
-base_prod() {
-  local dump="${LAB_DUMP:?defina LAB_DUMP (caminho do dump --schema-only, fora do repo)}"
-  local esperado="${LAB_DUMP_SHA256:?defina LAB_DUMP_SHA256}"
-  [ -f "$dump" ] && [ "$(sha "$dump")" = "$esperado" ] || { echo "ERRO: dump ausente ou sha256 divergente; nada restaurado" >&2; return 1; }
-  grep -qE '^(COPY|INSERT) ' "$dump" && { echo "ERRO: dump contém dado; só --schema-only; nada restaurado" >&2; return 1; }
-  exigir_lab || return $?
-  mkdir -p "$RECIBOS"
-  PA -f - < "$PREREQS_PROD" > "$RECIBOS/prereqs.log" 2>&1 || { tail -5 "$RECIBOS/prereqs.log"; return 1; }
-  local blocos="$RECIBOS/blocos"; rm -rf "$blocos"; mkdir -p "$blocos"
+restaurar_blocos() {
+  local dump="$1" blocos="$2" b
   python3 -I "$AQUI/db/restaurar_em_blocos.py" "$dump" "$blocos" >/dev/null || return 1
   : > "$RECIBOS/restore.log"
-  local b
   for b in "$blocos"/*.sql; do
     pronto || return 1
     if ! PA -f - < "$b" >> "$RECIBOS/restore.log" 2>&1; then
@@ -138,8 +142,26 @@ base_prod() {
       grep ERROR "$RECIBOS/refazer-$(basename "$b").log" | grep -v "already exists" | grep -q . && { echo "ERRO no bloco refeito"; return 1; }
     fi
   done
+  echo "$(ls "$blocos" | wc -l | tr -d ' ')" > "$RECIBOS/blocos.n"
+}
+
+base_prod() {
+  local dump="${LAB_DUMP:?defina LAB_DUMP (caminho do dump --schema-only, fora do repo)}"
+  local esperado="${LAB_DUMP_SHA256:?defina LAB_DUMP_SHA256}"
+  [ -f "$dump" ] && [ "$(sha "$dump")" = "$esperado" ] || { echo "ERRO: dump ausente ou sha256 divergente; nada restaurado" >&2; return 1; }
+  python3 -I "$AQUI/db/verificar_dump_schema.py" "$dump" || { echo "ERRO: dump contém dado; só --schema-only; nada restaurado" >&2; return 1; }
+  exigir_lab || return $?
+  mkdir -p "$RECIBOS"
+  PA -f - < "$PREREQS_PROD" > "$RECIBOS/prereqs.log" 2>&1 || { tail -5 "$RECIBOS/prereqs.log"; return 1; }
+  # Os blocos são cópia do schema de produção: ficam FORA do repo e somem no fim,
+  # inclusive quando o restore falha.
+  local blocos c; blocos="$(mktemp -d "${TMPDIR:-/tmp}/volc-lab-blocos.XXXXXX")"
+  restaurar_blocos "$dump" "$blocos"; c=$?
+  rm -rf "$blocos"
+  [ $c = 0 ] || return $c
   PA -c "create schema if not exists volc_lab; create table if not exists volc_lab.base(valor text); insert into volc_lab.base values ('prod-schema:$esperado')" >/dev/null
-  echo "▶ base de produção restaurada em $(ls "$blocos" | wc -l | tr -d ' ') blocos (dump sha256 $esperado)"
+  P -f - < "$FP" 2>/dev/null | grep '|' | tr -d ' ' > "$RECIBOS/fp-base-prod.txt"
+  echo "▶ base de produção restaurada em $(cat "$RECIBOS/blocos.n") blocos (dump sha256 $esperado); fingerprint em fp-base-prod.txt"
 }
 pronto() { local i; for i in $(seq 1 180); do P -c "select 1" >/dev/null 2>&1 && return 0; sleep 1; done; echo "ERRO: banco não voltou"; return 1; }
 
@@ -158,10 +180,25 @@ testar() {
   ok()  { T=$((T+1)); printf '  ✓ %s\n' "$1" | tee -a "$RECIBOS/provas.txt"; }
   nao() { T=$((T+1)); F=$((F+1)); printf '  ✗ %s\n' "$1" | tee -a "$RECIBOS/provas.txt"; }
   eq()  { [ "$1" = "$2" ] && ok "$3" || nao "$3 (esperado=$2 obtido=$1)"; }
-  echo "▶ suíte: $(basename "$SUITE")"
+  # A suíte entra por `source`: só vale garantia estrutural se for arquivo de db/suites/
+  # versionado e sem alteração local. Fora disso, só com LAB_SUITE_LIVRE=1, e o recibo
+  # deixa de afirmar que produção não foi acessada.
+  local suite_real; suite_real="$(cd "$(dirname "$SUITE")" && pwd)/$(basename "$SUITE")"
+  if [ "$(dirname "$suite_real")" = "$AQUI/db/suites" ] && git -C "$RAIZ" ls-files --error-unmatch "$suite_real" >/dev/null 2>&1 \
+     && git -C "$RAIZ" diff --quiet HEAD -- "$suite_real"; then
+    SUITE_GARANTIDA="sim"
+  elif [ "${LAB_SUITE_LIVRE:-0}" != 1 ]; then
+    echo "ERRO: suíte fora de db/suites/ ou não commitada; use LAB_SUITE_LIVRE=1 para rodar sem garantia" >&2; return 96
+  fi
+  local suite_sha; suite_sha="$(sha "$SUITE")"
+  echo "▶ suíte: $(basename "$SUITE") (sha256 $suite_sha, garantida=$SUITE_GARANTIDA)"
   # shellcheck source=/dev/null
   source "$SUITE"
   P -c "select arquivo, sha256, base, resultado from volc_lab.migracao_aplicada order by aplicada_em" > "$RECIBOS/ledger-lab.txt"
+  # Base explícita: a tabela volc_lab.base só existe depois de base-prod. A consulta não
+  # pode citá-la quando ela não existe (o planner resolve a relação mesmo no ramo morto).
+  local base_do_lab="imagem+semente"
+  [ "$(P -c "select to_regclass('volc_lab.base') is not null")" = "t" ] && base_do_lab="$(P -c "select valor from volc_lab.base limit 1")"
   {
     echo "{"
     echo "  \"imagem\": \"$IMAGEM\", \"versao\": \"$(P -c 'show server_version')\","
@@ -169,9 +206,11 @@ testar() {
     echo "  \"rollback\": \"$(basename "$ROLLBACK")\", \"rollback_sha256\": \"$(sha "$ROLLBACK")\","
     echo "  \"semente_sha256\": \"$(sha "$SEMENTE")\","
     echo "  \"harness_sha256\": {\"lab.sh\": \"$(sha "$0")\", \"sonda_acesso.sql\": \"$(sha "$SONDA")\", \"fingerprint_schema.sql\": \"$(sha "$FP")\"},"
-    echo "  \"suite\": \"$(basename "$SUITE")\", \"suite_sha256\": \"$(sha "$SUITE")\", \"base\": \"$(P -c "select coalesce((select valor from volc_lab.base limit 1),'imagem+semente')" 2>/dev/null)\","
+    echo "  \"suite\": \"${SUITE#$RAIZ/}\", \"suite_sha256\": \"$suite_sha\", \"suite_versionada\": \"$SUITE_GARANTIDA\","
+    echo "  \"base\": \"$base_do_lab\","
+    echo "  \"semente_aplicada_sha256\": \"${SEMENTE_APLICADA_SHA:-$(sha "$SEMENTE")}\","
     echo "  \"fingerprint_total_pos\": \"$(grep _TOTAL "$RECIBOS/fp-final.out" 2>/dev/null | tr -d ' ')\","
-    echo "  \"verificacoes\": $T, \"falhas\": $F, \"producao_acessada\": false, \"producao_acessada_motivo\": \"estrutural: este script não lê .env, não usa SSH e o container não tem rede\""
+    echo "  \"verificacoes\": $T, \"falhas\": $F, \"producao_acessada\": $( [ "$SUITE_GARANTIDA" = sim ] && echo false || echo '\"nao_garantido\"'), \"producao_acessada_motivo\": \"$( [ "$SUITE_GARANTIDA" = sim ] && echo 'estrutural: lab.sh não lê .env nem usa SSH, o container não tem rede e a suíte é versionada' || echo 'suíte livre carregada por source: o lab.sh não garante o que ela faz')\""
     echo "}"
   } > "$RECIBOS/recibo.json"
   echo; echo "recibo: $RECIBOS/recibo.json"
@@ -186,7 +225,7 @@ case "${1:-}" in
   testar) testar ;;
   base-prod) base_prod ;;
   recriar) destruir; criar && semear && testar; c=$?; [ "${MANTER:-0}" = 1 ] || destruir; exit $c ;;
-  recriar-prod) destruir; criar && base_prod && { [ -z "${LAB_SEMENTE:-}" ] || PA -f - < "$LAB_SEMENTE" >/dev/null; } && testar; c=$?; [ "${MANTER:-0}" = 1 ] || destruir; exit $c ;;
+  recriar-prod) destruir; criar && base_prod && { [ -z "${LAB_SEMENTE:-}" ] || semear_prod; } && testar; c=$?; [ "${MANTER:-0}" = 1 ] || destruir; exit $c ;;
   status) existe && docker ps -a --filter "name=^${NOME}$" --format '{{.Names}} {{.Status}} {{.Image}}' || echo "ausente" ;;
   *) sed -n 2,20p "$0"; exit 2 ;;
 esac
