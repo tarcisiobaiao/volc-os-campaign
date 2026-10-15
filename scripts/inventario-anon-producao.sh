@@ -17,6 +17,9 @@ set -euo pipefail
   echo "recusado: defina VOLC_AUTORIZA_LEITURA=inventario-anon-w4 (só com autorização do Tarcísio)"; exit 16; }
 OUT="${1:?uso: inventario-anon-producao.sh <dir-saida>}"; mkdir -p "$OUT"
 SSH=(ssh -i "$HOME/.ssh/volc_hetzner_claude_ed25519" -o BatchMode=yes -o ConnectTimeout=10 root@178.156.196.149)
+# Mascara qualquer coisa com cara de segredo antes de gravar (JWT, chaves longas).
+mascarar() { sed -E 's/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/<JWT-MASCARADO>/g;
+  s/((sk|pk|key|token|secret|senha|password)[-_A-Za-z0-9]*["'"'"' :=]+)[A-Za-z0-9_\/+=.-]{16,}/\1<SEGREDO-MASCARADO>/Ig'; }
 LEITURA="docker exec -i -e PGOPTIONS=-c\\ default_transaction_read_only=on supabase-db psql -U postgres -d postgres -X -q -A -F'|' -v ON_ERROR_STOP=1"
 
 echo "== 1. edge function volc-ingest: existe, verifica JWT, que chave e que tabelas usa" | tee "$OUT/01-volc-ingest.txt"
@@ -25,7 +28,7 @@ echo "== 1. edge function volc-ingest: existe, verifica JWT, que chave e que tab
   [ -d "$d" ] && { ls -la "$d"; sha256sum "$d"/*;
     grep -nE "SUPABASE_(ANON|SERVICE_ROLE)_KEY|Deno\.env\.get|createClient|\.from\(|\.rpc\(|/rest/v1|Authorization|apikey" "$d"/* ; } || echo "volc-ingest: diretório ausente";
   grep -oE "^(FUNCTIONS_VERIFY_JWT|VERIFY_JWT)=(true|false)" /root/supabase/docker/.env || echo "flag VERIFY_JWT não encontrada"' \
-  >> "$OUT/01-volc-ingest.txt" 2>&1
+  2>&1 | mascarar >> "$OUT/01-volc-ingest.txt"
 
 echo "== 2. GoTrue: cadastro público" | tee "$OUT/02-gotrue.txt"
 "${SSH[@]}" 'grep -oE "^(DISABLE_SIGNUP|ENABLE_EMAIL_SIGNUP|ENABLE_ANONYMOUS_USERS)=(true|false)" /root/supabase/docker/.env' >> "$OUT/02-gotrue.txt" 2>&1 || true
@@ -33,7 +36,7 @@ echo "== 2. GoTrue: cadastro público" | tee "$OUT/02-gotrue.txt"
 echo "== 3. Kong: chamadas aos alvos da anon nos últimos 14 dias (método, caminho, status, contagem)" | tee "$OUT/03-kong.txt"
 "${SSH[@]}" 'docker logs supabase-kong --since 336h 2>&1 \
   | grep -oE "\"(GET|POST|PATCH|DELETE) /(rest/v1/(site_visits|raw_events|niche_conversion_mappings|hourly_stats|fact_[a-z_]+)|functions/v1/volc-ingest)[^ ?\"]*[^\"]*\" [0-9]{3}" \
-  | sed -E "s/\?[^ ]*//" | sort | uniq -c | sort -rn | head -50' >> "$OUT/03-kong.txt" 2>&1 || true
+  | sed -E "s/\?[^ ]*//" | sort | uniq -c | sort -rn | head -50' 2>&1 | mascarar >> "$OUT/03-kong.txt" || true
 
 echo "== 4. Banco: atividade de escrita nas tabelas que a anon alcançava (só contagens e datas)" | tee "$OUT/04-banco.txt"
 "${SSH[@]}" "$LEITURA" >> "$OUT/04-banco.txt" 2>&1 <<'SQL' || true
