@@ -72,6 +72,19 @@ class EnvioDaCoorte:
 
 
 @dataclass(frozen=True)
+class DecisaoRegistrada:
+    """Uma decisão elegível como o BANCO a guardou: é contra ela que o corpo
+    de cada envio é conferido, item a item, antes de sair."""
+
+    transaction_id: str
+    valor_impressao: str
+    valor: Decimal
+    moeda: str
+    clique_sha256: str
+    ocorrido_em: str
+
+
+@dataclass(frozen=True)
 class LoteRegistrado:
     lote_id: int
     impressao: str
@@ -88,6 +101,11 @@ class RegistroDeConversoes(Protocol):
     def envios_reais_por_coorte(self, *, operating_account_id: str, product_destination_id: str,
                                 coortes: Sequence[Coorte]) -> Mapping[Coorte, EnvioDaCoorte]:
         """Só as coortes com algum envio real vivo aparecem."""
+
+    def decisoes_elegiveis(self, *, operating_account_id: str, product_destination_id: str,
+                           itens: Sequence[Tuple[str, str]]
+                           ) -> Mapping[Tuple[str, str], DecisaoRegistrada]:
+        """As decisões elegíveis persistidas, por (transaction_id, valor_impressao)."""
 
     def registrar_decisoes(self, *, rodada: str, customer_id: str,
                            operating_account_id: str, product_destination_id: str,

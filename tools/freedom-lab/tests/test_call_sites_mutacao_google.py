@@ -129,9 +129,10 @@ def primeira_instrucao_e_guarda(fonte: str, nome: str) -> bool:
             and isinstance(c.func.value, ast.Name) and c.func.value.id == "modo")
 
 
-def guarda_antes_do_verbo(fonte: str, nome: str, verbos: set[str]) -> bool:
+def guarda_antes_do_verbo(fonte: str, nome: str, verbos: set[str],
+                          guarda: str = "exigir_leitura_apenas") -> bool:
     fn = _funcao(fonte, nome)
-    guardas = [c.lineno for c in _chamadas(fn, "exigir_leitura_apenas")]
+    guardas = [c.lineno for c in _chamadas(fn, guarda)]
     usos = [n.lineno for n in ast.walk(fn) if isinstance(n, ast.Attribute) and n.attr in verbos]
     return bool(guardas) and bool(usos) and min(guardas) < min(usos)
 
@@ -155,7 +156,10 @@ def test_guardas_reais_pela_ast():
     assert guarda_antes_do_verbo(_ler("volc_ads/gestao/lote.py"), "enviar", {"mutate"})
     w14 = "backend/app/trafego/conversao_offline/application/enviar.py"
     assert validate_only_sempre_true(_ler(w14), "validar_no_google")
-    assert guarda_antes_do_verbo(_ler(w14), "enviar_de_verdade", {"ingerir"})
+    # W14 tem trava PRÓPRIA por chamada (chave.consumir), não a global do forge:
+    # aberta por outra requisição, a global liberaria o envio de conversões junto.
+    assert guarda_antes_do_verbo(_ler(w14), "enviar_de_verdade", {"ingerir"}, guarda="consumir")
+    assert "exigir_leitura_apenas" not in _ler(w14)
     assert guarda_antes_do_verbo(_ler("volc_ads/gestao/lote.py"), "aplicar_recomendacoes",
                                  {"apply_recommendation", "dismiss_recommendation"})
 

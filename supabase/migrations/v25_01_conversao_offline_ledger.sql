@@ -21,7 +21,7 @@
 --   3. envio real exige aprovação humana com a impressão EXATA do envelope,
 --      um validate_only ACEITO do mesmo envelope com os MESMOS itens, e uma
 --      decisão `elegivel` gravada com o mesmo valor para cada item;
---   3a. TETO DO RATEIO: num envio real, por coorte, a soma dos valores vivos
+--   3a. TETO DA COORTE (qualquer grão): num envio real, por coorte, a soma dos valores vivos
 --      (os já enviados + os do lote) não passa do teto da coorte gravado na
 --      proveniência, e o número de cliques não passa das sessões (23514);
 --   3b. lote real `sem_resposta` só sai pelo reenvio do MESMO envelope
@@ -87,12 +87,13 @@ CREATE TABLE public.conversao_offline_decisao (
       AND valor_impressao ~ '^[0-9a-f]{64}$' AND motivo IS NULL
       AND jsonb_typeof(proveniencia -> 'receita') = 'object'
       AND jsonb_typeof(proveniencia -> 'cambio') = 'object'
-      -- rateio declara as sessões e o teto que o banco confere no envio real
+      -- todo elegível declara o teto da coorte (a receita medida na moeda da
+      -- conta), em QUALQUER grão; o rateio declara também as sessões
+      AND (proveniencia ->> 'teto_da_coorte') ~ '^[0-9]+(\.[0-9]{1,2})?$'
+      AND valor <= (proveniencia ->> 'teto_da_coorte')::numeric
       AND (proveniencia ->> 'metodo' IS DISTINCT FROM 'rateio_uniforme_por_sessao' OR (
            jsonb_typeof(proveniencia -> 'sessoes_da_coorte') = 'number'
-           AND (proveniencia ->> 'sessoes_da_coorte') ~ '^[1-9][0-9]*$'
-           AND (proveniencia ->> 'teto_da_coorte') ~ '^[0-9]+(\.[0-9]{1,2})?$'
-           AND valor <= (proveniencia ->> 'teto_da_coorte')::numeric))), false)),
+           AND (proveniencia ->> 'sessoes_da_coorte') ~ '^[1-9][0-9]*$'))), false)),
   -- pulado: motivo nomeado e nenhum valor
   CONSTRAINT conversao_offline_decisao_pulado CHECK (estado <> 'pulado' OR (
       length(btrim(coalesce(motivo, ''))) > 0 AND length(btrim(coalesce(detalhe, ''))) > 0
@@ -307,18 +308,20 @@ BEGIN
         SELECT DISTINCT ON (i ->> 'transaction_id')
                d.coorte_data, d.coorte_campanha, d.coorte_dominio, d.valor,
                (d.proveniencia ->> 'teto_da_coorte')::numeric AS teto,
-               (d.proveniencia ->> 'sessoes_da_coorte')::integer AS sessoes
+               CASE WHEN d.proveniencia ->> 'metodo' = 'rateio_uniforme_por_sessao'
+                    THEN (d.proveniencia ->> 'sessoes_da_coorte')::integer END AS sessoes,
+               d.proveniencia ->> 'metodo' = 'rateio_uniforme_por_sessao' AS rateio
           FROM jsonb_array_elements(p -> 'itens') i
           JOIN public.conversao_offline_decisao d
             ON d.operating_account_id = p ->> 'operating_account_id'
            AND d.product_destination_id = p ->> 'product_destination_id'
            AND d.transaction_id = i ->> 'transaction_id'
            AND d.estado = 'elegivel' AND d.valor_impressao = i ->> 'valor_impressao'
-         WHERE d.proveniencia ->> 'metodo' = 'rateio_uniforme_por_sessao'
          ORDER BY i ->> 'transaction_id', d.id),
       por_coorte AS (
         SELECT coorte_data, coorte_campanha, coorte_dominio,
-               sum(valor) AS soma, count(*) AS n, min(teto) AS teto, min(sessoes) AS sessoes
+               sum(valor) AS soma, count(*) AS n, min(teto) AS teto, min(sessoes) AS sessoes,
+               bool_or(rateio) AS rateio
           FROM novos GROUP BY 1, 2, 3)
       SELECT 1 FROM por_coorte n
         LEFT JOIN public.conversao_offline_envio_por_coorte e
@@ -326,9 +329,9 @@ BEGIN
          AND e.product_destination_id = p ->> 'product_destination_id'
          AND (e.coorte_data, e.coorte_campanha, e.coorte_dominio)
              = (n.coorte_data, n.coorte_campanha, n.coorte_dominio)
-       WHERE n.teto IS NULL OR n.sessoes IS NULL
+       WHERE n.teto IS NULL OR (n.rateio AND n.sessoes IS NULL)
           OR n.soma + coalesce(e.soma_valor, 0) > n.teto
-          OR n.n + coalesce(e.itens_vivos, 0) > n.sessoes) THEN
+          OR (n.rateio AND n.n + coalesce(e.itens_vivos, 0) > n.sessoes)) THEN
       RAISE EXCEPTION 'abrir_lote: a soma enviada da coorte passaria da receita medida (teto ou sessões)'
         USING ERRCODE = '23514';
     END IF;

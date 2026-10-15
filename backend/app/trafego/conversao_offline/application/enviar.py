@@ -10,12 +10,16 @@ isso não é escrita, e o teste de congelamento confere pela AST que o literal �
 `enviar_de_verdade` existe para que o caminho seja encontrado com as suas
 condições, todas obrigatórias e nesta ordem:
 
-  1. a trava de dois fatores do forge (`modo.destravar(motivo)` no código E
-     `FORGE_PERMITIR_ESCRITA=1`), conferida ANTES de qualquer chamada;
+  1. a trava PRÓPRIA, por chamada (`trava.emitir_chave(impressao, motivo)` no
+     código E `VOLC_CONVERSOES_PERMITIR_ENVIO=1`), consumida ANTES de tudo. A
+     trava global do forge não serve: aberta por outra requisição, ela
+     liberaria este envio junto (revisão local, defeito 1);
   2. uma aprovação humana vinculada à impressão EXATA do envelope e que
      declara se o destino é primário (move o lance) ou não;
   3. um `validateOnly` aceito pelo Google para o MESMO envelope, registrado;
-  4. o lote real aberto `em_voo` no registro ANTES da chamada; o banco recusa
+  4. o corpo conferido item a item contra as decisões PERSISTIDAS (valor,
+     moeda, hora, clique): o que sai é o que o registro guardou;
+  5. o lote real aberto `em_voo` no registro ANTES da chamada; o banco recusa
      um segundo envio vivo do mesmo envelope ou transaction_id, itens
      diferentes dos validados e item sem decisão elegível com o mesmo valor.
 
@@ -33,12 +37,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Dict, List, Mapping
 
 from app.trafego import data_manager as dm
 
-from ..domain.evento import corpo_ingestao
-from . import portas
+from ..domain.evento import corpo_ingestao, sha256
+from . import portas, trava
 from .preparar import LotePreparado
 
 
@@ -56,6 +61,10 @@ class ValidacaoAusente(dm.FronteiraRecusou):
 
 class JaEnviado(dm.FronteiraRecusou):
     """O banco já tem um envio real vivo deste envelope ou destes transaction_ids."""
+
+
+class DivergenciaDoRegistro(dm.FronteiraRecusou):
+    """O corpo a enviar não é o que o registro guardou para estes itens."""
 
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -126,6 +135,62 @@ def _cliques(lote: LotePreparado) -> frozenset:
     return frozenset(e.clique.valor for e in lote.envelope.itens)
 
 
+def _instante(texto: Any) -> datetime:
+    t = datetime.fromisoformat(str(texto).replace("Z", "+00:00"))
+    if t.tzinfo is None:
+        raise DivergenciaDoRegistro(f"hora sem fuso: {texto!r}")
+    return t
+
+
+def _conferir_com_registro(corpo: Mapping[str, Any], lote: LotePreparado,
+                           registro: portas.RegistroDeConversoes) -> None:
+    """O corpo que vai sair, item a item, contra o que o banco guardou.
+
+    ⚠️ Não basta o envelope e os itens concordarem entre si: os dois vêm do
+    mesmo chamador. No teste da revisão local o registro guardou 16,23 e o
+    Google recebeu 1623. Aqui o valor, a moeda, a hora e o hash do clique de
+    cada evento são lidos do REGISTRO e comparados com o corpo final.
+    """
+    env = lote.envelope
+    itens = dict(lote.itens)
+    eventos = list(corpo.get("events") or ())
+    if len(itens) != len(lote.itens) or len(eventos) != len(itens):
+        raise DivergenciaDoRegistro(
+            f"o corpo tem {len(eventos)} evento(s) e o lote registra {len(lote.itens)} item(ns)")
+    (destino,) = corpo.get("destinations") or (None,)
+    if (destino is None
+            or str((destino.get("operatingAccount") or {}).get("accountId")) != str(env.destino.operating_account_id)
+            or str(destino.get("productDestinationId")) != str(env.destino.product_destination_id)):
+        raise DivergenciaDoRegistro("o destino do corpo não é o do lote registrado")
+    persistidas = registro.decisoes_elegiveis(
+        operating_account_id=str(env.destino.operating_account_id),
+        product_destination_id=str(env.destino.product_destination_id),
+        itens=list(lote.itens))
+    vistos: set = set()
+    for e in eventos:
+        tid = e.get("transactionId")
+        if tid not in itens or tid in vistos:
+            raise DivergenciaDoRegistro(f"evento {tid!r} fora do lote ou repetido")
+        vistos.add(tid)
+        d = persistidas.get((tid, itens[tid]))
+        if d is None:
+            raise DivergenciaDoRegistro(f"{tid} sem decisão elegível persistida com este valor")
+        bruto = e.get("conversionValue")
+        if isinstance(bruto, bool) or not isinstance(bruto, (int, float)):
+            raise DivergenciaDoRegistro(f"{tid}: conversionValue {bruto!r} não é número")
+        if Decimal(repr(bruto)) != d.valor:
+            raise DivergenciaDoRegistro(
+                f"{tid}: o corpo leva {bruto} e o registro guardou {d.valor} (valor ou unidade)")
+        if e.get("currency") != d.moeda:
+            raise DivergenciaDoRegistro(
+                f"{tid}: o corpo leva {e.get('currency')!r} e o registro guardou {d.moeda!r}")
+        ids = e.get("adIdentifiers") or {}
+        if len(ids) != 1 or sha256(str(next(iter(ids.values())))) != d.clique_sha256:
+            raise DivergenciaDoRegistro(f"{tid}: o clique do corpo não é o da decisão")
+        if _instante(e.get("eventTimestamp")) != _instante(d.ocorrido_em):
+            raise DivergenciaDoRegistro(f"{tid}: a hora do corpo não é a da decisão")
+
+
 def _abrir(registro: portas.RegistroDeConversoes, lote: LotePreparado, modo: str,
            **extra: Any) -> portas.LoteRegistrado:
     env = lote.envelope
@@ -170,6 +235,7 @@ def validar_no_google(*, lotes: List[LotePreparado],
                 f"o lote {lote.envelope.impressao()[:12]}… tem "
                 f"{lote.recibo_local.recusados} item(ns) recusado(s) localmente")
         corpo = corpo_ingestao(lote.envelope, validate_only=True)
+        _conferir_com_registro(corpo, lote, registro)
         aberto = _abrir(registro, lote, portas.MODO_VALIDATE_ONLY)
         if corpo.get("validateOnly") is not True:  # conferência em tempo de execução
             _fechar_por_excecao(registro, aberto, portas.NaoSaiu("corpo sem validateOnly"))
@@ -186,17 +252,16 @@ def validar_no_google(*, lotes: List[LotePreparado],
 
 
 def enviar_de_verdade(*, lote: LotePreparado,
+                      chave: trava.ChaveDeEnvioReal,
                       aprovacao: AprovacaoDeEnvio,
                       validacao_lote_id: int,
                       transporte: portas.TransporteDataManager,
                       registro: portas.RegistroDeConversoes) -> ResultadoDoLote:
     """O envio real de UM lote. Travado; nunca chamado por esta entrega."""
-    from volc_ads.gads import modo  # noqa: PLC0415 — o engine mora na raiz
-
     impressao = lote.envelope.impressao()
-    modo.exigir_leitura_apenas(
-        f"data_manager: ingestão real ({lote.envelope.customer_id}, "
-        f"{len(lote.itens)} eventos, {impressao[:12]}…)")
+    if not isinstance(chave, trava.ChaveDeEnvioReal):
+        raise trava.EnvioRealBloqueado("envio real sem chave própria")
+    chave.consumir(impressao)
 
     if aprovacao.impressao != impressao:
         raise AprovacaoInvalida(
@@ -217,6 +282,7 @@ def enviar_de_verdade(*, lote: LotePreparado,
             "valide primeiro e aprove a impressão validada")
 
     corpo = corpo_ingestao(lote.envelope, validate_only=False)
+    _conferir_com_registro(corpo, lote, registro)
     aberto = _abrir(registro, lote, portas.MODO_REAL, aprovacao=aprovacao.json(),
                     validacao_lote_id=validacao_lote_id)
     try:
