@@ -17,8 +17,16 @@
   ✓ âncora constante = fingerprint_depois do recibo
   ✓ v20_02 versionada (pré-v19) recusa
   ✓ …pela âncora 695e913a (no lab a base já difere de produção: prova não discriminante sozinha)
-  ✓ v20_02 pós-v19 aplica pelo protocolo
+  ✓ v20_02 pós-v19 aplica pelo protocolo, com o par de rollback
   ✓ ledger: v20_02 pós-v19, linha de base, os 5 eventos da v19 na ordem, v20_01
+  ✓ rollback pelo protocolo
+  ✓ ledger volta exatamente ao estado anterior (fora o próprio aplicar/reverter)
+  ✓ estado: v20_02 pós-v19 revertida
+  ✓ rollback do ledger não mexe no schema (a v19 continua aplicada)
+  ✓ reverter de novo → não aplicada (12)
+  ✓ rollback sem backfill → recusado (nada a desfazer)
+  ✓ v20_02 pós-v19 reaplica depois do rollback
+  ✓ backfill de novo, idêntico
   ✓ cada evento v19 leva o par v19_99
   ✓ aprovador do protocolo; fingerprint só no 1º evento (os outros não foram medidos)
   ✓ passo 2 gravou o recibo
@@ -26,6 +34,8 @@
   ✓ importação sem aprovador → recusada
   ✓ importação do passo 2 aplicada com aprovador
   ✓ ledger: v8_06 aplicada
+  ✓ rollback da v20_02 pós-v19 com evento posterior (v8_06) → recusado
+  ✓ …porque outra versão se ancorou na base
   ✓ reimportar o passo 2 → recusado
   ✓ importar de novo para o mesmo arquivo → recusado (nunca sobrescreve)
   ✓ rollback gravou o recibo
@@ -34,3 +44,4 @@
   ✓ ledger: as 6 versões do incidente revertidas
   ✓ reimportar o rollback → recusado (nada a importar)
   ✓ reverter de novo, pulando o importador → recusado pelo banco
+  ✓ harness-ledger.json é JSON válido

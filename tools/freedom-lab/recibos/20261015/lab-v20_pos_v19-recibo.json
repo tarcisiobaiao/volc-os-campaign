@@ -1,12 +1,12 @@
 {
   "imagem": "supabase/postgres:15.8.1.085", "versao": "15.8",
   "migration": "v20_02_ledger_linha_de_base.sql", "migration_sha256": "13fdec8976cca5ed91632a5df41fca1229d510510be4a13c9a71d2d60cc7d22a",
-  "rollback": "v20_02_rollback.sql", "rollback_sha256": "f846622014bf3fe4e8d22cb7f915dc7b99c7ac4cf8fbff9c6bacbec0a3c894b7",
+  "rollback": "v20_02_pos_v19_rollback.sql", "rollback_sha256": "ec384a33f353b5a30e8b33b2500c022383c5b59476e02d79f8d880ddd6cff7d7",
   "semente_sha256": "ee23cede9a6f7c0851e66ad6a3ae933d7bc94f794a2085cd3c09eb54afd40acd",
   "harness_sha256": {"lab.sh": "c66ce9ab060aa09ae39d364684b0b603f254648b478943a29b02cb81f4386e7f", "sonda_acesso.sql": "7c78d7864f498d5001108cb68da07b1f2d160a8947905613d4bae392b0b27656", "fingerprint_schema.sql": "0f6c05509466e9bc92474465d4427cf5fe426a477d15fc50a31871317e30d2c7"},
-  "suite": "tools/freedom-lab/db/suites/v20_pos_v19.sh", "suite_sha256": "be677f6d28ef3832197132472df1e6d9e8181c1edefa89e2ec4a6d1078d49812", "suite_versionada": "sim",
+  "suite": "tools/freedom-lab/db/suites/v20_pos_v19.sh", "suite_sha256": "b1561e1c12a34d367e8d77943437c1af925f40a8af7f5ddd97afaff37fdb77e2", "suite_versionada": "sim",
   "base": "prod-schema:2c70b4a4b5c6616d54c126c2a5e2be6d13d1f29e424f1ed2660d58f39e4c833c",
   "semente_aplicada_sha256": "ebe2b1827150a7ee37266c60740658cad74e441f40a8fb9e27802de62207c432",
   "fingerprint_total_pos": "_TOTAL|5911|8ff392828075242c9ed75b7da3b48b89",
-  "verificacoes": 36, "falhas": 0, "producao_acessada": false, "producao_acessada_motivo": "estrutural: lab.sh não lê .env nem usa SSH, o container não tem rede e a suíte é versionada"
+  "verificacoes": 47, "falhas": 0, "producao_acessada": false, "producao_acessada_motivo": "estrutural: lab.sh não lê .env nem usa SSH, o container não tem rede e a suíte é versionada"
 }
