@@ -56,6 +56,9 @@ UNITS = [
     "volc-gads-coleta@d1.service",
     "volc-gads-coleta-d0.timer",
     "volc-gads-coleta-d1.timer",
+    # recoleta da janela madura (W11, 15/10/2026): mesma alternativa, mesmo dono
+    "volc-gads-coleta@recoleta.service",
+    "volc-gads-coleta-recoleta.timer",
 ]
 
 ok = 0
@@ -171,6 +174,7 @@ ESPERADOS = {
     # escolha é do dono (deploy/gads-coleta/README.md).
     "deploy/gads-coleta/volc-gads-coleta-d0.timer",
     "deploy/gads-coleta/volc-gads-coleta-d1.timer",
+    "deploy/gads-coleta/volc-gads-coleta-recoleta.timer",
 }
 inesperados = sorted(set(achados) - ESPERADOS)
 prova("nenhum artefato capaz de agendar apareceu fora do conjunto declarado",

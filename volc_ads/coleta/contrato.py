@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Mapping, Protocol
 
 
@@ -52,6 +52,9 @@ class Contexto:
     # distintas (v12_04), e é pelo passo que o agendador sabe se já rodou.
     disparo: str = "manual"
     passo: str | None = None
+    # Projeção na tabela legada `daily_campaign_metrics` (só o campanha-dia a
+    # pede). A recoleta desliga: ver `__main__`.
+    projetar_compat: bool = True
 
     def __post_init__(self) -> None:
         if self.disparo not in ("manual", "agenda"):
@@ -74,6 +77,23 @@ class Contexto:
     @property
     def colhida_iso(self) -> str:
         return self.colhida_em.isoformat()
+
+
+RECOLETA_DIAS_MAXIMO = 90
+
+
+def janela_recoleta(hoje: date, dias: int) -> tuple[date, date]:
+    """Os `dias` dias FECHADOS anteriores ao D-1, no fuso da conta.
+
+    O Google ajusta custo (cliques inválidos) e conversões depois do dia fechar;
+    D-1 é uma leitura só. A recoleta relê a janela [hoje-1-dias, hoje-2] como
+    `backfill` (precedência 3 na v12_04), então a leitura mais nova de cada
+    (conta, campanha, data) substitui a anterior pelo `colhida_em`. O D-1 fica
+    fora de propósito: ele tem job, passo e saúde próprios e não é duplicado.
+    """
+    if not isinstance(dias, int) or isinstance(dias, bool) or not 1 <= dias <= RECOLETA_DIAS_MAXIMO:
+        raise ValueError(f"recoleta exige 1..{RECOLETA_DIAS_MAXIMO} dias, veio {dias!r}")
+    return hoje - timedelta(days=1 + dias), hoje - timedelta(days=2)
 
 
 class Familia(Protocol):

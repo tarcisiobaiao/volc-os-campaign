@@ -160,7 +160,7 @@ class _CampanhaDia:
                        if recusas else None),
             "escopo": f"conta {ctx.customer_id} lote {lote}",
             "contas_aceitas": [str(ctx.customer_id)],
-            "projetar_compat": self.projetar_compat,
+            "projetar_compat": self.projetar_compat and ctx.projetar_compat,
             "linhas": boas,
         })
         return doc
