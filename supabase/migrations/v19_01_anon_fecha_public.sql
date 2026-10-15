@@ -29,13 +29,14 @@
 -- -----------------------------------------------------------------------------
 -- QUEM USA anon HOJE (inventário do repositório, 15/10)
 -- -----------------------------------------------------------------------------
--- Ninguém lê ou escreve dado antes do login. src/lib/supabase.ts é o único
--- cliente com a anon key; /login não chama .from/.rpc; toda rota de dado fica
--- atrás de ProtectedRoute (src/App.tsx). Servidor Node (server/, api/), FastAPI
--- (backend/), volc_ads/ e a edge function capi-router usam service_role.
--- Lacuna fora do repositório: a credencial "VOLC Oficial" do n8n (joinads,
--- gads, meta) e qualquer site externo que carregue a anon key. Conferir antes
--- da janela (preflight do pacote).
+-- O app: nenhum dado antes do login. src/lib/supabase.ts é o único cliente com a
+-- anon key; /login não chama .from/.rpc; toda rota de dado fica atrás de
+-- ProtectedRoute (src/App.tsx). Node (server/, api/), FastAPI (backend/),
+-- volc_ads/ e a edge function capi-router usam service_role.
+-- FORA do app há consumidores (docs/INCIDENTE-ANON-RUNBOOK.md, inventário):
+-- tags do GTM-N4KS27ZV com JWT anon (site_visits, niche_conversion_mappings,
+-- pausadas), a edge function volc-ingest (fonte fora do repo), workflows n8n com
+-- apikey à mão. Confirmar em produção ANTES da janela; o pacote não avança sem.
 --
 -- -----------------------------------------------------------------------------
 -- O QUE FAZ

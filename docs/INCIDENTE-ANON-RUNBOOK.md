@@ -1,7 +1,8 @@
 # Incidente da chave anon — pacote de aplicação (W4, 15/10/2026)
 
-**Estado: `ready_for_human`. Nada foi aplicado em produção.** Decisão e janela
-são do Tarcísio. Ensaio: schema de produção de 15/10 restaurado num Postgres
+**Estado: pacote provado em laboratório; aplicação bloqueada até o inventário
+de consumidores da anon em produção. Nada foi aplicado em produção.** Decisão e
+janela são do Tarcísio. Ensaio: schema de produção de 15/10 restaurado num Postgres
 descartável (`supabase/postgres:15.8.1.085`, sem rede) por
 `tools/freedom-lab/lab.sh recriar-prod` com a suíte
 `tools/freedom-lab/db/suites/v19_incidente_anon.sh` (comando no cabeçalho dela;
@@ -23,52 +24,83 @@ recibo no handoff W4).
 |---|---|---|---|---|
 | 1 | `v19_00_users_gatilho_papel_real.sql` | supabase_admin | `115b5aee43010fa5e6bcd5ea458fc0725d5a299774e86c72a0cea3635f4d0a67` | corrige o gatilho de `users`: hoje ele **nunca barra** autopromoção (SECURITY DEFINER faz `current_user` ser sempre `supabase_admin`) |
 | 2 | `v8_03_users_rls_policies.sql` | supabase_admin | `e7af8372de3b25ee9811c2f0302052d7546f492e4261be72b2aded3bdc6b84ec` | RLS em `users`: cada um vê a própria linha, ADMIN vê todas; gatilhos ligados |
-| 3 | `v19_01_anon_fecha_public.sql` | supabase_admin | `55790e5efa52ae7781c8ac05b5798ea482e6a353a1db1d40129eefa60852b7c4` | **anon perde tudo em `public`**; authenticated perde TRUNCATE/REFERENCES/TRIGGER; `users` só escreve colunas de perfil; fotografa a ACL anterior para o rollback |
+| 3 | `v19_01_anon_fecha_public.sql` | supabase_admin | `e7b0c9ba20fa96e7190a740d6f713fa8eac4cbd4b13a446d433c83378e4f858c` | **anon perde tudo em `public`**; authenticated perde TRUNCATE/REFERENCES/TRIGGER; `users` só escreve colunas de perfil; fotografa a ACL anterior para o rollback |
 | 4 | `v8_05_users_safe_view.sql` | postgres | `7fb3d2de616404bc3c68f8aee8e2f70b9525bad102f2a17c885b4c54a5434f68` | view `users_safe` sem colunas sensíveis |
-| 5 | `v19_02_default_acl_public_sem_anon.sql` | supabase_admin | `3f2f16fef7c7245f0b8d444c5fed7c8d5629f1dc6ad88d47dde2bfae049d46bb` | objeto novo em `public` nasce sem anon (substitui a v8_07) |
+| 5 | `v19_02_default_acl_public_sem_anon.sql` | supabase_admin | `8919245ed846060f690e4baa47d3c07d35caf65a6171f859f2b92f3b5b23b671` | tabela e sequência novas em `public` nascem sem anon (substitui a v8_07); função nova segue com EXECUTE por PUBLIC |
 | — | `v8_06_users_sensitive_columns_revoke.sql` | supabase_admin | `0010e0874cfe518218eb483223fa5d42b00e40f3138f203b5ca0423efa381554` | **passo 2**: browser deixa de ler `password_hash`/`token_*` — só depois do frontend novo no ar |
-| ↩ | `v19_99_rollback.sql` | supabase_admin | `21eb455080b946fc5016f71eacbf59aecafbddfdb35eeedf7f87b6cbb6e3e48f` | desfaz 1–5 e a v8_06; devolve o fingerprint exato anterior |
+| ↩ | `v19_99_rollback.sql` | supabase_admin | `3abff0a814e1db384daaaa9181cbefb8865047ea98025393e4f4fe22293c8fdd` | desfaz 1–5 e a v8_06 só onde o pacote mexeu; aborta se a ACL mudou depois |
 
 **Não aplicar** `v8_02` nem `v8_04`: a v19_01 cobre o que a v8_04 fazia, e a
 guarda da v8_04 exige a v8_02, que muda a autoridade de ADMIN do Pautador sem
 necessidade para este incidente.
 
-## Comando exato (só com autorização nominal)
+## Estado da decisão
+
+**Bloqueado até o inventário de produção** (itens 1–4 abaixo). O pacote está
+provado em laboratório; o que falta é saber quem, fora do app, ainda usa a
+anon. Essa leitura de produção depende de autorização do Tarcísio.
+
+## Comando exato (só com autorização nominal: operação e hashes)
 
 ```bash
 scripts/aplicar-incidente-anon-w4.sh --so-checar
 ```
-Preflight só de leitura, como `supabase_read_only_user` (a menor identidade de
-leitura que existe hoje; nenhum grant de escrita) com a sessão forçada
-read-only — nunca `supabase_admin`. Confere `auth.uid()` lendo
-`request.jwt.claims`, estado anterior, ADMINs sem papel em `app_auth`, e-mails
-duplicados, superfície de anon (esperado 62).
+Só leitura, nunca `supabase_admin`:
+- **preflight** (`scripts/preflight-incidente-anon-w4.sql`) como
+  `supabase_read_only_user` com a sessão forçada read-only. Uma linha por item
+  (`item|valor|bloqueia`); o `--passo1` recusa seguir com qualquer `bloqueia=t`
+  (inclui P4: ADMIN do cadastro sem papel em `app_auth`);
+- **verificação como anon** (`scripts/verificar-anon-w4.sql`) como `postgres`
+  (membro de anon) com a sessão read-only: `SET ROLE anon` e SELECT real.
+  `supabase_read_only_user` não serve aqui — ele não assume anon e uma sonda
+  ingênua mostraria "zero" no estado inseguro.
 
 ```bash
 scripts/aplicar-incidente-anon-w4.sh --passo1
 ```
-Pede `APLICAR`, faz `pg_dump -Fc -n public -n app_auth` em `/root/backups/`,
-sonda antes, aplica 1→5 (cada arquivo na própria transação, `ON_ERROR_STOP`),
-`NOTIFY pgrst`, sonda depois. Esperado: `anon VE_LINHAS=0`.
+Exige preflight sem bloqueio e a verificação dando **ABERTO** antes (prova que o
+instrumento enxerga o buraco); pede `APLICAR`; `pg_dump -Fc -n public -n app_auth`
+em `/root/backups/`; aplica 1→5 (cada arquivo atômico; se um falhar, o script
+para e diz quais já ficaram); `NOTIFY pgrst`; exige **FECHADO** depois.
 
 ```bash
 scripts/aplicar-incidente-anon-w4.sh --passo2
 ```
 Só depois que o frontend com `src/hooks/useUserProfile.ts` corrigido estiver em produção.
 
-## Antes da janela (o que o ensaio não alcança)
+Integração pendente: o main ganhou o protocolo genérico com ledger
+(`scripts/migracao-protocolo.sh`, v20_01). Se o ledger estiver em produção na
+janela, cada arquivo deve passar por ele; este script fica com preflight e
+verificação.
 
-1. **Credencial "VOLC Oficial" do n8n** (joinads, gads, meta): confirmar que é a
-   `service_role`. Se for a anon, essas gravações param no passo 1.
-2. **Algum site/landing externo usa a anon key?** No repositório não há
-   (`public/`, `api/`, `server/`, edge functions, n8n: nenhum). Conferir nos logs
-   do Kong/PostgREST se há tráfego com a anon key fora do app.
-3. **ADMINs em `app_auth`**: o preflight P4 conta ADMIN de `public.users` sem
-   papel ativo. Quem estiver nessa conta passa a ver só a própria linha na tela
-   de usuários. Corrigir antes: `SELECT public.volc_grant_role('<auth.users.id>','ADMIN','pre-W4');`
-4. **Cadastro público no GoTrue**: com `DISABLE_SIGNUP` desligado, qualquer
-   pessoa cria login e vira `authenticated`, que continua lendo e escrevendo as
-   ~30 tabelas do app. Conferir a flag no `.env` do servidor (sem imprimir o resto).
+## Antes da janela — inventário dos consumidores da anon
+
+Pelo repositório (15/10): o app logado, o backend Node/FastAPI, volc_ads e a
+edge function `capi-router` não usam a anon. **Fora do app há consumidores**:
+
+| # | Consumidor | O que faz com a anon | Estado conhecido | Precisa de produção para confirmar |
+|---|---|---|---|---|
+| 1 | GTM **GTM-N4KS27ZV** (creditoup), tag 35 | POST `/rest/v1/site_visits` com JWT anon | pausada (18/09), ainda na versão publicada 34 | versão viva do container |
+| 2 | GTM-N4KS27ZV, tag 28 | GET `/rest/v1/niche_conversion_mappings` com JWT anon | pausada (29/09) | idem |
+| 3 | GTM-N4KS27ZV, tag 39 "VOLC Sensor v1.4" | POST `/functions/v1/volc-ingest`, **sem** chave | pausada (18/09) | código e chave da edge function `volc-ingest` (fonte fora do repo) |
+| 4 | GTM-KJK7QQK9 | desconhecido (sem export) | aparece em LPs públicas | container vivo |
+| 5 | n8n `gads-campaign-search` | upsert/PATCH em `niche_conversion_mappings` com apikey escrita à mão | ativo, quebrado desde 24/02 | qual chave (anon ou service_role) |
+| 6 | n8n `comportamento-gtm-scroll-funil` | RPCs `compute_page_daily`, `compute_funnel_daily`, … com apikey à mão | inativo | qual chave |
+| 7 | n8n credencial "VOLC Oficial" | gravações de joinads, gads, meta | runbook JWT diz service_role | conferir |
+| 8 | Logs Kong/PostgREST | tráfego com role anon de origem fora do app | — | leitura dos logs |
+
+Também: `docs/VOLC-DELTA.md:278-282` usa a anon num curl para ler o OpenAPI —
+depois do passo 1 ele deixa de listar tabelas. A anon segue gravada no histórico
+de versões do GTM: fechar os grants não a tira de circulação.
+
+E ainda:
+- **ADMINs em `app_auth`**: P4 bloqueia se houver ADMIN do cadastro sem papel.
+  Conceder antes: `SELECT public.volc_grant_role('<auth.users.id>','ADMIN','pre-W4');`.
+  Se escapar, as telas de admin agora mostram o erro (`src/v6/services/visaoDeAdmin.ts`)
+  em vez de uma lista silenciosamente incompleta ou de um falso "último administrador".
+- **Cadastro público no GoTrue**: com `DISABLE_SIGNUP` desligado, qualquer
+  pessoa cria login e vira `authenticated`, que continua lendo e escrevendo as
+  ~30 tabelas do app.
 
 ## Janela recomendada
 
@@ -82,8 +114,8 @@ só ACL, policies, um índice único em `users` (1–2 linhas) e uma view.
 
 | Risco | Probabilidade | Sintoma | Conserto |
 |---|---|---|---|
-| Admin sem papel em `app_auth` | média (só 1 semeado em 24/08) | lista de usuários mostra só a própria linha | `volc_grant_role` (item 3) |
-| Fluxo externo com anon key | baixa (nada no repo) | gravação some sem erro na UI | `GRANT INSERT ON public.<x> TO anon` pontual |
+| Admin sem papel em `app_auth` | média (só 1 semeado em 24/08); P4 bloqueia | tela de admin mostra erro de papel | `volc_grant_role` |
+| Fluxo externo com anon key | **real** (tabela do inventário) | gravação some sem erro na UI | `GRANT INSERT ON public.<x> TO anon` pontual |
 | v8_06 antes do frontend | só se a ordem for invertida | 42501 em `useUserProfile` | `GRANT SELECT ON TABLE public.users TO authenticated;` |
 | Operador tentando mudar a própria role/comissão | intencional | erro `exige ADMIN` | — |
 | TRUNCATE pelo browser | nenhum uso no código | 42501 | — |
@@ -93,17 +125,22 @@ só ACL, policies, um índice único em `users` (1–2 linhas) e uma view.
 ```bash
 scripts/aplicar-incidente-anon-w4.sh --rollback
 ```
-Devolve **o estado inseguro** (anon volta a ler e escrever). Prefira os
-rollbacks parciais no fim de `v19_99_rollback.sql`. Último recurso: o
-`pg_dump` feito pelo `--passo1`.
+Devolve **o estado inseguro** (anon volta a ler e escrever), e só nas ACLs que
+a v19_01 mudou. **Aborta sem desfazer nada** se alguma delas foi alterada de
+novo depois da aplicação (um endurecimento posterior não some calado). Nomes
+gravados com schema e `search_path` fixo: nada fora de `public` é tocado.
+Prefira os rollbacks parciais no fim de `v19_99_rollback.sql`. Último recurso:
+o `pg_dump` feito pelo `--passo1`.
 
 ## O que continua aberto depois do pacote
 
 - `authenticated` lê e escreve as tabelas do app sem policy por escopo
   (operador vê todos os projetos). É trabalho de produto, não de contenção.
 - Funções novas em `public` seguem executáveis por PUBLIC (default embutido do
-  Postgres). Função INVOKER chamada por anon falha na tabela; DEFINER nova
-  precisa de REVOKE nominal, como as migrations já fazem.
+  Postgres; a v19_02 não muda isso, e o título dela diz). Função INVOKER chamada
+  por anon falha na tabela; uma SECURITY DEFINER nova sem REVOKE explícito lê
+  com o privilégio do dono. O `REVOKE EXECUTE … FROM PUBLIC` global foi
+  recusado: vale para todos os schemas desses donos.
 - `storage`, `realtime`, `supabase_functions`: grants da imagem, não tocados.
 - `supabase_read_only_user` com BYPASSRLS e `pg_read_all_data`: decisão
   separada (handoff B, item 5).

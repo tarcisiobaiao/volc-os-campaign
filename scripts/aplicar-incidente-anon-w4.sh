@@ -35,15 +35,15 @@ RECIBO="$RAIZ/docs/closure/incidente-anon-w4/RECEIPT-$CARIMBO.txt"
 
 sha_esperado() {   # bash 3.2 do macOS: sem array associativo
   case "$1" in
-    v19_00_users_gatilho_papel_real)       echo SHA_V19_00 ;;
-    v8_03_users_rls_policies)              echo SHA_V8_03 ;;
-    v19_01_anon_fecha_public)              echo SHA_V19_01 ;;
-    v8_05_users_safe_view)                 echo SHA_V8_05 ;;
-    v19_02_default_acl_public_sem_anon)    echo SHA_V19_02 ;;
-    v8_06_users_sensitive_columns_revoke)  echo SHA_V8_06 ;;
-    v19_99_rollback)                       echo SHA_V19_99 ;;
-    preflight-incidente-anon-w4)           echo SHA_PREFLIGHT ;;
-    verificar-anon-w4)                     echo SHA_VERIFICAR ;;
+    v19_00_users_gatilho_papel_real)       echo 115b5aee43010fa5e6bcd5ea458fc0725d5a299774e86c72a0cea3635f4d0a67 ;;
+    v8_03_users_rls_policies)              echo e7af8372de3b25ee9811c2f0302052d7546f492e4261be72b2aded3bdc6b84ec ;;
+    v19_01_anon_fecha_public)              echo e7b0c9ba20fa96e7190a740d6f713fa8eac4cbd4b13a446d433c83378e4f858c ;;
+    v8_05_users_safe_view)                 echo 7fb3d2de616404bc3c68f8aee8e2f70b9525bad102f2a17c885b4c54a5434f68 ;;
+    v19_02_default_acl_public_sem_anon)    echo 8919245ed846060f690e4baa47d3c07d35caf65a6171f859f2b92f3b5b23b671 ;;
+    v8_06_users_sensitive_columns_revoke)  echo 0010e0874cfe518218eb483223fa5d42b00e40f3138f203b5ca0423efa381554 ;;
+    v19_99_rollback)                       echo 3abff0a814e1db384daaaa9181cbefb8865047ea98025393e4f4fe22293c8fdd ;;
+    preflight-incidente-anon-w4)           echo 84892780f9d43e297c9843e03f41c7ae8cfef13f7b7fab7b2e7dbb9243bfd7ae ;;
+    verificar-anon-w4)                     echo b05f011d36208836b7c1b6f97642597f30ef56e6dfc63edc8ecfc8f716dbfb23 ;;
   esac
 }
 mkdir -p "$(dirname "$RECIBO")"

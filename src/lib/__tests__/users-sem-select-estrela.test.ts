@@ -18,7 +18,8 @@ describe('public.users sem select(*) no frontend', () => {
   it('nenhuma consulta a users pede todas as colunas', () => {
     const raiz = join(__dirname, '..', '..');
     const ofensores = arquivos(raiz).filter((f) =>
-      /\.from\(\s*['"]users['"]\s*\)\s*\.select\(\s*(['"]\*['"])?\s*\)/.test(
+      // '*', `*`, '*, rel(*)' ou select() vazio — todos pedem todas as colunas.
+      /\.from\(\s*['"`]users['"`]\s*\)\s*\.select\(\s*(['"`]\s*\*[^'"`]*['"`])?\s*[,)]/.test(
         readFileSync(f, 'utf8').replace(/\s+/g, ' '),
       ),
     );
