@@ -9,7 +9,12 @@
 -- inteira: nome, comando, papéis, USING, WITH CHECK) de qualquer relação que ela
 -- mudou foi alterado de novo depois da aplicação.
 --
--- ORDEM: reverter a v19_10 ANTES do v19_99 (pacote anon). Com a v19_10 aplicada,
+-- Também devolve as duas funções de agregação do funil a SECURITY INVOKER com a
+-- configuração anterior, e o default ACL de public para anon/authenticated como
+-- era antes (aborta se qualquer um dos dois mudou depois da v19_10).
+--
+-- ORDEM: reverter a v19_10 ANTES do v19_99 (pacote anon); com o W12 aplicado,
+-- reverter a v23_01 antes da v19_10 (ordem provisória: v19 → v19_10 → v23_01). Com a v19_10 aplicada,
 -- o v19_99 aborta (a ACL das relações que ele restauraria mudou depois dele).
 -- Nomes por schema + nome com %I e search_path fixo: nada fora de public.
 -- =============================================================================
@@ -54,6 +59,45 @@ BEGIN
   IF v_mudou IS NOT NULL THEN
     RAISE EXCEPTION 'v19_10_rollback abortado: ACL, RLS ou policies mudaram depois da v19_10 em: %. Nada foi desfeito.', v_mudou;
   END IF;
+
+  -- 1b. funções e default ACL também têm de estar como a v19_10 deixou
+  SELECT string_agg(f.assinatura, ', ') INTO v_mudou
+    FROM app_auth.w4_auth_func f JOIN pg_proc pr ON pr.oid = to_regprocedure(f.assinatura)
+   WHERE pr.prosecdef IS DISTINCT FROM f.secdef_depois OR pr.proconfig IS DISTINCT FROM f.config_depois;
+  IF v_mudou IS NOT NULL THEN
+    RAISE EXCEPTION 'v19_10_rollback abortado: função alterada depois da v19_10: %. Nada foi desfeito.', v_mudou;
+  END IF;
+  SELECT string_agg(a.papel || '/' || a.objtipo, ', ') INTO v_mudou
+    FROM app_auth.w4_auth_defacl a
+   WHERE (SELECT array_agg(i::text ORDER BY i::text) FROM pg_default_acl d, unnest(d.defaclacl) i
+           WHERE d.defaclrole = a.papel::regrole AND d.defaclnamespace = 'public'::regnamespace AND d.defaclobjtype = a.objtipo)
+         IS DISTINCT FROM (SELECT array_agg(i::text ORDER BY i::text) FROM unnest(a.acl_depois) i);
+  IF v_mudou IS NOT NULL THEN
+    RAISE EXCEPTION 'v19_10_rollback abortado: default ACL de public mudou depois da v19_10 (%). Nada foi desfeito.', v_mudou;
+  END IF;
+
+  -- 1c. funções da agregação do funil voltam a INVOKER com a configuração anterior
+  FOR x IN SELECT * FROM app_auth.w4_auth_func LOOP
+    IF to_regprocedure(x.assinatura) IS NULL THEN CONTINUE; END IF;
+    EXECUTE format('ALTER FUNCTION %s %s', x.assinatura, CASE WHEN x.secdef_antes THEN 'SECURITY DEFINER' ELSE 'SECURITY INVOKER' END);
+    EXECUTE format('ALTER FUNCTION %s RESET ALL', x.assinatura);
+    FOR v_priv IN SELECT unnest(coalesce(x.config_antes, '{}')) LOOP
+      EXECUTE format('ALTER FUNCTION %s SET %s = %s', x.assinatura, split_part(v_priv, '=', 1),
+                     quote_literal(substr(v_priv, length(split_part(v_priv, '=', 1)) + 2)));
+    END LOOP;
+  END LOOP;
+
+  -- 1d. default ACL: devolve a anon/authenticated o que existia antes
+  FOR x IN
+    SELECT a.papel, a.objtipo, pg_get_userbyid(e.grantee) AS grantee, e.privilege_type
+      FROM app_auth.w4_auth_defacl a, aclexplode(a.acl_antes) e
+     WHERE e.grantee IN ('anon'::regrole, 'authenticated'::regrole)
+       AND NOT EXISTS (SELECT 1 FROM aclexplode(a.acl_depois) e2
+                        WHERE e2.grantee = e.grantee AND e2.privilege_type = e.privilege_type)
+  LOOP
+    EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public GRANT %s ON %s TO %I',
+                   x.papel, x.privilege_type, CASE x.objtipo WHEN 'S' THEN 'SEQUENCES' ELSE 'TABLES' END, x.grantee);
+  END LOOP;
 
   -- 2. policies criadas pela v19_10
   FOR x IN SELECT * FROM app_auth.w4_auth_policy LOOP
@@ -103,6 +147,8 @@ BEGIN
   END LOOP;
 
   DROP TABLE app_auth.w4_auth_policy;
+  DROP TABLE app_auth.w4_auth_func;
+  DROP TABLE app_auth.w4_auth_defacl;
   DROP TABLE app_auth.w4_auth_acl;
   DROP FUNCTION app_auth.w4_policies_md5(oid);
   RAISE NOTICE 'v19_10_rollback: % aclitem(s) de authenticated devolvidos; policies e RLS da v19_10 desfeitas', v_n;

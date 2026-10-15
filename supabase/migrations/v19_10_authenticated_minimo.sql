@@ -31,8 +31,20 @@
 --    decisão em todas as relações de public, e nenhuma relação com grant ficou
 --    sem policy para os comandos concedidos.
 --
--- O QUE NÃO FAZ: não toca users/users_safe (v8_03/v19_01/v8_05), anon,
--- service_role, funções nem tabelas que authenticated não alcança hoje.
+-- 5. Agregação do funil (dois gatilhos de campaign_funnel_urls) passa a SECURITY
+--    DEFINER com search_path fixo, para o OPERADOR seguir salvando URL de funil
+--    sem ganhar escrita em dinheiro (seção 2c).
+-- 6. Default ACL de public: tabela/sequência nova de postgres e supabase_admin
+--    nasce sem nada para anon e authenticated (seção 2d).
+--
+-- O QUE NÃO FAZ: não toca users/users_safe (v8_03/v19_01/v8_05), anon (já
+-- fechado), service_role, nem tabelas que authenticated não alcança hoje.
+-- LACUNA DECLARADA: função nova em public segue nascendo com EXECUTE por PUBLIC.
+--
+-- ORDEM (provisória, a confirmar com os revisores): v19 (pacote anon) → v19_10 →
+-- v23_01 (W12). Reverter na ordem inversa: v23_01_rollback → v19_10_rollback →
+-- v19_99. A revisão local mediu as duas ordens; nenhum rollback confere se o
+-- outro rodou.
 -- =============================================================================
 
 \set ON_ERROR_STOP on
@@ -88,7 +100,7 @@ INSERT INTO w4_decisao (relacao, s, i, u, d, evidencia) VALUES
  ('pautador_entity_opportunities',true,false, true,  false, 'pautadorEntityService.ts:77 update'),
  ('pautador_countries',          true, true,  false, false, 'pautadorService.ts:51 insert'),
 -- escrita só por RPC/gatilho INVOKER que o browser dispara
- ('daily_campaign_metrics',      true, true,  true,  false, 'gatilhos de gam_metrics/campaign_funnel_urls/adsense_metrics/users e update_all_revenue_conversions inserem/atualizam'),
+ ('daily_campaign_metrics',      true, false, true,  false, 'UPDATE por gatilho INVOKER de users (comissão) e por update_all_revenue_conversions; leitura em ~20 pontos. INSERT só vinha da agregação do funil, que passa a SECURITY DEFINER (seção 2c)'),
  ('daily_project_metrics',       true, false, true,  false, 'gatilho de projects (trigger_recalculate_project_revshare) e update_all_revenue_conversions atualizam'),
  ('adsense_metrics',             true, false, true,  false, 'update_all_revenue_conversions atualiza; gatilhos de campaign_funnel_urls e vw_adsense_adjusted leem'),
 -- só leitura
@@ -140,7 +152,12 @@ CREATE TABLE app_auth.w4_auth_acl (
   UNIQUE NULLS NOT DISTINCT (esquema, relacao, coluna));
 CREATE TABLE app_auth.w4_auth_policy (
   esquema text NOT NULL, relacao text NOT NULL, policy text NOT NULL, PRIMARY KEY (esquema, relacao, policy));
-REVOKE ALL ON app_auth.w4_auth_acl, app_auth.w4_auth_policy FROM PUBLIC, anon, authenticated, service_role;
+CREATE TABLE app_auth.w4_auth_func (
+  assinatura text PRIMARY KEY, dono text, secdef_antes bool, config_antes text[], secdef_depois bool, config_depois text[]);
+CREATE TABLE app_auth.w4_auth_defacl (
+  papel text NOT NULL, objtipo "char" NOT NULL, acl_antes aclitem[], acl_depois aclitem[], PRIMARY KEY (papel, objtipo));
+REVOKE ALL ON app_auth.w4_auth_acl, app_auth.w4_auth_policy, app_auth.w4_auth_func, app_auth.w4_auth_defacl
+  FROM PUBLIC, anon, authenticated, service_role;
 COMMENT ON TABLE app_auth.w4_auth_acl IS 'v19_10 (W4): ACL e RLS de public antes/depois; lida pelo v19_10_rollback.sql, que a apaga.';
 
 -- Assinatura das policies de uma relação: nome, comando, permissiva, papéis e
@@ -296,6 +313,87 @@ BEGIN
   RAISE NOTICE 'v19_10: % relações e % sequências revistas para authenticated; RLS ligada em % tabelas', v_n_rel, v_n_seq, v_n_rls;
 END
 $aplica$;
+
+-- -----------------------------------------------------------------------------
+-- 2c. Agregação do funil como SECURITY DEFINER
+-- -----------------------------------------------------------------------------
+-- A tela "Configurar" da campanha (CampaignDetailDashboard.tsx:472 → FunnelUrlsEditor)
+-- é aberta a OPERATOR e grava em campaign_funnel_urls (campaignFunnelUrlsService.ts
+-- :46/:59/:85/:110). Os gatilhos AFTER dessa tabela recalculam a receita em
+-- daily_campaign_metrics. Como INVOKER, o recálculo rodava como o operador e
+-- esbarrava na policy de dinheiro (só ADMIN). Aqui os dois gatilhos de agregação
+-- passam a rodar como o dono (supabase_admin), com search_path fixo; quem PODE
+-- editar URL de funil continua decidido pela RLS/grant de campaign_funnel_urls.
+-- O operador não ganha escrita direta em daily_campaign_metrics. Rollback devolve
+-- SECURITY INVOKER e a configuração anterior, byte a byte.
+DO $definer$
+DECLARE f text; p record;
+BEGIN
+  FOREACH f IN ARRAY ARRAY['public.trigger_calculate_adsense_campaign_revenue()',
+                           'public.trigger_funnel_url_change()'] LOOP
+    SELECT pr.oid, pg_get_userbyid(pr.proowner) AS dono, pr.prosecdef, pr.proconfig INTO p
+      FROM pg_proc pr WHERE pr.oid = to_regprocedure(f);
+    IF p.oid IS NULL THEN RAISE EXCEPTION 'v19_10: função % não existe', f; END IF;
+    IF p.dono <> 'supabase_admin' THEN
+      RAISE EXCEPTION 'v19_10: % pertence a % (esperado supabase_admin) — não promovo a DEFINER', f, p.dono;
+    END IF;
+    INSERT INTO app_auth.w4_auth_func (assinatura, dono, secdef_antes, config_antes) VALUES (f, p.dono, p.prosecdef, p.proconfig);
+    EXECUTE format('ALTER FUNCTION %s SECURITY DEFINER', f);
+    EXECUTE format('ALTER FUNCTION %s SET search_path = public, pg_temp', f);
+    -- EXECUTE não muda: função de gatilho não é chamável fora de gatilho.
+    UPDATE app_auth.w4_auth_func SET secdef_depois = true,
+           config_depois = (SELECT proconfig FROM pg_proc WHERE oid = p.oid) WHERE assinatura = f;
+  END LOOP;
+END
+$definer$;
+
+-- -----------------------------------------------------------------------------
+-- 2d. Default ACL: o mínimo vale também para tabela e sequência NOVAS em public
+-- -----------------------------------------------------------------------------
+-- Para os dois papéis que criam objetos em public (postgres e supabase_admin),
+-- anon e authenticated deixam de receber qualquer privilégio em tabela/view e
+-- sequência novas: toda migration futura declara o seu GRANT. Funções novas NÃO
+-- mudam neste ciclo (lacuna declarada: seguem com EXECUTE por PUBLIC).
+INSERT INTO app_auth.w4_auth_defacl (papel, objtipo, acl_antes)
+SELECT r.papel, t.objtipo,
+       (SELECT d.defaclacl FROM pg_default_acl d
+         WHERE d.defaclrole = r.papel::regrole AND d.defaclnamespace = 'public'::regnamespace AND d.defaclobjtype = t.objtipo)
+  FROM (VALUES ('postgres'), ('supabase_admin')) r(papel), (VALUES ('r'::"char"), ('S'::"char")) t(objtipo);
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres, supabase_admin IN SCHEMA public
+  REVOKE ALL ON TABLES FROM anon, authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres, supabase_admin IN SCHEMA public
+  REVOKE ALL ON SEQUENCES FROM anon, authenticated;
+UPDATE app_auth.w4_auth_defacl a SET acl_depois =
+       (SELECT d.defaclacl FROM pg_default_acl d
+         WHERE d.defaclrole = a.papel::regrole AND d.defaclnamespace = 'public'::regnamespace AND d.defaclobjtype = a.objtipo);
+
+-- Prova por construção: tabela e sequência novas de cada dono, sem nada para
+-- anon/authenticated; criadas e descartadas nesta transação.
+DO $novo$
+DECLARE v_dono text; v_falha text := '';
+BEGIN
+  FOREACH v_dono IN ARRAY ARRAY['postgres', 'supabase_admin'] LOOP
+    EXECUTE format('SET LOCAL ROLE %I', v_dono);
+    CREATE TABLE public.w4_sonda_v19_10 (i int);
+    CREATE SEQUENCE public.w4_sonda_v19_10_seq;
+    RESET ROLE;
+    IF has_table_privilege('authenticated', 'public.w4_sonda_v19_10', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+       OR has_table_privilege('anon', 'public.w4_sonda_v19_10', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') THEN
+      v_falha := v_falha || format(' tabela-de-%s', v_dono);
+    END IF;
+    IF has_sequence_privilege('authenticated', 'public.w4_sonda_v19_10_seq', 'USAGE,SELECT,UPDATE')
+       OR has_sequence_privilege('anon', 'public.w4_sonda_v19_10_seq', 'USAGE,SELECT,UPDATE') THEN
+      v_falha := v_falha || format(' sequencia-de-%s', v_dono);
+    END IF;
+    IF NOT has_table_privilege('service_role', 'public.w4_sonda_v19_10', 'SELECT,INSERT,UPDATE,DELETE') THEN
+      v_falha := v_falha || format(' service_role-perdeu-%s', v_dono);
+    END IF;
+    DROP SEQUENCE public.w4_sonda_v19_10_seq;
+    DROP TABLE public.w4_sonda_v19_10;
+  END LOOP;
+  IF v_falha <> '' THEN RAISE EXCEPTION 'v19_10 falhou: objeto novo ainda nasce aberto →%', v_falha; END IF;
+END
+$novo$;
 
 -- -----------------------------------------------------------------------------
 -- 4. Fotografia do depois e postflight

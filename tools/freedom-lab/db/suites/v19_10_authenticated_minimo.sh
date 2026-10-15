@@ -95,6 +95,15 @@ fluxos() { # fluxos <arquivo-saida> — 1 docker exec por fluxo; nada lê o stdi
   run pautador_entopp_update__pautadorEntityService.ts:77 "$ADMIN" "" "UPDATE public.pautador_entity_opportunities SET status='validating', kanban_stage='validating' WHERE id=9001 RETURNING status, kanban_stage;" >> "$O"
   run pautador_countries_insert__pautadorService.ts:51 "$ADMIN" "" "INSERT INTO public.pautador_countries (country_code, country_name, native_language) VALUES ('ZZ','Z','z') RETURNING country_code;" >> "$O"
   run users_commission__usersService.ts:215 "$ADMIN" "" "UPDATE public.users SET commission_percentage=7 WHERE role='OPERATOR' RETURNING commission_percentage;" "$EFEITO" >> "$O"
+  # OPERADOR: tudo que o app oferece a ele (rota /dashboard/campaign/ e "Configurar" → FunnelUrlsEditor)
+  run OP_cfu_insert__campaignFunnelUrlsService.ts:85 "$OPER" "" "INSERT INTO public.campaign_funnel_urls (campaign_id, url, \"Active\") VALUES ('123456789','https://www.p1.example/op', true) RETURNING url;" "$EFEITO" >> "$O"
+  run OP_cfu_update__campaignFunnelUrlsService.ts:46 "$OPER" "" "UPDATE public.campaign_funnel_urls SET \"Active\"=false, updated_at=now() WHERE campaign_id='123456789';" "$EFEITO" >> "$O"
+  run OP_cfu_upsert__campaignFunnelUrlsService.ts:59 "$OPER" "" "INSERT INTO public.campaign_funnel_urls (campaign_id, url, \"Active\") VALUES ('123456789','p1.example/a', true) ON CONFLICT (campaign_id,url) DO UPDATE SET \"Active\"=EXCLUDED.\"Active\" RETURNING url, \"Active\";" "$EFEITO" >> "$O"
+  run OP_cfu_update_url__campaignFunnelUrlsService.ts:110 "$OPER" "" "UPDATE public.campaign_funnel_urls SET url='p1.example/a2', updated_at=now() WHERE campaign_id='123456789' AND url='p1.example/a' RETURNING url;" "$EFEITO" >> "$O"
+  run OP_read_dcm__CampaignDetailDashboard.tsx:166 "$OPER" "" "SELECT count(*), sum(revenue_converted) FROM public.daily_campaign_metrics;" >> "$O"
+  run OP_rpc_detalhe__supabaseDataService.ts:2649 "$OPER" "" "SELECT count(*) FROM (SELECT * FROM public.get_campaign_detailed_metrics('123456789', current_date-30, current_date)) x;" >> "$O"
+  run OP_troca_senha__ChangePassword.tsx:91 "$OPER" "" "UPDATE public.users SET needs_password_change=false WHERE email='operador@example.invalid' RETURNING needs_password_change;" >> "$O"
+  run OP_rpc_dashboard_totals__supabaseDataService.ts:1554 "$OPER" "" "SELECT count(*) FROM (SELECT public.get_dashboard_totals(current_date-30, current_date, NULL)) x;" >> "$O"
   run read_vw_display_roi__useDisplayROI.ts:29 "$ADMIN" "" "SELECT count(*) FROM public.vw_display_roi;" >> "$O"
   run read_v_incubator_schedule__incubatorService.ts:243 "$ADMIN" "" "SELECT count(*) FROM public.v_incubator_schedule_progress;" >> "$O"
   run read_dcm__CampaignDetailDashboard.tsx:166 "$ADMIN" "" "SELECT count(*), sum(revenue_converted) FROM public.daily_campaign_metrics;" >> "$O"
@@ -135,24 +144,35 @@ operador() {
 
 echo "▶ 1. ANTES da v19_10 (com linhas reais)"
 fp "$R/fp0.txt"
+defacl() { P -c "select defaclrole::regrole||'|'||defaclobjtype||'|'||(select string_agg(i::text, ',' order by i::text) from unnest(defaclacl) i) from pg_default_acl where defaclnamespace='public'::regnamespace order by 1" > "$1"; }
+defacl "$R/defacl0.txt"
 fluxos "$R/fluxos-antes.txt"
 operador "$R/operador-antes.txt"
 eq "$(vivos "$R/fluxos-antes.txt" | grep -c '|OK|')" "$(vivos "$R/fluxos-antes.txt" | wc -l | tr -d ' ')" "todos os $(vivos "$R/fluxos-antes.txt" | wc -l | tr -d ' ') fluxos vivos funcionam antes (ADMIN)"
 grep -v '|ok:' "$R/operador-antes.txt" > "$R/operador-antes-ja-negado.txt" || true
 # gam_revenue já falha antes (gatilho lê trafego_meta_adset); pautador_opp_outra_coluna depende da policy antiga
 eq "$(grep -vE '^(pautador_opp_outra_coluna|gam_revenue)\|' "$R/operador-antes.txt" | grep -c '|ok:')" "$(grep -vcE '^(pautador_opp_outra_coluna|gam_revenue)\|' "$R/operador-antes.txt")" "antes da v19_10 o OPERADOR consegue as escritas de dinheiro, sync_logs e setval (o buraco existe)"
+eq "$(grep '^OP_' "$R/fluxos-antes.txt" | grep -c '|OK|')" "$(grep -c '^OP_' "$R/fluxos-antes.txt")" "fluxos de OPERADOR funcionam antes (inclusive salvar URL de funil)"
 grep -q 'dcm|123456789' "$R/fluxos-antes.txt" && ok "os fluxos medem o efeito dos gatilhos (linhas de daily_campaign_metrics no resultado)" || nao "fluxos sem efeito de gatilho"
 
-echo "▶ 2. MUTANTE: v19_10 sem o INSERT de daily_campaign_metrics"
-MUT="$R/v19_10_MUTANTE_sem_insert_dcm.sql"
-sed "s/^ ('daily_campaign_metrics',      true, true,  true,  false,/ ('daily_campaign_metrics',      true, false, true,  false,/" "$W4_MIG/v19_10_authenticated_minimo.sql" > "$MUT"
-grep -q "('daily_campaign_metrics',      true, false, true" "$MUT" && ok "mutante gerado (só o INSERT de daily_campaign_metrics a menos)" || nao "mutante não gerado"
-aplicar supabase_admin "$MUT" && ok "mutante aplicou" || nao "mutante"
-fluxos "$R/fluxos-mutante.txt"
-n_mut=$(comparar "$R/fluxos-antes.txt" "$R/fluxos-mutante.txt" "$R/dif-mutante.txt")
-[ "${n_mut:-0}" -gt 0 ] && ok "a suíte PEGA o mutante: $n_mut fluxo(s) vivo(s) mudam (dif-mutante.txt)" || nao "a suíte não pega o mutante (prova cega a gatilhos)"
-aplicar supabase_admin v19_10_rollback.sql && ok "rollback do mutante" || nao "rollback do mutante"
-fp "$R/fp-pos-mutante.txt"; diff -q "$R/fp0.txt" "$R/fp-pos-mutante.txt" >/dev/null && ok "base intacta depois do mutante" || nao "mutante deixou resíduo"
+echo "▶ 2. MUTANTES (a prova tem de enxergar gatilhos e o operador)"
+mutante() { # mutante <nome> <arquivo-gerado> <descrição>
+  local n
+  aplicar supabase_admin "$2" && ok "mutante $1 aplicou" || nao "mutante $1 não aplicou"
+  fluxos "$R/fluxos-mutante-$1.txt"
+  n=$(comparar "$R/fluxos-antes.txt" "$R/fluxos-mutante-$1.txt" "$R/dif-mutante-$1.txt")
+  [ "${n:-0}" -gt 0 ] && ok "a suíte PEGA o mutante $1 ($3): $n fluxo(s) vivo(s) mudam" || nao "a suíte não pega o mutante $1 ($3)"
+  aplicar supabase_admin v19_10_rollback.sql && ok "rollback do mutante $1" || nao "rollback do mutante $1"
+  fp "$R/fp-pos-mutante-$1.txt"; diff -q "$R/fp0.txt" "$R/fp-pos-mutante-$1.txt" >/dev/null && ok "base intacta depois do mutante $1" || nao "mutante $1 deixou resíduo"
+}
+MUT_A="$R/v19_10_MUTANTE_A_sem_update_dcm.sql"
+sed "s/^ ('daily_campaign_metrics',      true, false, true,  false,/ ('daily_campaign_metrics',      true, false, false, false,/" "$W4_MIG/v19_10_authenticated_minimo.sql" > "$MUT_A"
+grep -q "('daily_campaign_metrics',      true, false, false, false" "$MUT_A" && ok "mutante A gerado (sem o UPDATE de daily_campaign_metrics, que só gatilhos usam)" || nao "mutante A não gerado"
+mutante A "$MUT_A" "grant usado só por gatilho"
+MUT_B="$R/v19_10_MUTANTE_B_funil_invoker.sql"
+sed '/^DO \$definer\$/,/^\$definer\$;/d' "$W4_MIG/v19_10_authenticated_minimo.sql" > "$MUT_B"
+grep -q 'definer\$' "$MUT_B" && nao "mutante B não gerado" || ok "mutante B gerado (agregação do funil continua INVOKER)"
+mutante B "$MUT_B" "operador salvando URL de funil"
 
 echo "▶ 3. aplica a v19_10"
 aplicar supabase_admin v19_10_authenticated_minimo.sql && ok "v19_10 aplicou (supabase_admin)" || nao "v19_10"
@@ -196,6 +216,20 @@ eq "$(estado authenticated "select count(*) from public.joinads_metrics" "$ADMIN
 eq "$(estado service_role "select has_table_privilege('service_role','public.joinads_metrics','INSERT,UPDATE,SELECT') and has_sequence_privilege('service_role','public.joinads_metrics_id_seq','USAGE,UPDATE')")" "ok:t" "service_role (n8n, backend) mantém joinads_metrics e a sequência"
 eq "$(estado authenticated 'select count(*) from public.users' "$ADMIN")" "ok:2" "users da v8_03 intacta (admin vê 2)"
 
+echo "▶ 5b. objeto NOVO depois da v19_10 (default ACL)"
+P -c "create table public.w4_nova_tabela (id serial primary key, v int); insert into public.w4_nova_tabela (v) values (1)" >/dev/null
+PA -c "create sequence public.w4_nova_seq_admin" >/dev/null
+eq "$(estado authenticated 'insert into public.w4_nova_tabela (v) values (2)' "$OPER" | cut -c1-5)" "42501" "tabela nova de postgres · operador não insere"
+eq "$(estado authenticated 'update public.w4_nova_tabela set v=3' "$ADMIN" | cut -c1-5)" "42501" "tabela nova de postgres · nem admin (pelo browser) altera sem GRANT da migration"
+eq "$(estado authenticated 'select count(*) from public.w4_nova_tabela' "$OPER" | cut -c1-5)" "42501" "tabela nova de postgres · authenticated não lê sem GRANT"
+eq "$(estado authenticated "select setval('public.w4_nova_tabela_id_seq', 1)" "$OPER" | cut -c1-5)" "42501" "sequência nova de postgres · operador não dá setval"
+eq "$(estado authenticated "select setval('public.w4_nova_seq_admin', 1)" "$OPER" | cut -c1-5)" "42501" "sequência nova de supabase_admin · operador não dá setval"
+eq "$(estado anon 'select count(*) from public.w4_nova_tabela' | cut -c1-5)" "42501" "tabela nova · anon nada"
+eq "$(estado service_role 'insert into public.w4_nova_tabela (v) values (4) returning v')" "ok:4" "tabela nova · service_role (backend) grava"
+P -c "drop table public.w4_nova_tabela" >/dev/null; PA -c "drop sequence public.w4_nova_seq_admin" >/dev/null
+eq "$(P -c "select prosecdef from pg_proc where oid='public.trigger_funnel_url_change()'::regprocedure")" "t" "agregação do funil roda como dono (SECURITY DEFINER)"
+eq "$(P -c "select array_to_string(proconfig, ',') from pg_proc where oid='public.trigger_calculate_adsense_campaign_revenue()'::regprocedure")" "search_path=public, pg_temp" "agregação do funil com search_path fixo"
+
 echo "▶ 6. rollback"
 PA -c "REVOKE SELECT ON public.projects FROM authenticated" >/dev/null
 aplicar supabase_admin v19_10_rollback.sql && nao "rollback passou por cima de ACL alterada" \
@@ -211,7 +245,8 @@ aplicar supabase_admin v19_10_rollback.sql && nao "rollback passou por cima de p
 PA -c "DROP POLICY w4_teste_restritiva ON public.daily_campaign_metrics" >/dev/null
 aplicar supabase_admin v19_10_rollback.sql && ok "rollback aplicou" || nao "rollback"
 fp "$R/fp-rollback.txt"
-diff "$R/fp0.txt" "$R/fp-rollback.txt" > "$R/diff-fp0-rollback.txt" && ok "rollback devolve o fingerprint EXATO de antes da v19_10" || nao "rollback deixou resíduo (diff-fp0-rollback.txt)"
+diff "$R/fp0.txt" "$R/fp-rollback.txt" > "$R/diff-fp0-rollback.txt" && ok "rollback devolve o fingerprint EXATO de antes da v19_10 (inclui funções do funil de volta a INVOKER)" || nao "rollback deixou resíduo (diff-fp0-rollback.txt)"
+defacl "$R/defacl-rollback.txt"; diff -q "$R/defacl0.txt" "$R/defacl-rollback.txt" >/dev/null && ok "rollback devolve o default ACL de public exato" || nao "default ACL diferente depois do rollback"
 aplicar supabase_admin v19_10_rollback.sql && ok "rollback idempotente" || nao "rollback idempotente"
 fluxos "$R/fluxos-pos-rollback.txt"
 eq "$(comparar "$R/fluxos-antes.txt" "$R/fluxos-pos-rollback.txt" "$R/dif-pos-rollback.txt")" "0" "fluxos depois do rollback = antes"

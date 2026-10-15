@@ -16,8 +16,16 @@ Ensaiado sobre o schema de produção de 15/10 com `lab.sh recriar-prod` e a su�
 
 Pacote separado, depois do pacote anon e do cadastro do GoTrue fechado. Decisão
 por relação com a chamada no código, dinheiro gravável só por ADMIN, RLS em toda
-tabela que authenticated alcança, sequências sem setval. Rollback:
-`v19_10_rollback.sql` — reverter ANTES do `v19_99_rollback.sql`. Suíte:
+tabela que authenticated alcança, sequências sem setval, agregação do funil em
+SECURITY DEFINER (o operador segue salvando URL de funil), default ACL de public
+sem anon/authenticated para tabela e sequência novas (função nova: lacuna
+declarada). Rollback: `v19_10_rollback.sql` — reverter ANTES do `v19_99_rollback.sql`.
+
+**Ordem com o W12 (v23_01, provisória até a confirmação dos revisores):** aplicar
+v19 (pacote anon) → v19_10 → v23_01; reverter na ordem inversa (v23_01_rollback →
+v19_10_rollback → v19_99). Nenhum rollback confere se o outro rodou. A revisão
+local de 15/10 mediu também a ordem v23_01 → v19_10 e a achou segura; em nenhum
+estado testado anon ou PUBLIC ganharam escrita em `exchange_rate_history`. Suíte:
 `tools/freedom-lab/db/suites/v19_10_authenticated_minimo.sh`.
 
 ## Google Ads: v17_01 fatos granulares — 08/10/2026
