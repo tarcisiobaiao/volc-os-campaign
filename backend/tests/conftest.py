@@ -42,6 +42,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # O retrato. Tirado no import do conftest, com o ambiente ainda intacto.
 _ENV_INTACTO = dict(os.environ)
 
+# ⚠️ HERMETISMO DA SESSÃO (15/10/2026). No checkout oficial, `.env.server` da raiz e
+# `backend/.env` carregam a service_role do Supabase de PRODUÇÃO. Antes de qualquer
+# import de `app`, a sessão de testes inteira passa a NÃO ler arquivo .env
+# (VOLC_SEM_ENV_FILE, respeitada por Settings.settings_customise_sources) e as
+# credenciais Supabase do processo ficam vazias. Só a fixture `ambiente_real`, com
+# VOLC_TESTES_AMBIENTE_REAL=1, devolve o ambiente real — e só para o seu teste.
+os.environ["VOLC_SEM_ENV_FILE"] = "1"
+for _chave in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY"):
+    os.environ[_chave] = ""
+del _chave
+
 # Só o que os módulos herméticos zeram e os testes ao vivo precisam de volta.
 # Não é `_ENV_INTACTO` inteiro: restaurar tudo desfaria `PAUTADOR_ENGINE=mock`
 # e um teste ao vivo passaria a gastar chamada de LLM sem ninguém pedir.
@@ -85,6 +96,7 @@ def ambiente_real(monkeypatch):
     # por isso que os módulos herméticos gravam `""` — string vazia é uma
     # variável que EXISTE, e ela ganha do arquivo. Repor o retrato não adianta:
     # o retrato também não tem a chave. Quem devolve o `.env` é o `delenv`.
+    monkeypatch.delenv("VOLC_SEM_ENV_FILE", raising=False)
     for chave in _CHAVES:
         valor = _ENV_INTACTO.get(chave)
         if valor:
@@ -116,6 +128,7 @@ def ambiente_real_modulo():
     from app.config import get_settings
 
     mp = pytest.MonkeyPatch()
+    mp.delenv("VOLC_SEM_ENV_FILE", raising=False)
     for chave in _CHAVES:
         valor = _ENV_INTACTO.get(chave)
         if valor:

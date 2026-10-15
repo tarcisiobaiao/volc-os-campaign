@@ -35,6 +35,21 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    @classmethod
+    def settings_customise_sources(cls, settings_cls, init_settings, env_settings,
+                                   dotenv_settings, file_secret_settings):
+        # Sessão de testes: o conftest liga VOLC_SEM_ENV_FILE=1 no import, e nenhum
+        # arquivo .env (inclusive o .env.server da raiz, com a service_role de
+        # PRODUÇÃO no checkout oficial) é lido. `model_config["env_file"]` não muda:
+        # a configuração do FastAPI continua a mesma e provável.
+        # Um `Settings(_env_file=arquivo)` explícito (teste que lê um arquivo de fixture)
+        # continua valendo: só os arquivos PADRÃO deixam de ser lidos.
+        import os
+        padrao = getattr(dotenv_settings, "env_file", None) == settings_cls.model_config.get("env_file")
+        if os.environ.get("VOLC_SEM_ENV_FILE") == "1" and padrao:
+            return (init_settings, env_settings, file_secret_settings)
+        return (init_settings, env_settings, dotenv_settings, file_secret_settings)
+
     # ---- LLM engine selection -------------------------------------------------
     # "auto"   -> use the first provider that has a key, else "mock"
     # "mock"   -> deterministic generator (no network, always available)
