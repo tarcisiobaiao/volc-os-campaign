@@ -1,0 +1,27 @@
+  ✓ passo 1 gravou RECEIPT-20261015-104050.json
+  ✓ recibo do passo 1: ok, 5 eventos
+  ✓ recibo de laboratório sem --aceitar-lab → recusado
+  ✓ evento com sha256 ≠ arquivo do repositório → recusado
+  ✓ recibo com resultado falhou → recusado
+  ✓ nenhuma recusa escreveu arquivo
+  ✓ v20_02 gerada do recibo do passo 1
+  ✓ âncora constante no arquivo = fingerprint_depois do recibo
+  ✓ âncora não vem de GUC
+  ✓ geração determinística (mesmo recibo → mesmo arquivo e sha256)
+  ✓ v20_01 aplicada pelo protocolo
+  ✓ fingerprint do ledger = fingerprint_depois do recibo (mesma SQL, mesma âncora)
+  ✓ v20_02 pré-v19 (âncora 695e913a) recusa depois da v19
+  ✓ v20_02 gerada aplica pelo protocolo
+  ✓ ledger: v20_02, linha de base, os 5 eventos da v19 na ordem do recibo, v20_01
+  ✓ cada evento v19 leva o par de rollback v19_99 aprovado
+  ✓ linha de base guarda o fingerprint pré-v19 de produção
+  ✓ passo 2 gravou RECEIPT-20261015-104056.json
+  ✓ importação do passo 2 gerada
+  ✓ importação do passo 2 aplicada
+  ✓ ledger: v8_06 aplicada
+  ✓ reimportar o mesmo recibo → recusado pelo gatilho
+  ✓ rollback gravou RECEIPT-20261015-104057.json
+  ✓ importação do rollback gerada
+  ✓ importação do rollback aplicada
+  ✓ ledger: as 6 versões do incidente revertidas
+  ✓ reverter de novo, pulando o importador → recusado pelo banco
