@@ -1918,6 +1918,56 @@
             "funnelforge-migracao/engine/src/funnelforge/adapters/openai_responses.py",
             "funnelforge-migracao/engine/tests/test_auth_chatgpt.py"
           ]
+        },
+        {
+          "id": "P10-T24",
+          "title": "Fundar o Freedom Lab: ambiente, banco descartável, brokers de leitura e contrato de experimento",
+          "status": "partial",
+          "proof": "15/10/2026 · Commits eea47445 e 5515d3ac. .venv-lab gerido por uv 0.12.24 num venv de ferramenta (Python global intocado), uv.lock multiplataforma com exclude-newer 2026-10-08, 33 pacotes em DEPENDENCIAS.json conferido por teste; google-ads fora do lab (OR-Tools prende protobuf <6.34). tools/freedom-lab/lab.sh recria supabase/postgres:15.8.1.085 sem rede e sem porta; ciclo da v18_01 40/40 verde (login real da identidade, matriz anon/authenticated/service_role, sonda, fingerprint, rollback com fingerprint idêntico, preservação de policy e membership alheias, postflight que aborta com leitura fora da allowlist). Brokers: GTM leitura (15 contas, 23 containers, 24 workspaces, 611 tags, 984 triggers, 326 variables, 0 erro HTTP, token só tagmanager.readonly), GA4 (8 contas, 12 properties, 13 streams, metadata 376/89, agregado sem dimensão com linha em 6/12), Google Ads só GAQL/validate_only com trava fechada e recibo mascarado. Contrato de experimento com adopt só por número finito reproduzido. Revisão adversarial: 1 bloqueante e 7 importantes corrigidos num ciclo. 86 testes do lab verdes.",
+          "acceptance": "Ambiente e banco recriáveis do zero por comando; dependência nova só com manifesto e smoke; migrations candidatas provadas do zero e contra o estado anterior com rollback; workers sem service_role; GTM/GA4/Ads só leitura ou validate_only com recibo; experimentos validados pelo contrato.",
+          "latest_evidence": "Lacunas: brokers são bibliotecas no processo do agente, não fronteira de processo; broker Supabase de produção depende da v18_01 (P10-T25); base 'estado de produção' do lab exige pg_dump --schema-only sanitizado (não feito); gate freedom-lab-unit não entrou no gate-catalog do harness (mudaria o digest de todos os gates); Linux/CI não testados; navegador do app percorrido pelo Leitor E com a sessão humana, não pelo integrador (8080/3001/8010 caíram durante a missão).",
+          "graph_nodes": [
+            "cap_freedom_lab",
+            "cap_work_road"
+          ],
+          "links": [
+            "tools/freedom-lab/README.md",
+            "tools/freedom-lab/lab.sh",
+            "tools/freedom-lab/DEPENDENCIAS.json",
+            "tools/freedom-lab/contracts/experimento.schema.json",
+            "tools/freedom-lab/recibos/20261015/"
+          ]
+        },
+        {
+          "id": "P10-T25",
+          "title": "Aplicar a identidade de leitura mínima no Supabase de produção (v18_01)",
+          "status": "todo",
+          "proof": "15/10/2026 · Sonda read-only de produção (BEGIN READ ONLY … ROLLBACK, autorizada pelo dono): PostgreSQL 15.8; nenhum ledger VOLC de migrations (supabase_migrations.schema_migrations e public.schema_migrations ausentes; só ledgers dos serviços auth/storage/realtime); volc_leitor NÃO existe; supabase_read_only_user tem LOGIN, BYPASSRLS e pg_read_all_data (inadequado como leitor). Fingerprint de schema de produção _TOTAL 5911 itens md5 695e913a4373efd1c2265cdd5ac87251. Migration candidata supabase/migrations/v18_01_identidade_leitura_minima.PROPOSTA.sql + rollback provadas no lab 15.8 (40/40). Não aplicada.",
+          "acceptance": "Allowlist conferida contra a S7 de produção; sha256 aprovado nominalmente pelo dono; aplicação pelo protocolo de aplicar-migrations-gads (pg_dump antes, transação, postflight, recibo); senha definida fora do repo; broker de leitura usando volc_leitura_agente; v18_02 para SECURITY DEFINER por PUBLIC.",
+          "graph_nodes": [
+            "cap_freedom_lab",
+            "cap_source_truth"
+          ],
+          "links": [
+            "supabase/migrations/v18_01_identidade_leitura_minima.PROPOSTA.sql",
+            "tools/freedom-lab/db/sonda_acesso.sql",
+            "tools/freedom-lab/db/fingerprint_schema.sql"
+          ]
+        },
+        {
+          "id": "P10-T26",
+          "title": "Fechar a exposição da anon em public no Supabase de produção",
+          "status": "risk",
+          "proof": "15/10/2026 · Sonda read-only: anon tem SELECT/INSERT/UPDATE/DELETE/TRUNCATE em 62 tabelas de public; 39 delas sem RLS; S8 (SELECT real em transação read-only) mostrou anon vendo linhas em 23 tabelas, incluindo users, projects, campaigns e system_settings; default ACL de public ainda concede arwdDxt a anon e authenticated em toda tabela nova. Correções v8_02..v8_06 escritas e nunca aplicadas. Nada aplicado nesta missão.",
+          "acceptance": "Decisão do dono; v8_02..v8_06 (e v8_07 se aprovada) provadas no lab 15.8 contra o fingerprint de produção, aplicadas com recibo; nova sonda S7/S8 mostra anon sem leitura de pessoa/configuração e sem escrita fora do que o produto exige.",
+          "graph_nodes": [
+            "cap_people",
+            "cap_identidade_hub"
+          ],
+          "links": [
+            "supabase/migrations/README.md",
+            "tools/freedom-lab/db/sonda_acesso.sql"
+          ]
         }
       ]
     },
@@ -2393,7 +2443,7 @@
             "inventario-n8n/flows/gads-new-campaign-validation.json",
             "inventario-n8n/flows/orakul-vos-auto-adjust.json"
           ],
-          "latest_evidence": "14/10/2026 (pesquisa B, SINTÉTICO rotulado) · Mecânica de shrinkage Beta-Binomial (M=20 não universal), nowcasting chain-ladder/BF sem vazamento e OPE IPS/DR (obp 0.4.1 = numpy) provada em dados sintéticos; sem suporte o DR erra e propensão inventada dobra o valor. Impedimentos reais: sem as-of de receita/custo, ledger sem ações elegíveis, propensão e recompensa econômica. Nenhum ganho real alegado. Segue partial.",
+          "latest_evidence": "15/10/2026 · Freedom Lab: prova vertical shadow da campanha Senac 24278665189 (tools/freedom-lab/experimentos/senac-shadow-20261015). Custo real lido pelo broker Ads (GAQL, trava fechada, R$ 683,34 em 20 dias com custo); receita JoinAds no grão campanha × dia; janela madura 16 dias, custo R$ 554,75, receita R$ 40,79, ROAS 0,0735, 634 cliques; sob estresse (receita ×2, câmbio ×1,5) ROAS 0,22; direção shadow pausar, não executada, sem valor sugerido. Replay sem API reproduz o mesmo SHA. Limiares são do laboratório, não política do dono; receita sem as-of, câmbio fixo, GAM 0 linhas, RLS da sessão. Status mantido partial.",
           "updated_at": "2026-10-14"
         },
         {

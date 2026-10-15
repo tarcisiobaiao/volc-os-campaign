@@ -5,7 +5,7 @@
     "papel": "FONTE HUMANA. Editável à mão. O pipeline lê este arquivo e NUNCA o sobrescreve.",
     "saida_gerada": "docs/volc-os-graph/volc-os-graph.json",
     "snapshot_date": "2026-08-22",
-    "curadoria_atualizada_em": "2026-10-08",
+    "curadoria_atualizada_em": "2026-10-15",
     "method": "Código + PostgREST vivo + inventário n8n + ClickUp + fontes oficiais + decisões do dono",
     "warning": "Ativo declarado no n8n nao equivale a execucao comprovada. Um workflow versionado com active:false tambem nao equivale a workflow importado: gerar, importar, executar e ativar sao quatro atos distintos."
   },
@@ -194,7 +194,7 @@
       "cluster": "governance",
       "state": "risk",
       "summary": "Usuários, acesso, comissões e payouts. ⚠️ O RBAC legado NÃO é portão confiável.",
-      "evidence": "Medido em 24/08/2026: get_current_user_role lê current_setting que ninguém define; public.users sem RLS, zero policies, anon com escrita; proxies com service_role sem autenticação. Segue em risco depois de v8_01: a fonte de autorização do Hub passou a existir, mas public.users continua com RLS desligada e anon com escrita — isso só cai com v8_02..v8_06, que NÃO foram aplicadas (autorização do dono cobriu apenas v8_01)."
+      "evidence": "Medido em 24/08/2026: get_current_user_role lê current_setting que ninguém define; public.users sem RLS, zero policies, anon com escrita; proxies com service_role sem autenticação. Segue em risco depois de v8_01: a fonte de autorização do Hub passou a existir, mas public.users continua com RLS desligada e anon com escrita — isso só cai com v8_02..v8_06, que NÃO foram aplicadas (autorização do dono cobriu apenas v8_01). · 15/10/2026 · Sonda read-only de produção: anon com escrita em 62 tabelas de public (39 sem RLS) e SELECT real com linhas em 23, incluindo users, projects, campaigns e system_settings; default ACL de public ainda aberto. Continua risk; P10-T26 aguarda decisão do dono."
     },
     {
       "id": "cap_capi",
@@ -363,6 +363,14 @@
       "state": "implemented",
       "summary": "Referencias externas de chave no Settings existente e helper fechado de diagnostico WordPress, sem comandos livres ou mutacoes remotas.",
       "evidence": "P10-T18: validacao real somente leitura em 2026-09-30 confirmou identidade do servidor, raiz WordPress, versoes WP-CLI/core e URLs home/siteurl. Doze testes hermeticos aprovados. Chave fora do repositorio, referencias locais ignoradas. Credencial administrativa nao equivale a SSH restrito; novas escritas exigem autorizacao. docs/operations/creditoup-ssh.md; scripts/creditoup-ssh-check.sh; scripts/tests/test_creditoup_ssh_check.py. Nenhuma publicacao ou manutencao realizada."
+    },
+    {
+      "id": "cap_freedom_lab",
+      "label": "Freedom Lab — laboratório descartável",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Ambiente Python com lock, Postgres descartável sem rede, brokers de leitura Google e contrato de experimento, para agentes testarem livremente sem autoridade sobre produção.",
+      "evidence": "15/10/2026 · tools/freedom-lab (eea47445, 5515d3ac): uv.lock + DEPENDENCIAS.json; lab.sh 15.8 com ciclo da v18_01 40/40; GTM e GA4 lidos com token readonly; Google Ads só leitura/validate_only; prova shadow Senac (pausar, não executada). Partial: broker no mesmo processo do agente, leitura de produção sem identidade mínima aplicada, gate não catalogado no harness."
     }
   ],
   "concepts": [
@@ -4099,6 +4107,16 @@
       "target": "system:motor-imagem-volc",
       "relation": "compoe_sobre_a_saida_de",
       "note": "A composicao usa o fundo que o motor produz; o motor nao conhece o compositor."
+    },
+    {
+      "source": "cap_freedom_lab",
+      "target": "cap_work_road",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_freedom_lab",
+      "target": "cap_people",
+      "relation": "prova_em_laboratorio"
     }
   ],
   "priorities": [

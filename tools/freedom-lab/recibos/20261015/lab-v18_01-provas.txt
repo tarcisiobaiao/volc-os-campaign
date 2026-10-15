@@ -1,5 +1,7 @@
   ✓ candidata aplicou sobre imagem 15.8 + semente
-  ✓ itens ausentes da allowlist pulados com NOTICE
+  ✓ todos os itens da allowlist existem na semente e foram concedidos
+  ✓ harness · controle positivo: postgres assume authenticated
+  ✓ isolamento · container sem rede
   ✓ harness · SET ROLE pelo postgres é NEGADO na imagem (por isso a leitura entra por login)
   ✓ harness · login real da identidade de leitura funciona
   ✓ leitura · fato de mídia: SELECT permitido
@@ -23,12 +25,16 @@
   ✓ sonda_acesso.sql executou
   ✓ sonda S8 vê users exposta a anon
   ✓ fingerprint executou
-  ✓ reaplicação por cima recusada pela guarda
+  ✓ reaplicação por cima recusada pela guarda (mensagem da guarda)
+  ✓ rollback recusa quando volc_leitura tem membro alheio
   ✓ rollback aplicou
   ✓ papéis removidos
-  ✓ policies removidas
+  ✓ policies da v18_01 removidas
+  ✓ policy homônima alheia (authenticated em users) preservada
   ✓ rollback devolve o fingerprint exato do estado anterior
   ✓ rollback idempotente
   ✓ candidata reaplicou após rollback
   ✓ fingerprint idêntico entre 1ª e 2ª aplicação
   ✓ fingerprint muda com a migration
+  ✓ migration aborta quando a leitura alcançaria users via PUBLIC
+  ✓ aborto do postflight não deixa papel para trás
