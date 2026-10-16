@@ -19,7 +19,7 @@ produção (os três números reais usados vêm do recibo read-only do integrado
 | `experiments/data-intelligence-lab/scripts/fundacao_capacidade_pg.py` | medição em PostgreSQL 16 descartável (sobe, mede, derruba e apaga) |
 | `…/scripts/fundacao_capacidade_horas.py` | extrai o perfil horário real D30 por `git show` (só leitura) |
 | `…/scripts/fundacao_capacidade_modelo.py` | roda a grade do modelo e gera `modelo.json` + `MODELO.md` com manifesto |
-| `tests/data-intelligence/fundacao/test_capacidade_{cron,volume,cenarios,coletor}.py` | 72 testes (16 + 23 + 7 + 26) |
+| `tests/data-intelligence/fundacao/test_capacidade_{cron,volume,cenarios,coletor}.py` | 73 testes (16 + 24 + 7 + 26) |
 | `docs/data-intelligence/fundacao-20261016/04-CADENCIA-E-CAPACIDADE.md` | política de cadência, números, recomendações |
 | `docs/data-intelligence/fundacao-20261016/05-ARQUITETURA-COLETORES.md` | inventário, matriz n8n × Python, arquitetura híbrida, contrato `run_coleta` |
 | `docs/data-intelligence/fundacao-20261016/benchmarks/capacidade/{pg_medicoes.json,pg_medicoes_dil_obs.json,horas_campanha_d30.json,modelo.json,MODELO.md,MEDICOES.md}` | resultados gerados (`MEDICOES.md` = todas as medições, sem seleção) |
@@ -239,7 +239,7 @@ Novo teste de D1: `test_d1_gravacao_fora_de_ordem_nao_desfaz_a_leitura_mais_rece
 08→07→06 dá as mesmas versões e o mesmo estado final (A); no invertido, o conhecimento intermediário nunca
 mostra B (a leitura das 07h chega depois da das 08h e não a desfaz).
 
-**Custo de D2 (modelo, política `registro_d2`, payload ainda deduplicado).** A dedup de observação que eu
+**Custo de D2 (histórico — superado pelo D2' na §8.7; política `registro_d2`, payload ainda deduplicado).** A dedup de observação que eu
 recomendava (−94%) deixa de acontecer no `Registro`/`dil_obs`: toda releitura vira linha.
 
 | Cenário | v21 real | recomendada (largo, dedup) | D2 sobre largo tipado | **D2 sobre DDL longo da frente A** |
@@ -255,3 +255,45 @@ inline em 1e5). Proposta para a frente A/integrador: manter D1/D2 para a ordem d
 run) em vez de uma linha completa por métrica.
 
 Testes: capacidade **72** (coletor 26). Suíte inteira após o merge de `ff1ea21d`: **798 verdes** em 104 s.
+
+### 8.7 DDL final da frente A e D2' (merge de `962b868c`)
+
+A frente A entregou o `dil_obs_0001` final (HANDOFF-A §7.2): `observacao_as_of` inlinável, chaves `bytea` de
+32 bytes, sem índice em `lote_id`, e **D2'** — versão só quando o estado muda; releitura igual vira
+**confirmação** estreita em `dil_obs.confirmacao`; retry continua NOOP. O coletor já tinha sido adaptado
+pela A (`ReciboRun.confirmadas`); aqui só renomeei o teste de releitura para
+`…_e_confirmacao_d2_linha` e ajustei comentários. A política `registro_d2` saiu do modelo e entrou
+`registro_d2_linha` (versões quando muda + uma confirmação por observação relida sem mudança), com
+`PerfilBytes.confirmacao_por_observacao` medido; e `registro_d2_linha_13m` (com partição, bruto 13 meses e
+rollup) como mitigação.
+
+**Medição** (cluster único, teto 3 GiB, pico amostrado 1,25 GiB, 155 s, cluster apagado;
+`pg_medicoes_dil_obs.json` substituído; o arquivo pós-D2 intermediário foi removido):
+
+| 1e6 | heap B/linha | índices B/linha | total B |
+|---|---:|---:|---:|
+| `dil_obs.observacao` final | 500,1 | 322,9 | **823,1 por valor** (A: 787; antes 1.043–1.084) |
+| `dil_obs.confirmacao` | 126,1 | 100,3 | **226,4 por confirmação** (A: 211) |
+
+`as_of` com o DDL final em 1e6: função 0,164 / 0,363 s (meio / fim), à mão 0,189 / 0,290 s, `latest`
+0,399 s, ponto p50 0,020 ms — a não inlinação foi resolvida pela A. A diferença de 787 × 823 B é do gerador
+sintético (textos de `conta`/`entidade_id` e distribuição de versões), não do DDL.
+
+**Tabela final** (modelo; "hoje" = 1 conta, agenda atual; ×100 = vertical completa, horária 24 h):
+
+| Política | hoje | ×100, 13 meses | ×100, 3 anos |
+|---|---:|---:|---:|
+| v21 real (1.140 B/linha, sem dedup) | 17,5 MB/dia (6,8 GB em 13 m) | 704 GB | 1,95 TB |
+| recomendada (largo tipado, dedup, rollup, 13 m) | 0,43 MB/dia (0,17 GB em 13 m) | 22 GB | 30 GB |
+| **D2' sobre `dil_obs` final** | **17,3 MB/dia** (6,7 GB em 13 m) | **734 GB** | **2,03 TB** |
+| D2' + termos 1×/dia | 5,1 MB/dia | 259 GB | 717 GB |
+| D2' + partição, bruto 13 m + rollup | 17,5 MB/dia | 743 GB | 751 GB |
+
+Leitura: o D2' resolve a explosão do D2 (7,9 TB → 2,0 TB) e empata com a v21 real em bytes, mas com
+`as_of` correto, confirmação de frescor e reparo independente de ordem. As confirmações são ~79% dos bytes
+(1,47 de 1,85 GB/dia a ×100). O modelo é conservador (mudança contada por linha; o D2' decide por
+observação — no teste A→B→A, 1 versão e 2 confirmações por leitura). A estimativa proporcional da A (~17
+MB/dia e ~1,9 TB em 3 anos) bate com o modelo (17,3 MB/dia e 2,03 TB). Alavancas restantes: termos 1×/dia
+(−65%), referências inteiras de run/lote na confirmação, retenção curta só das confirmações.
+
+Testes: capacidade **73** (volume 24: +1 de D2'). Suíte inteira após o merge de `962b868c`: **879 verdes, 1 skip** (o skip é a medição grande da frente A) em 130 s.

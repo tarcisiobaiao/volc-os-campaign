@@ -1,5 +1,5 @@
 {
- "deterministico_sha256": "6928cdd3ad14804b81aca7bdec0cf04fb3a7e3f50d9e0b3e59b32f133ef6cb33",
+ "deterministico_sha256": "5f372e02ac5adef2f0bed0e9554d81c9ad89c37bb6abaff7c9ae37588cf3f397",
  "gates": {
   "auditoria_null_zero": {
    "manter": {
@@ -247,33 +247,33 @@
      }
     },
     "cenario": "base",
-    "decisoes_sha256": "b9baf19cb2fbd84c4e92d17f7181163a06c4464fe7679e4a1daa7df5e27dda6d",
+    "decisoes_sha256": "593c1f33a5283ad956c459ce07a5fd1a49aba40492cb0a83d739fcbc4b064d30",
     "ledger_entradas": 2000,
-    "ledger_sha256": "16cfdc5ca750713a13fc0b706cfff5c0997d9fca6f9ad304478551d82e75db4f",
+    "ledger_sha256": "c94f40bf24b4ec7fb1d40a962a47ace764a95623fd05c67e0e172979a0ce4c94",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
-      "fracao_repeticao": "697/3264",
+      "fracao_repeticao": "889/3264",
       "n_linhas_joinads": 336,
       "n_linhas_v21": 480,
-      "n_observacoes": 2567,
+      "n_observacoes": 2375,
       "n_observacoes_brutas": 3264,
       "quarentena": [],
-      "repeticoes_descartadas": 697,
+      "repeticoes_descartadas": 889,
       "runs_presos": []
      },
      "gerador": "provisorio@1"
     },
     "n_cortes": 241,
     "n_decisoes": 1928,
-    "n_observacoes": 2567,
+    "n_observacoes": 2375,
     "n_resultados_maduros": 72,
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.056,
-    "ms_por_corte_todas_politicas": 27.42,
-    "replay_s": 6.608
+    "avaliacao_s": 0.026,
+    "ms_por_corte_todas_politicas": 19.0,
+    "replay_s": 4.58
    }
   },
   "campanha_nova": {
@@ -473,33 +473,33 @@
      }
     },
     "cenario": "campanha_nova",
-    "decisoes_sha256": "3bcf32ac7ce4845eef7219cd22faac5984147dd9c972e218a40227327ed062f0",
+    "decisoes_sha256": "93dc31580ac11870eeef434dcc605d45fe91af6506e29766958dc9cdc4db55fe",
     "ledger_entradas": 2000,
-    "ledger_sha256": "5cad86ede5333b0c2602c8b938dfe67d3c4fd9c4719cb622a8d8ba5d0530d3d6",
+    "ledger_sha256": "11871e777b2ba00f276130973c3293e0486cce583c2da9af4b0e46f0d9343302",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
-      "fracao_repeticao": "662/3040",
+      "fracao_repeticao": "840/3040",
       "n_linhas_joinads": 315,
       "n_linhas_v21": 445,
-      "n_observacoes": 2378,
+      "n_observacoes": 2200,
       "n_observacoes_brutas": 3040,
       "quarentena": [],
-      "repeticoes_descartadas": 662,
+      "repeticoes_descartadas": 840,
       "runs_presos": []
      },
      "gerador": "provisorio@1"
     },
     "n_cortes": 241,
     "n_decisoes": 1928,
-    "n_observacoes": 2378,
+    "n_observacoes": 2200,
     "n_resultados_maduros": 72,
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.037,
-    "ms_por_corte_todas_politicas": 26.14,
-    "replay_s": 6.3
+    "avaliacao_s": 0.026,
+    "ms_por_corte_todas_politicas": 15.84,
+    "replay_s": 3.817
    }
   },
   "identidade_trocada": {
@@ -697,33 +697,33 @@
      }
     },
     "cenario": "identidade_trocada",
-    "decisoes_sha256": "b87c58796a54826c69c917ebe4fbc4e9667d8cb0d357889980b9930b8f9d944c",
+    "decisoes_sha256": "9c8f34d429524741de172fa18ae241c8fdc11ea800c3f33efb23c256ee785eac",
     "ledger_entradas": 2000,
-    "ledger_sha256": "8a40f21e0c816c6c27b623fb19636714f1cdf46e7b933b807afb99fa97c49b1f",
+    "ledger_sha256": "914361a150f327d641e01f599e7e8b5fc009a6c2c5d2723c52dd6a40298368ba",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
-      "fracao_repeticao": "705/3264",
+      "fracao_repeticao": "897/3264",
       "n_linhas_joinads": 336,
       "n_linhas_v21": 480,
-      "n_observacoes": 2559,
+      "n_observacoes": 2367,
       "n_observacoes_brutas": 3264,
       "quarentena": [],
-      "repeticoes_descartadas": 705,
+      "repeticoes_descartadas": 897,
       "runs_presos": []
      },
      "gerador": "provisorio@1"
     },
     "n_cortes": 241,
     "n_decisoes": 1928,
-    "n_observacoes": 2559,
+    "n_observacoes": 2367,
     "n_resultados_maduros": 72,
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.056,
-    "ms_por_corte_todas_politicas": 33.54,
-    "replay_s": 8.083
+    "avaliacao_s": 0.021,
+    "ms_por_corte_todas_politicas": 18.18,
+    "replay_s": 4.381
    }
   },
   "moeda_misturada": {
@@ -921,33 +921,33 @@
      }
     },
     "cenario": "moeda_misturada",
-    "decisoes_sha256": "9d8376e41ee300618d06652048b4f57e983d0934c820c1879f581b7fc21f6551",
+    "decisoes_sha256": "75852ccd0436514ae1249f061dafab081beb211f8158b32289976762030d0857",
     "ledger_entradas": 2000,
-    "ledger_sha256": "9be67eb5db6f8dd887947a1784349d7ecd008d2cd63f08da264ec6585d5ae74c",
+    "ledger_sha256": "6a6c542ff7c0fe28742b8a0dbde8e6f6a5f4acc3da252f946d06d1f28ce95233",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
-      "fracao_repeticao": "697/3264",
+      "fracao_repeticao": "889/3264",
       "n_linhas_joinads": 336,
       "n_linhas_v21": 480,
-      "n_observacoes": 2567,
+      "n_observacoes": 2375,
       "n_observacoes_brutas": 3264,
       "quarentena": [],
-      "repeticoes_descartadas": 697,
+      "repeticoes_descartadas": 889,
       "runs_presos": []
      },
      "gerador": "provisorio@1"
     },
     "n_cortes": 241,
     "n_decisoes": 1928,
-    "n_observacoes": 2567,
+    "n_observacoes": 2375,
     "n_resultados_maduros": 72,
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.038,
-    "ms_por_corte_todas_politicas": 26.92,
-    "replay_s": 6.488
+    "avaliacao_s": 0.027,
+    "ms_por_corte_todas_politicas": 19.72,
+    "replay_s": 4.752
    }
   },
   "restatement_tardio": {
@@ -1145,33 +1145,33 @@
      }
     },
     "cenario": "restatement_tardio",
-    "decisoes_sha256": "f36840c20a64ae609238054ee6c7be8e5bf3ddb95177d2a703fcb37f5ab6886a",
+    "decisoes_sha256": "b931076af2a6d07e3a011239c36ec148213df526d77a3838976b01f40ee3167d",
     "ledger_entradas": 2000,
-    "ledger_sha256": "d21c8c0e3bfcf73753cfea28eb174c619ed861ef109f4848a67ba1fb090eb2c3",
+    "ledger_sha256": "1417fc547c046dccbf0abcfc45e34661258a9ed7ff86c9b7f1d6df6d549f01bb",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
-      "fracao_repeticao": "701/3272",
+      "fracao_repeticao": "893/3272",
       "n_linhas_joinads": 338,
       "n_linhas_v21": 480,
-      "n_observacoes": 2571,
+      "n_observacoes": 2379,
       "n_observacoes_brutas": 3272,
       "quarentena": [],
-      "repeticoes_descartadas": 701,
+      "repeticoes_descartadas": 893,
       "runs_presos": []
      },
      "gerador": "provisorio@1"
     },
     "n_cortes": 241,
     "n_decisoes": 1928,
-    "n_observacoes": 2571,
+    "n_observacoes": 2379,
     "n_resultados_maduros": 72,
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.033,
-    "ms_por_corte_todas_politicas": 26.73,
-    "replay_s": 6.442
+    "avaliacao_s": 0.037,
+    "ms_por_corte_todas_politicas": 16.63,
+    "replay_s": 4.008
    }
   },
   "zero_sintetizado": {
@@ -1371,33 +1371,33 @@
      }
     },
     "cenario": "zero_sintetizado",
-    "decisoes_sha256": "384d67c89b7522e64bc888662507e9e1ec4f85153ccb5daad7edaf8d74ee8c70",
+    "decisoes_sha256": "d0763e3a14e097d8eddc275e7f0ee2df5a4f11ef2961e86359d34f991916f9d3",
     "ledger_entradas": 2000,
-    "ledger_sha256": "2d2f5fd5e0e483be406c8b5c840ce5034655918d27e52393533f2572aea574db",
+    "ledger_sha256": "3e757e247c453c9a8fa886df27f08889af545cb0417c914eb25fbd991119af4c",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
-      "fracao_repeticao": "674/3132",
+      "fracao_repeticao": "866/3132",
       "n_linhas_joinads": 303,
       "n_linhas_v21": 480,
-      "n_observacoes": 2458,
+      "n_observacoes": 2266,
       "n_observacoes_brutas": 3132,
       "quarentena": [],
-      "repeticoes_descartadas": 674,
+      "repeticoes_descartadas": 866,
       "runs_presos": []
      },
      "gerador": "provisorio@1"
     },
     "n_cortes": 241,
     "n_decisoes": 1928,
-    "n_observacoes": 2458,
+    "n_observacoes": 2266,
     "n_resultados_maduros": 72,
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.033,
-    "ms_por_corte_todas_politicas": 33.18,
-    "replay_s": 7.997
+    "avaliacao_s": 0.025,
+    "ms_por_corte_todas_politicas": 21.13,
+    "replay_s": 5.093
    }
   }
  },
@@ -1464,19 +1464,19 @@
       "guardiao_72h[regra_margem]": {
        "acoes_em_todos_os_cortes": {
         "insuficiente": 205,
-        "manter": 958,
+        "manter": 969,
         "pausar": 190,
-        "reduzir_verba": 575
+        "reduzir_verba": 564
        },
-       "celulas_com_mudanca_de_verba": 35,
+       "celulas_com_mudanca_de_verba": 34,
        "cortes_errados": 4,
        "cortes_errados_por_sinal_imaturo": 0,
-       "cortes_executaveis_em_tese": 35,
+       "cortes_executaveis_em_tese": 34,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "24/1920",
+        "fracao_trocas": "22/1920",
         "pares": 1920,
-        "trocas": 24
+        "trocas": 22
        },
        "lucro_micros": -49914357,
        "propostas_bloqueadas_no_corte_diario": 0,
@@ -1487,9 +1487,9 @@
       "guardiao_72h[regra_margem_imatura]": {
        "acoes_em_todos_os_cortes": {
         "alerta": 181,
-        "manter": 683,
-        "pausar": 271,
-        "reduzir_verba": 793
+        "manter": 701,
+        "pausar": 265,
+        "reduzir_verba": 781
        },
        "celulas_com_mudanca_de_verba": 49,
        "cortes_errados": 8,
@@ -1497,15 +1497,15 @@
        "cortes_executaveis_em_tese": 49,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "40/1920",
+        "fracao_trocas": "38/1920",
         "pares": 1920,
-        "trocas": 40
+        "trocas": 38
        },
-       "lucro_micros": 33256062,
+       "lucro_micros": 15955418,
        "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 108491857,
-       "vs_equal_micros": -3830128,
-       "vs_manter_micros": 147525177
+       "regret_vs_oraculo_micros": 125792501,
+       "vs_equal_micros": -21130772,
+       "vs_manter_micros": 130224533
       },
       "manter": {
        "acoes_em_todos_os_cortes": {
@@ -1530,19 +1530,19 @@
       "regra_margem": {
        "acoes_em_todos_os_cortes": {
         "insuficiente": 205,
-        "manter": 958,
+        "manter": 969,
         "pausar": 190,
-        "reduzir_verba": 575
+        "reduzir_verba": 564
        },
-       "celulas_com_mudanca_de_verba": 35,
+       "celulas_com_mudanca_de_verba": 34,
        "cortes_errados": 4,
        "cortes_errados_por_sinal_imaturo": 0,
-       "cortes_executaveis_em_tese": 35,
+       "cortes_executaveis_em_tese": 34,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "24/1920",
+        "fracao_trocas": "22/1920",
         "pares": 1920,
-        "trocas": 24
+        "trocas": 22
        },
        "lucro_micros": -49914357,
        "propostas_bloqueadas_no_corte_diario": 0,
@@ -1552,9 +1552,9 @@
       },
       "regra_margem_imatura": {
        "acoes_em_todos_os_cortes": {
-        "manter": 683,
-        "pausar": 306,
-        "reduzir_verba": 939
+        "manter": 701,
+        "pausar": 300,
+        "reduzir_verba": 927
        },
        "celulas_com_mudanca_de_verba": 56,
        "cortes_errados": 10,
@@ -1562,21 +1562,21 @@
        "cortes_executaveis_em_tese": 56,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "32/1920",
+        "fracao_trocas": "30/1920",
         "pares": 1920,
-        "trocas": 32
+        "trocas": 30
        },
-       "lucro_micros": 48078461,
+       "lucro_micros": 30777817,
        "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 93669458,
-       "vs_equal_micros": 10992271,
-       "vs_manter_micros": 162347576
+       "regret_vs_oraculo_micros": 110970102,
+       "vs_equal_micros": -6308373,
+       "vs_manter_micros": 145046932
       },
       "regra_margem_null_zero": {
        "acoes_em_todos_os_cortes": {
-        "manter": 447,
+        "manter": 460,
         "pausar": 503,
-        "reduzir_verba": 978
+        "reduzir_verba": 965
        },
        "celulas_com_mudanca_de_verba": 68,
        "cortes_errados": 18,
@@ -1584,9 +1584,9 @@
        "cortes_executaveis_em_tese": 68,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "60/1920",
+        "fracao_trocas": "62/1920",
         "pares": 1920,
-        "trocas": 60
+        "trocas": 62
        },
        "lucro_micros": 113611150,
        "propostas_bloqueadas_no_corte_diario": 1,
@@ -1597,9 +1597,9 @@
      }
     },
     "cenario": "atraso_receita_longo",
-    "decisoes_sha256": "6f1470b8523633ba74ca2973b40a36d3bef928f90e942d4ea0d6ae0e5a3b8bf5",
+    "decisoes_sha256": "fe0cbb3b4b2d4a1d2a0d7487de924c177fe53c8355e243cb036cf5a67c16c3d3",
     "ledger_entradas": 2008,
-    "ledger_sha256": "c0e3c411e098d277742dedc4ad452dbb2e191d025aed8ab3f3966c3e2adbf621",
+    "ledger_sha256": "d70fefdfa93a75069967a20de35e0f2ac9bb5fe68c40285f441781e153d2ed69",
     "meta": {
      "cenario": "atraso_receita_longo",
      "descartados_sem_metrica": 908,
@@ -1624,9 +1624,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.041,
-    "ms_por_corte_todas_politicas": 35.15,
-    "replay_s": 8.472
+    "avaliacao_s": 0.017,
+    "ms_por_corte_todas_politicas": 20.85,
+    "replay_s": 5.025
    }
   },
   "campanha_nova_aprendendo": {
@@ -1826,9 +1826,9 @@
      }
     },
     "cenario": "campanha_nova_aprendendo",
-    "decisoes_sha256": "62b5a4adfd7fbd6e16c0f049cc0fa05eb753f6273bd6fb1fd24493ed270b90ee",
+    "decisoes_sha256": "ac9dba0adfcde2d85bdfc945101777e8bc37fcbb076e4b5755c9444cba8499ed",
     "ledger_entradas": 2000,
-    "ledger_sha256": "4840924883e0f29309a67ce3f6cbca427401b84e399ca4dd59ab5da38dbe5780",
+    "ledger_sha256": "2be5310de7b54d3045cd78306c304a3d606dfea3f3cda491d1c3bd4519a8dd5d",
     "meta": {
      "cenario": "campanha_nova_aprendendo",
      "descartados_sem_metrica": 931,
@@ -1853,9 +1853,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.319,
-    "ms_por_corte_todas_politicas": 35.87,
-    "replay_s": 8.644
+    "avaliacao_s": 0.203,
+    "ms_por_corte_todas_politicas": 22.31,
+    "replay_s": 5.376
    }
   },
   "custo_d0_multiversao": {
@@ -2053,9 +2053,9 @@
      }
     },
     "cenario": "custo_d0_multiversao",
-    "decisoes_sha256": "d995c3515ec091e81a1c129c26de42e817656638753b4cb8efbac50a9f84d5f3",
+    "decisoes_sha256": "ab9f26f7112153ee2f49ca56d718d1a83d36bea4bd4e1744a2d1e7f154434850",
     "ledger_entradas": 2000,
-    "ledger_sha256": "55da7029fc764a22557bb894fed831813dba0c0cdc40a78d6b74118d47904a98",
+    "ledger_sha256": "23f88a1dbca153e348ac9fc92abb4b39f79bff4c8001434c8da354ffb2ef7da0",
     "meta": {
      "cenario": "custo_d0_multiversao",
      "descartados_sem_metrica": 1037,
@@ -2080,9 +2080,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.389,
-    "ms_por_corte_todas_politicas": 37.01,
-    "replay_s": 8.918
+    "avaliacao_s": 0.269,
+    "ms_por_corte_todas_politicas": 22.9,
+    "replay_s": 5.519
    }
   },
   "estavel": {
@@ -2280,9 +2280,9 @@
      }
     },
     "cenario": "estavel",
-    "decisoes_sha256": "124b0d8f1b01e03e835af1f90b316b20c57511a40a29ab4e5b567d49497c1a34",
+    "decisoes_sha256": "7efd1624f703e4f8ae70371b656a8e72ade95d58a8cf9d3903564d8e4f0cfafc",
     "ledger_entradas": 2000,
-    "ledger_sha256": "df83d88f090f59ba7d00143bc745130ea1a9cdd2c8f894cf38b2efec4e19a241",
+    "ledger_sha256": "71507a16f935a93a06b273131eb9886628079d1716487e815d4d3b66b23787d9",
     "meta": {
      "cenario": "estavel",
      "descartados_sem_metrica": 1037,
@@ -2307,9 +2307,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.326,
-    "ms_por_corte_todas_politicas": 38.17,
-    "replay_s": 9.199
+    "avaliacao_s": 0.266,
+    "ms_por_corte_todas_politicas": 22.64,
+    "replay_s": 5.455
    }
   },
   "execucao_presa": {
@@ -2507,9 +2507,9 @@
      }
     },
     "cenario": "execucao_presa",
-    "decisoes_sha256": "6a891ad241fca855ab75bc3ab664ed5dbb76ddf5385e027ea96615dc5cc8a0d5",
+    "decisoes_sha256": "14cb44deb1353a6c7a4e7ee204422d0e469c529450aa9c72fe59a8df79bdd10d",
     "ledger_entradas": 2000,
-    "ledger_sha256": "ff249293832a81c1a273e773a00946cc80fc1c3bc3f7a186d0c6d12c0e39946c",
+    "ledger_sha256": "324dd3b3659d83b47e43a1e9af10370ab8c1ca27e1361cbbee7c02552613e10a",
     "meta": {
      "cenario": "execucao_presa",
      "descartados_sem_metrica": 1008,
@@ -2534,9 +2534,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.348,
-    "ms_por_corte_todas_politicas": 37.43,
-    "replay_s": 9.02
+    "avaliacao_s": 0.27,
+    "ms_por_corte_todas_politicas": 21.65,
+    "replay_s": 5.217
    }
   },
   "fonte_fora_do_ar": {
@@ -2736,9 +2736,9 @@
      }
     },
     "cenario": "fonte_fora_do_ar",
-    "decisoes_sha256": "77d2465d7582ea3ab5060ae6d62b73a7e81c8f50cad1a4b4dbf331ff35ff5922",
+    "decisoes_sha256": "b256fb32353aaa0a2111a505a563f017d4bbae16cd13a0c64eebf419231a1b2b",
     "ledger_entradas": 2000,
-    "ledger_sha256": "4315851c8494841f5a39c0f11ad548eae9012e27744a25f271c79bc696f41ec9",
+    "ledger_sha256": "6234da94471fee270c34bcd1cbccad6b4524c39ce030eee7122f3c900d316a0d",
     "meta": {
      "cenario": "fonte_fora_do_ar",
      "descartados_sem_metrica": 1061,
@@ -2763,9 +2763,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 1.258,
-    "ms_por_corte_todas_politicas": 66.73,
-    "replay_s": 16.082
+    "avaliacao_s": 0.414,
+    "ms_por_corte_todas_politicas": 26.75,
+    "replay_s": 6.446
    }
   },
   "gatilho_legado_joinads": {
@@ -2963,9 +2963,9 @@
      }
     },
     "cenario": "gatilho_legado_joinads",
-    "decisoes_sha256": "d97479305b9fb05595b0e4cf41a6e09231df373f0b4551815685d3b8d78e259a",
+    "decisoes_sha256": "48599219d81bfc038e79c91ff561ffedffc3ed3a03a65f477ce05b45e3047cfc",
     "ledger_entradas": 2000,
-    "ledger_sha256": "ccd0f36c910df92535f778711be6784735a90b79f79f70e4a229ca6f05e96b3e",
+    "ledger_sha256": "21f8c91e0b00e540d62c9eafc0f2c1f4af02553ab5e62c05638e89ea9dd464ba",
     "meta": {
      "cenario": "gatilho_legado_joinads",
      "descartados_sem_metrica": 1037,
@@ -2990,9 +2990,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.657,
-    "ms_por_corte_todas_politicas": 51.3,
-    "replay_s": 12.363
+    "avaliacao_s": 0.241,
+    "ms_por_corte_todas_politicas": 25.52,
+    "replay_s": 6.151
    }
   },
   "identidade_trocada": {
@@ -3190,9 +3190,9 @@
      }
     },
     "cenario": "identidade_trocada",
-    "decisoes_sha256": "e4f2a69a593a3815d2bd0395c069daf85a867b95ee435cb7714eaef41b14fbb7",
+    "decisoes_sha256": "ad1e25ee90a728c7cb38a9487f98d2cdbe34d4733f41839207f41895476d9c3b",
     "ledger_entradas": 2000,
-    "ledger_sha256": "13aa4a13732afdb68c5710586f77ea90ac17ca1f3fdeafd84f9af870c162ebbb",
+    "ledger_sha256": "f2e8f2be61fda3b963190fc8c0e2657b3490fa0e863c6f1e1de64230ad68ab2d",
     "meta": {
      "cenario": "identidade_trocada",
      "descartados_sem_metrica": 1037,
@@ -3218,9 +3218,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.283,
-    "ms_por_corte_todas_politicas": 53.87,
-    "replay_s": 12.982
+    "avaliacao_s": 0.115,
+    "ms_por_corte_todas_politicas": 25.62,
+    "replay_s": 6.173
    }
   },
   "moeda_misturada": {
@@ -3418,9 +3418,9 @@
      }
     },
     "cenario": "moeda_misturada",
-    "decisoes_sha256": "4240959bda9ba6c1365b52055606632b6902e2c6363a70dfb782735c450f3a89",
+    "decisoes_sha256": "752c2acc7718d1d9199d2042425b50752120359178bdcde397b02dd0447da6f8",
     "ledger_entradas": 2000,
-    "ledger_sha256": "1db51ad09fe87f55b9f11c0dd89079a00084b433dd7f6b0f5ae057774cd49db2",
+    "ledger_sha256": "dfd26241fcd20e36e6f45560e143de46b63956b1b9d7288a8c3868e7a6617bcc",
     "meta": {
      "cenario": "moeda_misturada",
      "descartados_sem_metrica": 1037,
@@ -3445,9 +3445,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.442,
-    "ms_por_corte_todas_politicas": 40.66,
-    "replay_s": 9.799
+    "avaliacao_s": 0.223,
+    "ms_por_corte_todas_politicas": 23.41,
+    "replay_s": 5.641
    }
   },
   "restatement_custo": {
@@ -3645,9 +3645,9 @@
      }
     },
     "cenario": "restatement_custo",
-    "decisoes_sha256": "c1965ff4d75c48f94851e184688bbb2a1b3a7cff4b2213e3ccb99283db1a6046",
+    "decisoes_sha256": "e52e3b3615d9c9f42d856ce2ba80aaf4a89c83866a4945eced2caeb17751a593",
     "ledger_entradas": 2008,
-    "ledger_sha256": "52c593c9a29984b61612b1ba3b8f31b498f829e58b96e4e1d3748ba542f7a6b1",
+    "ledger_sha256": "672b247191fada72540904be9779254f1ec1d45d72280e636e4d72e00799f267",
     "meta": {
      "cenario": "restatement_custo",
      "descartados_sem_metrica": 1037,
@@ -3672,9 +3672,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.081,
-    "ms_por_corte_todas_politicas": 47.87,
-    "replay_s": 11.538
+    "avaliacao_s": 0.015,
+    "ms_por_corte_todas_politicas": 30.53,
+    "replay_s": 7.359
    }
   },
   "vazamento_tentado": {
@@ -3872,9 +3872,9 @@
      }
     },
     "cenario": "vazamento_tentado",
-    "decisoes_sha256": "f29d634c9f31c38d5f9c7847eb29b628cf2a59c1c16cdd5043e8f721573627f4",
+    "decisoes_sha256": "c91bccf12dbbf2994b7a3378df43d7ec822aebfe25ce0cd0650f39859a583e09",
     "ledger_entradas": 2008,
-    "ledger_sha256": "d1e11969b67bd2d75c63a3a6bba27bbb0da196aa85805463ea722c22ead6185b",
+    "ledger_sha256": "dea1eb9eeda7818cf6163e6d91b9559414e8ba7d5baa0de11a26bfe02dbabcf3",
     "meta": {
      "cenario": "vazamento_tentado",
      "descartados_sem_metrica": 1172,
@@ -3899,9 +3899,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.033,
-    "ms_por_corte_todas_politicas": 38.15,
-    "replay_s": 9.195
+    "avaliacao_s": 0.019,
+    "ms_por_corte_todas_politicas": 22.8,
+    "replay_s": 5.494
    }
   },
   "zero_falso": {
@@ -4099,9 +4099,9 @@
      }
     },
     "cenario": "zero_falso",
-    "decisoes_sha256": "84eb99574d9db902f761b77659f57e2912e5522fd58025c2e3d708b448210a48",
+    "decisoes_sha256": "b1ed186311d2509180a3f771cfe661151e54eff27229857a0c697a9577fe3e50",
     "ledger_entradas": 2000,
-    "ledger_sha256": "434eff4a644bdd77be76a5c4e19f19be885ccad77aa509338f4cdb90d17ee84f",
+    "ledger_sha256": "cfff14cc04968ca5e6c88446a63a90c7ccdcb9f6998a6f038f241240c99405bd",
     "meta": {
      "cenario": "zero_falso",
      "descartados_sem_metrica": 1037,
@@ -4127,9 +4127,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.577,
-    "ms_por_corte_todas_politicas": 80.15,
-    "replay_s": 19.317
+    "avaliacao_s": 0.345,
+    "ms_por_corte_todas_politicas": 27.19,
+    "replay_s": 6.554
    }
   },
   "zero_sintetizado_coletor": {
@@ -4329,9 +4329,9 @@
      }
     },
     "cenario": "zero_sintetizado_coletor",
-    "decisoes_sha256": "941c6b73b01b9ebb0d8fe1c29f4d9c349a7900422e6d47183df2789e56b50d48",
+    "decisoes_sha256": "c1b01aacd5b4ef45dba286de1cc170356ef9d5f8ef91f99c3da3bcafd78b77ab",
     "ledger_entradas": 2000,
-    "ledger_sha256": "f01e6ec93540fa23ab8adcc0c47eb1bf2a039fc4d72393ba2c23edb215e9439f",
+    "ledger_sha256": "5e0acceef2c1c70b767f5450dd74aabbc4a0749fc468c148ef57aedb63b4e157",
     "meta": {
      "cenario": "zero_sintetizado_coletor",
      "descartados_sem_metrica": 1041,
@@ -4356,12 +4356,12 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.412,
-    "ms_por_corte_todas_politicas": 195.22,
-    "replay_s": 47.048
+    "avaliacao_s": 0.414,
+    "ms_por_corte_todas_politicas": 135.84,
+    "replay_s": 32.738
    }
   }
  },
- "versao_codigo": "91fc5f5c7a3c89eddc7b4e9e64a5dd2d91047c8e0d8631d4ed3c2e33492076dd",
- "versao_codigo_simulador": "a1efaf08d3afa7e1443ab15bdb6b29d2f7c9f78e68b41089730d63620bc18d00"
+ "versao_codigo": "a0ef440d1c99bede306c452fd5c77dcaedf79669ff6c8e4a6b270a6238bde5f2",
+ "versao_codigo_simulador": "a0ef440d1c99bede306c452fd5c77dcaedf79669ff6c8e4a6b270a6238bde5f2"
 }

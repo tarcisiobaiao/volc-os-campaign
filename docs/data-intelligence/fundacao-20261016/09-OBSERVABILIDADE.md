@@ -148,8 +148,11 @@ Recibos sintéticos (seed 20261016, agora 2026-10-16T15:00Z, código `c4f24cb9c9
 ## 8. Achados de produção já conhecidos — primeiros casos
 
 Do recibo de leituras externas read-only de 16/10 (`receipts/leituras-externas/RECIBO-LEITURAS-20261016.md`).
-Estes casos estão **reproduzidos em forma** no cenário sintético `producao_conhecida`; as views ainda **não foram
-rodadas** contra produção (é a primeira leitura pedida no handoff).
+Estes casos estão **reproduzidos em forma** no cenário sintético `producao_conhecida`. **Atualização do integrador
+(16/10 ~13:04 UTC):** os SELECTs gerados das views rodaram uma vez, read-only e sob demanda, contra produção (3ª rodada
+do recibo, `lg_selects_qualidade.sql`): 5 coletores frescos; 3 runs órfãos `alto`; zero sintetizado 80% `alto`;
+reconciliação JoinAds 0,968–1,000 `ok`; cobertura de atribuição do sensor 0,0 `alto`. Nenhuma view foi criada em
+produção e nada está agendado.
 
 | Caso real | Leitura | Checagem / view que o pega | Severidade esperada |
 |---|---|---|---|
@@ -170,7 +173,7 @@ silenciosa, duplicação, zero sintetizado, reconciliações e sensor; parâmetr
 `security_invoker`; rollback e reaplicação; SELECTs read-only = views; export minimizado reproduz os achados;
 falso alarme e poder do detector de deriva; alertas sem envio; recibo reprodutível.
 
-**Ainda não demonstrado:** nenhuma view rodou em produção (nem como SELECT); o DDL real de `raw_events` não
+**Ainda não demonstrado:** views criadas ou agendadas em produção (só rodaram uma vez como SELECT read-only, ver §8); o DDL real de `raw_events` não
 está versionado (a tabela de teste é mínima, R8); limiares não calibrados com dado real (são escolhas
 iniciais justificadas acima); deriva só em série sintética; o export real não foi gerado; os workflows n8n não
 têm error workflow (R7) — falha antes do primeiro lote continua invisível no ledger e só aparece como

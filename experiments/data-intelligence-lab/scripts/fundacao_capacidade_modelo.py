@@ -47,13 +47,6 @@ def carregar_pg() -> dict:
         pg["medicoes"] = [m for m in pg["medicoes"] if m["variante"] != "dil_obs_0001"] + extra["medicoes"]
         pg["rodada_dil_obs"] = {k: extra.get(k) for k in ("duracao_s", "cluster_apagado", "pico_amostrado_dir_cluster_bytes",
                                                           "amostras")}
-    sup2 = BENCH / "pg_medicoes_dil_obs_d2.json"  # DDL pós-D2 da frente A (sem chave_base, com ix_obs_asof)
-    if sup2.exists():
-        extra = json.loads(sup2.read_text(encoding="utf-8"))
-        for m in extra["medicoes"]:
-            m["variante"] = "dil_obs_0001_d2"
-        pg["medicoes"] += extra["medicoes"]
-        pg["rodada_dil_obs_d2"] = {k: extra.get(k) for k in ("duracao_s", "cluster_apagado", "pico_amostrado_dir_cluster_bytes")}
     return pg
 
 
@@ -77,15 +70,14 @@ def perfis(pg: dict) -> dict[str, PerfilBytes]:
     for nome, variante, formato in (("v21_replica", "v21", "largo"), ("largo_tipado", "largo", "largo"),
                                     ("longo_tipado", "longo", "longo"), ("largo_jsonb", "jsonb", "largo"),
                                     ("dil_obs_real", "dil_obs_0001", "longo")):
-        if nome == "dil_obs_real" and any(m["variante"] == "dil_obs_0001_d2" for m in pg["medicoes"]):
-            variante = "dil_obs_0001_d2"  # medido em 1e5 (disco apertado); por linha, 1e5 ≈ 1e6 a ±1% nas outras variantes
-            t = _medicao(pg, variante, 10**5)["tamanho"]
-        else:
-            t = _medicao(pg, variante, 10**6)["tamanho"]
+        m = _medicao(pg, variante, 10**6)
+        t = m["tamanho"]
+        conf = m.get("confirmacao", {}).get("bytes_por_confirmacao", 0.0)
         out[nome] = PerfilBytes(formato=formato, heap_por_observacao=t["heap_por_linha"],
                                 indices_por_observacao=t["indices_por_linha"], payload_linha_em_lote=lote,
                                 payload_linha_individual=ind, manifesto_por_lote=250.0, rollup_por_linha=rollup,
-                                fator_particao=fator_part, origem=f"pg_medicoes: {variante} (sem partição)")
+                                fator_particao=fator_part, confirmacao_por_observacao=conf,
+                                origem=f"pg_medicoes: {variante} 1e6 (sem partição)")
     # R1 F13: linha REAL da v21 em produção (heap + TOAST + índices numa conta só; não separável)
     out["v21_real"] = PerfilBytes(formato="largo", heap_por_observacao=REAL["google_ads_observation_bytes_por_linha"],
                                   indices_por_observacao=0.0, payload_linha_em_lote=lote, payload_linha_individual=ind,
@@ -106,8 +98,8 @@ GRADE_POLITICAS = (  # (política, perfil)
     ("compacto_sem_dedup", "longo_tipado"),
     ("compacto_dedup_linha", "longo_tipado"),
     ("compacto_dedup_linha_em_lote", "dil_obs_real"),
-    ("registro_d2", "dil_obs_real"),
-    ("registro_d2", "largo_tipado"),
+    ("registro_d2_linha", "dil_obs_real"),
+    ("registro_d2_linha_13m", "dil_obs_real"),
     ("recomendada", "dil_obs_real"),
 )
 
@@ -203,8 +195,6 @@ def rodar() -> dict:
     corpo["manifesto"] = manifesto_execucao(
         nome="fundacao_capacidade_modelo", seed=SEED,
         entradas={"pg_medicoes.json": sha256_arquivo(str(pg_path)), "horas_campanha_d30.json": sha256_arquivo(str(horas_path)),
-                  **({"pg_medicoes_dil_obs_d2.json": sha256_arquivo(str(BENCH / "pg_medicoes_dil_obs_d2.json"))}
-                     if (BENCH / "pg_medicoes_dil_obs_d2.json").exists() else {}),
                   **({"pg_medicoes_dil_obs.json": sha256_arquivo(str(BENCH / "pg_medicoes_dil_obs.json"))}
                      if (BENCH / "pg_medicoes_dil_obs.json").exists() else {})},
         parametros={"fatores": list(cen.FATORES_CRESCIMENTO), "cadencias": list(cen.CADENCIAS)},
@@ -319,8 +309,8 @@ def medicoes_md(pg: dict) -> str:
          f"- {pg.get('postgres', '')[:60]}; config {pg.get('config')}; amostras {pg.get('amostras')}",
          f"- duração {_f(pg.get('duracao_s', 0), 0)} s; pico amostrado do diretório do cluster "
          f"{_f(pg.get('pico_amostrado_dir_cluster_bytes', 0) / GB, 2)} GiB; cluster apagado: {pg.get('cluster_apagado')}",
-         f"- linhas `dil_obs_0001` (DDL pré-D2) vêm da rodada dedicada (`pg_medicoes_dil_obs.json`): {pg.get('rodada_dil_obs')}",
-         f"- linhas `dil_obs_0001_d2` (DDL pós-D2, só 1e5 por disco livre de ~6 GiB) vêm de `pg_medicoes_dil_obs_d2.json`: {pg.get('rodada_dil_obs_d2')}", "",
+         f"- linhas `dil_obs_0001` (DDL FINAL da frente A, HEAD 962b868c) vêm da rodada dedicada (`pg_medicoes_dil_obs.json`): {pg.get('rodada_dil_obs')}",
+         "",
          "## Tamanho", "", "| variante | partição | n alvo | linhas | heap B/linha | índices B/linha | total B/valor | índices por nome (MB) |",
          "|---|---|---:|---:|---:|---:|---:|---|"]
     for m in pg["medicoes"]:
@@ -328,6 +318,12 @@ def medicoes_md(pg: dict) -> str:
         idx = ", ".join(f"{k} {v / 2**20:.1f}" for k, v in sorted(t.get("por_indice_nome_bytes", {}).items()))
         L.append(f"| {m['variante']} | {'sim' if m['particionada'] else 'não'} | {m['n_alvo']:.0e} | {t['linhas']} | "
                  f"{_f(t['heap_por_linha'],1)} | {_f(t['indices_por_linha'],1)} | {_f(m['bytes_por_valor_total'],1)} | {idx} |")
+    for m in pg["medicoes"]:
+        if "confirmacao" in m:
+            c = m["confirmacao"]
+            idx = ", ".join(f"{k} {v / 2**20:.1f}" for k, v in sorted(c.get("por_indice_nome_bytes", {}).items()))
+            L.append(f"| dil_obs.confirmacao (D2') | não | {m['n_alvo']:.0e} | {c['linhas']} | {_f(c['heap_por_linha'],1)} | "
+                     f"{_f(c['indices_por_linha'],1)} | {_f(c['bytes_por_confirmacao'],1)} (por confirmação) | {idx} |")
     L += ["", "## Latência por chamada (ms)", "", "| variante | partição | n alvo | medida | n | min | p50 | p95 | p99 | máx | média | desvio |",
           "|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
     for m in pg["medicoes"]:
