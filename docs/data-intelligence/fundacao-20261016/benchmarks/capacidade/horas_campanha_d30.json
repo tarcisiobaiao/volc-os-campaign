@@ -1,0 +1,222 @@
+{
+ "fonte": {
+  "ref": "wip/historico-joinads-20261015",
+  "commit": "192bc06525944984d7fad9def4ce4ca34a4b0f02",
+  "caminho": ".claude-ads/runs/google-ads-recovery-20261015T125729-0300/receipts/d-live-campaign-audit.json",
+  "sha256": "b165f8b78603541693d4b44efefa59015978f422747c1d3a74518b539ebaa9cd"
+ },
+ "periodo": "D30 agregado por hora do dia (16/09–15/10/2026), campanha 24278665189, America/Sao_Paulo",
+ "totais": {
+  "impressions": 12470,
+  "clicks": 819,
+  "cost_brl": 695.63,
+  "conversions_ads": 245.0
+ },
+ "por_hora": [
+  {
+   "hora": 0,
+   "impressions": 244,
+   "clicks": 20,
+   "cost_brl": 17.0,
+   "conversions_ads": 6.0
+  },
+  {
+   "hora": 1,
+   "impressions": 119,
+   "clicks": 12,
+   "cost_brl": 7.41,
+   "conversions_ads": 4.0
+  },
+  {
+   "hora": 2,
+   "impressions": 76,
+   "clicks": 4,
+   "cost_brl": 4.48,
+   "conversions_ads": 1.0
+  },
+  {
+   "hora": 3,
+   "impressions": 53,
+   "clicks": 3,
+   "cost_brl": 0.85,
+   "conversions_ads": 0.0
+  },
+  {
+   "hora": 4,
+   "impressions": 52,
+   "clicks": 7,
+   "cost_brl": 7.73,
+   "conversions_ads": 2.0
+  },
+  {
+   "hora": 5,
+   "impressions": 81,
+   "clicks": 7,
+   "cost_brl": 4.76,
+   "conversions_ads": 3.0
+  },
+  {
+   "hora": 6,
+   "impressions": 185,
+   "clicks": 10,
+   "cost_brl": 8.34,
+   "conversions_ads": 2.0
+  },
+  {
+   "hora": 7,
+   "impressions": 465,
+   "clicks": 32,
+   "cost_brl": 27.28,
+   "conversions_ads": 12.0
+  },
+  {
+   "hora": 8,
+   "impressions": 618,
+   "clicks": 43,
+   "cost_brl": 36.41,
+   "conversions_ads": 15.0
+  },
+  {
+   "hora": 9,
+   "impressions": 701,
+   "clicks": 52,
+   "cost_brl": 41.18,
+   "conversions_ads": 18.0
+  },
+  {
+   "hora": 10,
+   "impressions": 823,
+   "clicks": 51,
+   "cost_brl": 45.04,
+   "conversions_ads": 17.0
+  },
+  {
+   "hora": 11,
+   "impressions": 872,
+   "clicks": 49,
+   "cost_brl": 43.53,
+   "conversions_ads": 17.0
+  },
+  {
+   "hora": 12,
+   "impressions": 928,
+   "clicks": 53,
+   "cost_brl": 51.45,
+   "conversions_ads": 17.0
+  },
+  {
+   "hora": 13,
+   "impressions": 847,
+   "clicks": 57,
+   "cost_brl": 50.3,
+   "conversions_ads": 19.0
+  },
+  {
+   "hora": 14,
+   "impressions": 864,
+   "clicks": 64,
+   "cost_brl": 55.13,
+   "conversions_ads": 23.0
+  },
+  {
+   "hora": 15,
+   "impressions": 754,
+   "clicks": 51,
+   "cost_brl": 42.54,
+   "conversions_ads": 17.0
+  },
+  {
+   "hora": 16,
+   "impressions": 750,
+   "clicks": 51,
+   "cost_brl": 41.13,
+   "conversions_ads": 11.5
+  },
+  {
+   "hora": 17,
+   "impressions": 800,
+   "clicks": 49,
+   "cost_brl": 42.06,
+   "conversions_ads": 15.5
+  },
+  {
+   "hora": 18,
+   "impressions": 753,
+   "clicks": 51,
+   "cost_brl": 45.5,
+   "conversions_ads": 11.0
+  },
+  {
+   "hora": 19,
+   "impressions": 829,
+   "clicks": 47,
+   "cost_brl": 39.77,
+   "conversions_ads": 15.0
+  },
+  {
+   "hora": 20,
+   "impressions": 709,
+   "clicks": 39,
+   "cost_brl": 30.24,
+   "conversions_ads": 10.0
+  },
+  {
+   "hora": 21,
+   "impressions": 490,
+   "clicks": 32,
+   "cost_brl": 28.12,
+   "conversions_ads": 5.0
+  },
+  {
+   "hora": 22,
+   "impressions": 300,
+   "clicks": 18,
+   "cost_brl": 13.21,
+   "conversions_ads": 3.0
+  },
+  {
+   "hora": 23,
+   "impressions": 157,
+   "clicks": 17,
+   "cost_brl": 12.17,
+   "conversions_ads": 1.0
+  }
+ ],
+ "fatia_00_06": {
+  "impressions": 0.05012028869286287,
+  "clicks": 0.06471306471306472,
+  "cost_brl": 0.06070756005347671,
+  "conversions_ads": 0.0653061224489796
+ },
+ "fatia_23": {
+  "impressions": 0.012590216519647153,
+  "clicks": 0.020757020757020756,
+  "cost_brl": 0.017494932650978248,
+  "conversions_ads": 0.004081632653061225
+ },
+ "fatia_fora_da_ultima_leitura_d0_aprox": {
+  "impressions": 0.06124164661855119,
+  "clicks": 0.08304843304843305,
+  "cost_brl": 0.0761614172285075,
+  "conversions_ads": 0.06891156462585035
+ },
+ "lambda_campanha_por_hora_media": {
+  "impressions": 17.319444444444443,
+  "clicks": 1.1375,
+  "cost_brl": 0.9661527777777777,
+  "conversions_ads": 0.3402777777777778
+ },
+ "lambda_campanha_por_hora_pico": {
+  "impressions": 30.933333333333334,
+  "clicks": 2.1333333333333333,
+  "cost_brl": 1.8376666666666668,
+  "conversions_ads": 0.7666666666666667
+ },
+ "lambda_campanha_por_hora_vale": {
+  "impressions": 1.7333333333333334,
+  "clicks": 0.1,
+  "cost_brl": 0.028333333333333332,
+  "conversions_ads": 0.0
+ },
+ "nota": "λ = eventos/hora na campanha (5 campanhas na conta, 1 com entrega relevante). Uma linha campanha-dia muda quando QUALQUER métrica muda; impressão é o evento mais frequente."
+}
