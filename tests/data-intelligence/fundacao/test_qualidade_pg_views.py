@@ -423,6 +423,13 @@ def test_dq01_recusa_sem_tabelas_base(cluster_pg):
 # --------------------------------------------------------------------------- dq_02 sobre dil_obs (depende de A)
 
 
+def _relogio_dil_obs(t):
+    """[thread A, R1-F1] troca o relógio do banco dil_obs._agora() (só no cluster descartável); None = now()."""
+    corpo = "pg_catalog.now()" if t is None else f"'{t.isoformat()}'::timestamptz"
+    return ("RESET ROLE; CREATE OR REPLACE FUNCTION dil_obs._agora() RETURNS timestamptz LANGUAGE sql STABLE "
+            f"PARALLEL SAFE SET search_path = '' AS $$ SELECT {corpo} $$; SET ROLE dil_obs_escritor;")
+
+
 def _carga_dil_obs(obs_fab, agora_real: datetime):
     """Observações via funções públicas de dil_obs: um coletor lento (p95 alto) e um rápido; um run com 20%
     de dead letter e um limpo."""
@@ -438,18 +445,25 @@ def _carga_dil_obs(obs_fab, agora_real: datetime):
         payload = f'{{"fonte":"{fonte}"}}'.encode()
         avail = agora_real - atraso
         linhas.append(f"SELECT dil_obs.registrar_run({_lit(run)}, {_lit(fonte)}, 'coletor_{fonte}', '1.0.0', {_lit(ji.isoformat())});")
+        # [thread A, resposta à R1-F1] o banco data payload e lote pelo PRÓPRIO relógio (dil_obs._agora()):
+        # para simular bytes recebidos há 3 h, o relógio do banco vai a avail-5s e volta a now() antes das observações
+        recebido = avail - timedelta(seconds=5)
+        linhas.append(_relogio_dil_obs(recebido))
         linhas.append(f"SELECT dil_obs.registrar_payload({_lit(sha(payload))}, decode({_lit(payload.hex())}, 'hex'), 'application/json');")
-        linhas.append(f"SELECT dil_obs.registrar_lote({_lit('lote-' + run)}, {_lit(run)}, {_lit(sha(payload))}, 'v1', '{{}}'::jsonb, {_lit((avail - timedelta(seconds=5)).isoformat())});")
+        linhas.append(f"SELECT dil_obs.registrar_lote({_lit('lote-' + run)}, {_lit(run)}, {_lit(sha(payload))}, 'v1', '{{}}'::jsonb, {_lit(recebido.isoformat())});")
+        linhas.append(_relogio_dil_obs(None))
         for i in range(5):
             o = obs_fab(fonte=fonte, payload=payload, entidade_id=str(100 + i), janela_inicio=ji, janela_fim=jf,
                         observed_at=jf + timedelta(hours=1), available_at=avail, ingested_at=avail,
-                        run_id=run, lote_id="lote-" + run, coletor=Coletor(f"coletor_{fonte}", "1.0.0"))
+                        run_id=run, lote_id="lote-" + run, coletor=Coletor(f"coletor_{fonte}", "1.0.0"),
+                        schema_version="v1")  # [thread A, R1-F3] schema_version da observação = o do lote
             obs_lista.append(o)
-            linhas.append(f"SELECT dil_obs.registrar_observacao({_lit(json.dumps(o.para_json()))}::jsonb);")
+            linhas.append(f"SELECT dil_obs.registrar_observacao({_lit(json.dumps(o.para_json()))}::json);")  # [A, R1-F9] entrada json
         n_dl = 1 if run == "run-lento" else 0
         for _ in range(n_dl):
             linhas.append(f"SELECT dil_obs.registrar_dead_letter({_lit(run)}, {_lit('lote-' + run)}, NULL, 'chave_substituida', '{{}}'::jsonb);")
-        linhas.append(f"SELECT dil_obs.finalizar_run({_lit(run)}, 'succeeded', 5, {5 - n_dl}, 0, 0, {n_dl}, NULL);")
+        # [thread A, R1-F8] inseridas/reafirmadas/dead letter são contadas pelo banco (NULL = "conte você")
+        linhas.append(f"SELECT dil_obs.finalizar_run({_lit(run)}, 'succeeded', 5, NULL, 0, NULL, NULL, NULL);")
     return "\n".join(linhas), obs_lista
 
 
