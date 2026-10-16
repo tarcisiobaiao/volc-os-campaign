@@ -142,7 +142,7 @@ def observacoes_de_tabelas(tabelas: Mapping[str, list[dict]]) -> list[Observacao
                 atributos={"endpoint": o["endpoint"], "observation_key": o["observation_key"],
                            "custom_key": o.get("custom_key"),
                            "custom_key_pedido": (lote.get("request_meta") or {}).get("custom_key")},
-                campos_payload=campos_de_payload(lote.get("payload")) if lote else None,
+                campos_payload=campos_de_payload(lote["payload"]) if "payload" in lote else None,
                 moeda=o.get("currency_code"),
             )
         )

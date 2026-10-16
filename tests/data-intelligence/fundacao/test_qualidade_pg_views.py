@@ -376,6 +376,25 @@ def test_selects_somente_leitura_atualizados_e_equivalentes(cluster_pg, bancos):
         assert json.loads(a) == json.loads(b), nome
 
 
+def test_export_read_only_minimizado_reproduz_os_achados(cluster_pg, bancos):
+    """O export (um SELECT, sem payload bruto, sensor agregado) rodado em transação READ ONLY dá ao recibo
+    os mesmos achados que as tabelas completas — menos deriva de esquema, que fica com a view."""
+    from volc_dil.fundacao.qualidade.motor import ConjuntoSaude, avaliar_saude
+
+    db, tabelas = bancos["estressado"]
+    sql = (DIR_VIEWS / "export_recibo_somente_leitura.sql").read_text(encoding="utf-8")
+    sql = sql.replace("now()", f"{_lit(AGORA_PADRAO.isoformat())}::timestamptz")
+    saida = cluster_pg.psql(f"BEGIN READ ONLY;\n{sql}\nCOMMIT;", db=db)
+    export = json.loads([ln for ln in saida.splitlines() if ln.startswith("{")][0])
+    assert "payload" not in json.dumps(export["tabelas"]["joinads_raw_batch"])
+    assert '"sid"' not in json.dumps(export) and '"pid"' not in json.dumps(export)
+    via_export = avaliar_saude(ConjuntoSaude.de_dict(export, AGORA_PADRAO), AGORA_PADRAO)
+    completo = avaliar_saude(ConjuntoSaude.de_tabelas(tabelas, AGORA_PADRAO), AGORA_PADRAO)
+    tira = lambda xs: [a.como_dict() for a in xs if not a.regra.startswith("esquema_")]  # noqa: E731
+    assert tira(via_export) == tira(completo) and len(tira(completo)) > 10
+    assert any(a.regra.startswith("esquema_") for a in completo)
+
+
 # --------------------------------------------------------------------------- rollback
 
 

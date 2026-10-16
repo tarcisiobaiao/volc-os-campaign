@@ -60,7 +60,10 @@ class ConjuntoSaude:
         """`{"formato": "tabelas", "tabelas": {...}}` ou `{"formato": "protocolo", "runs": [...], ...}`."""
         extra = {"series_deriva": d.get("series_deriva") or {}, "moeda_esperada": d.get("moeda_esperada")}
         if d.get("formato", "protocolo") == "tabelas":
-            return cls.de_tabelas(d["tabelas"], agora, **extra)
+            conj = cls.de_tabelas(d["tabelas"], agora, **extra)
+            if d.get("cobertura_sensor") is not None:  # export agregado (sem raw_events linha a linha)
+                conj.cobertura_sensor = [CoberturaSensorDia.de_dict(c) for c in d["cobertura_sensor"]]
+            return conj
         return cls(
             runs=[RunDQ.de_dict(r) for r in d.get("runs", [])],
             observacoes=[ObservacaoDQ.de_dict(o) for o in d.get("observacoes", [])],
