@@ -1,6 +1,6 @@
 <script>
 /*
- * VOLC Sensor v3.0 — analytics comportamental first-party, privacy-by-design
+ * VOLC Sensor v3.1 — analytics comportamental first-party, privacy-by-design
  *
  * SETUP NO GTM (obrigatório para o compliance funcionar):
  *  1. Tag "HTML personalizado" com este código.
@@ -24,7 +24,7 @@
  
   var CFG = {
     endpoint: 'https://database.agenciavolc.com.br/functions/v1/volc-ingest',
-    v: '3.0',
+    v: '3.1',
     scroll: [25, 50, 75, 100],
     engaged: [10, 30, 60, 120],
     idleMs: 30000,
@@ -141,11 +141,11 @@
   var REF = (function () {
     try { return d.referrer ? new URL(d.referrer).hostname : ''; } catch (e) { return ''; }
   })();
-  var Q = [], timers = [], observers = [], stopped = false;
+  var Q = [], timers = [], observers = [], stopped = false, eventSeq = 0;
  
   function enq(e, p) {
     if (stopped) return;
-    Q.push({ e: e, ts: now(), sid: SID, pid: PID, path: PATH, host: HOST, ref: REF, p: p || {} });
+    Q.push({ e: e, ts: now(), seq: ++eventSeq, sid: SID, pid: PID, path: PATH, host: HOST, ref: REF, p: p || {} });
     if (Q.length >= CFG.maxBatch) flush('max');
   }
  

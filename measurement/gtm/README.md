@@ -38,3 +38,20 @@ endurecimento da tabela fica na migration
 
 Nunca reutilizar a chave anônima para escrever diretamente em `raw_events`.
 
+## Verificação de drift e heartbeat
+
+O manifesto `manifest.json` fixa a versão publicada, as tags, os acionadores e
+os consentimentos esperados. A prova é somente leitura no GTM e no banco; o
+único POST feito é uma contraprova vazia a partir de uma origem inválida, que
+deve receber `403` antes de qualquer processamento.
+
+```bash
+python3 scripts/verificar_measurement_volc.py \
+  --env-file /caminho/seguro/.env \
+  --max-heartbeat-hours 48
+```
+
+Exit code `0` significa que os fontes publicados conferem, existe heartbeat v3
+recente e o navegador anônimo continua sem acesso direto a `raw_events`. O
+comando não publica GTM, não insere evento e não altera schema.
+

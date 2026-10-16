@@ -1,0 +1,38 @@
+{
+  "account_id": "6334941389",
+  "container_id": "241170721",
+  "public_id": "GTM-N4KS27ZV",
+  "live_version_id": "35",
+  "live_version_name": "VOLC Measurement v3 - 2026-10-15",
+  "ingest_url": "https://database.agenciavolc.com.br/functions/v1/volc-ingest",
+  "heartbeat_event": "volc_sensor_ready",
+  "measurement_version": "3.0",
+  "allowed_hosts": [
+    "creditoup.com.br"
+  ],
+  "tags": [
+    {
+      "name": "WEBS Wrapper v2",
+      "source": "measurement/gtm/webs-wrapper-v2.html",
+      "paused": false,
+      "consent": [
+        "ad_storage",
+        "analytics_storage"
+      ],
+      "firing_trigger_ids": [
+        "2147479573"
+      ]
+    },
+    {
+      "name": "VOLC Sensor v3.0",
+      "source": "measurement/gtm/volc-sensor-v3.html",
+      "paused": false,
+      "consent": [
+        "analytics_storage"
+      ],
+      "firing_trigger_names": [
+        "DOM Ready"
+      ]
+    }
+  ]
+}

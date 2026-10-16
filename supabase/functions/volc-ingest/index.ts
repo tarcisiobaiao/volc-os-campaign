@@ -56,6 +56,12 @@ function number(value: unknown, min: number, max: number): number | undefined {
   return Math.min(max, Math.max(min, value));
 }
 
+function integer(value: unknown, min: number, max: number): number | undefined {
+  if (typeof value !== "number" || !Number.isSafeInteger(value)) return undefined;
+  if (value < min || value > max) return undefined;
+  return value;
+}
+
 function cleanValue(value: unknown, depth = 0): unknown {
   if (depth > 2) return undefined;
   if (typeof value === "string") return text(value, 200);
@@ -124,6 +130,7 @@ Deno.serve(async (req: Request) => {
   const batch = Array.isArray(body.batch) ? body.batch.slice(0, MAX_BATCH) : [];
   if (!batch.length) return response(origin, 200, { ok: true, inserted: 0 });
 
+  const measurementVersion = text(body.v, 16) || "3.0";
   const rows = batch.flatMap((raw) => {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
     const item = raw as Record<string, unknown>;
@@ -132,9 +139,11 @@ Deno.serve(async (req: Request) => {
 
     const sid = text(item.sid ?? body.sid, 128);
     const pid = text(item.pid ?? body.pid, 128);
+    const eventSeq = integer(item.seq, 0, 2_147_483_647);
     const path = text(item.path ?? body.path, 512);
     const host = text(item.host ?? body.host, 128).toLowerCase();
     if (!sid || !pid || !path.startsWith("/") || !host || !sameHost(origin, host)) return [];
+    if (measurementVersion === "3.1" && eventSeq === undefined) return [];
 
     const rawTs = typeof item.ts === "number" ? item.ts : Date.now();
     const ts = new Date(rawTs);
@@ -145,6 +154,7 @@ Deno.serve(async (req: Request) => {
     return [{
       ts: ts.toISOString(),
       ts_sec: Math.floor(ts.getTime() / 1000),
+      event_seq: eventSeq ?? 0,
       sid,
       pid,
       path,
@@ -152,14 +162,14 @@ Deno.serve(async (req: Request) => {
       ref: text(item.ref ?? body.ref, 128),
       event_name: eventName,
       payload: payload(eventName, item.p),
-      v: text(body.v, 16) || "3.0",
+      v: measurementVersion,
     }];
   });
 
   if (!rows.length) return response(origin, 422, { ok: false, error: "no_valid_events" });
 
   const { error } = await db.from("raw_events").upsert(rows, {
-    onConflict: "sid,pid,event_name,ts_sec",
+    onConflict: "sid,pid,event_name,ts_sec,event_seq",
     ignoreDuplicates: true,
   });
   if (error) {
