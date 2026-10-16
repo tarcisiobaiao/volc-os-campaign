@@ -1,0 +1,80 @@
+{
+ "manifesto": {
+  "codigo_sha256": null,
+  "entradas_sha256": {},
+  "fingerprint": "bdfa70823a5a864950de528084ab22f1c0d2c7d30b7416d8a1d85da2da335a0e",
+  "nome": "replay_escala_v0",
+  "parametros": {
+   "dias": 20,
+   "janela_consulta_dias": 14,
+   "politica": "proportional",
+   "unidades": [
+    8,
+    50,
+    200,
+    500
+   ]
+  },
+  "resultado_sha256": null,
+  "seed": 7,
+  "versoes": {
+   "duckdb": "1.5.6",
+   "numpy": "2.5.3",
+   "pandas": "3.0.6",
+   "plataforma": "macOS-15.6-arm64-arm-64bit-Mach-O",
+   "polars": "1.44.2",
+   "python": "3.13.0",
+   "scikit-learn": "1.9.1",
+   "scipy": "1.18.1",
+   "statsmodels": "0.15.0"
+  }
+ },
+ "natureza": "sintetico",
+ "nota": "1 repetição por ponto; tempos de parede; ordem de grandeza.",
+ "pontos": [
+  {
+   "decisoes": 19,
+   "emissao_s": 0.005,
+   "n_dias": 20,
+   "n_unidades": 9,
+   "obs_por_snapshot_max": 234,
+   "politica_s": 0.003,
+   "snapshot_ms_por_decisao": 3.77,
+   "snapshot_s": 0.072,
+   "total_s": 0.08
+  },
+  {
+   "decisoes": 19,
+   "emissao_s": 0.027,
+   "n_dias": 20,
+   "n_unidades": 51,
+   "obs_por_snapshot_max": 1326,
+   "politica_s": 0.016,
+   "snapshot_ms_por_decisao": 22.09,
+   "snapshot_s": 0.42,
+   "total_s": 0.465
+  },
+  {
+   "decisoes": 19,
+   "emissao_s": 0.102,
+   "n_dias": 20,
+   "n_unidades": 201,
+   "obs_por_snapshot_max": 5226,
+   "politica_s": 0.06,
+   "snapshot_ms_por_decisao": 86.23,
+   "snapshot_s": 1.638,
+   "total_s": 1.81
+  },
+  {
+   "decisoes": 19,
+   "emissao_s": 0.252,
+   "n_dias": 20,
+   "n_unidades": 501,
+   "obs_por_snapshot_max": 13026,
+   "politica_s": 0.155,
+   "snapshot_ms_por_decisao": 217.13,
+   "snapshot_s": 4.125,
+   "total_s": 4.557
+  }
+ ]
+}
