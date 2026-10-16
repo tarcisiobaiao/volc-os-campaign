@@ -206,7 +206,8 @@ def _gerar_sequencia(obs, rng: random.Random, n: int):
 
 
 def _conteudo(estado):
-    return {k: (o.status.value, o.valor, o.chave_base) for k, o in estado.items()}
+    # D2': a linha vigente pode ser outra leitura com o MESMO estado (a releitura igual vira confirmação)
+    return {k: (o.status.value, o.valor) for k, o in estado.items()}
 
 
 def test_propriedade_idempotencia_e_as_of(obs):

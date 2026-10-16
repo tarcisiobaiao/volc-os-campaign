@@ -99,13 +99,13 @@ class ClusterPG:
         return e
 
     def psql(self, sql: str, *, db: str = "postgres", papel: Optional[str] = None, check: bool = True,
-             usuario: str = "postgres") -> str:
+             usuario: str = "postgres", timeout: int = 120) -> str:
         """Roda SQL (via stdin, ON_ERROR_STOP) como `usuario` (padrão: superusuário) ou, com `papel`, após SET ROLE."""
         corpo = (f"SET ROLE {papel};\n" if papel else "") + sql
         p = subprocess.run(
             [str(BINARIOS_PG / "psql"), "-h", self.socket, "-p", str(self.porta), "-U", usuario, "-d", db,
              "-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1"],
-            input=corpo, capture_output=True, text=True, env=self.env(), timeout=120,
+            input=corpo, capture_output=True, text=True, env=self.env(), timeout=timeout,
         )
         if check and p.returncode != 0:
             raise ErroPsql(p.returncode, p.stdout, p.stderr)

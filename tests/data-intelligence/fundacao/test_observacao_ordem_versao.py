@@ -132,8 +132,14 @@ def test_d2_releitura_d0_do_padrao_real_nao_conflita_e_fecha_a_janela():
     assert repete / (len(linhas) - 5) >= 0.75  # ~80% das leituras repetem o payload da hora anterior
     r = Registro()
     res = r.registrar_todas(custos)  # antes (cobertura fabricada na mesma chave): ConflitoIdempotencia
-    assert set(res) == {ResultadoRegistro.INSERIDO} and len(r) == len(custos)  # cada hora é uma leitura nova
-    assert r.registrar_todas(custos) == [ResultadoRegistro.NOOP] * len(custos)  # retry é no-op
+    # D2': 1ª hora = 5 versões; cada hora seguinte, 1 campanha muda (1 versão) e 4 repetem (confirmação);
+    # D+1 06h: o MESMO payload com a janela fechada (partial → observed) = 5 versões
+    assert res.count(ResultadoRegistro.INSERIDO) == 5 + 22 + 5 and len(r) == 32
+    assert res.count(ResultadoRegistro.CONFIRMADO) == len(custos) - 32 == 88 and len(r.confirmacoes) == 88
+    assert r.registrar_todas(custos) == [ResultadoRegistro.NOOP] * len(custos)  # retry é no-op (versão ou confirmação)
+    # frescor: a confirmação diz até quando o estado vigente foi relido
+    nat = custos[0].chave_natural
+    assert r.ultima_confirmacao(nat) is not None
     fim = r.as_of(datetime(2026, 10, 16, 7, tzinfo=BRT))
     assert {o.status for o in fim.values()} == {StatusObservacao.OBSERVED}  # o mesmo payload, agora com a janela fechada
     assert sorted(o.valor for o in fim.values()) == sorted(custos_finais.values())
@@ -200,3 +206,56 @@ def test_d3_propriedade_resultado_e_erro_independem_da_ordem(obs):
             embaralhado = list(itens)
             rng.shuffle(embaralhado)
             assert resultado(embaralhado) == ref
+
+
+# ============================================================== D2': versão só quando o estado muda
+def test_d2_linha_igual_atrasada_nao_cria_versao_e_aba_continua(obs):
+    a1 = _leitura(obs, observed_h=30, available_h=31, payload=b"A1", valor=5_000_000)
+    a_atrasada = _leitura(obs, observed_h=32, available_h=50, payload=b"A2", valor=5_000_000,
+                          run_id="run-atrasado", lote_id="lote-atrasado")  # igual a a1, medida depois, chega tarde
+    b = _leitura(obs, observed_h=40, available_h=41, payload=b"B", valor=7_000_000)
+    a3 = _leitura(obs, observed_h=45, available_h=46, payload=b"A3", valor=5_000_000)
+    r = Registro()
+    assert r.registrar_todas([a1, b, a_atrasada, a3]) == [ResultadoRegistro.INSERIDO, ResultadoRegistro.INSERIDO,
+                                                          ResultadoRegistro.CONFIRMADO, ResultadoRegistro.INSERIDO]
+    nat = a1.chave_natural
+    assert [r.as_of(_t(obs, h))[nat].valor for h in (35, 42, 47, 60)] == [5_000_000, 7_000_000, 5_000_000, 5_000_000]
+
+
+def test_d2_leitura_diferente_atrasada_materializa_a_confirmacao_mais_nova(obs):
+    """A(10h) e A'(20h, confirmação); B (15h, diferente) chega depois: sem materializar, B passaria à frente de A'."""
+    a = _leitura(obs, observed_h=30, available_h=31, payload=b"A", valor=5_000_000)
+    a2 = _leitura(obs, observed_h=40, available_h=41, payload=b"A2", valor=5_000_000)
+    b = _leitura(obs, observed_h=35, available_h=50, payload=b"B", valor=7_000_000, run_id="rb", lote_id="lb")
+    r = Registro()
+    assert r.registrar_todas([a, a2, b]) == [ResultadoRegistro.INSERIDO, ResultadoRegistro.CONFIRMADO, ResultadoRegistro.INSERIDO]
+    nat = a.chave_natural
+    assert r.as_of(_t(obs, 60))[nat].valor == 5_000_000 and len(r) == 3  # a2 virou versão
+    for ordem in itertools.permutations([a, a2, b]):
+        rr = Registro(ordem)
+        assert [rr.as_of(_t(obs, h)).get(nat) and rr.as_of(_t(obs, h))[nat].valor for h in (32, 42, 55)] == \
+               [as_of([a, a2, b], _t(obs, h)).get(nat) and as_of([a, a2, b], _t(obs, h))[nat].valor for h in (32, 42, 55)]
+
+
+def test_d2_propriedade_estado_independe_da_ordem_de_chegada(obs):
+    """Em toda permutação da chegada, o ESTADO (status, valor) do as_of em cada corte é o mesmo do dado bruto."""
+    rng = random.Random(2)
+    for _ in range(400):
+        n = rng.randint(2, 7)
+        itens = []
+        for k in range(n):
+            v = rng.choice([1, 2])
+            itens.append(_leitura(obs, observed_h=rng.randint(25, 60), available_h=61 + k * 3 + rng.randint(0, 2),
+                                  payload=f"p{k}".encode(), valor=v * 1_000_000, run_id=f"r{k}", lote_id=f"l{k}"))
+        cortes = [_t(obs, h) for h in range(60, 90, 2)]
+        ref = [{nat: (o.status.value, o.valor) for nat, o in as_of(itens, t).items()} for t in cortes]
+        for _ in range(8):
+            ordem = list(itens)
+            rng.shuffle(ordem)
+            reg = Registro()
+            res = reg.registrar_todas(ordem)
+            assert [{nat: (o.status.value, o.valor) for nat, o in reg.as_of(t).items()} for t in cortes] == ref
+            # toda leitura ficou registrada (versão, confirmação ou confirmação materializada) ou é NOOP de
+            # outra leitura de mesmo estado no mesmo instante, já conhecida antes
+            chaves = {v.chave_idempotencia for v in reg.versoes} | {c.chave_idempotencia for c in reg.confirmacoes}
+            assert len(chaves) + res.count(ResultadoRegistro.NOOP) == n
