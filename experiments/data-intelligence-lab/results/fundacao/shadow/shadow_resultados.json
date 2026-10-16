@@ -1,5 +1,5 @@
 {
- "deterministico_sha256": "5f372e02ac5adef2f0bed0e9554d81c9ad89c37bb6abaff7c9ae37588cf3f397",
+ "deterministico_sha256": "320afd245088e51254a56fb99e6586898f274222b137a1e59356145ac3f50eaf",
  "gates": {
   "auditoria_null_zero": {
    "manter": {
@@ -228,28 +228,28 @@
         "pausar": 500,
         "reduzir_verba": 426
        },
-       "celulas_com_mudanca_de_verba": 49,
-       "cortes_errados": 7,
-       "cortes_errados_por_sinal_imaturo": 7,
-       "cortes_executaveis_em_tese": 49,
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "40/1440",
+        "fracao_trocas": "88/1440",
         "pares": 1440,
-        "trocas": 40
+        "trocas": 88
        },
-       "lucro_micros": 2009004894,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 163727344,
-       "vs_equal_micros": 2609484329,
-       "vs_manter_micros": 1881035783
+       "lucro_micros": 127969111,
+       "propostas_bloqueadas_no_corte_diario": 49,
+       "regret_vs_oraculo_micros": 2044763127,
+       "vs_equal_micros": 728448546,
+       "vs_manter_micros": 0
       }
      }
     },
     "cenario": "base",
-    "decisoes_sha256": "593c1f33a5283ad956c459ce07a5fd1a49aba40492cb0a83d739fcbc4b064d30",
+    "decisoes_sha256": "81051ca982140b7a0cbcda3f82da72140cea48a75d6fc09461b234057e674519",
     "ledger_entradas": 2000,
-    "ledger_sha256": "c94f40bf24b4ec7fb1d40a962a47ace764a95623fd05c67e0e172979a0ce4c94",
+    "ledger_sha256": "f1b04dca166252413425a45e34cdff47937abbc08ed92150d1e64f5c5c408b23",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
@@ -271,9 +271,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.026,
-    "ms_por_corte_todas_politicas": 19.0,
-    "replay_s": 4.58
+    "avaliacao_s": 0.055,
+    "ms_por_corte_todas_politicas": 28.08,
+    "replay_s": 6.768
    }
   },
   "campanha_nova": {
@@ -454,28 +454,28 @@
         "pausar": 572,
         "reduzir_verba": 386
        },
-       "celulas_com_mudanca_de_verba": 46,
-       "cortes_errados": 6,
-       "cortes_errados_por_sinal_imaturo": 6,
-       "cortes_executaveis_em_tese": 46,
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "25/1383",
+        "fracao_trocas": "81/1383",
         "pares": 1383,
-        "trocas": 25
+        "trocas": 81
        },
-       "lucro_micros": 1860437346,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 336502909,
-       "vs_equal_micros": 2419148961,
-       "vs_manter_micros": 1628239107
+       "lucro_micros": 232198239,
+       "propostas_bloqueadas_no_corte_diario": 46,
+       "regret_vs_oraculo_micros": 1964742016,
+       "vs_equal_micros": 790909854,
+       "vs_manter_micros": 0
       }
      }
     },
     "cenario": "campanha_nova",
-    "decisoes_sha256": "93dc31580ac11870eeef434dcc605d45fe91af6506e29766958dc9cdc4db55fe",
+    "decisoes_sha256": "370865758cbc2fb9197bf66aa91157282f7a66cbdd80e06f9c98352bcd229cf7",
     "ledger_entradas": 2000,
-    "ledger_sha256": "11871e777b2ba00f276130973c3293e0486cce583c2da9af4b0e46f0d9343302",
+    "ledger_sha256": "21dd6a9f14fc5af41da560fce46cd9edae8382b6b2603714f5e1323ae0afda56",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
@@ -497,9 +497,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.026,
-    "ms_por_corte_todas_politicas": 15.84,
-    "replay_s": 3.817
+    "avaliacao_s": 0.028,
+    "ms_por_corte_todas_politicas": 22.36,
+    "replay_s": 5.389
    }
   },
   "identidade_trocada": {
@@ -678,28 +678,28 @@
         "pausar": 509,
         "reduzir_verba": 447
        },
-       "celulas_com_mudanca_de_verba": 29,
-       "cortes_errados": 2,
-       "cortes_errados_por_sinal_imaturo": 2,
-       "cortes_executaveis_em_tese": 29,
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "44/1440",
+        "fracao_trocas": "59/1440",
         "pares": 1440,
-        "trocas": 44
+        "trocas": 59
        },
-       "lucro_micros": 1268205267,
-       "propostas_bloqueadas_no_corte_diario": 20,
-       "regret_vs_oraculo_micros": 904526971,
-       "vs_equal_micros": 1561859956,
-       "vs_manter_micros": 1140236156
+       "lucro_micros": 127969111,
+       "propostas_bloqueadas_no_corte_diario": 49,
+       "regret_vs_oraculo_micros": 2044763127,
+       "vs_equal_micros": 421623800,
+       "vs_manter_micros": 0
       }
      }
     },
     "cenario": "identidade_trocada",
-    "decisoes_sha256": "9c8f34d429524741de172fa18ae241c8fdc11ea800c3f33efb23c256ee785eac",
+    "decisoes_sha256": "809d41255172c1b2def465bde88076a372bede0662a003c58c1319858306ecb9",
     "ledger_entradas": 2000,
-    "ledger_sha256": "914361a150f327d641e01f599e7e8b5fc009a6c2c5d2723c52dd6a40298368ba",
+    "ledger_sha256": "1e9605ac4155a480d3151dd3596231b42234756234198fb174645b8856a0321c",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
@@ -721,9 +721,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.021,
-    "ms_por_corte_todas_politicas": 18.18,
-    "replay_s": 4.381
+    "avaliacao_s": 0.025,
+    "ms_por_corte_todas_politicas": 24.54,
+    "replay_s": 5.913
    }
   },
   "moeda_misturada": {
@@ -746,21 +746,21 @@
         "insuficiente": 306,
         "reduzir_verba": 494
        },
-       "celulas_com_mudanca_de_verba": 60,
+       "celulas_com_mudanca_de_verba": 50,
        "cortes_errados": 12,
        "cortes_errados_por_sinal_imaturo": 0,
-       "cortes_executaveis_em_tese": 26,
-       "drawdown_max_vs_manter_micros": 728448546,
+       "cortes_executaveis_em_tese": 16,
+       "drawdown_max_vs_manter_micros": 789493664,
        "estabilidade": {
         "fracao_trocas": "120/1440",
         "pares": 1440,
         "trocas": 120
        },
-       "lucro_micros": -600479435,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 2773769138,
+       "lucro_micros": -661524553,
+       "propostas_bloqueadas_no_corte_diario": 10,
+       "regret_vs_oraculo_micros": 2834814256,
        "vs_equal_micros": 0,
-       "vs_manter_micros": -728448546
+       "vs_manter_micros": -789493664
       },
       "greedy_conservador": {
        "acoes_em_todos_os_cortes": {
@@ -769,21 +769,21 @@
         "manter": 570,
         "reduzir_verba": 285
        },
-       "celulas_com_mudanca_de_verba": 30,
+       "celulas_com_mudanca_de_verba": 25,
        "cortes_errados": 0,
        "cortes_errados_por_sinal_imaturo": 0,
-       "cortes_executaveis_em_tese": 15,
+       "cortes_executaveis_em_tese": 10,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
         "fracao_trocas": "120/1440",
         "pares": 1440,
         "trocas": 120
        },
-       "lucro_micros": 364048735,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 1836921750,
-       "vs_equal_micros": 964528170,
-       "vs_manter_micros": 236079624
+       "lucro_micros": 320364871,
+       "propostas_bloqueadas_no_corte_diario": 5,
+       "regret_vs_oraculo_micros": 1880605614,
+       "vs_equal_micros": 981889424,
+       "vs_manter_micros": 192395760
       },
       "guardiao_72h[regra_margem]": {
        "acoes_em_todos_os_cortes": {
@@ -792,21 +792,21 @@
         "pausar": 434,
         "reduzir_verba": 217
        },
-       "celulas_com_mudanca_de_verba": 27,
+       "celulas_com_mudanca_de_verba": 18,
        "cortes_errados": 0,
        "cortes_errados_por_sinal_imaturo": 0,
-       "cortes_executaveis_em_tese": 27,
+       "cortes_executaveis_em_tese": 18,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
         "fracao_trocas": "6/1440",
         "pares": 1440,
         "trocas": 6
        },
-       "lucro_micros": 1798268399,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 374463839,
-       "vs_equal_micros": 2398747834,
-       "vs_manter_micros": 1670299288
+       "lucro_micros": 1632835715,
+       "propostas_bloqueadas_no_corte_diario": 9,
+       "regret_vs_oraculo_micros": 539896523,
+       "vs_equal_micros": 2294360268,
+       "vs_manter_micros": 1504866604
       },
       "guardiao_72h[regra_margem_imatura]": {
        "acoes_em_todos_os_cortes": {
@@ -815,21 +815,21 @@
         "pausar": 434,
         "reduzir_verba": 284
        },
-       "celulas_com_mudanca_de_verba": 31,
+       "celulas_com_mudanca_de_verba": 22,
        "cortes_errados": 2,
        "cortes_errados_por_sinal_imaturo": 2,
-       "cortes_executaveis_em_tese": 31,
+       "cortes_executaveis_em_tese": 22,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
         "fracao_trocas": "8/1440",
         "pares": 1440,
         "trocas": 8
        },
-       "lucro_micros": 1806015424,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 366716814,
-       "vs_equal_micros": 2406494859,
-       "vs_manter_micros": 1678046313
+       "lucro_micros": 1640582740,
+       "propostas_bloqueadas_no_corte_diario": 9,
+       "regret_vs_oraculo_micros": 532149498,
+       "vs_equal_micros": 2302107293,
+       "vs_manter_micros": 1512613629
       },
       "manter": {
        "acoes_em_todos_os_cortes": {
@@ -848,7 +848,7 @@
        "lucro_micros": 127969111,
        "propostas_bloqueadas_no_corte_diario": 0,
        "regret_vs_oraculo_micros": 2044763127,
-       "vs_equal_micros": 728448546,
+       "vs_equal_micros": 789493664,
        "vs_manter_micros": 0
       },
       "regra_margem": {
@@ -858,21 +858,21 @@
         "pausar": 434,
         "reduzir_verba": 217
        },
-       "celulas_com_mudanca_de_verba": 27,
+       "celulas_com_mudanca_de_verba": 18,
        "cortes_errados": 0,
        "cortes_errados_por_sinal_imaturo": 0,
-       "cortes_executaveis_em_tese": 27,
+       "cortes_executaveis_em_tese": 18,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
         "fracao_trocas": "6/1440",
         "pares": 1440,
         "trocas": 6
        },
-       "lucro_micros": 1798268399,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 374463839,
-       "vs_equal_micros": 2398747834,
-       "vs_manter_micros": 1670299288
+       "lucro_micros": 1632835715,
+       "propostas_bloqueadas_no_corte_diario": 9,
+       "regret_vs_oraculo_micros": 539896523,
+       "vs_equal_micros": 2294360268,
+       "vs_manter_micros": 1504866604
       },
       "regra_margem_imatura": {
        "acoes_em_todos_os_cortes": {
@@ -880,21 +880,21 @@
         "pausar": 482,
         "reduzir_verba": 332
        },
-       "celulas_com_mudanca_de_verba": 35,
+       "celulas_com_mudanca_de_verba": 25,
        "cortes_errados": 2,
        "cortes_errados_por_sinal_imaturo": 2,
-       "cortes_executaveis_em_tese": 35,
+       "cortes_executaveis_em_tese": 25,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
         "fracao_trocas": "4/1440",
         "pares": 1440,
         "trocas": 4
        },
-       "lucro_micros": 1990371058,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 182361180,
-       "vs_equal_micros": 2590850493,
-       "vs_manter_micros": 1862401947
+       "lucro_micros": 1803781573,
+       "propostas_bloqueadas_no_corte_diario": 10,
+       "regret_vs_oraculo_micros": 368950665,
+       "vs_equal_micros": 2465306126,
+       "vs_manter_micros": 1675812462
       },
       "regra_margem_null_zero": {
        "acoes_em_todos_os_cortes": {
@@ -902,28 +902,28 @@
         "pausar": 500,
         "reduzir_verba": 426
        },
-       "celulas_com_mudanca_de_verba": 49,
-       "cortes_errados": 7,
-       "cortes_errados_por_sinal_imaturo": 7,
-       "cortes_executaveis_em_tese": 49,
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "40/1440",
+        "fracao_trocas": "76/1440",
         "pares": 1440,
-        "trocas": 40
+        "trocas": 76
        },
-       "lucro_micros": 2009004894,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 163727344,
-       "vs_equal_micros": 2609484329,
-       "vs_manter_micros": 1881035783
+       "lucro_micros": 127969111,
+       "propostas_bloqueadas_no_corte_diario": 49,
+       "regret_vs_oraculo_micros": 2044763127,
+       "vs_equal_micros": 789493664,
+       "vs_manter_micros": 0
       }
      }
     },
     "cenario": "moeda_misturada",
-    "decisoes_sha256": "75852ccd0436514ae1249f061dafab081beb211f8158b32289976762030d0857",
+    "decisoes_sha256": "ddd6282fd7e4c639291c94731738a8092cee5c6202c2337f633911acc1e1c73c",
     "ledger_entradas": 2000,
-    "ledger_sha256": "6a6c542ff7c0fe28742b8a0dbde8e6f6a5f4acc3da252f946d06d1f28ce95233",
+    "ledger_sha256": "9e3e42551d17ceceb2206d31aff7a8d120d1e95379d25554d7dab56456398cab",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
@@ -945,9 +945,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.027,
-    "ms_por_corte_todas_politicas": 19.72,
-    "replay_s": 4.752
+    "avaliacao_s": 0.041,
+    "ms_por_corte_todas_politicas": 23.34,
+    "replay_s": 5.625
    }
   },
   "restatement_tardio": {
@@ -1126,28 +1126,28 @@
         "pausar": 500,
         "reduzir_verba": 426
        },
-       "celulas_com_mudanca_de_verba": 49,
-       "cortes_errados": 7,
-       "cortes_errados_por_sinal_imaturo": 7,
-       "cortes_executaveis_em_tese": 49,
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "40/1440",
+        "fracao_trocas": "88/1440",
         "pares": 1440,
-        "trocas": 40
+        "trocas": 88
        },
-       "lucro_micros": 2009004894,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 163727344,
-       "vs_equal_micros": 2609484329,
-       "vs_manter_micros": 1881035783
+       "lucro_micros": 127969111,
+       "propostas_bloqueadas_no_corte_diario": 49,
+       "regret_vs_oraculo_micros": 2044763127,
+       "vs_equal_micros": 728448546,
+       "vs_manter_micros": 0
       }
      }
     },
     "cenario": "restatement_tardio",
-    "decisoes_sha256": "b931076af2a6d07e3a011239c36ec148213df526d77a3838976b01f40ee3167d",
+    "decisoes_sha256": "107b0b36e79b0e388117250bb3d5624e6406c6bce962ed5df5d2de432029914e",
     "ledger_entradas": 2000,
-    "ledger_sha256": "1417fc547c046dccbf0abcfc45e34661258a9ed7ff86c9b7f1d6df6d549f01bb",
+    "ledger_sha256": "1db204a7ec92017a37124e5b10317c59f66cebb18b9132dfedc01e6e8a407038",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
@@ -1169,9 +1169,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.037,
-    "ms_por_corte_todas_politicas": 16.63,
-    "replay_s": 4.008
+    "avaliacao_s": 0.031,
+    "ms_por_corte_todas_politicas": 26.65,
+    "replay_s": 6.423
    }
   },
   "zero_sintetizado": {
@@ -1352,28 +1352,28 @@
         "pausar": 573,
         "reduzir_verba": 431
        },
-       "celulas_com_mudanca_de_verba": 52,
-       "cortes_errados": 10,
-       "cortes_errados_por_sinal_imaturo": 10,
-       "cortes_executaveis_em_tese": 52,
-       "drawdown_max_vs_manter_micros": 9038053,
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "43/1440",
+        "fracao_trocas": "97/1440",
         "pares": 1440,
-        "trocas": 43
+        "trocas": 97
        },
-       "lucro_micros": 1537893852,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 634838386,
-       "vs_equal_micros": 1687186644,
-       "vs_manter_micros": 1409924741
+       "lucro_micros": 127969111,
+       "propostas_bloqueadas_no_corte_diario": 52,
+       "regret_vs_oraculo_micros": 2044763127,
+       "vs_equal_micros": 277261903,
+       "vs_manter_micros": 0
       }
      }
     },
     "cenario": "zero_sintetizado",
-    "decisoes_sha256": "d0763e3a14e097d8eddc275e7f0ee2df5a4f11ef2961e86359d34f991916f9d3",
+    "decisoes_sha256": "8579a6a9a4f423622abfc41553351815bed2e16472e1add17793f5092d9dd31f",
     "ledger_entradas": 2000,
-    "ledger_sha256": "3e757e247c453c9a8fa886df27f08889af545cb0417c914eb25fbd991119af4c",
+    "ledger_sha256": "ceceb16f8760a6514017366448f59abbdeef3ccd82340f060191c8be09f97b7f",
     "meta": {
      "adaptacao": {
       "dead_letter": [],
@@ -1395,9 +1395,9 @@
     "seed": 20261016
    },
    "tempos": {
-    "avaliacao_s": 0.025,
-    "ms_por_corte_todas_politicas": 21.13,
-    "replay_s": 5.093
+    "avaliacao_s": 0.034,
+    "ms_por_corte_todas_politicas": 24.03,
+    "replay_s": 5.792
    }
   }
  },
@@ -1578,28 +1578,33 @@
         "pausar": 503,
         "reduzir_verba": 965
        },
-       "celulas_com_mudanca_de_verba": 68,
-       "cortes_errados": 18,
-       "cortes_errados_por_sinal_imaturo": 18,
-       "cortes_executaveis_em_tese": 68,
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "62/1920",
+        "fracao_trocas": "131/1920",
         "pares": 1920,
-        "trocas": 62
+        "trocas": 131
        },
-       "lucro_micros": 113611150,
-       "propostas_bloqueadas_no_corte_diario": 1,
-       "regret_vs_oraculo_micros": 28136769,
-       "vs_equal_micros": 76524960,
-       "vs_manter_micros": 227880265
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 69,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -151355305,
+       "vs_manter_micros": 0
       }
      }
     },
     "cenario": "atraso_receita_longo",
-    "decisoes_sha256": "fe0cbb3b4b2d4a1d2a0d7487de924c177fe53c8355e243cb036cf5a67c16c3d3",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "6645efa9157fffc19fd57dc17f61aa4d2655cfc196833cc0e4ca983a2b6e6dc4",
     "ledger_entradas": 2008,
-    "ledger_sha256": "d70fefdfa93a75069967a20de35e0f2ac9bb5fe68c40285f441781e153d2ed69",
+    "ledger_sha256": "d133880d1e7f36afcf62b61cf90968a69c95d9ebd00b792702aa90cac100b85b",
     "meta": {
      "cenario": "atraso_receita_longo",
      "descartados_sem_metrica": 908,
@@ -1621,12 +1626,17 @@
     "n_decisoes": 1928,
     "n_observacoes": 3409,
     "n_resultados_maduros": 80,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.017,
-    "ms_por_corte_todas_politicas": 20.85,
-    "replay_s": 5.025
+    "avaliacao_s": 0.016,
+    "ms_por_corte_todas_politicas": 33.85,
+    "replay_s": 8.158
    }
   },
   "campanha_nova_aprendendo": {
@@ -1807,28 +1817,33 @@
         "pausar": 313,
         "reduzir_verba": 848
        },
-       "celulas_com_mudanca_de_verba": 52,
+       "celulas_com_mudanca_de_verba": 41,
        "cortes_errados": 3,
        "cortes_errados_por_sinal_imaturo": 3,
-       "cortes_executaveis_em_tese": 52,
+       "cortes_executaveis_em_tese": 41,
        "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "22/1913",
+        "fracao_trocas": "26/1913",
         "pares": 1913,
-        "trocas": 22
+        "trocas": 26
        },
-       "lucro_micros": -108164525,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 194411855,
-       "vs_equal_micros": -137320052,
-       "vs_manter_micros": 82320809
+       "lucro_micros": -117279330,
+       "propostas_bloqueadas_no_corte_diario": 11,
+       "regret_vs_oraculo_micros": 203526660,
+       "vs_equal_micros": -146434857,
+       "vs_manter_micros": 73206004
       }
      }
     },
     "cenario": "campanha_nova_aprendendo",
-    "decisoes_sha256": "ac9dba0adfcde2d85bdfc945101777e8bc37fcbb076e4b5755c9444cba8499ed",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "d4ce4799cb6f04fe58acf7070474711e5f2ce9874dd0d7c0120e7226121cbcc0",
     "ledger_entradas": 2000,
-    "ledger_sha256": "2be5310de7b54d3045cd78306c304a3d606dfea3f3cda491d1c3bd4519a8dd5d",
+    "ledger_sha256": "ddbded8956895afbe243dd0d6558c834ff31d3d18364fc2f7e941296cff75f67",
     "meta": {
      "cenario": "campanha_nova_aprendendo",
      "descartados_sem_metrica": 931,
@@ -1850,12 +1865,17 @@
     "n_decisoes": 1928,
     "n_observacoes": 3177,
     "n_resultados_maduros": 72,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 116,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.203,
-    "ms_por_corte_todas_politicas": 22.31,
-    "replay_s": 5.376
+    "avaliacao_s": 0.185,
+    "ms_por_corte_todas_politicas": 37.8,
+    "replay_s": 9.11
    }
   },
   "custo_d0_multiversao": {
@@ -2034,28 +2054,33 @@
         "pausar": 110,
         "reduzir_verba": 575
        },
-       "celulas_com_mudanca_de_verba": 36,
-       "cortes_errados": 4,
-       "cortes_errados_por_sinal_imaturo": 4,
-       "cortes_executaveis_em_tese": 36,
-       "drawdown_max_vs_manter_micros": 744143,
+       "celulas_com_mudanca_de_verba": 28,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 28,
+       "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "27/1920",
+        "fracao_trocas": "29/1920",
         "pares": 1920,
-        "trocas": 27
+        "trocas": 29
        },
-       "lucro_micros": -67036439,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 208784358,
-       "vs_equal_micros": -170939735,
-       "vs_manter_micros": 47232676
+       "lucro_micros": -70483613,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 212231532,
+       "vs_equal_micros": -174386909,
+       "vs_manter_micros": 43785502
       }
      }
     },
     "cenario": "custo_d0_multiversao",
-    "decisoes_sha256": "ab9f26f7112153ee2f49ca56d718d1a83d36bea4bd4e1744a2d1e7f154434850",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "4b8bda0ad1eb294e7ac49db9c70ec751e8990119134a163e871a5ac61195c6ac",
     "ledger_entradas": 2000,
-    "ledger_sha256": "23f88a1dbca153e348ac9fc92abb4b39f79bff4c8001434c8da354ffb2ef7da0",
+    "ledger_sha256": "9c454fab1978f898d1d524ce3d925ac64c135cf2bfdc95a91f2405d48eccbfdf",
     "meta": {
      "cenario": "custo_d0_multiversao",
      "descartados_sem_metrica": 1037,
@@ -2077,12 +2102,254 @@
     "n_decisoes": 1928,
     "n_observacoes": 8212,
     "n_resultados_maduros": 72,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.269,
-    "ms_por_corte_todas_politicas": 22.9,
-    "replay_s": 5.519
+    "avaliacao_s": 0.441,
+    "ms_por_corte_todas_politicas": 45.8,
+    "replay_s": 11.038
+   }
+  },
+  "dedup_por_segundo": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -138705407,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1102,
+        "insuficiente": 446,
+        "reduzir_verba": 380
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 79127605,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 82164526,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 217833012
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 304,
+        "insuficiente": 446,
+        "manter": 874,
+        "reduzir_verba": 304
+       },
+       "celulas_com_mudanca_de_verba": 30,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 16,
+       "drawdown_max_vs_manter_micros": 778205,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": -138784683,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 267096311,
+       "vs_equal_micros": -217912288,
+       "vs_manter_micros": -79276
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1085,
+        "pausar": 122,
+        "reduzir_verba": 529
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "19/1920",
+        "pares": 1920,
+        "trocas": 19
+       },
+       "lucro_micros": -92476588,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 220616518,
+       "vs_equal_micros": -171604193,
+       "vs_manter_micros": 46228819
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 96,
+        "manter": 1048,
+        "pausar": 112,
+        "reduzir_verba": 672
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 6,
+       "cortes_errados_por_sinal_imaturo": 6,
+       "cortes_executaveis_em_tese": 32,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "17/1920",
+        "pares": 1920,
+        "trocas": 17
+       },
+       "lucro_micros": -91584502,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 219724432,
+       "vs_equal_micros": -170712107,
+       "vs_manter_micros": 47120905
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -138705407,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 266845337,
+       "vs_equal_micros": -217833012,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1085,
+        "pausar": 122,
+        "reduzir_verba": 529
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "19/1920",
+        "pares": 1920,
+        "trocas": 19
+       },
+       "lucro_micros": -92476588,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 220616518,
+       "vs_equal_micros": -171604193,
+       "vs_manter_micros": 46228819
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1048,
+        "pausar": 136,
+        "reduzir_verba": 744
+       },
+       "celulas_com_mudanca_de_verba": 36,
+       "cortes_errados": 7,
+       "cortes_errados_por_sinal_imaturo": 7,
+       "cortes_executaveis_em_tese": 36,
+       "drawdown_max_vs_manter_micros": 744143,
+       "estabilidade": {
+        "fracao_trocas": "13/1920",
+        "pares": 1920,
+        "trocas": 13
+       },
+       "lucro_micros": -92328645,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 220468575,
+       "vs_equal_micros": -171456250,
+       "vs_manter_micros": 46376762
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 938,
+        "pausar": 136,
+        "reduzir_verba": 854
+       },
+       "celulas_com_mudanca_de_verba": 38,
+       "cortes_errados": 6,
+       "cortes_errados_por_sinal_imaturo": 6,
+       "cortes_executaveis_em_tese": 38,
+       "drawdown_max_vs_manter_micros": 403999,
+       "estabilidade": {
+        "fracao_trocas": "25/1920",
+        "pares": 1920,
+        "trocas": 25
+       },
+       "lucro_micros": -93808231,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 221948161,
+       "vs_equal_micros": -172935836,
+       "vs_manter_micros": 44897176
+      }
+     }
+    },
+    "cenario": "dedup_por_segundo",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "6423f5d342b3aa27c654d0127202af4617ec4ad76ac88b31ff793cae98246137",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "d644cfb97cadb9618574617d019d622128dad0b0657a1641122343c466e09ccc",
+    "meta": {
+     "cenario": "dedup_por_segundo",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3538,
+     "n_registros": 4575,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 24,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3538,
+    "n_resultados_maduros": 72,
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
+   },
+   "tempos": {
+    "avaliacao_s": 0.258,
+    "ms_por_corte_todas_politicas": 47.1,
+    "replay_s": 11.35
    }
   },
   "estavel": {
@@ -2261,28 +2528,33 @@
         "pausar": 110,
         "reduzir_verba": 570
        },
-       "celulas_com_mudanca_de_verba": 36,
-       "cortes_errados": 4,
-       "cortes_errados_por_sinal_imaturo": 4,
-       "cortes_executaveis_em_tese": 36,
-       "drawdown_max_vs_manter_micros": 744143,
+       "celulas_com_mudanca_de_verba": 28,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 28,
+       "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "27/1920",
+        "fracao_trocas": "29/1920",
         "pares": 1920,
-        "trocas": 27
+        "trocas": 29
        },
-       "lucro_micros": -67036439,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 208784358,
-       "vs_equal_micros": -169552352,
-       "vs_manter_micros": 47232676
+       "lucro_micros": -70483613,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 212231532,
+       "vs_equal_micros": -172999526,
+       "vs_manter_micros": 43785502
       }
      }
     },
     "cenario": "estavel",
-    "decisoes_sha256": "7efd1624f703e4f8ae70371b656a8e72ade95d58a8cf9d3903564d8e4f0cfafc",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "dbcb09fe61938a54a01a870715d4480a8a0fa0b6be717fa568f5024c62135e0d",
     "ledger_entradas": 2000,
-    "ledger_sha256": "71507a16f935a93a06b273131eb9886628079d1716487e815d4d3b66b23787d9",
+    "ledger_sha256": "88055b9d28d8cc868ecaa0070dd1dc38699707a613fb7af9978cc37a97f677ab",
     "meta": {
      "cenario": "estavel",
      "descartados_sem_metrica": 1037,
@@ -2304,12 +2576,17 @@
     "n_decisoes": 1928,
     "n_observacoes": 3538,
     "n_resultados_maduros": 72,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.266,
-    "ms_por_corte_todas_politicas": 22.64,
-    "replay_s": 5.455
+    "avaliacao_s": 0.234,
+    "ms_por_corte_todas_politicas": 27.74,
+    "replay_s": 6.685
    }
   },
   "execucao_presa": {
@@ -2488,28 +2765,33 @@
         "pausar": 110,
         "reduzir_verba": 562
        },
-       "celulas_com_mudanca_de_verba": 35,
-       "cortes_errados": 4,
-       "cortes_errados_por_sinal_imaturo": 4,
-       "cortes_executaveis_em_tese": 35,
-       "drawdown_max_vs_manter_micros": 744143,
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "25/1920",
+        "fracao_trocas": "27/1920",
         "pares": 1920,
-        "trocas": 25
+        "trocas": 27
        },
-       "lucro_micros": -67036439,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 208784358,
-       "vs_equal_micros": -164261428,
-       "vs_manter_micros": 47232676
+       "lucro_micros": -70483613,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 212231532,
+       "vs_equal_micros": -167708602,
+       "vs_manter_micros": 43785502
       }
      }
     },
     "cenario": "execucao_presa",
-    "decisoes_sha256": "14cb44deb1353a6c7a4e7ee204422d0e469c529450aa9c72fe59a8df79bdd10d",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "cb5b5ff68848cf24f23112d6712bc8b1b4f9feea47c91c5a0306ba2fdc392392",
     "ledger_entradas": 2000,
-    "ledger_sha256": "324dd3b3659d83b47e43a1e9af10370ab8c1ca27e1361cbbee7c02552613e10a",
+    "ledger_sha256": "a1fe106aea7905b122d2a8a736bfd7180a4e2059bc96b41f119b066ec72dcf7a",
     "meta": {
      "cenario": "execucao_presa",
      "descartados_sem_metrica": 1008,
@@ -2531,12 +2813,17 @@
     "n_decisoes": 1928,
     "n_observacoes": 3389,
     "n_resultados_maduros": 72,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.27,
-    "ms_por_corte_todas_politicas": 21.65,
-    "replay_s": 5.217
+    "avaliacao_s": 0.381,
+    "ms_por_corte_todas_politicas": 46.32,
+    "replay_s": 11.164
    }
   },
   "fonte_fora_do_ar": {
@@ -2717,28 +3004,33 @@
         "pausar": 577,
         "reduzir_verba": 488
        },
-       "celulas_com_mudanca_de_verba": 52,
-       "cortes_errados": 19,
-       "cortes_errados_por_sinal_imaturo": 19,
-       "cortes_executaveis_em_tese": 52,
-       "drawdown_max_vs_manter_micros": 5836660,
+       "celulas_com_mudanca_de_verba": 17,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "42/1920",
+        "fracao_trocas": "46/1920",
         "pares": 1920,
-        "trocas": 42
+        "trocas": 46
        },
-       "lucro_micros": -72960734,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 214708653,
-       "vs_equal_micros": -160677659,
-       "vs_manter_micros": 41308381
+       "lucro_micros": -87978323,
+       "propostas_bloqueadas_no_corte_diario": 35,
+       "regret_vs_oraculo_micros": 229726242,
+       "vs_equal_micros": -175695248,
+       "vs_manter_micros": 26290792
       }
      }
     },
     "cenario": "fonte_fora_do_ar",
-    "decisoes_sha256": "b256fb32353aaa0a2111a505a563f017d4bbae16cd13a0c64eebf419231a1b2b",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "a456e2b1db001ce50a08dea1f37055b6e5da04cd8422b1ccd3afcae2ff4d94c9",
     "ledger_entradas": 2000,
-    "ledger_sha256": "6234da94471fee270c34bcd1cbccad6b4524c39ce030eee7122f3c900d316a0d",
+    "ledger_sha256": "389c881eb204947cbd99e16ece7e3f8f0126e9b31e0cc42a805e19f4baa9b526",
     "meta": {
      "cenario": "fonte_fora_do_ar",
      "descartados_sem_metrica": 1061,
@@ -2760,12 +3052,17 @@
     "n_decisoes": 1928,
     "n_observacoes": 3562,
     "n_resultados_maduros": 72,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.414,
-    "ms_por_corte_todas_politicas": 26.75,
-    "replay_s": 6.446
+    "avaliacao_s": 0.463,
+    "ms_por_corte_todas_politicas": 35.09,
+    "replay_s": 8.458
    }
   },
   "gatilho_legado_joinads": {
@@ -2944,28 +3241,33 @@
         "pausar": 110,
         "reduzir_verba": 570
        },
-       "celulas_com_mudanca_de_verba": 36,
-       "cortes_errados": 4,
-       "cortes_errados_por_sinal_imaturo": 4,
-       "cortes_executaveis_em_tese": 36,
-       "drawdown_max_vs_manter_micros": 744143,
+       "celulas_com_mudanca_de_verba": 28,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 28,
+       "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "27/1920",
+        "fracao_trocas": "29/1920",
         "pares": 1920,
-        "trocas": 27
+        "trocas": 29
        },
-       "lucro_micros": -67036439,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 208784358,
-       "vs_equal_micros": -169552352,
-       "vs_manter_micros": 47232676
+       "lucro_micros": -70483613,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 212231532,
+       "vs_equal_micros": -172999526,
+       "vs_manter_micros": 43785502
       }
      }
     },
     "cenario": "gatilho_legado_joinads",
-    "decisoes_sha256": "48599219d81bfc038e79c91ff561ffedffc3ed3a03a65f477ce05b45e3047cfc",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "686c0c9539dedaa2d3c503115ef705f9661d4288dc4c332703c0577d0e69e294",
     "ledger_entradas": 2000,
-    "ledger_sha256": "21f8c91e0b00e540d62c9eafc0f2c1f4af02553ab5e62c05638e89ea9dd464ba",
+    "ledger_sha256": "65e85b1588a3cda1210331f7788a63db516ed17c0e8e85d2eeb76e58edd6d0d7",
     "meta": {
      "cenario": "gatilho_legado_joinads",
      "descartados_sem_metrica": 1037,
@@ -2987,12 +3289,17 @@
     "n_decisoes": 1928,
     "n_observacoes": 5352,
     "n_resultados_maduros": 72,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.241,
-    "ms_por_corte_todas_politicas": 25.52,
-    "replay_s": 6.151
+    "avaliacao_s": 0.38,
+    "ms_por_corte_todas_politicas": 38.23,
+    "replay_s": 9.213
    }
   },
   "identidade_trocada": {
@@ -3171,28 +3478,33 @@
         "pausar": 198,
         "reduzir_verba": 479
        },
-       "celulas_com_mudanca_de_verba": 22,
-       "cortes_errados": 3,
-       "cortes_errados_por_sinal_imaturo": 3,
-       "cortes_executaveis_em_tese": 22,
-       "drawdown_max_vs_manter_micros": 744143,
+       "celulas_com_mudanca_de_verba": 15,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 15,
+       "drawdown_max_vs_manter_micros": 235997,
        "estabilidade": {
-        "fracao_trocas": "24/1920",
+        "fracao_trocas": "26/1920",
         "pares": 1920,
-        "trocas": 24
+        "trocas": 26
        },
-       "lucro_micros": -77813116,
-       "propostas_bloqueadas_no_corte_diario": 11,
-       "regret_vs_oraculo_micros": 218892472,
-       "vs_equal_micros": -126300829,
-       "vs_manter_micros": 11244545
+       "lucro_micros": -81517948,
+       "propostas_bloqueadas_no_corte_diario": 18,
+       "regret_vs_oraculo_micros": 222597304,
+       "vs_equal_micros": -130005661,
+       "vs_manter_micros": 7539713
       }
      }
     },
     "cenario": "identidade_trocada",
-    "decisoes_sha256": "ad1e25ee90a728c7cb38a9487f98d2cdbe34d4733f41839207f41895476d9c3b",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "1dfdc0c28782cc253817a1ef98cef85618935f3151cf0f750f75959ba0b9bfb1",
     "ledger_entradas": 2000,
-    "ledger_sha256": "f2e8f2be61fda3b963190fc8c0e2657b3490fa0e863c6f1e1de64230ad68ab2d",
+    "ledger_sha256": "77ac88720ee44a41257b198019eb2801768eee7ab503d1446efe9e348ae8c358",
     "meta": {
      "cenario": "identidade_trocada",
      "descartados_sem_metrica": 1037,
@@ -3215,12 +3527,17 @@
     "n_decisoes": 1928,
     "n_observacoes": 3538,
     "n_resultados_maduros": 72,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.115,
-    "ms_por_corte_todas_politicas": 25.62,
-    "replay_s": 6.173
+    "avaliacao_s": 0.202,
+    "ms_por_corte_todas_politicas": 30.73,
+    "replay_s": 7.407
    }
   },
   "moeda_misturada": {
@@ -3399,28 +3716,33 @@
         "pausar": 110,
         "reduzir_verba": 570
        },
-       "celulas_com_mudanca_de_verba": 36,
-       "cortes_errados": 4,
-       "cortes_errados_por_sinal_imaturo": 4,
-       "cortes_executaveis_em_tese": 36,
-       "drawdown_max_vs_manter_micros": 744143,
+       "celulas_com_mudanca_de_verba": 28,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 28,
+       "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "27/1920",
+        "fracao_trocas": "29/1920",
         "pares": 1920,
-        "trocas": 27
+        "trocas": 29
        },
-       "lucro_micros": -67036541,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 208784408,
-       "vs_equal_micros": -169552384,
-       "vs_manter_micros": 47232653
+       "lucro_micros": -70483707,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 212231574,
+       "vs_equal_micros": -172999550,
+       "vs_manter_micros": 43785487
       }
      }
     },
     "cenario": "moeda_misturada",
-    "decisoes_sha256": "752c2acc7718d1d9199d2042425b50752120359178bdcde397b02dd0447da6f8",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "275de9d4af89cba96a579d8260fafefe27664b8fc3941cbb23ebd8fb5e3f4bf0",
     "ledger_entradas": 2000,
-    "ledger_sha256": "dfd26241fcd20e36e6f45560e143de46b63956b1b9d7288a8c3868e7a6617bcc",
+    "ledger_sha256": "bed74eaad8db550f790da0ad76a978f58f0a3b71c0f225de825d6d284b6c5126",
     "meta": {
      "cenario": "moeda_misturada",
      "descartados_sem_metrica": 1037,
@@ -3442,12 +3764,728 @@
     "n_decisoes": 1928,
     "n_observacoes": 3538,
     "n_resultados_maduros": 72,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.223,
-    "ms_por_corte_todas_politicas": 23.41,
-    "replay_s": 5.641
+    "avaliacao_s": 0.269,
+    "ms_por_corte_todas_politicas": 29.47,
+    "replay_s": 7.101
+   }
+  },
+  "mudanca_orcamento": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -4629513,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1045,
+        "insuficiente": 446,
+        "reduzir_verba": 437
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 23,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 127330495,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 73711526,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 131960008
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 323,
+        "insuficiente": 446,
+        "manter": 836,
+        "reduzir_verba": 323
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 413776,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": -203615,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 166859953,
+       "vs_equal_micros": -127534110,
+       "vs_manter_micros": 4425898
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": 55296739,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 107383081,
+       "vs_equal_micros": -72033756,
+       "vs_manter_micros": 59926252
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1320,
+        "pausar": 80,
+        "reduzir_verba": 456
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "12/1920",
+        "pares": 1920,
+        "trocas": 12
+       },
+       "lucro_micros": 63616060,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 99063760,
+       "vs_equal_micros": -63714435,
+       "vs_manter_micros": 68245573
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -4629513,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 167309333,
+       "vs_equal_micros": -131960008,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": 55296739,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 107383081,
+       "vs_equal_micros": -72033756,
+       "vs_manter_micros": 59926252
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1320,
+        "pausar": 80,
+        "reduzir_verba": 528
+       },
+       "celulas_com_mudanca_de_verba": 25,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 25,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "9/1920",
+        "pares": 1920,
+        "trocas": 9
+       },
+       "lucro_micros": 77503012,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 85176808,
+       "vs_equal_micros": -49827483,
+       "vs_manter_micros": 82132525
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1260,
+        "pausar": 94,
+        "reduzir_verba": 574
+       },
+       "celulas_com_mudanca_de_verba": 26,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 26,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "23/1920",
+        "pares": 1920,
+        "trocas": 23
+       },
+       "lucro_micros": 61205386,
+       "propostas_bloqueadas_no_corte_diario": 6,
+       "regret_vs_oraculo_micros": 101474434,
+       "vs_equal_micros": -66125109,
+       "vs_manter_micros": 65834899
+      }
+     }
+    },
+    "cenario": "mudanca_orcamento",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "bf61241d516255c263ec13db1733ef2ad5b72a0e769feec559408bba4f601d73",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "c57dd0782af29abb745fee0019a086572360fdd8293ecf78db93f906bb8aca63",
+    "meta": {
+     "cenario": "mudanca_orcamento",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3538,
+     "n_registros": 4575,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 24,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3538,
+    "n_resultados_maduros": 72,
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 5,
+     "soma_abs_micros": 8030809
+    }
+   },
+   "tempos": {
+    "avaliacao_s": 0.434,
+    "ms_por_corte_todas_politicas": 36.22,
+    "replay_s": 8.729
+   }
+  },
+  "outlier_bot": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -134985757,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1102,
+        "insuficiente": 446,
+        "reduzir_verba": 380
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 82831607,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 82239038,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 217817364
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 304,
+        "insuficiente": 446,
+        "manter": 874,
+        "reduzir_verba": 304
+       },
+       "celulas_com_mudanca_de_verba": 30,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 16,
+       "drawdown_max_vs_manter_micros": 778205,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": -134996142,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 267153340,
+       "vs_equal_micros": -217827749,
+       "vs_manter_micros": -10385
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1085,
+        "pausar": 98,
+        "reduzir_verba": 553
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "21/1920",
+        "pares": 1920,
+        "trocas": 21
+       },
+       "lucro_micros": -93259989,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225178433,
+       "vs_equal_micros": -176091596,
+       "vs_manter_micros": 41725768
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 96,
+        "manter": 1080,
+        "pausar": 112,
+        "reduzir_verba": 640
+       },
+       "celulas_com_mudanca_de_verba": 30,
+       "cortes_errados": 6,
+       "cortes_errados_por_sinal_imaturo": 6,
+       "cortes_executaveis_em_tese": 30,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -87864852,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 219783296,
+       "vs_equal_micros": -170696459,
+       "vs_manter_micros": 47120905
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -134985757,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 266904201,
+       "vs_equal_micros": -217817364,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1085,
+        "pausar": 98,
+        "reduzir_verba": 553
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "21/1920",
+        "pares": 1920,
+        "trocas": 21
+       },
+       "lucro_micros": -93259989,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225178433,
+       "vs_equal_micros": -176091596,
+       "vs_manter_micros": 41725768
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1080,
+        "pausar": 136,
+        "reduzir_verba": 712
+       },
+       "celulas_com_mudanca_de_verba": 34,
+       "cortes_errados": 7,
+       "cortes_errados_por_sinal_imaturo": 7,
+       "cortes_executaveis_em_tese": 34,
+       "drawdown_max_vs_manter_micros": 744143,
+       "estabilidade": {
+        "fracao_trocas": "11/1920",
+        "pares": 1920,
+        "trocas": 11
+       },
+       "lucro_micros": -88608995,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 220527439,
+       "vs_equal_micros": -171440602,
+       "vs_manter_micros": 46376762
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 964,
+        "pausar": 131,
+        "reduzir_verba": 833
+       },
+       "celulas_com_mudanca_de_verba": 38,
+       "cortes_errados": 6,
+       "cortes_errados_por_sinal_imaturo": 6,
+       "cortes_executaveis_em_tese": 38,
+       "drawdown_max_vs_manter_micros": 403999,
+       "estabilidade": {
+        "fracao_trocas": "28/1920",
+        "pares": 1920,
+        "trocas": 28
+       },
+       "lucro_micros": -90087008,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 222005452,
+       "vs_equal_micros": -172918615,
+       "vs_manter_micros": 44898749
+      }
+     }
+    },
+    "cenario": "outlier_bot",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "d84b2d819b524637344250930d980e168f54c4a5233833905a70c90f1508a0cc",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "ce21fc9baacd079af436c6656b8ff7754348e96ec36696a5ecae656ba10b79d9",
+    "meta": {
+     "cenario": "outlier_bot",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3538,
+     "n_registros": 4575,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 24,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3538,
+    "n_resultados_maduros": 72,
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
+   },
+   "tempos": {
+    "avaliacao_s": 0.597,
+    "ms_por_corte_todas_politicas": 39.41,
+    "replay_s": 9.498
+   }
+  },
+  "quebra_regime_rpm": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -1011906094,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1159,
+        "insuficiente": 446,
+        "reduzir_verba": 323
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": -410276303,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 485535037,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 601629791
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 323,
+        "insuficiente": 446,
+        "manter": 836,
+        "reduzir_verba": 323
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 2232246,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": -1010888623,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 1077862379,
+       "vs_equal_micros": -600612320,
+       "vs_manter_micros": 1017471
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1058,
+        "pausar": 149,
+        "reduzir_verba": 529
+       },
+       "celulas_com_mudanca_de_verba": 28,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 28,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "20/1920",
+        "pares": 1920,
+        "trocas": 20
+       },
+       "lucro_micros": -662045367,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 728898310,
+       "vs_equal_micros": -251769064,
+       "vs_manter_micros": 349860727
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 946,
+        "pausar": 282,
+        "reduzir_verba": 628
+       },
+       "celulas_com_mudanca_de_verba": 37,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 37,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "13/1920",
+        "pares": 1920,
+        "trocas": 13
+       },
+       "lucro_micros": -477140665,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 543993608,
+       "vs_equal_micros": -66864362,
+       "vs_manter_micros": 534765429
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -1011906094,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 1078759037,
+       "vs_equal_micros": -601629791,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1058,
+        "pausar": 149,
+        "reduzir_verba": 529
+       },
+       "celulas_com_mudanca_de_verba": 28,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 28,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "20/1920",
+        "pares": 1920,
+        "trocas": 20
+       },
+       "lucro_micros": -662045367,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 728898310,
+       "vs_equal_micros": -251769064,
+       "vs_manter_micros": 349860727
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 946,
+        "pausar": 298,
+        "reduzir_verba": 684
+       },
+       "celulas_com_mudanca_de_verba": 40,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 40,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "11/1920",
+        "pares": 1920,
+        "trocas": 11
+       },
+       "lucro_micros": -477140665,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 543993608,
+       "vs_equal_micros": -66864362,
+       "vs_manter_micros": 534765429
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 909,
+        "pausar": 339,
+        "reduzir_verba": 680
+       },
+       "celulas_com_mudanca_de_verba": 37,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 37,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "30/1920",
+        "pares": 1920,
+        "trocas": 30
+       },
+       "lucro_micros": -375561195,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 442414138,
+       "vs_equal_micros": 34715108,
+       "vs_manter_micros": 636344899
+      }
+     }
+    },
+    "cenario": "quebra_regime_rpm",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "9bc0320272f2ad532cbcb1aec251b5cd84d1efb78ae0bc248331fb0038a0ac92",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "3a7d95fa61a9007f47555140c70e9408d3adc48fe60b43ff626d3a93b412f6ab",
+    "meta": {
+     "cenario": "quebra_regime_rpm",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3538,
+     "n_registros": 4575,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 24,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3538,
+    "n_resultados_maduros": 72,
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
+   },
+   "tempos": {
+    "avaliacao_s": 0.505,
+    "ms_por_corte_todas_politicas": 44.11,
+    "replay_s": 10.631
    }
   },
   "restatement_custo": {
@@ -3626,28 +4664,33 @@
         "pausar": 105,
         "reduzir_verba": 714
        },
-       "celulas_com_mudanca_de_verba": 41,
-       "cortes_errados": 7,
-       "cortes_errados_por_sinal_imaturo": 7,
-       "cortes_executaveis_em_tese": 41,
-       "drawdown_max_vs_manter_micros": 2044993,
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 5,
+       "cortes_errados_por_sinal_imaturo": 5,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 1111575,
        "estabilidade": {
-        "fracao_trocas": "44/1920",
+        "fracao_trocas": "47/1920",
         "pares": 1920,
-        "trocas": 44
+        "trocas": 47
        },
-       "lucro_micros": 112714830,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 76877882,
-       "vs_equal_micros": -105273203,
-       "vs_manter_micros": 18849943
+       "lucro_micros": 111875723,
+       "propostas_bloqueadas_no_corte_diario": 6,
+       "regret_vs_oraculo_micros": 77716989,
+       "vs_equal_micros": -106112310,
+       "vs_manter_micros": 18010836
       }
      }
     },
     "cenario": "restatement_custo",
-    "decisoes_sha256": "e52e3b3615d9c9f42d856ce2ba80aaf4a89c83866a4945eced2caeb17751a593",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "1011b75395a541a878971cd1b125432130dc9ba21776733bbe59d51d89038a08",
     "ledger_entradas": 2008,
-    "ledger_sha256": "672b247191fada72540904be9779254f1ec1d45d72280e636e4d72e00799f267",
+    "ledger_sha256": "ea52f092c8a8d36601eedb38333f3dad3acdd0f7f06b3b00b5e1113de0048280",
     "meta": {
      "cenario": "restatement_custo",
      "descartados_sem_metrica": 1037,
@@ -3669,12 +4712,491 @@
     "n_decisoes": 1928,
     "n_observacoes": 3538,
     "n_resultados_maduros": 80,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.015,
-    "ms_por_corte_todas_politicas": 30.53,
-    "replay_s": 7.359
+    "avaliacao_s": 0.02,
+    "ms_por_corte_todas_politicas": 30.97,
+    "replay_s": 7.465
+   }
+  },
+  "sazonal_fim_de_semana": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -144404875,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1121,
+        "insuficiente": 446,
+        "reduzir_verba": 361
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 45464727,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 95757492,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 189869602
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 304,
+        "insuficiente": 446,
+        "manter": 874,
+        "reduzir_verba": 304
+       },
+       "celulas_com_mudanca_de_verba": 30,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 16,
+       "drawdown_max_vs_manter_micros": 709697,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": -144342437,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 266417601,
+       "vs_equal_micros": -189807164,
+       "vs_manter_micros": 62438
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1182,
+        "pausar": 74,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 23,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 23,
+       "drawdown_max_vs_manter_micros": 250960,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -118289831,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 240364995,
+       "vs_equal_micros": -163754558,
+       "vs_manter_micros": 26115044
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1309,
+        "pausar": 80,
+        "reduzir_verba": 467
+       },
+       "celulas_com_mudanca_de_verba": 24,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 24,
+       "drawdown_max_vs_manter_micros": 250960,
+       "estabilidade": {
+        "fracao_trocas": "13/1920",
+        "pares": 1920,
+        "trocas": 13
+       },
+       "lucro_micros": -114585036,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 236660200,
+       "vs_equal_micros": -160049763,
+       "vs_manter_micros": 29819839
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -144404875,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 266480039,
+       "vs_equal_micros": -189869602,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1182,
+        "pausar": 74,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 23,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 23,
+       "drawdown_max_vs_manter_micros": 250960,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -118289831,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 240364995,
+       "vs_equal_micros": -163754558,
+       "vs_manter_micros": 26115044
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1309,
+        "pausar": 80,
+        "reduzir_verba": 539
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 250960,
+       "estabilidade": {
+        "fracao_trocas": "10/1920",
+        "pares": 1920,
+        "trocas": 10
+       },
+       "lucro_micros": -114585036,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 236660200,
+       "vs_equal_micros": -160049763,
+       "vs_manter_micros": 29819839
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1240,
+        "pausar": 102,
+        "reduzir_verba": 586
+       },
+       "celulas_com_mudanca_de_verba": 26,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 26,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "29/1920",
+        "pares": 1920,
+        "trocas": 29
+       },
+       "lucro_micros": -106881170,
+       "propostas_bloqueadas_no_corte_diario": 7,
+       "regret_vs_oraculo_micros": 228956334,
+       "vs_equal_micros": -152345897,
+       "vs_manter_micros": 37523705
+      }
+     }
+    },
+    "cenario": "sazonal_fim_de_semana",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "a5b68bde1d26ccf511303efd5f31a0a07969d471fe8df292b59e2cf4b8eb2d6a",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "c835ca218557737e7d3418435f018ffe2c63b5748661b17ccc6b75f298023f10",
+    "meta": {
+     "cenario": "sazonal_fim_de_semana",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3538,
+     "n_registros": 4575,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 24,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3538,
+    "n_resultados_maduros": 72,
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
+   },
+   "tempos": {
+    "avaliacao_s": 0.218,
+    "ms_por_corte_todas_politicas": 31.96,
+    "replay_s": 7.703
+   }
+  },
+  "sensor_sem_campanha": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269115,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1102,
+        "insuficiente": 446,
+        "reduzir_verba": 380
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 102515913,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 72481328,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 216785028
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 323,
+        "insuficiente": 446,
+        "manter": 836,
+        "reduzir_verba": 323
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 1865100,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": -115917425,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 257904098,
+       "vs_equal_micros": -218433338,
+       "vs_manter_micros": -1648310
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -186152021,
+       "vs_manter_micros": 30633007
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1309,
+        "pausar": 86,
+        "reduzir_verba": 461
+       },
+       "celulas_com_mudanca_de_verba": 24,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 24,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "14/1920",
+        "pares": 1920,
+        "trocas": 14
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -179456671,
+       "vs_manter_micros": 37328357
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -216785028,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -186152021,
+       "vs_manter_micros": 30633007
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1309,
+        "pausar": 102,
+        "reduzir_verba": 517
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "12/1920",
+        "pares": 1920,
+        "trocas": 12
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -179456671,
+       "vs_manter_micros": 37328357
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1248,
+        "pausar": 110,
+        "reduzir_verba": 570
+       },
+       "celulas_com_mudanca_de_verba": 28,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 28,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "29/1920",
+        "pares": 1920,
+        "trocas": 29
+       },
+       "lucro_micros": -70483613,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 212231532,
+       "vs_equal_micros": -172999526,
+       "vs_manter_micros": 43785502
+      }
+     }
+    },
+    "cenario": "sensor_sem_campanha",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "e27929258859df1669c635dfa087e1fe15815523a15fd77c6596b98072ec1cc1",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "36e569ccebe8fb16ff97ea09ad8243b8b0c0fb9990974fb53b956491e30d35e4",
+    "meta": {
+     "cenario": "sensor_sem_campanha",
+     "descartados_sem_metrica": 945,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3354,
+     "n_registros": 4299,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 18,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3354,
+    "n_resultados_maduros": 72,
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
+   },
+   "tempos": {
+    "avaliacao_s": 0.415,
+    "ms_por_corte_todas_politicas": 35.91,
+    "replay_s": 8.653
    }
   },
   "vazamento_tentado": {
@@ -3853,28 +5375,33 @@
         "pausar": 99,
         "reduzir_verba": 574
        },
-       "celulas_com_mudanca_de_verba": 32,
-       "cortes_errados": 4,
-       "cortes_errados_por_sinal_imaturo": 4,
-       "cortes_executaveis_em_tese": 32,
-       "drawdown_max_vs_manter_micros": 744143,
+       "celulas_com_mudanca_de_verba": 24,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 24,
+       "drawdown_max_vs_manter_micros": 0,
        "estabilidade": {
-        "fracao_trocas": "26/1920",
+        "fracao_trocas": "28/1920",
         "pares": 1920,
-        "trocas": 26
+        "trocas": 28
        },
-       "lucro_micros": -67613570,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 209361489,
-       "vs_equal_micros": -170129483,
-       "vs_manter_micros": 46655545
+       "lucro_micros": -71060744,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 212808663,
+       "vs_equal_micros": -173576657,
+       "vs_manter_micros": 43208371
       }
      }
     },
     "cenario": "vazamento_tentado",
-    "decisoes_sha256": "c91bccf12dbbf2994b7a3378df43d7ec822aebfe25ce0cd0650f39859a583e09",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "a382052d29747924dfba40d54677196db1c167f0344d134f9e104ccff74528ca",
     "ledger_entradas": 2008,
-    "ledger_sha256": "dea1eb9eeda7818cf6163e6d91b9559414e8ba7d5baa0de11a26bfe02dbabcf3",
+    "ledger_sha256": "8d7e2634023754895bf665bb60d3006d5814d76122ede5b4365b9a7f071d6924",
     "meta": {
      "cenario": "vazamento_tentado",
      "descartados_sem_metrica": 1172,
@@ -3896,12 +5423,17 @@
     "n_decisoes": 1928,
     "n_observacoes": 3673,
     "n_resultados_maduros": 80,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.019,
-    "ms_por_corte_todas_politicas": 22.8,
-    "replay_s": 5.494
+    "avaliacao_s": 0.052,
+    "ms_por_corte_todas_politicas": 66.3,
+    "replay_s": 15.977
    }
   },
   "zero_falso": {
@@ -4080,28 +5612,33 @@
         "pausar": 123,
         "reduzir_verba": 497
        },
-       "celulas_com_mudanca_de_verba": 35,
-       "cortes_errados": 6,
-       "cortes_errados_por_sinal_imaturo": 6,
-       "cortes_executaveis_em_tese": 35,
-       "drawdown_max_vs_manter_micros": 1301632,
+       "celulas_com_mudanca_de_verba": 25,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 25,
+       "drawdown_max_vs_manter_micros": 351106,
        "estabilidade": {
-        "fracao_trocas": "43/1920",
+        "fracao_trocas": "45/1920",
         "pares": 1920,
-        "trocas": 43
+        "trocas": 45
        },
-       "lucro_micros": -42555748,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 184303667,
-       "vs_equal_micros": -130223039,
-       "vs_manter_micros": 71713367
+       "lucro_micros": -67416230,
+       "propostas_bloqueadas_no_corte_diario": 10,
+       "regret_vs_oraculo_micros": 209164149,
+       "vs_equal_micros": -155083521,
+       "vs_manter_micros": 46852885
       }
      }
     },
     "cenario": "zero_falso",
-    "decisoes_sha256": "b1ed186311d2509180a3f771cfe661151e54eff27229857a0c697a9577fe3e50",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "05ceeda0e6c1f8faa00e8fbf202b1b72e0c17af7dd96bd78212ae4ed46306dc8",
     "ledger_entradas": 2000,
-    "ledger_sha256": "cfff14cc04968ca5e6c88446a63a90c7ccdcb9f6998a6f038f241240c99405bd",
+    "ledger_sha256": "7150bdef860aec668096fd92108620a379bcf31b4d45f9a1fe6e24866cd87b93",
     "meta": {
      "cenario": "zero_falso",
      "descartados_sem_metrica": 1037,
@@ -4124,12 +5661,17 @@
     "n_decisoes": 1928,
     "n_observacoes": 3538,
     "n_resultados_maduros": 72,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.345,
-    "ms_por_corte_todas_politicas": 27.19,
-    "replay_s": 6.554
+    "avaliacao_s": 0.246,
+    "ms_por_corte_todas_politicas": 22.38,
+    "replay_s": 5.392
    }
   },
   "zero_sintetizado_coletor": {
@@ -4310,28 +5852,33 @@
         "pausar": 7846,
         "reduzir_verba": 541
        },
-       "celulas_com_mudanca_de_verba": 37,
-       "cortes_errados": 5,
-       "cortes_errados_por_sinal_imaturo": 5,
-       "cortes_executaveis_em_tese": 37,
-       "drawdown_max_vs_manter_micros": 744143,
+       "celulas_com_mudanca_de_verba": 29,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 29,
+       "drawdown_max_vs_manter_micros": 351106,
        "estabilidade": {
-        "fracao_trocas": "65/9600",
+        "fracao_trocas": "99/9600",
         "pares": 9600,
-        "trocas": 65
+        "trocas": 99
        },
-       "lucro_micros": -61778330,
-       "propostas_bloqueadas_no_corte_diario": 0,
-       "regret_vs_oraculo_micros": 203526249,
-       "vs_equal_micros": -164620141,
-       "vs_manter_micros": 52490785
+       "lucro_micros": -65225504,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 206973423,
+       "vs_equal_micros": -168067315,
+       "vs_manter_micros": 49043611
       }
      }
     },
     "cenario": "zero_sintetizado_coletor",
-    "decisoes_sha256": "c1b01aacd5b4ef45dba286de1cc170356ef9d5f8ef91f99c3da3bcafd78b77ab",
+    "config_kernel": {
+     "cobertura_minima": "9/10",
+     "cobertura_sem_earnings": "aceitar_declarado",
+     "janela_dias": 7
+    },
+    "decisoes_sha256": "8b5a275ca00f84fec4eac797055afb7bdbf4149b376a7ea1bbd73c10159b4656",
     "ledger_entradas": 2000,
-    "ledger_sha256": "5e0acceef2c1c70b767f5450dd74aabbc4a0749fc468c148ef57aedb63b4e157",
+    "ledger_sha256": "7dbb4b3e3fe3712c23d102d74bbdac75fd273b49474233994f41dd76ba10288b",
     "meta": {
      "cenario": "zero_sintetizado_coletor",
      "descartados_sem_metrica": 1041,
@@ -4353,15 +5900,19 @@
     "n_decisoes": 1928,
     "n_observacoes": 12760,
     "n_resultados_maduros": 72,
-    "seed": 20261016
+    "seed": 20261016,
+    "verdade_manter_vs_mundo": {
+     "celulas": 128,
+     "celulas_divergentes": 0,
+     "soma_abs_micros": 0
+    }
    },
    "tempos": {
-    "avaliacao_s": 0.414,
-    "ms_por_corte_todas_politicas": 135.84,
-    "replay_s": 32.738
+    "avaliacao_s": 0.341,
+    "ms_por_corte_todas_politicas": 134.57,
+    "replay_s": 32.43
    }
   }
  },
- "versao_codigo": "a0ef440d1c99bede306c452fd5c77dcaedf79669ff6c8e4a6b270a6238bde5f2",
- "versao_codigo_simulador": "a0ef440d1c99bede306c452fd5c77dcaedf79669ff6c8e4a6b270a6238bde5f2"
+ "versao_codigo": "30749a4f8fb2dc88fafcab04b45db4a6c5debcebe969805eaece8a9387787571"
 }
