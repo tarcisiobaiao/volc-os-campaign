@@ -15,11 +15,11 @@ produção (os três números reais usados vêm do recibo read-only do integrado
 | `…/capacidade/volume.py` | modelo puro: linhas lidas × versões distintas, dedup (nenhum/lote/linha/linha-em-lote), índices, partição, retenção+rollup, GTM |
 | `…/capacidade/cenarios.py` | escala medida, jobs atuais (agenda confirmada) e vertical completa (proposta), cadências, políticas, perfil horário real |
 | `…/capacidade/quotas.py` | limites de API com fonte e estado de confirmação; operações/dia vs Basic/Explorer |
-| `…/capacidade/coletor.py` | contrato `run_coleta` + executor seguro (trava por capacidade, `dry_run` nulo, timeout daemon, gravação pelo `Registro` da frente A) |
+| `…/capacidade/coletor.py` | contrato `run_coleta` + executor seguro (trava por capacidade, `dry_run` nulo, timeout daemon, gravação pelo `Registro` da frente A com D1/D2, `observed_at` = carimbo real da leitura) |
 | `experiments/data-intelligence-lab/scripts/fundacao_capacidade_pg.py` | medição em PostgreSQL 16 descartável (sobe, mede, derruba e apaga) |
 | `…/scripts/fundacao_capacidade_horas.py` | extrai o perfil horário real D30 por `git show` (só leitura) |
 | `…/scripts/fundacao_capacidade_modelo.py` | roda a grade do modelo e gera `modelo.json` + `MODELO.md` com manifesto |
-| `tests/data-intelligence/fundacao/test_capacidade_{cron,volume,cenarios,coletor}.py` | 69 testes (16 + 23 + 7 + 23) |
+| `tests/data-intelligence/fundacao/test_capacidade_{cron,volume,cenarios,coletor}.py` | 72 testes (16 + 23 + 7 + 26) |
 | `docs/data-intelligence/fundacao-20261016/04-CADENCIA-E-CAPACIDADE.md` | política de cadência, números, recomendações |
 | `docs/data-intelligence/fundacao-20261016/05-ARQUITETURA-COLETORES.md` | inventário, matriz n8n × Python, arquitetura híbrida, contrato `run_coleta` |
 | `docs/data-intelligence/fundacao-20261016/benchmarks/capacidade/{pg_medicoes.json,pg_medicoes_dil_obs.json,horas_campanha_d30.json,modelo.json,MODELO.md,MEDICOES.md}` | resultados gerados (`MEDICOES.md` = todas as medições, sem seleção) |
@@ -199,9 +199,8 @@ que contém `413395a5`; sem push). Provas do revisor relidas em `/private/tmp/cl
   índices sobre texto hex de 64 caracteres somam 370 B/linha, e `ix_obs_chave_base` duplica
   `uq_obs_chave_idempotencia` em toda linha `leitura`. A política recomendada a ×100 vai de 30 GB (largo
   tipado) para 217 GB (DDL atual) em 3 anos.
-- **Frente A — granularidade de versão**: o `Registro` versiona por payload; se a linha muda, todas as
-  métricas da linha ganham versão (com o coletor por linha, isso é o esperado; com payload de lote inteiro,
-  qualquer mudança no lote versionaria todas as observações do lote).
+- **Frente A — granularidade de versão**: o `Registro` versiona por leitura; se a linha muda, todas as
+  métricas da linha ganham versão (superado por D2: agora toda releitura é versão — §8.6).
 
 ### 8.4 Suíte e limpeza
 
@@ -216,3 +215,43 @@ Sem mudança de estado (todas `partial`). Evidência nova a anexar: P09-T14 — 
 contas no Basic com a agenda atual e custo de cada cadência (04 §3); P10-T04 — dry_run nulo e heartbeat só
 em `gravar`; P06-T08 — 1.140 B/linha real, GIN com 0 scans, `observacao_as_of` não inlinada (insumo para a
 frente A antes de qualquer migration).
+
+### 8.6 Integração com D1/D2 da frente A (merge de `ff1ea21d` + `d62bf0c0` do integrador)
+
+Regras novas da frente A (`HANDOFF-A.md` §7.1): **D1** — a versão vigente é a de maior `observed_at`
+(empate → maior `available_at`); **D2** — `observed_at` entra na chave da leitura: retry é NOOP, releitura
+em outra hora é versão nova; não existe mais reafirmação. O integrador já tinha adaptado o coletor
+(`reafirmadas` removido; A→B→A esperando (3,0),(3,0),(3,0)). Restavam duas falhas, resolvidas assim:
+
+| Teste | Decisão | Por quê |
+|---|---|---|
+| releitura igual às 07:00 | **asserção ajustada**: `inseridas == 9`, `noop == 0`, 18 observações, **3 payloads** (o bruto continua deduplicado por conteúdo); novo teste `test_retry_da_mesma_leitura_e_noop` (mesmo carimbo = mesma leitura = NOOP) | é a semântica de D2; o custo está documentado (abaixo) |
+| equivalência serial × paralelo | **semântica nova: mesmas leituras ⇒ mesma história.** `observed_at` = carimbo do transporte (`RespostaLeitura.observado_em`), ou o fim da leitura se o transporte não carimbar; validado ≤ `available_at` (senão dead letter `observado_em_invalido`). O teste usa um transporte que carimba cada pedido de forma determinística e compara o conjunto de versões (chave, status, valor, `observed_at`), o `as_of` nos 18 cortes e os instantes de gravação, em 8 rodadas paralelas | sob D1 o que ordena é `observed_at`; leituras feitas em instantes diferentes SÃO leituras diferentes, então exigir igualdade sem fixar o instante seria exigir o falso |
+
+**Por que não `observed_at` = slot.** Uma execução atrasada (fila, retry com backoff, backfill, n8n
+parado) lê o estado da fonte no instante em que roda. Carimbar com o slot antigo afirmaria que o estado das
+09h era o das 06h; sob D1, essa leitura nova (mas carimbada como velha) perderia para uma leitura de fato
+mais antiga, ou sobrescreveria o histórico daquele horário — retroatividade do mesmo tipo de F1. O slot
+continua sendo a chave de execução (idempotência do run); o instante da medição é outra coisa.
+Mutante "ignorar o carimbo e usar só o fim da leitura": 4 testes falham.
+
+Novo teste de D1: `test_d1_gravacao_fora_de_ordem_nao_desfaz_a_leitura_mais_recente` — gravar 06→07→08 ou
+08→07→06 dá as mesmas versões e o mesmo estado final (A); no invertido, o conhecimento intermediário nunca
+mostra B (a leitura das 07h chega depois da das 08h e não a desfaz).
+
+**Custo de D2 (modelo, política `registro_d2`, payload ainda deduplicado).** A dedup de observação que eu
+recomendava (−94%) deixa de acontecer no `Registro`/`dil_obs`: toda releitura vira linha.
+
+| Cenário | v21 real | recomendada (largo, dedup) | D2 sobre largo tipado | **D2 sobre DDL longo da frente A** |
+|---|---:|---:|---:|---:|
+| hoje, 1 conta, MB/dia | 17,5 | 0,43 | 4,0 | **70,7** |
+| ×100, vertical horária, 13 meses | 704 GB | 22 GB | 163 GB | **2,9 TB** |
+| ×100, vertical horária, 3 anos | 1,9 TB | 30 GB | 450 GB | **7,9 TB** |
+
+DDL pós-D2 medido (1e5; disco livre caiu para ~6 GiB com outro worker rodando PostgreSQL, por isso não
+repeti 1e6): **1.043 B por valor** (antes 1.084); `observacao_as_of` continua não inlinada (0,65 s × 0,045 s
+inline em 1e5). Proposta para a frente A/integrador: manter D1/D2 para a ordem do `as_of` e a passagem de
+`partial` a fechada, mas registrar releitura idêntica numa tabela estreita de leituras (ou só no recibo do
+run) em vez de uma linha completa por métrica.
+
+Testes: capacidade **72** (coletor 26). Suíte inteira após o merge de `ff1ea21d`: **798 verdes** em 104 s.

@@ -1,0 +1,188 @@
+{
+ "seed": 20261016,
+ "escalas": [
+  100000
+ ],
+ "ddl": "variantes de medição próprias + réplica v21 + dil_obs_0001 REAL da frente A",
+ "amostras": {
+  "as_of_ponto": 5000,
+  "snapshot": 60,
+  "ingestao": 60,
+  "global": 5
+ },
+ "medicoes": [
+  {
+   "variante": "dil_obs_0001",
+   "particionada": false,
+   "n_alvo": 100000,
+   "dims": {
+    "contas": 10,
+    "entidades_por_conta": 20,
+    "dias": 90
+   },
+   "carga_s": 12.987007749965414,
+   "tamanho": {
+    "linhas": 99000,
+    "heap_bytes": 56434688,
+    "indices_bytes": 46858240,
+    "total_bytes": 103292928,
+    "por_indice_bytes": {
+     "pk": 2236416,
+     "unico": 26034176,
+     "btree": 18587648
+    },
+    "por_indice_nome_bytes": {
+     "observacao_pkey": 2236416,
+     "uq_obs_chave_idempotencia": 12402688,
+     "uq_obs_versao": 13631488,
+     "ix_obs_asof": 14753792,
+     "ix_obs_entidade": 2523136,
+     "ix_obs_lote": 655360,
+     "ix_obs_run": 655360
+    },
+    "folhas": 1,
+    "heap_por_linha": 570.0473535353535,
+    "indices_por_linha": 473.31555555555553
+   },
+   "valores_de_metrica": 99000,
+   "bytes_por_valor_total": 1043.3629090909092,
+   "bytes_por_valor_heap": 570.0473535353535,
+   "dir_cluster_bytes_apos": 362438758,
+   "as_of_global_funcao_meio": {
+    "tempos_s": [
+     0.14076937502250075,
+     0.11446254199836403,
+     0.08437724999384955,
+     0.08123737503774464,
+     0.07012016698718071,
+     0.078246749995742
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.08123737503774464,
+    "max_s": 0.11446254199836403,
+    "chaves": 44000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_meio": {
+    "tempos_s": [
+     0.022707958007231355,
+     0.016564833000302315,
+     0.018905915960203856,
+     0.02333316602744162,
+     0.020220791979227215,
+     0.01733154198154807
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.018905915960203856,
+    "max_s": 0.02333316602744162,
+    "chaves": 44000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_linha_inteira_meio": {
+    "tempos_s": [
+     0.034465375007130206,
+     0.030017082986887544,
+     0.030673458997625858,
+     0.031127041031140834,
+     0.030711332976352423,
+     0.02743879205081612
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.030673458997625858,
+    "max_s": 0.031127041031140834,
+    "chaves": 44000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_funcao_fim": {
+    "tempos_s": [
+     1.1040197500260547,
+     0.6481111249886453,
+     0.7415561250527389,
+     0.4821598749840632,
+     0.9754497499670833,
+     0.506186707993038
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.6481111249886453,
+    "max_s": 0.9754497499670833,
+    "chaves": 90000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_fim": {
+    "tempos_s": [
+     0.03827379195718095,
+     0.03263787500327453,
+     0.03212745802011341,
+     0.03706250002142042,
+     0.037382583017461,
+     0.04636712500359863
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.03706250002142042,
+    "max_s": 0.04636712500359863,
+    "chaves": 90000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_linha_inteira_fim": {
+    "tempos_s": [
+     0.05443158303387463,
+     0.06194812501780689,
+     0.060381832998245955,
+     0.04452283401042223,
+     0.03895254200324416,
+     0.03570908401161432
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.04452283401042223,
+    "max_s": 0.06194812501780689,
+    "chaves": 90000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "latest_view": {
+    "tempos_s": [
+     0.4405383749981411,
+     0.5336997919948772,
+     0.6323524999897927,
+     0.607744749984704,
+     0.6967805420281366,
+     0.6704086670069955
+    ],
+    "p50_s": 0.6323524999897927,
+    "aquecimento_descartado": 1
+   },
+   "as_of_ponto": {
+    "n": 5000,
+    "min_ms": 0.017,
+    "p50_ms": 0.018,
+    "p95_ms": 0.019,
+    "p99_ms": 0.023,
+    "max_ms": 0.779,
+    "media_ms": 0.018345,
+    "desvio_ms": 0.010847265784519158
+   },
+   "explain_as_of_global": "Unique\n  ->  Index Only Scan using ix_obs_asof on observacao\n        Index Cond: (available_at <= '2026-08-15 09:00:00-03'::timestamp with time zone)"
+  }
+ ],
+ "inicio_epoch": 1792160958.5220108,
+ "postgres": "PostgreSQL 16.11 (Homebrew) on aarch64-apple-darwin24.6.0, compiled by Apple clang version 17.0.0 (clang-1700.6.3.2), 64-bit",
+ "config": {
+  "autovacuum": "off",
+  "block_size": "8192",
+  "default_toast_compression": "pglz",
+  "fsync": "on",
+  "shared_buffers": "32768",
+  "synchronous_commit": "on",
+  "wal_level": "minimal",
+  "work_mem": "65536"
+ },
+ "payload": null,
+ "payload_s": 0.00042104197200387716,
+ "snapshot_pg": [],
+ "pico_amostrado_dir_cluster_bytes": 408551526,
+ "cluster_apagado": true,
+ "pico_dir_cluster_bytes": 362766438,
+ "disco_livre_inicio_gib": 5.808372497558594,
+ "analitico": [],
+ "fim_epoch": 1792160987.251041,
+ "duracao_s": 28.7290301322937
+}

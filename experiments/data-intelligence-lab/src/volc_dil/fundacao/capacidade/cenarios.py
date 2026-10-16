@@ -135,6 +135,10 @@ POLITICAS = {
                                            rotulo="tipado, dedup, sem índices (piso teórico)"),
     "compacto_dedup_linha_em_lote": Politica(dedup_observacao=True, dedup_payload="linha_em_lote",
                                              rotulo="tipado, dedup obs + linha gravada em lote"),
+    # regra D2 da frente A (observed_at na chave da leitura): toda releitura vira versão; o payload bruto
+    # continua deduplicado por conteúdo (hash por linha)
+    "registro_d2": Politica(dedup_observacao=False, dedup_payload="linha_em_lote",
+                            rotulo="regra D2 da frente A: toda releitura é versão; payload por linha em lote"),
     "recomendada": Politica(dedup_observacao=True, dedup_payload="linha_em_lote", particao_mensal=True,
                             retencao_bruto_dias=396, rollup_diario=True,
                             rotulo="tipado largo, dedup obs + linha em lote, partição mensal, bruto 13 m + rollup"),
