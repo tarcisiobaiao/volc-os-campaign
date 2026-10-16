@@ -1,0 +1,35 @@
+{
+  "esquema": "volc-dil.curation-handoff.v1",
+  "gerado_em": "2026-10-16",
+  "branch": "lab/data-intelligence-overnight-20261015",
+  "base_sha": "104bb0d089d6013c400014c443f9e79a77adbf20",
+  "aviso": "PROPOSTA para o integrador/curador único. Nada aqui foi aplicado ao Roadmap, à curadoria ou ao grafo. Trabalho só nesta branch não promove nenhuma task a done.",
+  "frescor_grafo": {
+    "na_baseline": {"current": true, "input_sha256": "9e9ecd089e9f0118def2572e39e0a98df91891db8a05665f2590150451bbe5a0", "insumos": 2603},
+    "apos_commits_do_lab": {"current": false, "motivo": "arquivos novos do laboratório entraram nos insumos (2615 na leitura do auditor A); rebuild cabe ao integrador após merge"}
+  },
+  "tasks": [
+    {"id": "P14-T02", "estado_atual": "partial", "estado_proposto": "partial", "evidencia_nova": ["contrato + snapshot as_of com 24 contraprovas", "replay econômico v0 com contraprovas de futuro/null/moeda/identidade/restatement", "todas as provas sintéticas"], "lacuna": "não existe as-of real na base (custo e receita latest-wins/upsert); replay real depende de ledger append-only integrado"},
+    {"id": "P09-T09", "estado_atual": "todo", "estado_proposto": "todo", "evidencia_nova": ["semântica de as-of do lab comparada com services/orakul_predictive (REPLAY-RESULTS §5): compatível na revisão conhecida; diverge no outcome (primeira vintage vs verdade madura), representação, data civil vs instante e moeda (ORAKUL só BRL)"], "lacuna": "unificar os três vocabulários de estado/ausência (núcleo wip, orakul, lab) antes de shadow"},
+    {"id": "P09-T10", "estado_atual": "todo", "estado_proposto": "todo", "evidencia_nova": ["CONTRATO-DADO-ECONOMICO.md como candidato de contrato/snapshot", "surrogate: dados insuficientes (campanha×dia) e não identificável (sessão)", "curvas marginais não identificáveis com gasto ~R$60/dia sem variação exógena (inferido)"], "lacuna": "integração do núcleo econômico wip e câmbio datado (P06-T04)"},
+    {"id": "P09-T11", "estado_atual": "todo", "estado_proposto": "todo", "evidencia_nova": ["replay offline sintético: nenhum baseline domina; null-como-zero perde 230-900 bps", "swarm: SH/ASHA não superam greedy conservador (pré-registrado)"], "lacuna": "replay offline com dado real as-of"},
+    {"id": "P06-T03", "estado_atual": "partial", "estado_proposto": "partial", "evidencia_nova": ["JoinAds v2 append-only só em wip (192bc065)", "gatilho legado sync_joinads_revenue_to_daily_metrics sobrescreve receita campanha-dia e insere custo 0", "revenue DEFAULT 0 em src/sql/joinads/01_joinads_metrics.sql:30"], "lacuna": "integrar v2 append-only e aposentar o gatilho"},
+    {"id": "P06-T08", "estado_atual": "partial", "estado_proposto": "partial", "evidencia_nova": ["colisão de numeração: v21_01/v21_02 nesta base são meta_capi/rbac; ledger Google Ads v21 está só em wip 0f0bb287"], "lacuna": "renumerar antes do merge"},
+    {"id": "P06-T09", "estado_atual": "ausente nesta base", "estado_proposto": "trazer com a integração de volc_ads/economia (wip 043c77f5)", "evidencia_nova": [], "lacuna": "task só existe na branch wip"},
+    {"id": "P14-T10", "estado_atual": "partial", "estado_proposto": "partial", "evidencia_nova": ["Stat Lab: bootstrap só do fator refutado (cobertura 15-30%); fator de coortes maduras degrada sem aviso sob mudança de regime"], "lacuna": "detecção de regime e Bornhuetter-Ferguson não testados"},
+    {"id": "P05-T09", "estado_atual": "partial", "estado_proposto": "partial", "evidencia_nova": ["constante 72 h em volc_ads/inteligencia_decisao/politicas.py:23 segue sem calibração"], "lacuna": "fora do escopo do lab"}
+  ],
+  "nos": [
+    {"id": "concept:forecast_lifecycle", "acao": "corrigir texto", "detalhe": "'nada entrou na linha oficial' está defasado: services/orakul_predictive/ existe na linha oficial (48a3ad5f)"},
+    {"id": "db:joinads_metrics", "acao": "registrar contradição", "detalhe": "snapshot de 22/08 com 0 linhas vs proof de P06-T03 que a trata como receita viva; upsert sem histórico; DEFAULT 0"},
+    {"id": "cap_revenue_ingestion", "acao": "acrescentar grão", "detalhe": "dia × campanha × domínio, USD, upsert sem histórico"},
+    {"id": "concept:decision_intelligence_lab", "acao": "ligar (referência, sem autoridade)", "detalhe": "novo nó proposto 'concept:data_intelligence_lab' (experiments/data-intelligence-lab) — laboratório, não autoridade operacional"},
+    {"id": "cap_freedom_lab", "acao": "ligar (referência)", "detalhe": "dois ambientes isolados com polars diferentes (2.0.0 vs 1.44.2): tempos não transferíveis"},
+    {"id": "concept:adaptive_budget_allocator", "acao": "registrar", "detalhe": "curvas marginais não identificáveis com o dado atual; SH/ASHA não superam greedy em simulação"}
+  ],
+  "seguranca": [
+    {"arquivo": "docs/growth-engine/diagnostico/evidencia.json", "achado": "GAQL real não sanitizada (1,3 MB) com billing_setup.payments_account e nome da conta; versionado na linha oficial", "proposta": "decisão do dono: sanitizar ou remover do histórico; o lab não leu o conteúdo além do inventário do auditor"},
+    {"arquivo": "wip 043c77f5 .claude-ads/runs/economic-attribution-20261015T1310-0300/canary-result.json", "achado": "customer_id sem máscara, inconsistente com a máscara do Freedom Lab", "proposta": "mascarar antes de integrar"}
+  ],
+  "handoffs_de_codigo": ["docs/data-intelligence/handoffs/HANDOFF-NUCLEO-ECONOMICO-VALUE-KIND.md"]
+}
