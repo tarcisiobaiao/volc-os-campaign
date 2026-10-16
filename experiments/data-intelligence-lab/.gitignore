@@ -1,0 +1,9 @@
+# Ambiente e caches locais do laboratório (nunca versionados)
+.tools/
+.venv/
+.uv-cache/
+.uv-python/
+artifacts/
+*.parquet
+__pycache__/
+.pytest_cache/

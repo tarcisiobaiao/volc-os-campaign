@@ -1,0 +1,21 @@
+[project]
+name = "volc-data-intelligence-lab"
+version = "0.1.0"
+description = "Bancada hermética de replay/estatística/swarm do VOLC Data Intelligence Lab. Não é serviço operacional."
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "numpy>=2.1",
+    "scipy>=1.14",
+    "statsmodels>=0.14.4",
+    "scikit-learn>=1.5",
+    "duckdb>=1.1",
+    "polars>=1.10",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
+[tool.uv]
+package = false
+# Higiene de cadeia de suprimentos: só pacotes publicados há >= 2 semanas da baseline.
+exclude-newer = "2026-10-01T00:00:00Z"
