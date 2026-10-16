@@ -167,10 +167,17 @@ def _foto() -> dict:
 # ── edição ─────────────────────────────────────────────────────────────────
 
 def escrever_atomico(p: Path, texto: str) -> None:
-    """Escreve em arquivo temporário 0600 no MESMO diretório e troca por rename."""
+    """Escreve em temporário no MESMO diretório e troca por rename.
+
+    Mantém o modo do arquivo original (o rollback devolve o mesmo modo) e recusa
+    symlink (substituí-lo por arquivo comum não seria "desfazer exatamente").
+    """
+    if p.is_symlink():
+        raise RuntimeError(f"{p} é symlink; recusado")
+    modo = (p.stat().st_mode & 0o777) if p.exists() else 0o600
     fd, tmp = tempfile.mkstemp(prefix=f".{p.name}.bia-", dir=str(p.parent))
     try:
-        os.fchmod(fd, 0o600)
+        os.fchmod(fd, modo)
         with os.fdopen(fd, "w") as f:
             f.write(texto)
             f.flush()
@@ -185,20 +192,32 @@ def escrever_atomico(p: Path, texto: str) -> None:
 
 
 def desfazer_config(texto: str) -> str:
-    """Remove só a linha inserida (`  api_server: []` logo abaixo de `platform_toolsets:`)."""
+    """Remove só a linha inserida (`  api_server: []`), de preferência logo abaixo de
+    `platform_toolsets:`; se alguém reordenou o arquivo, a primeira linha igual."""
     linhas = texto.splitlines(keepends=True)
     for i, l in enumerate(linhas[:-1]):
         if l.rstrip() == "platform_toolsets:" and linhas[i + 1].strip() == LINHA_CONFIG:
             del linhas[i + 1]
             return "".join(linhas)
+    for i, l in enumerate(linhas):
+        if l.strip() == LINHA_CONFIG and l.startswith((" ", "\t")):
+            del linhas[i]
+            return "".join(linhas)
     return texto
 
 
-def desfazer_env(texto: str) -> str:
-    """Remove só o bloco anexado (cabeça + chaves API_SERVER_* que ele trouxe)."""
+def desfazer_env(texto: str, chaves_do_backup: frozenset = frozenset()) -> str:
+    """Remove só o bloco anexado (cabeça + chaves API_SERVER_* que ele trouxe).
+
+    Sem a cabeça (arquivo reescrito por alguém), cai no critério do backup:
+    remove as linhas API_SERVER_* cuja chave NÃO existia antes da edição.
+    """
     linhas = texto.splitlines(keepends=True)
     if not any(l.rstrip() == CABECA_ENV for l in linhas):
-        return texto
+        nossas = set(NOVAS_ENV) | {"API_SERVER_KEY"}
+        return "".join(l for l in linhas
+                       if not (l.split("=", 1)[0].strip() in nossas
+                               and l.split("=", 1)[0].strip() not in chaves_do_backup))
     saida, no_bloco = [], False
     for l in linhas:
         if l.rstrip() == CABECA_ENV:
@@ -297,7 +316,9 @@ def gates(antes: dict, prazo_s: int = 120, desde: float = 0.0, exigir_pid_novo: 
             linhas = dados.get("data") if isinstance(dados, dict) else dados
             if not isinstance(linhas, list) or not linhas:
                 raise ValueError("toolsets fora do contrato")
-            habilitados = [x.get("name") for x in linhas if isinstance(x, dict) and x.get("enabled")]
+            if not all(isinstance(x, dict) and isinstance(x.get("enabled"), bool) for x in linhas):
+                raise ValueError("toolsets sem campo enabled booleano")
+            habilitados = [x.get("name") for x in linhas if x.get("enabled")]
         except Exception:  # noqa: BLE001
             habilitados = ["<ilegivel>"]
         st_c, corpo_c = http("/v1/capabilities", chave)
@@ -336,11 +357,12 @@ def gates(antes: dict, prazo_s: int = 120, desde: float = 0.0, exigir_pid_novo: 
 def restaurar(pasta: Path) -> dict:
     """Desfaz SÓ a edição (não sobrescreve o arquivo inteiro: preserva o que o
     gateway ou o dono tenham escrito depois do backup). Confere contra o backup."""
+    b_c, b_e = (pasta / "config.yaml").read_text(), (pasta / ".env").read_text()
     c_atual, e_atual = CONFIG.read_text(), ENV.read_text()
-    c_novo, e_novo = desfazer_config(c_atual), desfazer_env(e_atual)
+    c_novo = desfazer_config(c_atual)
+    e_novo = desfazer_env(e_atual, frozenset(env_dict(b_e)))
     escrever_atomico(CONFIG, c_novo)
     escrever_atomico(ENV, e_novo)
-    b_c, b_e = (pasta / "config.yaml").read_text(), (pasta / ".env").read_text()
     return {
         "config_igual_backup": c_novo == b_c,
         "env_igual_backup": e_novo == b_e,
@@ -352,6 +374,17 @@ def restaurar(pasta: Path) -> dict:
 
 def reiniciar() -> int:
     return subprocess.run(["systemctl", "restart", UNIT]).returncode
+
+
+def volta_confirmada(g: dict, conf: dict) -> bool:
+    """Depois de desfazer: unit de pé, estado do PID atual e fresco, Telegram
+    `connected` (literal, nunca "igual a antes"), um só gateway, API FORA do ar
+    e os dois arquivos sem a edição."""
+    f = g.get("foto") or {}
+    return bool(g.get("unit_ativa") and g.get("estado_do_pid_atual") and g.get("estado_fresco")
+                and f.get("telegram") == "connected" and g.get("um_so_gateway")
+                and f.get("ouvintes_8642") == []
+                and conf.get("env_sem_api_server") and conf.get("config_yaml_equivalente"))
 
 
 # ── comandos ───────────────────────────────────────────────────────────────
@@ -383,7 +416,7 @@ def cmd_ensaio() -> int:
     copia_e.write_text(novo_e)
     editado = (sha(copia_c) != orig_c) and (sha(copia_e) != orig_e)
     copia_c.write_text(desfazer_config(copia_c.read_text()))   # o MESMO rollback do aplicar
-    copia_e.write_text(desfazer_env(copia_e.read_text()))
+    copia_e.write_text(desfazer_env(copia_e.read_text(), frozenset(env_dict((tmp / ".env").read_text()))))
     exato = sha(copia_c) == orig_c and sha(copia_e) == orig_e
     intocado = sha(CONFIG) == orig_c and sha(ENV) == orig_e
     shutil.rmtree(tmp)
@@ -436,9 +469,11 @@ def cmd_aplicar() -> int:
         signal.signal(sg, _sinal)
 
     ok = False
+    escreveu = False
     try:
         if sha(CONFIG) != antes["sha_config"] or sha(ENV) != antes["sha_env"]:
             raise RuntimeError("arquivos mudaram entre a leitura e a escrita")
+        escreveu = True   # a partir daqui, qualquer falha precisa desfazer
         escrever_atomico(CONFIG, novo_c)
         escrever_atomico(ENV, novo_e)
         recibo["sha_depois"] = {"config": sha(CONFIG), "env": sha(ENV)}
@@ -451,22 +486,26 @@ def cmd_aplicar() -> int:
         recibo["excecao"] = type(exc).__name__
         ok = False
     finally:
-        if not ok:
+        # Daqui em diante NENHUM sinal interrompe: o rollback vai até o fim.
+        for sg in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+            signal.signal(sg, signal.SIG_IGN)
+        if not ok and escreveu:
             rb: dict = {"executado": True}
             try:
                 rb["conferencia"] = restaurar(pasta)
                 desde = time.time()
                 rb["restart_rc"] = reiniciar()
                 g2 = gates({**antes, "main_pid": "-"}, prazo_s=150, desde=desde, exigir_pid_novo=False)
-                # Depois do rollback não há API: só o Telegram e a unit importam.
-                rb["telegram_ok"] = bool(g2.get("unit_ativa") and g2.get("estado_do_pid_atual")
-                                         and g2.get("estado_fresco") and g2.get("telegram_igual_antes")
-                                         and g2.get("um_so_gateway"))
+                rb["volta_confirmada"] = volta_confirmada(g2, rb["conferencia"])
+                rb["telegram"] = (g2.get("foto") or {}).get("telegram")
+                rb["ouvintes_8642"] = (g2.get("foto") or {}).get("ouvintes_8642")
                 rb["sha_config_igual_antes"] = sha(CONFIG) == antes["sha_config"]
                 rb["sha_env_igual_antes"] = sha(ENV) == antes["sha_env"]
             except BaseException as exc2:  # noqa: BLE001
                 rb["excecao_no_rollback"] = type(exc2).__name__
             recibo["rollback"] = rb
+        elif not ok:
+            recibo["rollback"] = {"executado": False, "motivo": "nada foi escrito"}
         try:
             gravar_recibo()
         except BaseException:  # noqa: BLE001
@@ -493,12 +532,16 @@ def cmd_reverter(pasta: str) -> int:
     if not ((p / "config.yaml").is_file() and (p / ".env").is_file()):
         print("RECUSADO: o backup não tem config.yaml e .env; nada alterado"); return 2
     antes = foto()
+    if "erro_foto" in antes:
+        print(f"RECUSADO: não consegui ler o estado ({antes['erro_foto']}); nada alterado"); return 2
+    for sg in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+        signal.signal(sg, signal.SIG_IGN)
     conf = restaurar(p)
     desde = time.time()
     rc = reiniciar()
-    g = gates({**antes, "main_pid": "-"}, prazo_s=150, desde=desde, exigir_pid_novo=False)
-    ok = bool(g.get("unit_ativa") and g.get("estado_do_pid_atual") and g.get("estado_fresco")
-              and g.get("telegram_igual_antes") and g.get("um_so_gateway"))
+    g = gates({**antes, "main_pid": "-", "telegram": "connected"}, prazo_s=150, desde=desde,
+              exigir_pid_novo=False)
+    ok = volta_confirmada(g, conf)
     print(json.dumps({"restaurado_de": pasta, "conferencia": conf, "restart_rc": rc, "telegram_ok": ok},
                      ensure_ascii=False, indent=1, default=str))
     return 0 if ok else 1
