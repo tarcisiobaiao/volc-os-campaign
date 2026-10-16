@@ -110,3 +110,7 @@ testes em `tests/data-intelligence/fundacao/`.
 | Quando (UTC) | Evento |
 |---|---|
 | 2026-10-16 ~12:00 | bootstrap, branch da missão, worktrees esparsos `-a -b -c -e -inv` criados de `b6e85974` |
+| 2026-10-16 ~12:30 | leituras read-only em produção (L1–L12); H1 refutada; sensor sem campanha confirmado |
+| 2026-10-16 tarde | onda 1 integrada (A-inv, A, B, C, E, G); exportação de snapshot real bloqueada pelo classificador |
+| 2026-10-16 tarde | onda 2 integrada (D, F); revisão R1 (26 achados) respondida; D1–D3 e D2' de A |
+| 2026-10-16 noite | revisão R2 (23 achados) respondida; delta de roadmap/curadoria regerado e ensaiado; aplicação nas autoridades bloqueada pelo classificador; 914 testes verdes, 1 pulado |

@@ -2,7 +2,9 @@
   "esquema": "volc-dil.curadoria-delta.v2",
   "gerado_em": "2026-10-16",
   "branch": "lab/data-foundation-20261016",
-  "head": "4920172ae850b6d1538d3193a1f1777b98fa7788",
+  "head": "85aa7ab2829759407689bbe4de6844aca25ee6ab",
+  "head_observado_na_geracao": "4d95dfe840e5869c97a1942c72e91f2d19a94cc8 (3 arquivos de documentação/aplicador depois de 85aa7ab2; nenhum código)",
+  "substitui": "versão gerada em 4920172a (G16 da revisão R2)",
   "worktree": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/worktrees/data-intelligence-overnight-20261015",
   "aviso": "PROPOSTA para o integrador único e para o dono. Nada aqui foi aplicado ao Roadmap, à curadoria ou ao grafo; o grafo não foi reconstruído. Trabalho só nesta branch local (sem push, não integrado) não promove nenhuma tarefa a done. Nenhum segredo, identificador real ou valor monetário no texto proposto (varredura em validacao).",
   "regras_de_estado_usadas": [
@@ -10,7 +12,8 @@
     "todo -> partial só com código + teste na branch que cumpram parte do aceite, dizendo qual parte: única promoção de tarefa existente = P14-T07; a tarefa nova P06-T12 nasce partial pelo mesmo critério (alternativa todo no índice).",
     "risk só com evidência de produção: única proposta = P06-T08, com alternativa conservadora (manter partial e deixar o risco nas tarefas novas e nos nós risk:).",
     "Guarda-chuvas do backlog de ouros nascem reserved (fora do percentual): memória com gatilho, não trabalho aceito.",
-    "Evidência no estilo '· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): ...' com caminhos de arquivo. Contagem de testes = coleta em tests/data-intelligence no HEAD (870 = 172 herdados + 698 da fundação); a execução completa verde fica para o gate do integrador (este curador não reexecutou a suíte)."
+    "Evidência no estilo '· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): ...' com caminhos de arquivo. Contagem de testes = coleta em tests/data-intelligence no HEAD (915 = 172 herdados + 743 da fundação); o integrador relata 914 verdes e 1 pulado — este curador não reexecutou a suíte.",
+    "Toda operação de append/set sobre campo (existente ou ausente) traz base_sha256_campo_anterior, calculado como o aplicador confere: sha256 do texto do campo antes de qualquer operação do delta (string vazia se ausente; json.dumps para listas)."
   ],
   "como_aplicar": {
     "proof_gaps": "append: campo = campo.rstrip() + ' ' + valor; se o campo não existir, usa valor sem o '· ' inicial",
@@ -20,7 +23,8 @@
     "toda_tarefa_tocada": "updated_at = 2026-10-16; roadmap.updated_at = 2026-10-16",
     "novas_tarefas": "acrescentar ao fim de initiatives[<initiative>].tasks. Campos extras sem uso pelo validador do Work Road: status_se_integrado (P06-T09) e backlog_ids (guarda-chuvas)",
     "iniciativas": "acrescentar os ids de roadmap_initiative_updates ao graph_nodes da iniciativa depois de aplicar curadoria_updates (os nós precisam existir)",
-    "ordem": "1) curadoria humana (aprovação do dono), 2) roadmap, 3) rebuild único pelo condutor + --check"
+    "guarda": "handoffs/aplicar_curadoria_delta.py recusa aplicar se o sha256 do campo mudou desde a geração; nesse caso regerar o delta (não relaxar a guarda). Várias operações no mesmo campo compartilham a mesma base (estado antes do delta).",
+    "ordem": "1) curadoria humana (aprovação do dono), 2) roadmap, 3) rebuild único pelo condutor + --check. P14-T07 → partial só junto com o merge do código em main."
   },
   "confirmacao_de_ids": {
     "P06-T02": {
@@ -163,7 +167,7 @@
     {
       "task_id": "P06-T02",
       "campo": "proof",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): leitura read-only de produção (recibo de leituras externas) mostra os coletores canônicos Google D0, D-1 e termos concluindo em 16/10; a diferença entre o D0 final e o D-1 da campanha ativa foi de 0,78% em 15/10 (dq_reconciliacao_custo_d0_d1). Medido: a linha real de google_ads_observation custa 1.140 B (24.141 linhas) e os dois índices GIN (metrics, dimensions) têm 0 scans. Modelado (04-CADENCIA-E-CAPACIDADE.md; modelo.json com manifesto de seed, versões e sha256): gravar só o que mudou corta cerca de 94% das observações da vertical completa ×100 horária; o coletor de termos responde por cerca de 95% do volume lido e rodar 1×/dia reduz em 83% as operações desse job; a agenda atual cabe em 162 contas no developer token Basic (24 com D0 a cada 10 min) — o nível do token da VOLC não está confirmado. Nada foi alterado em produção; daily_campaign_metrics segue sem conta, execução, moeda e carimbo de coleta. Segue partial.",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): leitura read-only de produção (recibo de leituras externas) mostra os coletores canônicos Google D0, D-1 e termos concluindo em 16/10; a diferença entre o D0 final e o D-1 da campanha ativa foi de 0,78% em 15/10 (dq_reconciliacao_custo_d0_d1). Medido: a linha real de google_ads_observation custa 1.140 B (24.141 linhas) e os dois índices GIN (metrics, dimensions) têm 0 scans. Modelado (04-CADENCIA-E-CAPACIDADE.md; modelo.json com manifesto de seed, versões e sha256): a ×100 com vertical completa horária, a política 'recomendada' (colunas largas tipadas, dedup, rollup) fica em ~30 GB em 3 anos, a v21 real em ~1,95 TB e o schema dil_obs final com D2' (versão só quando o estado muda + confirmação estreita) em ~2,0 TB com os bytes de B (823 B/valor, 226 B/confirmação, ids de gerador) e ~2,5 TB com ids no formato real (1.158 B/valor, 276 B/confirmação, HANDOFF-A §8) — ou seja, o D2' empata com a v21 em bytes; a alavanca restante é termos 1×/dia (717 GB). O coletor de termos responde por cerca de 95% do volume lido e rodar 1×/dia reduz em 83% as operações desse job; a agenda atual cabe em 162 contas no developer token Basic (24 com D0 a cada 10 min) — o nível do token da VOLC não está confirmado. Nada foi alterado em produção; daily_campaign_metrics segue sem conta, execução, moeda e carimbo de coleta. Segue partial.",
       "justificativa": "Evidência real (recibo) + modelo de capacidade rotulado como modelado; sem mudança de estado.",
       "evidencia": [
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md",
@@ -171,8 +175,9 @@
         "docs/data-intelligence/fundacao-20261016/benchmarks/capacidade/modelo.json"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "bb5e0744d7b707c4d4fef5195bbca84cc12672f29276b13dec981386d8c9bc96"
+      "base_sha256_campo_anterior": "bb5e0744d7b707c4d4fef5195bbca84cc12672f29276b13dec981386d8c9bc96",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P06-T02",
@@ -183,13 +188,14 @@
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P06-T03",
       "campo": "latest_evidence",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): a JoinAds v2 append-only (joinads_collection_run, joinads_raw_batch, joinads_observation e a view de última versão) EXISTE em produção — catálogo e gatilhos lidos read-only em 16/10 —, embora o código só esteja versionado em wip/historico-joinads-20261015. A razão receita por campanha (key-value numérica) / earnings de domínio foi 0,968–1,000 em todos os dias de 08 a 16/10: a hipótese de queda da ponte custo×receita após o GTM v35 foi REFUTADA (a prova é só essa razão, porque o normalizador da v2 já rejeita utm_campaign não numérico antes de gravar). Continuam vivos os gatilhos legados trg_joinads_sync_daily (último domínio vence; insere linha com custo 0 quando não acha a campanha-dia — efeito em produção NÃO medido) e sync_revenue_to_daily_metrics; joinads_observation.currency_code tem DEFAULT 'USD' (moeda inventada, indetectável a jusante). O núcleo econômico em wip lê o legado latest-wins, não a v2; o legado não tem as-of de receita. Replay real exige snapshot autorizado (P14-T11). Segue partial.",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): a JoinAds v2 append-only (joinads_collection_run, joinads_raw_batch, joinads_observation e a view de última versão) EXISTE em produção — catálogo e gatilhos lidos read-only em 16/10 —, embora o código só esteja versionado em wip/historico-joinads-20261015. A razão receita por campanha (key-value numérica) / earnings de domínio foi 0,968–1,000 em todos os dias de 08 a 16/10: a hipótese de queda da ponte custo×receita após o GTM v35 foi REFUTADA (a prova é só essa razão, porque o normalizador da v2 já rejeita utm_campaign não numérico antes de gravar). Continuam vivos os gatilhos legados trg_joinads_sync_daily (último domínio vence; insere linha com custo 0 quando não acha a campanha-dia — efeito em produção NÃO medido) e sync_revenue_to_daily_metrics; joinads_observation.currency_code tem DEFAULT 'USD' (moeda inventada, indetectável a jusante). O núcleo econômico em wip lê o legado latest-wins, não a v2; o legado não tem as-of de receita. A razão é do AGREGADO do dia (leitura de 16/10); a view de qualidade passou a reconciliar por domínio × dia (R2-G8) e a leitura precisa ser refeita nesse grão. Replay real exige snapshot autorizado (P14-T11). Segue partial.",
       "justificativa": "latest_evidence é onde este item guarda a leitura mais recente; preserva o texto anterior e acrescenta a leitura de 16/10.",
       "evidencia": [
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md",
@@ -197,6 +203,7 @@
       ],
       "status_atual": "partial",
       "base_sha256_campo_anterior": "fcbc39ba91e8c14930714ac532d2124b5595fe0930cf249af47cdc45fc31c4ba",
+      "campo_existia": true,
       "modo": "set: latest_evidence final = texto anterior preservado (rstrip) + ' ' + valor. 'valor' traz só o trecho novo para não reproduzir o texto antigo, que contém identificadores reais."
     },
     {
@@ -208,8 +215,9 @@
         "docs/data-intelligence/fundacao-20261016/01-INVENTARIO-ATUAL.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P06-T04",
@@ -221,8 +229,9 @@
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P06-T07",
@@ -236,8 +245,9 @@
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "11c25cdcf571909014635218986e29fbb04198f487c99bba0acfab52fd487669"
+      "base_sha256_campo_anterior": "11c25cdcf571909014635218986e29fbb04198f487c99bba0acfab52fd487669",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P06-T07",
@@ -248,8 +258,9 @@
         "docs/data-intelligence/fundacao-20261016/03-MATRIZ-DE-ATRIBUICAO.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P06-T08",
@@ -260,13 +271,15 @@
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md"
       ],
       "status_atual": "partial",
+      "base_sha256_campo_anterior": "9834a14ab9bcaa0f6a8da71073617eac8f004e596a3fa11d807b84631b825d9d",
+      "campo_existia": true,
       "modo": "set",
       "status_proposto": "risk"
     },
     {
       "task_id": "P06-T08",
       "campo": "proof",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o catálogo de produção lido read-only em 16/10 mostra DUAS gerações de ledger aplicadas ao mesmo tempo — v12/v17 (trafego_coleta_execucao, google_ads_campanha_dia, google_ads_fato_granular, google_ads_mudanca, google_ads_estado) e v21 (google_ads_collection_run, google_ads_raw_batch, google_ads_observation, google_ads_campaign_day_latest, google_ads_collection_health) — com os gatilhos append-only da v21 ativos; os coletores canônicos concluíram em 16/10 (ledger com 29 runs concluídos, 3 falhos e 3 presos em running desde 15/10). RISCO MEDIDO: 88 de 110 observações campaign_day têm custo e impressões 0 e dq_zero_sintetizado marca 80% 'alto' em todos os dias (4 das 5 campanhas da conta aparecem como 0 sem linha de métrica no payload bruto), contra o critério de aceite desta tarefa. Contrato de leitura v21 → Observacao (adaptar_google_ads_v21, 28 testes em test_observacao_adaptadores.py) trata zero sem linha como missing e moeda sem prova como invalid; a v21 grava BRL fixo em campanha-dia. A idempotência da v21 é por execução (workflow_id:execution_id): reexecutar um slot copia todas as observações. Não há registro de quando a v21 foi aplicada (supabase_migrations.schema_migrations ausente; volc_ops.migracao_evento com 1 linha), main e a linha wip não têm ancestral comum e há colisão de numeração v21_01/v21_02. Nada foi aplicado ou alterado em produção.",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o catálogo de produção lido read-only em 16/10 mostra DUAS gerações de ledger aplicadas ao mesmo tempo — v12/v17 (trafego_coleta_execucao, google_ads_campanha_dia, google_ads_fato_granular, google_ads_mudanca, google_ads_estado) e v21 (google_ads_collection_run, google_ads_raw_batch, google_ads_observation, google_ads_campaign_day_latest, google_ads_collection_health) — com os gatilhos append-only da v21 ativos; os coletores canônicos concluíram em 16/10 (ledger com 29 runs concluídos, 3 falhos e 3 presos em running desde 15/10). RISCO MEDIDO: 88 de 110 observações campaign_day têm custo e impressões 0 e dq_zero_sintetizado marca 80% 'alto' em todos os dias (4 das 5 campanhas da conta aparecem como 0 sem linha de métrica no payload bruto), contra o critério de aceite desta tarefa. Contrato de leitura v21 → Observacao (adaptar_google_ads_v21, test_observacao_adaptadores.py com 31 testes) trata zero sem linha como missing e moeda sem prova como invalid; a v21 grava BRL fixo em campanha-dia. A idempotência da v21 é por execução (workflow_id:execution_id): reexecutar um slot copia todas as observações. Não há registro de quando a v21 foi aplicada (supabase_migrations.schema_migrations ausente; volc_ops.migracao_evento com 1 linha), main e a linha wip não têm ancestral comum e há colisão de numeração v21_01/v21_02. Nada foi aplicado ou alterado em produção.",
       "justificativa": "Consolida os achados de A, B e do integrador sobre o ledger; texto sem ids reais.",
       "evidencia": [
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md",
@@ -274,8 +287,9 @@
         "tests/data-intelligence/fundacao/test_observacao_adaptadores.py"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "dc9509e668eb348756c103cf8f489511ff40d151ed26dd784ea4f424202878e9"
+      "base_sha256_campo_anterior": "dc9509e668eb348756c103cf8f489511ff40d151ed26dd784ea4f424202878e9",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P06-T08",
@@ -286,8 +300,9 @@
         "docs/data-intelligence/fundacao-20261016/05-ARQUITETURA-COLETORES.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P08-T07",
@@ -300,20 +315,22 @@
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "d093d8bcb22094d5cc996d021ff02a878630c8207c77e1f3220ef6161196ccd3"
+      "base_sha256_campo_anterior": "d093d8bcb22094d5cc996d021ff02a878630c8207c77e1f3220ef6161196ccd3",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P08-T07",
       "campo": "gaps",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): corrigir o filtro exige publicação de GTM autorizada (P08-T11); o índice único por segundo colapsa eventos legítimos de mesmo nome (P08-T12); versionar sensor, wrapper e ingest em main junto com o DDL de raw_events, fact_page_daily e compute_page_daily; o hash da Edge Function em produção não foi conferido com o repositório (leitura L13 pendente).",
-      "justificativa": "Acrescenta lacunas de versionamento e dedup.",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): corrigir o filtro exige publicação de GTM autorizada (P08-T11); o índice único por segundo colapsa eventos legítimos de mesmo nome (P08-T12); versionar sensor, wrapper e ingest em main junto com o DDL de raw_events, fact_page_daily e compute_page_daily; o hash da Edge Function em produção não foi conferido com o repositório (leitura L13 pendente); risco novo da R2 (G19/H2, fora do código da missão): volc-ingest corta strings com .slice(0, max) (index.ts linha 51 em 918e9571), o que pode partir um par substituto UTF-16, o PostgreSQL recusa o jsonb e o lote de até 20 eventos se perde com HTTP 500 — reproduzido no PostgreSQL pela revisão; correção = cortar por ponto de código, com deploy autorizado da Edge Function.",
+      "justificativa": "Acrescenta lacunas de versionamento, dedup e o risco H2 da R2.",
       "evidencia": [
         "docs/data-intelligence/fundacao-20261016/01-INVENTARIO-ATUAL.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P08-T07",
@@ -328,6 +345,8 @@
         "docs/data-intelligence/fundacao-20261016/03-MATRIZ-DE-ATRIBUICAO.md"
       ],
       "status_atual": "partial",
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
       "modo": "append sem duplicar"
     },
     {
@@ -341,8 +360,9 @@
         "docs/data-intelligence/fundacao-20261016/06-REPLAY-E-SHADOW.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "ae9e9b7fc6831c17fd61389023109bf2486669a1226a2c369246934d6ea506bb"
+      "base_sha256_campo_anterior": "ae9e9b7fc6831c17fd61389023109bf2486669a1226a2c369246934d6ea506bb",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P05-T09",
@@ -353,8 +373,9 @@
         "docs/data-intelligence/fundacao-20261016/10-BACKLOG-OUROS.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P05-T12",
@@ -365,8 +386,9 @@
         "docs/data-intelligence/fundacao-20261016/03-MATRIZ-DE-ATRIBUICAO.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P13-T06",
@@ -377,8 +399,9 @@
         "docs/data-intelligence/fundacao-20261016/03-MATRIZ-DE-ATRIBUICAO.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P16-T05",
@@ -389,8 +412,9 @@
         "docs/data-intelligence/fundacao-20261016/03-MATRIZ-DE-ATRIBUICAO.md"
       ],
       "status_atual": "reserved",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P09-T01",
@@ -402,8 +426,9 @@
         "docs/data-intelligence/fundacao-20261016/06-REPLAY-E-SHADOW.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "f4e565a71dfdbe82ddf608a5c146fb4bb02d72cc2e25a9fb9ec750e9958bd8d4"
+      "base_sha256_campo_anterior": "f4e565a71dfdbe82ddf608a5c146fb4bb02d72cc2e25a9fb9ec750e9958bd8d4",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P09-T01",
@@ -415,13 +440,14 @@
         "tests/data-intelligence/fundacao/test_modelos_bandits_conformal.py"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P09-T09",
       "campo": "proof",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o shadow engine (volc_dil.fundacao.shadow, 14 módulos, 65 testes) existe e roda em sintético: o motor só enxerga o que estava disponível no corte (detector de vazamento com política trapaceira, retrodatado não vaza), proposta tipada sem execução, kernel que bloqueia (identidade trocada, moeda misturada, sem câmbio, grão misto, custom_key trocada), ledger com hash encadeado e métricas de corte errado e drawdown. NÃO executa o ORAKUL: as políticas do catálogo são regras do laboratório (Manter, RegraMargem, Guardiao72h e baselines herdadas). O adaptador para linha real (shadow/real.py) está pronto e não foi executado com dado real. Resultados sintéticos em results/fundacao/shadow/SHADOW-RESULTS.md (verificáveis por fundacao_shadow.py --verificar). Segue todo.",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o shadow engine (volc_dil.fundacao.shadow, 14 módulos, 76 testes após a R2) existe e roda em sintético (19 dos 20 cenários do Simulator Lab; escala_10x só mede volume): o motor só enxerga o que estava disponível no corte (detector de vazamento com política trapaceira, retrodatado não vaza), proposta tipada sem execução, kernel que bloqueia (identidade trocada, moeda misturada, sem câmbio, grão misto, custom_key trocada e, desde a R2-G3, cobertura sem /earnings ou abaixo de 9/10), versão ambígua fora do corte (G11), custo com dimensões recusado (G12), dedup do caminho real = Registro D2' (G2), ledger com hash encadeado e métricas de corte errado e drawdown. A anti-baseline null→0 deixou de executar qualquer corte (todos bloqueados por cobertura). NÃO executa o ORAKUL: as políticas do catálogo são regras do laboratório (Manter, RegraMargem, Guardiao72h e baselines herdadas). O adaptador para linha real (shadow/real.py) está pronto e não foi executado com dado real. Resultados sintéticos em results/fundacao/shadow/SHADOW-RESULTS.md (fundacao_shadow.py --verificar cobre provisório, gates, versão do código e simulador). Segue todo.",
       "justificativa": "Insumo de D; o 'shadow do ORAKUL' em si não começou.",
       "evidencia": [
         "tests/data-intelligence/fundacao/test_shadow_gates.py",
@@ -429,20 +455,22 @@
         "docs/data-intelligence/fundacao-20261016/06-REPLAY-E-SHADOW.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": "916b79683df75e79e86b57a4f8e4d3a75ae9ee9b3993912fe94ac4c03477bb2a"
+      "base_sha256_campo_anterior": "916b79683df75e79e86b57a4f8e4d3a75ae9ee9b3993912fe94ac4c03477bb2a",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P09-T09",
       "campo": "gaps",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): divergências legado × kernel novo sobre a mesma fotografia não foram medidas; nenhuma janela de shadow aprovada; replay real bloqueado por P14-T11; a semântica de as-of do laboratório diverge da do services/orakul_predictive no outcome (primeira vintage × verdade madura), na representação e na moeda (o ORAKUL só trata BRL).",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): divergências legado × kernel novo sobre a mesma fotografia não foram medidas; nenhuma janela de shadow aprovada; replay real bloqueado por P14-T11; com o coletor de hoje (sem moeda no payload) todo custo v21 sai invalid moeda_nao_provada e o replay real só produziria 'insuficiente' até o coletor pedir customer.currency_code (R2-G22, P06-T10); os resultados do simulador usam cobertura 'aceitar_declarado' porque o simulador não emite /earnings; a semântica de as-of do laboratório diverge da do services/orakul_predictive no outcome (primeira vintage × verdade madura), na representação e na moeda (o ORAKUL só trata BRL).",
       "justificativa": "Lacunas honestas; herda a comparação de semântica da 1ª execução.",
       "evidencia": [
         "docs/data-intelligence/fundacao-20261016/06-REPLAY-E-SHADOW.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P09-T10",
@@ -454,13 +482,14 @@
         "docs/data-intelligence/fundacao-20261016/06-REPLAY-E-SHADOW.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": "fd81a9c52a75b684d005585dfd9ce08620dff30e211a00d0953b25216c19beaa"
+      "base_sha256_campo_anterior": "fd81a9c52a75b684d005585dfd9ce08620dff30e211a00d0953b25216c19beaa",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P09-T11",
       "campo": "proof",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): existe um alocador no laboratório (volc_dil.fundacao.modelos.alocacao: resposta côncava estimada + KKT, restrições de piso, teto, passo e total verificadas fora do modelo, 0 violações) comparado, em replay as_of SINTÉTICO, com orçamento atual, igual, proporcional e guloso: regret 120 contra 1.865 (igual), 1.379 (proporcional) e 334 (guloso), em unidades sintéticas. A análise mostra que o ganho é de primeira ordem (cortar campanhas com ROAS abaixo de 1), não da curvatura: a elasticidade estimada fica no teto em 32–40% das campanhas e a curva marginal NÃO é identificável sem variação exógena de orçamento. Este NÃO é o SGD-UCB da SPEC e não há dado real; o texto anterior 'nenhum allocator foi implementado' fica superado só neste sentido restrito. Segue todo.",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): existe um alocador no laboratório (volc_dil.fundacao.modelos.alocacao: resposta côncava estimada + KKT, restrições de piso, teto, passo e total verificadas fora do modelo, 0 violações) comparado, em replay as_of SINTÉTICO, com orçamento atual, igual, proporcional e guloso: regret 116 contra 1.865 (igual), 1.385 (proporcional) e 370 (guloso), em unidades sintéticas — com o histórico de decisão lido do painel as_of maduro (errata R2-G10; a versão anterior usava a verdade diária do mundo, 120/1.379/334) e veredito M10 'parcial': H10a suportada, H10b refutada. A análise mostra que o ganho é de primeira ordem (cortar campanhas com ROAS abaixo de 1), não da curvatura: a elasticidade estimada fica no teto em 30–40% das campanhas e a curva marginal NÃO é identificável sem variação exógena de orçamento. Este NÃO é o SGD-UCB da SPEC e não há dado real; o texto anterior 'nenhum allocator foi implementado' fica superado só neste sentido restrito. Segue todo.",
       "justificativa": "Atualiza prova defasada sem promover: o algoritmo nomeado no aceite (SGD-UCB) e o replay real não existem.",
       "evidencia": [
         "experiments/data-intelligence-lab/results/fundacao/modelos/m10_alocacao.json",
@@ -468,8 +497,9 @@
         "docs/data-intelligence/fundacao-20261016/08-MODEL-LAB.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": "4c9cf838d88c841eb69c24f89f370b5c5e289b1f4b0f1a11c10bd2d181932b94"
+      "base_sha256_campo_anterior": "4c9cf838d88c841eb69c24f89f370b5c5e289b1f4b0f1a11c10bd2d181932b94",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P09-T11",
@@ -480,8 +510,9 @@
         "docs/data-intelligence/fundacao-20261016/10-BACKLOG-OUROS.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P09-T13",
@@ -493,8 +524,9 @@
         "docs/data-intelligence/fundacao-20261016/06-REPLAY-E-SHADOW.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": "9166c890c35fee3870b2f1535e6f2daab333254c2dff20fec3b617d512fabad7"
+      "base_sha256_campo_anterior": "9166c890c35fee3870b2f1535e6f2daab333254c2dff20fec3b617d512fabad7",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P09-T13",
@@ -505,13 +537,14 @@
         "docs/data-intelligence/fundacao-20261016/10-BACKLOG-OUROS.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P09-T14",
       "campo": "latest_evidence",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): custo real de cada cadência calculado (04-CADENCIA-E-CAPACIDADE.md, quotas.py com fonte): a agenda atual consome 92 operações/dia por conta mais 26 fixas e cabe em 162 contas no developer token Basic (31 se o token for Explorer; 24 com D0 a cada 10 min); termos 4 h → 1×/dia reduz em 83% as operações desse job. A quota é por developer token e compartilhada com MCP, scripts e sincronizador; o nível do token da VOLC NÃO está confirmado. O contrato run_coleta (heartbeat, recibo, dead letter, timeout, retry com backoff, dry_run nulo) está testado só com fakes (test_capacidade_coletor.py, 23 testes); não há adaptador real nem sink Postgres. Produção em 16/10: coletores D0, D-1 e termos frescos e concluídos (termos com 3 falhas em 24 h), sem error workflow. A decisão de agenda (n8n, ADR N8N_IS_SCHEDULE_AUTHORITY) já está registrada; o que continua indeciso é a autoridade do LEDGER (P06-T11) e se Python grava fato (opção do laboratório, que contradiz o ADR atual). Segue partial.",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): custo real de cada cadência calculado (04-CADENCIA-E-CAPACIDADE.md, quotas.py com fonte): a agenda atual consome 92 operações/dia por conta mais 26 fixas e cabe em 162 contas no developer token Basic (31 se o token for Explorer; 24 com D0 a cada 10 min); termos 4 h → 1×/dia reduz em 83% as operações desse job. A quota é por developer token e compartilhada com MCP, scripts e sincronizador; o nível do token da VOLC NÃO está confirmado. O contrato run_coleta (heartbeat, recibo, dead letter, timeout, retry com backoff, dry_run nulo) está testado só com fakes (test_capacidade_coletor.py, 26 testes, sob D1/D2' com observed_at real); não há adaptador real nem sink Postgres. Produção em 16/10: coletores D0, D-1 e termos frescos e concluídos (termos com 3 falhas em 24 h), sem error workflow. A decisão de agenda (n8n, ADR N8N_IS_SCHEDULE_AUTHORITY) já está registrada; o que continua indeciso é a autoridade do LEDGER (P06-T11) e se Python grava fato (opção do laboratório, que contradiz o ADR atual). Segue partial.",
       "justificativa": "Preserva o texto de 14/10 e acrescenta custo/quota/contrato; corrige a premissa 'agenda não decidida' do handoff B.",
       "evidencia": [
         "docs/data-intelligence/fundacao-20261016/04-CADENCIA-E-CAPACIDADE.md",
@@ -521,6 +554,7 @@
       ],
       "status_atual": "partial",
       "base_sha256_campo_anterior": "2df4cbb56c8eaf727e54092b37cd3d39ac22ad028755fca954903fc7e8de3ffc",
+      "campo_existia": true,
       "modo": "set: latest_evidence final = texto anterior preservado (rstrip) + ' ' + valor. 'valor' traz só o trecho novo para não reproduzir o texto antigo, que contém identificadores reais."
     },
     {
@@ -532,13 +566,14 @@
         "docs/data-intelligence/fundacao-20261016/04-CADENCIA-E-CAPACIDADE.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P10-T04",
       "campo": "proof",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): health contracts dos 5 coletores canônicos (Google D0, D-1, termos; JoinAds intraday e D-1) com frescor por slot, completude declarada × silenciosa, runs órfãos e falha silenciosa, em Python puro e em views candidatas dil_qualidade.dq_*, testados em PostgreSQL 16 descartável com equivalência Python × SQL (test_qualidade_*.py, 66 testes). Primeira leitura em PRODUÇÃO (16/10 ~13:04 UTC, SELECTs gerados das views, read-only, nenhuma view criada): 5 coletores frescos (0 slots perdidos) e os últimos 25 slots esperados todos ok, 3 runs órfãos 'alto' (termos, em running desde 15/10, nunca finalizados), falha silenciosa 0. A JoinAds v2 ganha a primeira visão de saúde. Observação: este proof afirma que a v12_04 'ainda não foi aplicada', mas as tabelas trafego_coleta_execucao e google_ads_campanha_dia existem em produção segundo o catálogo lido em 16/10 (a view de saúde do v12_04 e a RPC não foram conferidas). Nada agendado, nenhum alerta enviado, limiares não calibrados. Segue partial.",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): health contracts dos 5 coletores canônicos (Google D0, D-1, termos; JoinAds intraday e D-1) com frescor por slot, completude declarada × silenciosa, runs órfãos e falha silenciosa, em Python puro e em views candidatas dil_qualidade.dq_*, testados em PostgreSQL 16 descartável com equivalência Python × SQL (test_qualidade_*.py, 81 testes: 66 da entrega + 15 da resposta à R2). Primeira leitura em PRODUÇÃO (16/10 ~13:04 UTC, SELECTs gerados das views, read-only, nenhuma view criada): 5 coletores frescos (0 slots perdidos) e os últimos 25 slots esperados todos ok, 3 runs órfãos 'alto' (termos, em running desde 15/10, nunca finalizados), falha silenciosa 0. A JoinAds v2 ganha a primeira visão de saúde. Depois da R2, a reconciliação de receita é por domínio × dia, o dead letter tardio e o run só de dead letters alertam, e confirmações D2' contam como linhas escritas. Observação: este proof afirma que a v12_04 'ainda não foi aplicada', mas as tabelas trafego_coleta_execucao e google_ads_campanha_dia existem em produção segundo o catálogo lido em 16/10 (a view de saúde do v12_04 e a RPC não foram conferidas). Nada agendado, nenhum alerta enviado, limiares não calibrados. Segue partial.",
       "justificativa": "Primeira evidência de produção dos health contracts (read-only sob demanda); sem agendamento, continua partial.",
       "evidencia": [
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md",
@@ -546,8 +581,9 @@
         "experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/dq_01_views_qualidade.sql"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "ecde6872b25cf7fe1c1961d9e99a4c9a68d930d70a2d2b14410a0710f24b5ffe"
+      "base_sha256_campo_anterior": "ecde6872b25cf7fe1c1961d9e99a4c9a68d930d70a2d2b14410a0710f24b5ffe",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P10-T04",
@@ -558,8 +594,9 @@
         "docs/data-intelligence/fundacao-20261016/09-OBSERVABILIDADE.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P10-T16",
@@ -571,8 +608,9 @@
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "0c418f758ed16f3b3c5b4ccd7742844be164eaaab6f5d137bb1756cdd0dbc3bf"
+      "base_sha256_campo_anterior": "0c418f758ed16f3b3c5b4ccd7742844be164eaaab6f5d137bb1756cdd0dbc3bf",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P10-T16",
@@ -583,13 +621,14 @@
         "docs/data-intelligence/fundacao-20261016/05-ARQUITETURA-COLETORES.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "6d14e75dada5827847c3e078cd6c595df9bf03155cf67adb3b4be899c6a709f6"
+      "base_sha256_campo_anterior": "6d14e75dada5827847c3e078cd6c595df9bf03155cf67adb3b4be899c6a709f6",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P10-T24",
       "campo": "proof",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): segundo ambiente de laboratório coexiste com este: experiments/data-intelligence-lab (CPython 3.13.0, uv.lock com exclude-newer 2026-10-01, PostgreSQL 16.11 descartável via initdb do Homebrew, sem rede, 870 testes coletados) contra tools/freedom-lab (PostgreSQL 15.8, polars 2.0.0); o laboratório trava polars 1.44.2, então tempos e semântica não são transferíveis entre eles. Nenhuma dependência foi adicionada nesta missão (matriz LIB-01) e DuckDB/Polars ficam provisórios. As migrations candidatas (dil_obs, dil_qualidade) foram provadas só em PostgreSQL 16, não na imagem 15.8 de produção. Segue partial.",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): segundo ambiente de laboratório coexiste com este: experiments/data-intelligence-lab (CPython 3.13.0, uv.lock com exclude-newer 2026-10-01, PostgreSQL 16.11 descartável via initdb do Homebrew, sem rede, 915 testes coletados no HEAD de 16/10) contra tools/freedom-lab (PostgreSQL 15.8, polars 2.0.0); o laboratório trava polars 1.44.2, então tempos e semântica não são transferíveis entre eles. Nenhuma dependência foi adicionada nesta missão (matriz LIB-01) e DuckDB/Polars ficam provisórios. As migrations candidatas (dil_obs, dil_qualidade) foram provadas só em PostgreSQL 16, não na imagem 15.8 de produção. Segue partial.",
       "justificativa": "Registra a duplicidade de ambientes (X10/DAT-03).",
       "evidencia": [
         "experiments/data-intelligence-lab/pyproject.toml",
@@ -597,8 +636,9 @@
         "docs/data-intelligence/fundacao-20261016/10-BACKLOG-OUROS.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "49bf29bcd4e269ad1c432b3391727bd293c9063d6302ce5921cd7520ffad49d1"
+      "base_sha256_campo_anterior": "49bf29bcd4e269ad1c432b3391727bd293c9063d6302ce5921cd7520ffad49d1",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P10-T24",
@@ -609,8 +649,9 @@
         "docs/data-intelligence/fundacao-20261016/10-BACKLOG-OUROS.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P10-T27",
@@ -621,13 +662,14 @@
         "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "82047b35a363e52b27713b2cfc7109fb589a187af9f30dbb9c774fd15da4412c"
+      "base_sha256_campo_anterior": "82047b35a363e52b27713b2cfc7109fb589a187af9f30dbb9c774fd15da4412c",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P14-T02",
       "campo": "latest_evidence",
-      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): contrato de observação append-only e as_of em schema candidato dil_obs (PostgreSQL 16 descartável): as_of SQL e Python equivalentes (test_equivalencia_as_of_sql_python), append-only até para superusuário, relógio do banco para available_at, ordem de versão por observed_at com empate por available_at (D1), releitura em outra hora = versão nova (D2), ambiguidade independente da ordem (D3). Revisão adversarial R1 (26 achados confirmados, 1 bloqueante) respondida; 43 dos 44 testes novos de A falham no código anterior. Shadow engine (14 módulos, 65 testes) e Simulator Lab (20 cenários versionados, 113 testes) rodam em SINTÉTICO. Cobre, em laboratório: 'o motor só enxerga dados disponíveis na data simulada' (isolamento por tipo + detector de vazamento com controle trapaceiro), 'persiste ledger e recibos' (JSONL com hash encadeado, local) e 'mede cortes errados e drawdown' (sintético). NÃO cobre: GoogleAdsRow real com linhagem (adaptadores exercitados só com linhas sintéticas no formato real), compara proposta com ocorrido em dado real, shadow por janela declarada, ADR para T2. A exportação read-only do snapshot real foi negada pela permissão da sessão em 16/10: nada está 'testado em replay' nem 'rodando em shadow'. Segue partial.",
+      "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): contrato de observação append-only e as_of em schema candidato dil_obs (PostgreSQL 16 descartável): as_of SQL e Python equivalentes (test_equivalencia_as_of_sql_python), append-only até para superusuário, relógio do banco para available_at, ordem de versão por observed_at com empate por available_at (D1), ambiguidade independente da ordem (D3) e, no estado final, D2': a releitura só vira versão quando o estado de negócio muda, releitura igual vira confirmação estreita e retry é no-op (a regra anterior 'releitura = versão nova' foi superada). Revisões adversariais independentes R1 (26 achados confirmados, 1 bloqueante) e R2 (23 achados, 3 altos) respondidas pelos donos, com testes que falham no código anterior; não houve terceira revisão. Shadow engine (14 módulos, 76 testes) e Simulator Lab (20 cenários versionados, 115 testes) rodam em SINTÉTICO. Cobre, em laboratório: 'o motor só enxerga dados disponíveis na data simulada' (isolamento por tipo + detector de vazamento com controle trapaceiro), 'persiste ledger e recibos' (JSONL com hash encadeado, local) e 'mede cortes errados e drawdown' (sintético). NÃO cobre: GoogleAdsRow real com linhagem (adaptadores exercitados só com linhas sintéticas no formato real), compara proposta com ocorrido em dado real, shadow por janela declarada, ADR para T2. A exportação read-only do snapshot real foi negada pela permissão da sessão em 16/10: nada está 'testado em replay' nem 'rodando em shadow'. Segue partial.",
       "justificativa": "Preserva o histórico e mapeia, cláusula a cláusula do aceite, o que o laboratório cobre e o que não.",
       "evidencia": [
         "docs/data-intelligence/fundacao-20261016/06-REPLAY-E-SHADOW.md",
@@ -639,6 +681,7 @@
       ],
       "status_atual": "partial",
       "base_sha256_campo_anterior": "9c37c70a3347ad4eeb974e53bb88f10e76dc0f1b7fc033c5b231539e9e2424b0",
+      "campo_existia": true,
       "modo": "set: latest_evidence final = texto anterior preservado (rstrip) + ' ' + valor. 'valor' traz só o trecho novo para não reproduzir o texto antigo, que contém identificadores reais."
     },
     {
@@ -650,8 +693,9 @@
         "docs/data-intelligence/fundacao-20261016/01-INVENTARIO-ATUAL.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P14-T02",
@@ -668,6 +712,8 @@
         "docs/data-intelligence/fundacao-20261016/06-REPLAY-E-SHADOW.md"
       ],
       "status_atual": "partial",
+      "base_sha256_campo_anterior": "0a1437c0cf4289e07572a82cddff084a1a4aeb9fd1921312913af82dbc38732f",
+      "campo_existia": true,
       "modo": "append sem duplicar"
     },
     {
@@ -680,8 +726,9 @@
         "tests/data-intelligence/fundacao/test_modelos_tabular_isolamento.py"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": "8723880435969c21b060dad5fd235c298dac627cff98971561d04ee92027dc50"
+      "base_sha256_campo_anterior": "8723880435969c21b060dad5fd235c298dac627cff98971561d04ee92027dc50",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P14-T06",
@@ -692,20 +739,23 @@
         "docs/data-intelligence/fundacao-20261016/10-BACKLOG-OUROS.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P14-T07",
       "campo": "status",
       "valor": "partial",
-      "justificativa": "Promoção todo → partial por código + teste que cumprem parte do aceite (4 das 6 cláusulas, em laboratório sintético): (1) 'features lagged/as-of' — features_no_corte e TabelaVersoes (painel as_of provado equivalente a visao_as_of), test_features_no_corte_nao_leem_o_futuro; (2) 'time split' — rolling origin; (3) 'baseline amanhã=hoje lado a lado' — 'último maduro' e 'média dos maduros' ao lado de Ridge e HistGradientBoosting; (4) 'null diferente de zero' — NaN = desconhecido. NÃO cumprem: (5) outputs não negativos (o lucro pode ser negativo; o alvo precisa ser definido) e (6) previsão imutável antes do actual (depende do registry de P14-T06). Tudo em sintético; dado real: nenhum. DECISÃO DO DONO: +0,5 de peso. Se preferir esperar o dado real, manter todo e deixar a evidência em proof.",
+      "justificativa": "Promoção todo → partial por código + teste que cumprem parte do aceite (4 das 6 cláusulas, em laboratório sintético): (1) 'features lagged/as-of' — features_no_corte e TabelaVersoes (painel as_of provado equivalente a visao_as_of), test_features_no_corte_nao_leem_o_futuro; (2) 'time split' — rolling origin; (3) 'baseline amanhã=hoje lado a lado' — 'último maduro' e 'média dos maduros' ao lado de Ridge e HistGradientBoosting; (4) 'null diferente de zero' — NaN = desconhecido. NÃO cumprem: (5) outputs não negativos (o lucro pode ser negativo; o alvo precisa ser definido) e (6) previsão imutável antes do actual (depende do registry de P14-T06). Tudo em sintético; dado real: nenhum. DECISÃO DO DONO: +0,5 de peso. A revisão R2 considerou a promoção defensável, mas só depois da integração do código em main: aplicar este status junto com o merge, não antes. Se preferir esperar o dado real, manter todo e deixar a evidência em proof.",
       "evidencia": [
         "tests/data-intelligence/fundacao/test_modelos_tabular_isolamento.py",
         "tests/data-intelligence/fundacao/test_modelos_dados.py",
         "experiments/data-intelligence-lab/results/fundacao/modelos/m12_tabular.json"
       ],
       "status_atual": "todo",
+      "base_sha256_campo_anterior": "602fae580f5863abfb31bf356decfdc73bf1224a62aacf6b4829ffa2dbe58390",
+      "campo_existia": true,
       "modo": "set",
       "status_proposto": "partial"
     },
@@ -719,8 +769,9 @@
         "docs/data-intelligence/fundacao-20261016/08-MODEL-LAB.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": "a380cf39ec0cbe394208d72b6e4bb713bb161b5d7a299921aefa25a67167dd6d"
+      "base_sha256_campo_anterior": "a380cf39ec0cbe394208d72b6e4bb713bb161b5d7a299921aefa25a67167dd6d",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P14-T07",
@@ -731,8 +782,9 @@
         "docs/data-intelligence/fundacao-20261016/10-BACKLOG-OUROS.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P14-T08",
@@ -745,8 +797,9 @@
         "docs/data-intelligence/fundacao-20261016/08-MODEL-LAB.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": "2a19a37de53e071716ae5ff599179b5ac569e3358134b29fa4a7ee6e3c754809"
+      "base_sha256_campo_anterior": "2a19a37de53e071716ae5ff599179b5ac569e3358134b29fa4a7ee6e3c754809",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P14-T08",
@@ -757,8 +810,9 @@
         "docs/data-intelligence/fundacao-20261016/10-BACKLOG-OUROS.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P14-T09",
@@ -770,8 +824,9 @@
         "docs/data-intelligence/fundacao-20261016/07-SIMULATOR-LAB.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": "bac53e2dd8bb34a842f523cdb44af2c461e2844f88a935a458524439de535af0"
+      "base_sha256_campo_anterior": "bac53e2dd8bb34a842f523cdb44af2c461e2844f88a935a458524439de535af0",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P14-T09",
@@ -782,8 +837,9 @@
         "docs/data-intelligence/fundacao-20261016/10-BACKLOG-OUROS.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": null
+      "base_sha256_campo_anterior": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "campo_existia": false,
+      "modo": "append"
     },
     {
       "task_id": "P14-T10",
@@ -795,8 +851,9 @@
         "docs/data-intelligence/fundacao-20261016/08-MODEL-LAB.md"
       ],
       "status_atual": "partial",
-      "modo": "append",
-      "base_sha256_campo_anterior": "db44a6b60ff597146a7fa5c5ca34fb509549b29cbc67311363f010013b017dc5"
+      "base_sha256_campo_anterior": "db44a6b60ff597146a7fa5c5ca34fb509549b29cbc67311363f010013b017dc5",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P15-T03",
@@ -807,8 +864,9 @@
         "docs/data-intelligence/fundacao-20261016/02-CONTRATO-DE-DADOS.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": "7e3abbf3db33f73a43c3c69e5ce006c60ead95a4b606815e83e73734d890282f"
+      "base_sha256_campo_anterior": "7e3abbf3db33f73a43c3c69e5ce006c60ead95a4b606815e83e73734d890282f",
+      "campo_existia": true,
+      "modo": "append"
     },
     {
       "task_id": "P15-T08",
@@ -820,8 +878,9 @@
         "docs/data-intelligence/fundacao-20261016/07-SIMULATOR-LAB.md"
       ],
       "status_atual": "todo",
-      "modo": "append",
-      "base_sha256_campo_anterior": "dc06e0e235098e5291d898849bb67be31c1c85166be02095fcde874e9d052847"
+      "base_sha256_campo_anterior": "dc06e0e235098e5291d898849bb67be31c1c85166be02095fcde874e9d052847",
+      "campo_existia": true,
+      "modo": "append"
     }
   ],
   "roadmap_new_tasks": [
@@ -867,7 +926,7 @@
         "id": "P06-T10",
         "title": "Eliminar o zero sintetizado do coletor canônico Google Ads e provar a moeda na origem",
         "status": "todo",
-        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o Code node dos coletores canônicos (instalador wip 043c77f5, scripts/instalar_coleta_canonica_google_ads_n8n.py linhas 127, 133 e 149-167; termos linha 56) grava custo, cliques e conversões 0 quando a campanha é listada sem linha de métrica, contrariando o COMMENT da própria tabela ('métricas ausentes não recebem zero inventado'). Medido em produção por leitura read-only: 88 de 110 observações campaign_day com custo e impressões 0; dq_zero_sintetizado marca 80% 'alto' em todos os dias e coletores (D0 15/10: 60 de 75; 16/10: 16 de 20; D-1 14/10: 8 de 10; 15/10: 4 de 5), isto é, 4 das 5 campanhas da conta aparecem como 0 sem linha de métrica. O bruto é preservado (raw_batch e raw_source), logo é recuperável a jusante: adaptar_google_ads_v21 trata zero sem linha como missing (28 testes) e a ponte de qualidade lê o mesmo veredito (test_zero_sintetizado_caminho_contrato_a_igual_ao_direto). Moeda: a v21 grava BRL fixo em campanha-dia e os adaptadores marcam moeda sem prova como invalid. Nada foi alterado em produção.",
+        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o Code node dos coletores canônicos (instalador wip 043c77f5, scripts/instalar_coleta_canonica_google_ads_n8n.py linhas 127, 133 e 149-167; termos linha 56) grava custo, cliques e conversões 0 quando a campanha é listada sem linha de métrica, contrariando o COMMENT da própria tabela ('métricas ausentes não recebem zero inventado'). Medido em produção por leitura read-only: 88 de 110 observações campaign_day com custo e impressões 0; dq_zero_sintetizado marca 80% 'alto' em todos os dias e coletores (D0 15/10: 60 de 75; 16/10: 16 de 20; D-1 14/10: 8 de 10; 15/10: 4 de 5), isto é, 4 das 5 campanhas da conta aparecem como 0 sem linha de métrica. O bruto é preservado (raw_batch e raw_source), logo é recuperável a jusante: adaptar_google_ads_v21 trata zero sem linha como missing (31 testes de adaptador) e a ponte de qualidade lê o mesmo veredito (test_zero_sintetizado_caminho_contrato_a_igual_ao_direto). Moeda: a v21 grava BRL fixo em campanha-dia e os adaptadores marcam moeda sem prova como invalid; com o coletor de hoje (sem moeda no payload) todo custo v21 sai invalid moeda_nao_provada e o replay real só produz 'insuficiente' (R2-G22, test_shadow_real.py). Nada foi alterado em produção.",
         "explanation": "Corrigir na origem para que 'sem gasto' e 'sem linha' deixem de ser indistinguíveis no ledger, e pedir customer.currency_code na GAQL para que a moeda seja prova e não suposição. Linhas históricas não são reescritas (append-only): a camada de leitura as reclassifica.",
         "acceptance": [
           "Zero só é gravado quando há linha de métrica na resposta (ou prova explícita de status da campanha); campanha listada sem linha vira ausência com motivo, nunca 0",
@@ -942,12 +1001,12 @@
         "id": "P06-T12",
         "title": "Adotar o contrato de observação append-only com as_of como base comum das fontes",
         "status": "partial",
-        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): contrato e schema candidato prontos em laboratório. Domínio Python (volc_dil.fundacao.observacao: Observacao com três relógios, status por métrica observed, zero_confirmed, missing, late, unavailable, unsupported, invalid e partial, chaves de idempotência por leitura, Registro append-only, as_of, normalizador tolerante a schema drift, adaptadores v21 e JoinAds v2) e migration candidata dil_obs_0001 (+ 0002 opcional particionada, com rollback), testados em PostgreSQL 16 descartável: append-only até para superusuário (UPDATE, DELETE e TRUNCATE), RLS forçada, available_at limitado pelo relógio do banco (R1-F1), linhagem conferida, moeda só com prova, equivalência as_of SQL × Python e validação Python × SQL concordando em 37 mutações; 221 testes (test_observacao_*, test_schema_pg_*). A revisão adversarial R1 achou 13 defeitos nesta frente (1 bloqueante, 3 altos) e todos foram respondidos com testes que falham no código anterior; D1–D3 tratados. Decisão registrada (02 §9.3): dil_obs NÃO recebe Google Ads nem JoinAds, que já têm ledger vivo; para elas a observação canônica é modelo de leitura via adaptadores. Nada foi aplicado em banco operacional.",
-        "explanation": "Dar a todas as fontes o mesmo vocabulário de fato, ausência e conhecimento: ausência diferente de zero, atraso diferente de ausência, restatement como versão nova e leitura de qualquer instante passado sem vazar futuro. É a base de replay, shadow, qualidade e modelos. Ids do backlog de ouros (10-BACKLOG-OUROS.md) cobertos por esta tarefa: D05, D07, D08, D28, X02.",
+        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): contrato e schema candidato prontos em laboratório, no estado final de 16/10. Domínio Python (volc_dil.fundacao.observacao: Observacao com três relógios, status por métrica observed, zero_confirmed, missing, late, unavailable, unsupported, invalid e partial, chaves de idempotência por leitura, Registro append-only, as_of, normalizador tolerante a schema drift, adaptadores v21 e JoinAds v2) e migration candidata dil_obs_0001 (+ 0002 opcional particionada, com rollback), testados em PostgreSQL 16 descartável: append-only até para superusuário (UPDATE, DELETE e TRUNCATE), RLS forçada, available_at limitado pelo relógio do banco (R1-F1), linhagem conferida, moeda só com prova, equivalência as_of SQL × Python, validação Python × SQL concordando em 37 mutações; 230 testes (test_observacao_*, test_schema_pg_*). Regra de versão final D2': uma leitura só vira versão quando o estado de negócio (status, valor, unidade, moeda, cobertura, motivo) muda; releitura igual vira confirmação estreita em dil_obs.confirmacao; retry é no-op; retry de leitura já confirmada com conteúdo diferente é conflito (R2-G4); o estado do as_of independe da ordem de chegada (propriedade com permutações). observacao_as_of passou a ser inlinável (sem SET search_path nem STRICT): ponto de uma chave 0,001 s em 1e6 linhas. Só superusuário aplica ou desfaz 0001/0002 (R2-G1) e o schema recusa dead letter em run fechado e run com dead letter fechando succeeded (R2-G6). Bytes medidos em 1e6 linhas com ids no formato real: 1.158 B por observação e 276 B por confirmação (com ids de 1 caractere eram 787 e 211; a modelagem de capacidade de B usa 823 e 226). Revisões R1 (13 defeitos nesta frente) e R2 (G1, G4, G5, G6, G20) respondidas com testes que falham no código anterior. Decisão registrada (02 §9.3): dil_obs NÃO recebe Google Ads nem JoinAds, que já têm ledger vivo; para elas a observação canônica é modelo de leitura via adaptadores. Nada foi aplicado em banco operacional.",
+        "explanation": "Dar a todas as fontes o mesmo vocabulário de fato, ausência e conhecimento: ausência diferente de zero, atraso diferente de ausência, restatement como versão nova, releitura igual como confirmação e leitura de qualquer instante passado sem vazar futuro. É a base de replay, shadow, qualidade e modelos. Ids do backlog de ouros (10-BACKLOG-OUROS.md) cobertos por esta tarefa: D05, D07, D08, D28, X02.",
         "acceptance": [
-          "Dono aceita o vocabulário de estados, a ordem de versão (observed_at, depois available_at) e a decisão de que dil_obs não duplica v21 e v2",
+          "Dono aceita o vocabulário de estados, a ordem de versão (observed_at, depois available_at), a regra D2' (versão só quando o estado muda) e a decisão de que dil_obs não duplica v21 e v2",
           "Unificar os vocabulários concorrentes de estado/ausência (laboratório, núcleo econômico em wip, services/orakul_predictive, data_status da JoinAds v2) com mapeamento testado",
-          "Migration provada na imagem 15.8 de produção do Freedom Lab e aplicada pelo protocolo de P10-T27, com recibo e rollback",
+          "Migration provada na imagem 15.8 de produção do Freedom Lab e aplicada por superusuário pelo protocolo de P10-T27, com recibo e rollback",
           "Adaptadores validados com linhas REAIS de v21 e JoinAds v2 (exige P14-T11)",
           "Primeiro consumidor lendo as_of em produção (replay, shadow ou qualidade)"
         ],
@@ -963,9 +1022,10 @@
           "experiments/data-intelligence-lab/src/volc_dil/fundacao/observacao/",
           "tests/data-intelligence/fundacao/test_schema_pg_observacao.py",
           "tests/data-intelligence/fundacao/test_schema_pg_r1.py",
-          "tests/data-intelligence/fundacao/test_observacao_ordem_versao.py"
+          "tests/data-intelligence/fundacao/test_observacao_ordem_versao.py",
+          "tests/data-intelligence/fundacao/test_schema_pg_desempenho.py"
         ],
-        "gaps": "Cumprido em laboratório: contrato, schema candidato com rollback e prova em PostgreSQL 16. Pendente: aplicação em qualquer banco, teste em PostgreSQL 15, linhas reais, consumidor. Defeitos conhecidos antes de adotar: observacao_as_of não é inlinada (SET search_path) e leva 8,5–17,5 s em 1e6 linhas contra 0,18–0,32 s da consulta equivalente inline; o formato longo custa 1.084 B por valor (a política recomendada a ×100 em 3 anos iria de 30 GB, com colunas largas tipadas, para 217 GB); decisão de formato pendente; conversions fracionária vira invalid (vocabulário só tem contagem inteira); o vocabulário de grão não tem search_term nem post; concorrência só testada com duas sessões; o Registro em Python não conhece o recebimento dos bytes (a regra de retroatividade vale no banco).",
+        "gaps": "Cumprido em laboratório: contrato, schema candidato com rollback e prova em PostgreSQL 16. Pendente: aplicação em qualquer banco, teste em PostgreSQL 15, linhas reais, consumidor. Custo: com D2' e ids reais, a política a ×100 em 3 anos fica em ~2,0–2,5 TB (empata com a v21 real, 1,95 TB; as confirmações são ~79% dos bytes), contra ~30 GB da política de colunas largas tipadas; o texto de linhagem (run, lote, payload_ref) domina o heap e trocá-lo por referências inteiras às tabelas run_coleta e lote não foi feito; as_of global no fim do histórico ainda custa de 3 a 12,5 s em 1e6 linhas com ids reais (consultas seletivas são rápidas); conversions fracionária vira invalid (vocabulário só tem contagem inteira); o vocabulário de grão não tem search_term nem post; concorrência só testada com duas sessões; o Registro em Python não conhece o recebimento dos bytes (a regra de retroatividade vale no banco); a estimativa de volume com ids reais é proporcional e não foi remedida pelo modelo de B.",
         "graph_nodes": [
           "concept:observation_append_only_contract",
           "concept:data_intelligence_lab",
@@ -1035,7 +1095,8 @@
           "Medir read-only o colapso real por event_name (contagem enviada pelo lote × persistida), sem selecionar sid ou valores",
           "Decidir a chave nova (discriminador por pageview ou ts em ms) e escrever migration com rollback, provada na imagem 15.8 do Freedom Lab",
           "DDL de raw_events, fact_page_daily e compute_page_daily versionado",
-          "Hash da Edge Function em produção igual ao repositório (leitura L13)"
+          "Hash da Edge Function em produção igual ao repositório (leitura L13)",
+          "Cortar strings por ponto de código e não por .slice (R2-G19/H2: um par substituto partido faz o PostgreSQL recusar o jsonb e perde o lote de até 20 eventos); exige deploy autorizado da Edge Function"
         ],
         "dependencies": [
           "P08-T07",
@@ -1059,7 +1120,7 @@
         "id": "P10-T28",
         "title": "Reaper de runs presos, error workflow e dead letter nos coletores canônicos",
         "status": "todo",
-        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): leitura read-only de produção: 3 runs do coletor de termos permanecem em running desde 15/10 (iniciados 11:46–11:48, último lote cerca de 24 min depois, 2.242 lotes cada, nunca finalizados; 22 h depois ainda abertos) — dq_runs_orfaos = alto ×3. Nenhum fluxo canônico (Google ou JoinAds v2) tem error workflow configurado (inventário versionado do coletor, wip): falha antes do primeiro lote não deixa recibo no banco e só aparece como slot ausente. No laboratório, o executor run_coleta (timeout, retry com backoff e full jitter, dead letter, heartbeat, dry_run nulo, fonte presa não impede o processo de sair) está testado só com fakes (test_capacidade_coletor.py, 23 testes) e a tabela dead_letter existe no schema candidato dil_obs; não há adaptador real.",
+        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): leitura read-only de produção: 3 runs do coletor de termos permanecem em running desde 15/10 (iniciados 11:46–11:48, último lote cerca de 24 min depois, 2.242 lotes cada, nunca finalizados; 22 h depois ainda abertos) — dq_runs_orfaos = alto ×3. Nenhum fluxo canônico (Google ou JoinAds v2) tem error workflow configurado (inventário versionado do coletor, wip): falha antes do primeiro lote não deixa recibo no banco e só aparece como slot ausente. No laboratório, o executor run_coleta (timeout, retry com backoff e full jitter, dead letter, heartbeat, dry_run nulo, fonte presa não impede o processo de sair) está testado só com fakes (test_capacidade_coletor.py, 26 testes) e a tabela dead_letter existe no schema candidato dil_obs, que desde a R2 recusa dead letter em run fechado; não há adaptador real.",
         "explanation": "Um run preso em running some do frescor e engana a decisão que depende dele. Fechar o ciclo exige reaper (o banco marca o run abandonado com motivo, sem apagar), error workflow (a falha antes do primeiro lote deixa rastro) e dead letter reprocessável de forma idempotente.",
         "acceptance": [
           "Reaper: run em running além do timeout do coletor e sem sinal de vida passa a abandoned/failed com motivo e instante, por evento append-only, sem UPDATE destrutivo",
@@ -1094,7 +1155,7 @@
         "id": "P10-T29",
         "title": "Agendar health contracts de qualidade de dados em modo somente leitura",
         "status": "todo",
-        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): contratos de saúde por coletor construídos (frescor por slot, completude, runs órfãos, falha silenciosa, duplicação, zero sintetizado, reconciliação de receita e de custo, deriva, schema drift, substituição de fonte, cobertura de atribuição do sensor) como funções Python puras e 15 views candidatas (dq_01) mais 4 sobre dil_obs (dq_02), 66 testes em PostgreSQL 16 descartável com equivalência Python × SQL e falso alarme do detector de deriva abaixo de 2%. Primeira e única execução em produção: 16/10 ~13:04 UTC, SELECTs gerados das views, read-only (default_transaction_read_only=on, statement_timeout de 20 s), nenhuma view criada: 5 coletores frescos, 3 órfãos 'alto', zero sintetizado 80% 'alto', cobertura do sensor 0,0 'alto', kv/earnings 0,968–1,000 'ok', custo D0 × D-1 0,78% 'ok', falha silenciosa 0. Estado: rodando read-only sob demanda, não agendado.",
+        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): contratos de saúde por coletor construídos (frescor por slot, completude, runs órfãos, falha silenciosa, duplicação, zero sintetizado, reconciliação de receita e de custo, deriva, schema drift, substituição de fonte, cobertura de atribuição do sensor) como funções Python puras e 15 views candidatas (dq_01) mais 4 sobre dil_obs (dq_02), 81 testes (66 da entrega + 15 da R2) em PostgreSQL 16 descartável com equivalência Python × SQL e falso alarme do detector de deriva abaixo de 2%. Primeira e única execução em produção: 16/10 ~13:04 UTC, SELECTs gerados das views, read-only (default_transaction_read_only=on, statement_timeout de 20 s), nenhuma view criada: 5 coletores frescos, 3 órfãos 'alto', zero sintetizado 80% 'alto', cobertura do sensor 0,0 'alto', kv/earnings 0,968–1,000 'ok', custo D0 × D-1 0,78% 'ok', falha silenciosa 0. Estado: rodando read-only sob demanda, não agendado.",
         "explanation": "Transformar uma leitura única em rotina: o que já achou defeitos reais (zero sintetizado, órfãos, sensor sem campanha) passa a rodar sozinho, com limiares calibrados e alertas por severidade, sem escrever nada. Ids do backlog de ouros (10-BACKLOG-OUROS.md) cobertos por esta tarefa: D09.",
         "acceptance": [
           "Agenda read-only definida pelo dono (n8n é a autoridade de agenda), com papel somente leitura e statement_timeout",
@@ -1116,7 +1177,7 @@
           "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md",
           "tests/data-intelligence/fundacao/test_qualidade_pg_views.py"
         ],
-        "gaps": "As views não foram criadas em produção (aplicar exige o protocolo de P10-T27); o DDL real de raw_events não está versionado, a view do sensor usa só ts, event_name e payload; dq_02 depende de dil_obs (P06-T12); limiares iniciais não calibrados; poder do detector de deriva é baixo para mudanças até x1,5 em 7 dias; o documento 09-OBSERVABILIDADE.md §8–9 ainda diz que as views não rodaram em produção (defasado frente ao recibo).",
+        "gaps": "As views não foram criadas em produção (aplicar exige o protocolo de P10-T27); o DDL real de raw_events não está versionado, a view do sensor usa só ts, event_name e payload; dq_02 depende de dil_obs (P06-T12); limiares iniciais não calibrados; poder do detector de deriva é baixo para mudanças até x1,5 em 7 dias; a reconciliação de receita passou a ser por domínio × dia (uma linha por domínio × dia na view dq_reconciliacao_joinads) e a leitura L5/G7 de produção, feita no agregado do dia, precisa ser refeita nesse grão antes de calibrar limiares.",
         "graph_nodes": [
           "concept:data_quality_observability",
           "concept:ads_health_monitor",
@@ -1153,7 +1214,7 @@
           "experiments/data-intelligence-lab/scripts/fundacao_shadow.py",
           "experiments/data-intelligence-lab/src/volc_dil/fundacao/shadow/real.py"
         ],
-        "gaps": "Dado sensível: manter fora do Git. A forma real de raw_source.metrics da v21 e o fuso de fechamento da JoinAds não foram conferidos; moeda inventada a montante (BRL fixo, DEFAULT 'USD') não é detectável pelo adaptador.",
+        "gaps": "Dado sensível: manter fora do Git. A forma real de raw_source.metrics da v21 e o fuso de fechamento da JoinAds não foram conferidos; moeda inventada a montante (BRL fixo, DEFAULT 'USD') não é detectável pelo adaptador. Com o coletor de hoje (sem moeda no payload, R2-G22) todo custo v21 sai invalid e o replay só produz 'insuficiente' até P06-T10; sem /earnings do domínio o portão de cobertura (R2-G3) bloqueia qualquer ação de verba, então o primeiro replay real mede diagnóstico, não decisão. Plano de promoção em 12-PLANO-DE-PROMOCAO.md (degrau 1).",
         "graph_nodes": [
           "concept:data_intelligence_lab",
           "concept:google_ads_collection_ledger",
@@ -1300,11 +1361,11 @@
         "id": "P14-T14",
         "title": "Guarda-chuva: causal e incrementalidade (backlog de ouros)",
         "status": "reserved",
-        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): diff-in-diff e controle sintético em simulação: com escolha aleatória o viés é pequeno; com escolha pelo resultado o estimador é enviesado e os diagnósticos de pré-tendência passam mesmo assim (não avisam), então não são prova de efeito; a curva marginal não é identificável sem variação exógena de orçamento (elasticidade no teto em 32–40% das campanhas). Nenhuma mudança real foi aleatorizada nem tem regra de seleção registrada.",
+        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): diff-in-diff e controle sintético em simulação: com escolha aleatória o viés é pequeno; com escolha pelo resultado o estimador é enviesado e os diagnósticos de pré-tendência passam mesmo assim (não avisam), então não são prova de efeito; a hipótese H5b foi REFUTADA na errata da R2 (o DiD fica enviesado sob seleção, mas o antes/depois do lucro errou menos — nenhum dos dois é confiável sob seleção); a curva marginal não é identificável sem variação exógena de orçamento (elasticidade no teto em 30–40% das campanhas). Nenhuma mudança real foi aleatorizada nem tem regra de seleção registrada.",
         "explanation": "Família que separa efeito de seleção: registro da regra de seleção das decisões humanas, mudanças de orçamento aleatorizadas (Intervention Impact Lab), controle sintético e jitter de orçamento para identificar curvatura. Complementa o MMM semanal da iniciativa P15. Itens: CAU-01, CAU-02, CAU-03, CAU-04, ALO-02, D18, D20.",
         "acceptance": [
           "Prova de saída do estacionamento: aprovação humana de um primeiro experimento aleatorizado, com MDE, janela e washout, e o campo de regra de seleção no schema de proposta (P09-T02). Dado mínimo e gatilho por item:",
-          "CAU-01 — DiD com diagnósticos para mudanças registradas. Dado mínimo: ≥ 10 tratados e ≥ 10 controles, ≥ 10 dias pré e pós. Gatilho de promoção: mudanças com regra de seleção registrada (CAU-02). Estado honesto: testado com sintético (H5a refutada por pouco no lucro; H5b suportada). Roadmap mais próximo: P15-T09.",
+          "CAU-01 — DiD com diagnósticos para mudanças registradas. Dado mínimo: ≥ 10 tratados e ≥ 10 controles, ≥ 10 dias pré e pós. Gatilho de promoção: mudanças com regra de seleção registrada (CAU-02). Estado honesto: testado com sintético (H5a refutada por pouco no lucro; H5b refutada após errata R2/G9: o DiD fica enviesado sob seleção, mas o antes/depois do lucro errou menos — nenhum dos dois é confiável sob seleção). Roadmap mais próximo: P15-T09.",
           "CAU-02 — Mudanças de orçamento aleatorizadas (Intervention Impact Lab). Dado mínimo: dezenas de campanhas elegíveis. Gatilho de promoção: aprovação humana de um primeiro experimento. Estado honesto: ainda não demonstrado. Roadmap mais próximo: P15-T09 · P15-T06.",
           "CAU-03 — Controle sintético para mudança única. Dado mínimo: ≥ 10 dias pré, ≥ 10 doadores. Gatilho de promoção: caso real com placebo em espaço. Estado honesto: testado com sintético (resultado misto). Roadmap mais próximo: P15-T09.",
           "CAU-04 — Registrar motivo e regra de seleção das decisões humanas. Dado mínimo: não definido. Gatilho de promoção: P09-T02 fechado. Estado honesto: ainda não demonstrado (requisito). Roadmap mais próximo: P09-T01 · P09-T02.",
@@ -1350,11 +1411,11 @@
         "id": "P14-T15",
         "title": "Guarda-chuva: alocação de orçamento (backlog de ouros)",
         "status": "reserved",
-        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): alocador côncavo com KKT em simulação: regret 120 contra 1.865 (igual), 1.379 (proporcional) e 334 (guloso), 0 violações de restrição; o ganho vem de cortar campanhas com ROAS abaixo de 1 (primeira ordem), não da curvatura. Mean-CVaR como objetivo foi refutado; risco entra como métrica, não objetivo. Não é o SGD-UCB da SPEC e não há dado real. Pausar/escalar automático está rejeitado (NIVEIS_QUE_APLICAM_SEM_HUMANO vazio).",
+        "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): alocador côncavo com KKT em simulação (M10 'parcial' após a errata da R2: histórico de decisão lido do painel as_of maduro): regret 116 contra 1.865 (igual), 1.385 (proporcional) e 370 (guloso), 0 violações de restrição; H10a suportada e H10b refutada; o ganho vem de cortar campanhas com ROAS abaixo de 1 (primeira ordem), não da curvatura. Mean-CVaR como objetivo foi refutado; risco entra como métrica, não objetivo. Não é o SGD-UCB da SPEC e não há dado real. Pausar/escalar automático está rejeitado (NIVEIS_QUE_APLICAM_SEM_HUMANO vazio).",
         "explanation": "Família do Budget-ROI Allocator em laboratório: alocador com restrições, verificadores alternativos (OR-Tools/CVXPY), risco como métrica e simulador read-only de planned_spend. As tarefas de produto do allocator continuam em P09-T10 a P09-T13 e P14-T09. Itens: ALO-01, ALO-03, ALO-04, SIM-03, D19, D25, D26, X04.",
         "acceptance": [
           "Prova de saída do estacionamento: regret menor que o guloso com IC em replay real abre P09-T13 (shadow T1); até lá nada desta família propõe verba. Dado mínimo e gatilho por item:",
-          "ALO-01 — Alocador côncavo/ordenação por ROAS em replay offline. Dado mínimo: ≥ 4 dias maduros por campanha. Gatilho de promoção: regret menor que o guloso com IC em replay real → shadow T1 (P09-T13). Estado honesto: testado com sintético (H10a suportada; H10b refutada — supera sem variação). Roadmap mais próximo: P09-T11 · P09-T12 · P09-T13.",
+          "ALO-01 — Alocador côncavo/ordenação por ROAS em replay offline. Dado mínimo: ≥ 4 dias maduros por campanha. Gatilho de promoção: regret menor que o guloso com IC em replay real → shadow T1 (P09-T13). Estado honesto: testado com sintético, parcial (H10a suportada; H10b refutada — supera sem variação). Após a errata R2/G10 o histórico de decisão é o painel `as_of` maduro (regret côncava 116 vs equal 1865; vereditos inalterados). Roadmap mais próximo: P09-T11 · P09-T12 · P09-T13.",
           "ALO-03 — OR-Tools / CVXPY como verificador. Dado mínimo: não definido. Gatilho de promoção: restrição que o scipy (HiGHS/SLSQP) não expressa. Estado honesto: adiar (herança, mantido). Roadmap mais próximo: P09-T11.",
           "ALO-04 — Risco/downside como métrica, não objetivo. Dado mínimo: não definido. Gatilho de promoção: não definido (registro de memória). Estado honesto: hold. Roadmap mais próximo: P09-T11.",
           "SIM-03 — Simulador read-only de `planned_spend`. Dado mínimo: não definido. Gatilho de promoção: modelo aceito. Estado honesto: construído em laboratório (sintético). Roadmap mais próximo: P14-T09 · P15-T08.",
@@ -1831,49 +1892,63 @@
         "secao": "capabilities",
         "campo": "evidence",
         "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): CORREÇÃO do estado de produção: o catálogo lido read-only em 16/10 mostra aplicadas ao mesmo tempo as tabelas do ledger v12/v17 (trafego_coleta_execucao, google_ads_campanha_dia, google_ads_fato_granular) e as do ledger canônico v21 (google_ads_collection_run, google_ads_raw_batch, google_ads_observation), com gatilhos append-only ativos e os coletores D0, D-1 e termos concluindo em 16/10 — o trecho acima ('v12_04 não aplicada oficialmente') está defasado quanto às tabelas (a RPC e os workflows do v12_04 não foram conferidos). Defeito medido: 80% de zero sintetizado nas leituras campaign_day (risk:google_ads_zero_sintetizado) e 3 runs presos sem reaper (risk:coletores_canonicos_sem_reaper). Os gatilhos legados de custo e receita seguem vivos (co-autoridade). Permanece partial; a autoridade do ledger está por decidir (concept:ledger_authority_decision).",
-        "motivo": "Corrige afirmação defasada sobre produção, com evidência de leitura real; não muda o estado."
+        "motivo": "Corrige afirmação defasada sobre produção, com evidência de leitura real; não muda o estado.",
+        "base_sha256_campo_anterior": "32d856e8b6ec4dfb3704edf97d18624c8224c977bca9e6cede16f71e299bc49a",
+        "modo": "append (campo.rstrip() + ' ' + valor)"
       },
       {
         "id": "cap_revenue_ingestion",
         "secao": "capabilities",
         "campo": "evidence",
         "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): a JoinAds v2 append-only (joinads_collection_run, joinads_raw_batch, joinads_observation) existe em produção e a razão receita por campanha / earnings de domínio foi 0,968–1,000 em 08–16/10 (concept:joinads_collection_ledger). Grão do legado: dia × campanha × domínio, upsert sem histórico, revenue NOT NULL DEFAULT 0. Os gatilhos trg_joinads_sync_daily (último domínio vence; insere linha de custo 0 quando não acha a campanha-dia — efeito em produção não medido) e sync_revenue_to_daily_metrics estão ativos; joinads_observation.currency_code tem DEFAULT 'USD'. O legado não tem as-of de receita; o replay real depende de snapshot autorizado. Permanece partial.",
-        "motivo": "Registra a fonte append-only viva e o grão do legado (pendência da 1ª execução, nunca aplicada)."
+        "motivo": "Registra a fonte append-only viva e o grão do legado (pendência da 1ª execução, nunca aplicada).",
+        "base_sha256_campo_anterior": "cde4007b45aa51d3c0c3a24477d8ab8de458cea95ae92afd38316f5cfca85c64",
+        "modo": "append (campo.rstrip() + ' ' + valor)"
       },
       {
         "id": "concept:google_ads_collection_ledger",
         "secao": "concepts",
         "campo": "evidence",
-        "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): DUAS gerações de ledger aplicadas ao mesmo tempo em produção (v12/v17 e v21), sem registro de quando a v21 foi aplicada e sem ancestral comum entre main e a linha wip; legado latest-wins e canônico append-only escrevem o mesmo fato. O trecho acima sobre v12_04 e workflows não aplicados está defasado quanto às tabelas. Riscos medidos: zero sintetizado em 80% das leituras campaign_day, 3 runs presos e nenhum error workflow. Contrato de leitura v21 → Observacao com adaptador testado (28 testes, linhas sintéticas). Decisão de autoridade pendente: concept:ledger_authority_decision. Permanece partial.",
-        "motivo": "Materializa a coexistência de ledgers e os riscos, sem mudar o estado."
+        "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): DUAS gerações de ledger aplicadas ao mesmo tempo em produção (v12/v17 e v21), sem registro de quando a v21 foi aplicada e sem ancestral comum entre main e a linha wip; legado latest-wins e canônico append-only escrevem o mesmo fato. O trecho acima sobre v12_04 e workflows não aplicados está defasado quanto às tabelas. Riscos medidos: zero sintetizado em 80% das leituras campaign_day, 3 runs presos e nenhum error workflow. Contrato de leitura v21 → Observacao com adaptador testado (31 testes, linhas sintéticas). Decisão de autoridade pendente: concept:ledger_authority_decision. Permanece partial.",
+        "motivo": "Materializa a coexistência de ledgers e os riscos, sem mudar o estado.",
+        "base_sha256_campo_anterior": "25c8eceac86a8f3f760444b18cbeda39cf0fe57240e4669b64d4e9b953f73bbf",
+        "modo": "append (campo.rstrip() + ' ' + valor)"
       },
       {
         "id": "cap_attribution",
         "secao": "capabilities",
         "campo": "evidence",
         "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): matriz de grão honesto (03-MATRIZ-DE-ATRIBUICAO.md; codificada em volc_dil.fundacao.identidade.graos.MATRIZ): custo × receita em campanha × dia é determinístico (campaign.id = custom_value da JoinAds); o tráfego do sensor por campanha é NÃO atribuível hoje (o sensor anula o campaign.id: 0 de 28 sessões pagas com campanha; risk:sensor_campaign_id_pii_filter); clique e sessão × receita são impossíveis (o sensor nunca envia gclid, gbraid ou wbraid; a receita é agregada); a junção recusa o grão (GraoNaoSuportado) em vez de ratear. O vínculo campanha → funil (trafego_vinculo) não é tocado por estas provas. Permanece partial.",
-        "motivo": "Qualifica o que a atribuição consegue e o que não consegue, com prova executável."
+        "motivo": "Qualifica o que a atribuição consegue e o que não consegue, com prova executável.",
+        "base_sha256_campo_anterior": "561bcaedfca13d3815823bcdc3e38faca1394f5474439fce143fe4335730da01",
+        "modo": "append (campo.rstrip() + ' ' + valor)"
       },
       {
         "id": "cap_behavior",
         "secao": "capabilities",
         "campo": "evidence",
         "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o sensor segue operando (eventos volc_sensor_ready em 15–16/10), mas sem campaign.id: de 28 sessões pagas, nenhuma com utm.campaign, porque o filtro de PII descarta valores de UTM com 10 ou mais dígitos (risk:sensor_campaign_id_pii_filter). O estado permanece live porque a captura funciona; a atribuição por campanha não funciona. Sensor, wrapper e volc-ingest só estão versionados em wip/historico-measurement-20261015.",
-        "motivo": "Impede que 'live' seja lido como 'atribui campanha'."
+        "motivo": "Impede que 'live' seja lido como 'atribui campanha'.",
+        "base_sha256_campo_anterior": "f583a4252b587f90c5deccbf7f687f76a69920a41cb64eac2cbc729943394f3a",
+        "modo": "append (campo.rstrip() + ' ' + valor)"
       },
       {
         "id": "concept:tracking_control_plane",
         "secao": "concepts",
         "campo": "evidence",
         "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): a cobertura de atribuição do sensor virou métrica candidata (dq_cobertura_atribuicao_sensor, só agregado) e vetores-ouro do JS real (3.076) detectam drift do Sensor v3 e do WEBS Wrapper v2; o container GTM em produção (versão 35) e esses artefatos só estão versionados em wip. Nenhuma publicação de GTM foi feita. O inventário amplo de GA4, GTM, UTMs e drift continua NÃO construído.",
-        "motivo": "Registra a medida nova sem sugerir que o plano de controle existe."
+        "motivo": "Registra a medida nova sem sugerir que o plano de controle existe.",
+        "base_sha256_campo_anterior": "ba2f3294030d9cda3e9a9d19b678e3b5a249ec1a6036eece82b74dbd4a9e64b3",
+        "modo": "append (campo.rstrip() + ' ' + valor)"
       },
       {
         "id": "concept:adaptive_budget_allocator",
         "secao": "concepts",
         "campo": "evidence",
-        "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): em laboratório sintético existe um alocador sob restrições (KKT; 0 violações de piso, teto, passo e total) com regret muito menor que igual e proporcional, mas o ganho vem de cortar campanhas com ROAS abaixo de 1 (primeira ordem), não da curvatura; a elasticidade fica no teto em 32–40% das campanhas e a curva marginal NÃO é identificável sem variação exógena de orçamento. SH/ASHA não superam o guloso. Não é o SGD-UCB da SPEC; nenhum dado real. O estado permanece todo.",
-        "motivo": "Registra o resultado negativo/parcial que condiciona o desenho do allocator."
+        "valor": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): em laboratório sintético existe um alocador sob restrições (KKT; 0 violações de piso, teto, passo e total) com regret muito menor que igual e proporcional, mas o ganho vem de cortar campanhas com ROAS abaixo de 1 (primeira ordem), não da curvatura; a elasticidade fica no teto em 30–40% das campanhas e a curva marginal NÃO é identificável sem variação exógena de orçamento. SH/ASHA não superam o guloso. Não é o SGD-UCB da SPEC; nenhum dado real. M10 foi classificado como parcial na errata da R2 (H10a suportada, H10b refutada; histórico de decisão lido do painel as_of maduro). O estado permanece todo.",
+        "motivo": "Registra o resultado negativo/parcial que condiciona o desenho do allocator.",
+        "base_sha256_campo_anterior": "2db9c90217bebea7cec5d28edeea84664c6ff3b2582cb7e521810ad5b6d1167a",
+        "modo": "append (campo.rstrip() + ' ' + valor)"
       }
     ],
     "novos_nos": {
@@ -1892,7 +1967,7 @@
           "cluster": "measurement",
           "state": "risk",
           "summary": "O Code node dos coletores canônicos grava custo, cliques e conversões 0 para campanha listada sem linha de métrica, contrariando o contrato 'ausência não vira zero' da própria tabela; o dado não distingue 'sem gasto' de 'sem linha'.",
-          "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): 88 de 110 observações campaign_day em produção têm custo e impressões 0 (leitura read-only); dq_zero_sintetizado marca 80% 'alto' em todos os dias e coletores (4 das 5 campanhas da conta aparecem como 0 sem linha de métrica no payload bruto). Causa em código: Code node dos instaladores dos coletores D0/D-1 e de termos (só em wip 043c77f5). O bruto é preservado, logo o dado é recuperável a jusante: adaptar_google_ads_v21 trata zero sem linha como missing e moeda sem prova como invalid (28 testes). A correção na origem (e pedir customer.currency_code) exige alterar workflow n8n em produção, não autorizado. Tarefa: P06-T10."
+          "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): 88 de 110 observações campaign_day em produção têm custo e impressões 0 (leitura read-only); dq_zero_sintetizado marca 80% 'alto' em todos os dias e coletores (4 das 5 campanhas da conta aparecem como 0 sem linha de métrica no payload bruto). Causa em código: Code node dos instaladores dos coletores D0/D-1 e de termos (só em wip 043c77f5). O bruto é preservado, logo o dado é recuperável a jusante: adaptar_google_ads_v21 trata zero sem linha como missing e moeda sem prova como invalid (31 testes). Com o coletor de hoje (sem moeda no payload) todo custo v21 sai invalid e o replay real só produz 'insuficiente'. A correção na origem (e pedir customer.currency_code) exige alterar workflow n8n em produção, não autorizado. Tarefa: P06-T10."
         },
         {
           "id": "risk:coletores_canonicos_sem_reaper",
@@ -1900,7 +1975,7 @@
           "cluster": "platform",
           "state": "risk",
           "summary": "Um run preso em running não é fechado por ninguém e uma falha antes do primeiro lote não deixa recibo no banco; o frescor e a decisão que dependem dele podem se enganar.",
-          "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): leitura read-only em produção: 3 runs do coletor de termos em running desde 15/10 (iniciados 11:46–11:48, último lote cerca de 24 min depois, 2.242 lotes cada, nunca finalizados; 22 h depois ainda abertos; dq_runs_orfaos = alto ×3); 29 runs concluídos e 3 falhos no ledger Google; nenhum fluxo canônico (Google ou JoinAds v2) com error workflow configurado no inventário versionado. O executor run_coleta do laboratório (timeout, retry com backoff, dead letter, heartbeat) está testado só com fakes (23 testes) e não tem adaptador real. Tarefa: P10-T28."
+          "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): leitura read-only em produção: 3 runs do coletor de termos em running desde 15/10 (iniciados 11:46–11:48, último lote cerca de 24 min depois, 2.242 lotes cada, nunca finalizados; 22 h depois ainda abertos; dq_runs_orfaos = alto ×3); 29 runs concluídos e 3 falhos no ledger Google; nenhum fluxo canônico (Google ou JoinAds v2) com error workflow configurado no inventário versionado. O executor run_coleta do laboratório (timeout, retry com backoff, dead letter, heartbeat) está testado só com fakes (26 testes) e não tem adaptador real. Tarefa: P10-T28."
         },
         {
           "id": "concept:joinads_collection_ledger",
@@ -1924,7 +1999,7 @@
           "cluster": "data",
           "state": "inactive",
           "summary": "Laboratório isolado (experiments/data-intelligence-lab) que testa em sintético e em PostgreSQL descartável o contrato de observação append-only, o replay as_of, o shadow engine, o simulador, o Model Lab e os health contracts. É referência sem autoridade operacional: nada foi aplicado em banco operacional, publicado ou rodado em shadow.",
-          "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): HEAD 4920172a; 870 testes coletados em tests/data-intelligence (172 herdados + 698 da fundação: observação e schema 221, simulador 113, identidade 89, modelos 75, capacidade 69, qualidade 66, shadow 65); revisão adversarial R1 com 26 achados confirmados (1 bloqueante, 6 altos) respondidos pelos donos A, B e C (resíduo do achado F25 em arquivos do integrador), D1–D3 tratados. Estado máximo: testado com sintético. Replay com dado real e shadow: nenhum (a exportação do snapshot foi negada pela permissão da sessão). As leituras externas read-only de 16/10 calibraram só premissas. A suíte completa deve ser reexecutada no fechamento. Ideias futuras e hipóteses: 10-BACKLOG-OUROS.md, cobertas por P14-T11 a P14-T19."
+          "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): HEAD 85aa7ab2 (mais commits só de documentação); 915 testes coletados em tests/data-intelligence (172 herdados + 743 da fundação: observação e schema 230, simulador 115, identidade 91, qualidade 81, modelos 77, shadow 76, capacidade 73); o integrador relata 914 verdes e 1 pulado (medição grande opcional) — este curador não reexecutou a suíte. Duas revisões adversarais independentes respondidas pelos donos: R1 (26 achados confirmados, 1 bloqueante) e R2 (23 achados: 3 altos, 12 médios, 5 baixos; entre eles o aplicador de migration com ADMIN OPTION residual, a dedup do shadow que quebrava a ordem de versão e o portão de cobertura que aprovava corte sem earnings); a verificação das respostas da R2 é a suíte e as provas reexecutadas pelas frentes, não uma terceira revisão. Estado máximo: testado com sintético. Replay com dado real e shadow: nenhum (a exportação do snapshot foi negada pela permissão da sessão). As leituras externas read-only de 16/10 calibraram só premissas. Plano de promoção em 12-PLANO-DE-PROMOCAO.md; ideias futuras e hipóteses: 10-BACKLOG-OUROS.md, cobertas por P14-T11 a P14-T19."
         },
         {
           "id": "concept:observation_append_only_contract",
@@ -1932,7 +2007,7 @@
           "cluster": "data",
           "state": "inactive",
           "summary": "Uma observação é um fato em uma versão de conhecimento: três relógios, status por métrica (observed, zero_confirmed, missing, late, unavailable, unsupported, invalid, partial), linhagem até o payload bruto e ordem de versão por observed_at. Para Google Ads e JoinAds é modelo de leitura sobre v21 e v2 (adaptadores); o schema dil_obs é candidato a fontes sem ledger append-only.",
-          "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): domínio Python e migration candidata dil_obs_0001 (mais 0002 opcional particionada, com rollback) testados em PostgreSQL 16 descartável: append-only até para superusuário, RLS forçada, available_at limitado pelo relógio do banco, equivalência as_of SQL × Python. NÃO aplicada em banco algum, não testada em PostgreSQL 15 (produção), adaptadores só com linhas sintéticas. Defeitos conhecidos antes de adotar: observacao_as_of não inlinada (8,5–17,5 s em 1e6 linhas contra 0,18–0,32 s inline) e formato longo de 1.084 B por valor. Decisão registrada: dil_obs NÃO recebe Google Ads nem JoinAds (duas autoridades). Tarefa: P06-T12."
+          "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): domínio Python e migration candidata dil_obs_0001 (mais 0002 opcional particionada, com rollback) testados em PostgreSQL 16 descartável: append-only até para superusuário, RLS forçada, available_at limitado pelo relógio do banco, equivalência as_of SQL × Python; só superusuário aplica ou desfaz a migration (R2-G1). Regra de versão final D2': a releitura só vira versão quando o estado de negócio muda; releitura igual vira confirmação estreita (dil_obs.confirmacao) e retry é no-op. observacao_as_of é inlinável (ponto de uma chave 0,001 s em 1e6 linhas). Bytes com ids no formato real: 1.158 B por observação e 276 B por confirmação; projeção proporcional de ~2,5 TB em 3 anos a ×100 (a modelagem de capacidade, com ids de gerador, dá ~2,0 TB). NÃO aplicada em banco algum, não testada em PostgreSQL 15 (produção), adaptadores só com linhas sintéticas. Decisão registrada: dil_obs NÃO recebe Google Ads nem JoinAds (duas autoridades). Tarefa: P06-T12."
         },
         {
           "id": "concept:data_quality_observability",
@@ -1940,7 +2015,7 @@
           "cluster": "measurement",
           "state": "inactive",
           "summary": "Contratos de saúde por coletor (frescor por slot, completude, runs órfãos, falha silenciosa, duplicação, zero sintetizado, reconciliações, deriva, schema drift, substituição de fonte, cobertura de atribuição do sensor) como funções Python puras e views candidatas read-only, com alertas decididos por função pura e sem envio.",
-          "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): 66 testes (PostgreSQL 16 descartável, equivalência Python × SQL, falso alarme do detector de deriva até 2%); os SELECTs gerados das views rodaram UMA vez em produção, read-only (16/10 ~13:04 UTC): 5 coletores frescos, 3 runs órfãos, zero sintetizado 80%, cobertura do sensor 0, reconciliação receita ok, custo D0 × D-1 ok; nenhuma view foi criada em produção, nada está agendado, nenhum alerta foi enviado e os limiares não foram calibrados com dado real. Tarefa: P10-T29."
+          "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): 81 testes (66 da entrega + 15 da resposta à R2; PostgreSQL 16 descartável, equivalência Python × SQL, falso alarme do detector de deriva até 2%); os SELECTs gerados das views rodaram UMA vez em produção, read-only (16/10 ~13:04 UTC): 5 coletores frescos, 3 runs órfãos, zero sintetizado 80%, cobertura do sensor 0, reconciliação receita ok, custo D0 × D-1 ok; depois da R2 a reconciliação de receita é por domínio × dia, dead letter tardio e run só de dead letters alertam, o estado de dil_obs é o vigente e confirmações D2' contam como linhas escritas. Nenhuma view foi criada em produção, nada está agendado, nenhum alerta foi enviado e os limiares não foram calibrados com dado real. Tarefa: P10-T29."
         }
       ],
       "documents": [
@@ -2154,19 +2229,14 @@
       "motivo": "Superados pela R1: 162 contas (24 com D0 a 10 min), redundância medida de 89,4% com 21 h de vida do coletor e 97,1% modelada em regime (H5). Usei só os números pós-R1."
     },
     {
-      "origem": "05-ARQUITETURA-COLETORES §3, §3.1, §3.2 e linha de resumo 74",
-      "item": "Texto sobre REAFIRMAÇÃO / 'reafirmadas' e 95,7%",
-      "motivo": "O D2 removeu a reafirmação do Registro e o coletor foi adaptado (d62bf0c0), mas o 05 ainda descreve INSERIDO/NOOP/REAFIRMADO, 'reafirmadas' nas contagens e 95,7%; 05 §3 usa 97,6% e 04 §1 usa 97,1%. Não citei esses trechos; recomendo regerar o 05 antes do merge (doc stale, não é prova)."
+      "origem": "FINAL-REPORT.md e 04-CADENCIA-E-CAPACIDADE.md §1/§6",
+      "item": "'879 testes verdes' (FINAL-REPORT) e a tabela de bytes D2' de 04 (823 B/valor, 226 B/confirmação, 2,03 TB)",
+      "motivo": "O FINAL-REPORT ainda diz 879 verdes; a RESPOSTA-R2 e as frentes relatam 914 verdes e 1 pulado (915 coletados). Os bytes de 04 vêm do gerador de B com ids curtos; com ids no formato real (HANDOFF-A §8) são 1.158 B por observação e 276 B por confirmação e a projeção de A é ~2,5 TB em 3 anos a ×100 (não remedida pelo modelo de B). Citei as duas faixas (2,0–2,5 TB) e recomendo regerar o modelo de B com os bytes reais antes do merge. O 05 já foi corrigido (sem 'reafirmação')."
     },
     {
-      "origem": "09-OBSERVABILIDADE §8–9 e HANDOFF-G §2/§6",
-      "item": "'as views ainda não foram rodadas contra produção'",
-      "motivo": "Defasado: a terceira rodada do recibo (16/10 ~13:04 UTC) rodou os SELECTs gerados das views em produção, read-only. Usei o recibo. Estado correto: 'rodando read-only sob demanda, não agendado'; nenhuma view criada."
-    },
-    {
-      "origem": "HANDOFF-A §2, B §2, C, D, F §2 (contagens)",
-      "item": "Contagens de testes verdes de cada handoff (343, 692, 786, 659, ...)",
-      "motivo": "Cada worker mediu em uma base diferente. Usei a contagem de COLETA no HEAD 4920172a (870 = 172 herdados + 698 da fundação) e atribuí a verdade da execução completa ao gate do integrador no fechamento. Nenhum número de 'verde' foi reivindicado por este curador."
+      "origem": "HANDOFFs A, B, C, D, F, G (contagens de testes verdes de cada um: 343, 692, 786, 659, 879, 890, ...)",
+      "item": "Contagens de testes verdes de cada handoff",
+      "motivo": "Cada worker mediu em uma base diferente. Usei a contagem de COLETA no HEAD de 16/10 (915 = 172 herdados + 743 da fundação) e o relato do integrador (914 verdes e 1 pulado, RESPOSTA-R2) como relato, não como verificação minha: este curador não reexecutou a suíte."
     },
     {
       "origem": "CURATION-HANDOFF.json (1ª execução)",
@@ -2202,14 +2272,29 @@
       "origem": "HANDOFF-E §6 e 07",
       "item": "Versionar 32 MB de pacote de datasets sintéticos no repositório",
       "motivo": "Não é questão de curadoria; fica para o dono decidir (versionar só MANIFEST.json + --verificar e regenerar sob demanda). Registrado em pendências."
+    },
+    {
+      "origem": "HANDOFF-A §7.2 e HANDOFF-B §8.6/§8.7",
+      "item": "Números superados: observacao_as_of não inlinada (8,5–17,5 s), 1.084 B/valor e 217 GB, D2 'releitura = versão nova' (70,7 MB/dia, 7,9 TB), 17 MB/dia e ~1,9 TB do D2' com ids curtos",
+      "motivo": "Fatos que a versão anterior deste delta gravava (apontado como R2-G16). Estado final: as_of inlinável (ponto 0,001 s em 1e6), D2' (versão só quando o estado muda; confirmação estreita), 1.158 B/valor e 276 B/confirmação com ids reais, ~2,5 TB em 3 anos a ×100 (estimativa proporcional de A). O as_of GLOBAL no fim do histórico continua custando 3,0–12,5 s em 1e6 linhas com ids reais; só a consulta seletiva ficou rápida."
+    },
+    {
+      "origem": "RESPOSTA-R1.md e RESPOSTA-R2.md ('todos respondidos')",
+      "item": "Ler 'respondido' como 'verificado'",
+      "motivo": "A RESPOSTA-R2 declara que não houve terceira revisão independente: a verificação é a suíte e as provas reexecutadas pelas próprias frentes. Os textos propostos dizem 'respondidos pelos donos'; nenhuma tarefa ganha estado por causa disso."
+    },
+    {
+      "origem": "Revisão R2 (veredito sobre este delta)",
+      "item": "P14-T07 → partial aplicado antes da integração do código",
+      "motivo": "A R2 achou P06-T08 → risk e P14-T07 → partial defensáveis, o segundo só após a integração. A proposta continua, com a condição explícita: aplicar o status de P14-T07 junto com o merge do código em main, nunca antes."
     }
   ],
   "seguranca_e_pendencias": [
     {
-      "tipo": "dado real versionado (resíduo de R1-F25)",
-      "onde": "docs/data-intelligence/fundacao-20261016/01-INVENTARIO-ATUAL.md; receipts/inventario/02-prova-filtro-pii-utm.mjs e .saida.txt",
-      "achado": "O id real de 11 dígitos da campanha ativa continua nesses arquivos do integrador (vetores de teste usam um id sintético). O identificador do container GTM de produção aparece em 00-MANIFESTO.md, 01-INVENTARIO-ATUAL.md e receipts/inventario/01-refs-e-ids.txt; ids de workflow n8n aparecem em 00, 01, 05, HANDOFF-B, modelo.json e, como chaves de SLA, em qualidade/agenda.py e sintetico.py.",
-      "proposta": "O integrador sanitiza (trocar por id sintético / rótulo) antes do merge; ids de workflow são identificadores internos: dono decide se ficam. Nenhum desses valores foi reproduzido neste arquivo."
+      "tipo": "dado real versionado (R1-F25, R2-G17)",
+      "onde": "arquivos atuais e histórico de commits da branch",
+      "achado": "Nos arquivos ATUAIS o id da campanha ativa e o container GTM foram trocados por placeholders (G17). Restam: ids de workflow n8n (documentos 00, 01, 05, HANDOFF-B, modelo.json e, como chaves de SLA, qualidade/agenda.py e sintetico.py) e test_identidade_sem_sensiveis.py, que guarda ids reais de GTM partidos em duas strings como padrões de detecção. O HISTÓRICO de commits da branch ainda contém os ids reais (11-RISCOS §3).",
+      "proposta": "Antes de qualquer push: squash ou reescrita do histórico (12-PLANO-DE-PROMOCAO, degrau 0); decidir se ids de workflow ficam (identificadores operacionais, não segredos) e trocar os padrões do teste por detecção estrutural. Nenhum desses valores foi reproduzido neste arquivo."
     },
     {
       "tipo": "segurança (1ª execução, nunca aplicado)",
@@ -2240,6 +2325,24 @@
       "onde": "calculado em validacao.indice_editorial",
       "achado": "Adicionar tarefas todo aumenta o denominador: o percentual cai ainda que nada tenha piorado. A queda é o preço de tornar o trabalho que falta visível; os guarda-chuvas reservados (P14-T12 a P14-T19) não entram no percentual.",
       "proposta": "Dono decide se aceita, se muda os guarda-chuvas de reserved para todo (aumenta a queda) ou se as tarefas operacionais ficam fora até autorização."
+    },
+    {
+      "tipo": "risco fora do código da missão (R2-G19/H2)",
+      "onde": "volc-ingest (918e9571:supabase/functions/volc-ingest/index.ts linha 51)",
+      "achado": ".slice(0, max) pode partir um par substituto UTF-16; o PostgreSQL recusa o jsonb e o lote de até 20 eventos se perde (HTTP 500). Reproduzido no PostgreSQL pela revisão R2; registrado em 11-RISCOS §5.",
+      "proposta": "Cortar por ponto de código com deploy autorizado da Edge Function; entra em P08-T12 e no gaps de P08-T07."
+    },
+    {
+      "tipo": "leitura de produção a refazer",
+      "onde": "dq_reconciliacao_joinads (leitura G7 do recibo)",
+      "achado": "A razão 0,968–1,000 do recibo é do agregado do dia; depois da R2-G8 a view reconcilia por domínio × dia (mascaramento de cobertura baixa era possível). O recibo de leituras não foi atualizado desde a R1.",
+      "proposta": "Repetir a leitura G7 no grão novo (SELECT read-only) antes de calibrar limiares; o texto proposto qualifica a razão como agregado."
+    },
+    {
+      "tipo": "aplicação do delta",
+      "onde": "handoffs/aplicar_curadoria_delta.py",
+      "achado": "O aplicador confere base_sha256_campo_anterior contra o estado ANTES de qualquer operação do delta (várias operações no mesmo campo compartilham a mesma base). Este delta traz a base em TODA operação de append/set sobre campo existente (e o sha256 da string vazia para campo ausente, para que a guarda também detecte o campo que passou a existir).",
+      "proposta": "Se o roadmap ou a curadoria mudarem entre a geração e a aplicação, regerar o delta; não relaxar a guarda."
     }
   ],
   "validacao": {
@@ -2368,6 +2471,7 @@
       ],
       "ocorrencias": []
     },
+    "nomes_de_teste_citados_inexistentes": [],
     "cobertura_backlog": {
       "ids_no_backlog": 119,
       "ids_mapeados": 119,
@@ -2375,6 +2479,144 @@
       "mapeados_para_tarefa_que_nao_e_nova": [],
       "id_nao_citado_no_texto_da_tarefa_guarda_chuva": [],
       "id_externo_nao_citado_na_tarefa_dona": []
+    },
+    "ensaio_do_aplicador": {
+      "aplicador": "docs/data-intelligence/fundacao-20261016/handoffs/aplicar_curadoria_delta.py (do HEAD, lido; rodado só numa cópia em diretório temporário)",
+      "aplicacao_em_copia": {
+        "saida": "ok: 213 tarefas, 45 tocadas, 159 conceitos, 445 arestas",
+        "erro": "",
+        "codigo": 0
+      },
+      "roadmap_resultante": {
+        "tarefas": 213,
+        "ids_unicos": true,
+        "status_validos": true,
+        "dependencias_faltando": []
+      },
+      "curadoria_resultante": {
+        "carregar_curadoria": "ok",
+        "arestas_orfas": [],
+        "conceitos": 159,
+        "documentos": 61,
+        "arestas": 445
+      },
+      "graph_nodes_inexistentes_apos_aplicar": [],
+      "progress_percent_apos_aplicar": 47.8,
+      "status_aplicados": {
+        "P06-T08": "risk",
+        "P14-T07": "partial"
+      },
+      "guarda_roadmap_adulterado": {
+        "codigo": 1,
+        "mensagem": "campo mudou desde a geração do delta: P14-T02.latest_evidence (esperado 9c37c70a3347…, obtido 13be705a127f…); regere o delta",
+        "recusou": true
+      },
+      "guarda_curadoria_adulterada": {
+        "codigo": 1,
+        "mensagem": "campo mudou desde a geração do delta: cap_behavior.evidence (esperado f583a4252b58…, obtido 5a2dc26d124b…); regere o delta",
+        "recusou": true
+      },
+      "operacoes_roadmap_com_base": "51/51",
+      "evidence_appends_com_base": "7/7"
+    }
+  },
+  "diferencas_em_relacao_a_versao_anterior": {
+    "base": "versão anterior = gerada em 4920172a; esta = gerada contra 85aa7ab2 (HEAD observado 4d95dfe8, só documentação/aplicador depois)",
+    "estrutura_inalterada": {
+      "mudancas_de_status": [
+        {
+          "task_id": "P06-T08",
+          "de": "partial",
+          "para": "risk"
+        },
+        {
+          "task_id": "P14-T07",
+          "de": "todo",
+          "para": "partial"
+        }
+      ],
+      "tarefas_novas": 17,
+      "conceitos_novos": 8,
+      "documentos_novos": 2,
+      "arestas_novas": 25,
+      "mudancas_de_estado_na_curadoria": 0,
+      "leitura": "Nenhuma tarefa nova, nenhum estado e nenhuma aresta mudou: a revisão R2 e os commits seguintes mudaram FATOS, não a estrutura do delta."
+    },
+    "guarda_g16": "base_sha256_campo_anterior agora em 51/51 operações do roadmap (antes só em proof/gaps/latest_evidence de campo existente; links e status não tinham) e em 7/7 evidence_appends da curadoria (antes nenhuma). Campo ausente leva sha256 da string vazia. A semântica de latest_evidence mudou: 'valor' passa a ser só o trecho novo (antes o campo já vinha concatenado), pois o texto antigo de P14-T02 contém identificadores reais.",
+    "fatos_superados_e_substituidos": [
+      "observacao_as_of não inlinada (8,5–17,5 s em 1e6; 'defeito antes de adotar') -> inlinável: ponto 0,001 s em 1e6; o as_of global no fim do histórico continua 3,0–12,5 s com ids reais (P06-T12 gaps, nó do contrato)",
+      "1.084 B por valor, 217 GB em 3 anos, 'formato longo decisão pendente' -> 1.158 B por observação e 276 B por confirmação com ids reais (823/226 no modelo de B, 787/211 com ids de 1 caractere); D2' ~2,0–2,5 TB em 3 anos a ×100, empatando com a v21 real (1,95 TB); recomendada de colunas largas ~30 GB (P06-T02, P06-T12)",
+      "'releitura em outra hora = versão nova (D2)' -> D2': versão só quando o estado de negócio muda; releitura igual = confirmação estreita; retry = no-op; retry de leitura confirmada com conteúdo diferente = conflito (P14-T02, P06-T12, nó do contrato)",
+      "aplicação de migration 'por membresia temporária do aplicador não superusuário' -> só superusuário aplica ou desfaz (R2-G1); dead letter recusado em run fechado e run com dead letter não fecha succeeded (R2-G6) (P06-T12, P10-T28)",
+      "contagem 870 coletados (172 + 698) -> 915 coletados (172 + 743: observação e schema 230, simulador 115, identidade 91, qualidade 81, modelos 77, shadow 76, capacidade 73); 914 verdes + 1 pulado são relato do integrador",
+      "adaptador v21: 28 -> 31 testes; run_coleta: 23 -> 26 testes; shadow: 65 -> 76; simulador: 113 -> 115; qualidade: 66 -> 81 (15 da R2) (P06-T08, P06-T10, P10-T28, P10-T29, P09-T09, P14-T02, nós)",
+      "shadow: null→0 'erra 10 cortes' -> o portão de cobertura (R2-G3) bloqueia todos os cortes dela; dedup do caminho real = Registro D2' (G2); quarentena sem ressuscitar versão superada (G11); custo com dimensões recusado (G12); 19 de 20 cenários (escala_10x só volume) (P09-T09)",
+      "M10: regret 120/1.379/334 e H5b 'suportada' -> M10 'parcial' (histórico as_of maduro): 116 contra 1.865, 1.385 e 370; elasticidade no teto em 30–40% (antes 32–40%); H5b REFUTADA na errata R2-G9 (P09-T11, P14-T14, P14-T15, nó do alocador)",
+      "09-OBSERVABILIDADE 'views não rodaram em produção' (defasado) -> removido o gap; novo gap: a leitura G7 do recibo é do agregado do dia e a view agora reconcilia por domínio × dia (P10-T29, P06-T03)",
+      "resíduo F25 'id real da campanha e container GTM nos arquivos atuais' -> sanitizados nos arquivos atuais (G17); restam ids de workflow, padrões de teste com ids de GTM partidos e o HISTÓRICO de commits (squash antes de push)"
+    ],
+    "itens_novos": [
+      "P08-T12 e P08-T07: risco H2/G19 (volc-ingest corta par substituto UTF-16; lote de 20 eventos perdido)",
+      "P09-T09 e P14-T11: com o coletor de hoje (sem moeda no payload) o replay real só produz 'insuficiente' (R2-G22); sem /earnings o portão de cobertura bloqueia ação de verba (R2-G3)",
+      "P14-T07: a R2 achou a promoção defensável só após a integração do código — aplicar junto com o merge",
+      "nao_aplicar: números superados, 'respondido ≠ verificado', FINAL-REPORT com 879 verdes; seguranca_e_pendencias: H2, leitura G7 a refazer, histórico de commits, nota do aplicador"
+    ],
+    "operacoes_roadmap_com_texto_alterado": [
+      "P06-T02.proof",
+      "P06-T03.latest_evidence",
+      "P06-T08.proof",
+      "P08-T07.gaps",
+      "P09-T09.gaps",
+      "P09-T09.proof",
+      "P09-T11.proof",
+      "P09-T14.latest_evidence",
+      "P10-T04.proof",
+      "P10-T24.proof",
+      "P14-T02.latest_evidence"
+    ],
+    "operacoes_roadmap_novas": [],
+    "operacoes_roadmap_removidas": [],
+    "tarefas_novas_com_texto_alterado": [
+      "P06-T10",
+      "P06-T12",
+      "P08-T12",
+      "P10-T28",
+      "P10-T29",
+      "P14-T11",
+      "P14-T14",
+      "P14-T15"
+    ],
+    "nos_novos_da_curadoria_com_texto_alterado": [
+      "concept:data_intelligence_lab",
+      "concept:data_quality_observability",
+      "concept:observation_append_only_contract",
+      "risk:coletores_canonicos_sem_reaper",
+      "risk:google_ads_zero_sintetizado"
+    ],
+    "evidence_appends_alterados": [
+      "concept:adaptive_budget_allocator",
+      "concept:google_ads_collection_ledger"
+    ],
+    "nao_aplicar_antes_depois": {
+      "antes": 17,
+      "depois": 19,
+      "removidos": [
+        "05-ARQUITETURA-COLETORES §3, §3.1, §3.2 e linha de resumo 74|Texto sobre REAFIRMAÇÃO / 'reafirmadas' e 95,7%",
+        "09-OBSERVABILIDADE §8–9 e HANDOFF-G §2/§6|'as views ainda não foram rodadas contra produção'",
+        "HANDOFF-A §2, B §2, C, D, F §2 (contagens)|Contagens de testes verdes de cada handoff (343, 692, 786, 659, ...)"
+      ],
+      "acrescentados": [
+        "FINAL-REPORT.md e 04-CADENCIA-E-CAPACIDADE.md §1/§6|'879 testes verdes' (FINAL-REPORT) e a tabela de bytes D2' de 04 (823 B/valor, 226 B/confirmação, 2,03 TB)",
+        "HANDOFF-A §7.2 e HANDOFF-B §8.6/§8.7|Números superados: observacao_as_of não inlinada (8,5–17,5 s), 1.084 B/valor e 217 GB, D2 'releitura = versão nova' (70,7 MB/dia, 7,9 TB), 17 MB/dia e ~1,9 TB do D2' com ids curtos",
+        "HANDOFFs A, B, C, D, F, G (contagens de testes verdes de cada um: 343, 692, 786, 659, 879, 890, ...)|Contagens de testes verdes de cada handoff",
+        "RESPOSTA-R1.md e RESPOSTA-R2.md ('todos respondidos')|Ler 'respondido' como 'verificado'",
+        "Revisão R2 (veredito sobre este delta)|P14-T07 → partial aplicado antes da integração do código"
+      ]
+    },
+    "indice_editorial": {
+      "antes": 47.8,
+      "depois": 47.8,
+      "linha_de_base": 49.7
     }
   }
 }
