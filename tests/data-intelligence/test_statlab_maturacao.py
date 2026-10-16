@@ -7,9 +7,13 @@ import pytest
 
 from volc_dil.statlab.base import ResultadoInsuficiente, rngs
 from volc_dil.statlab.maturacao import (
+    MOTIVOS_GUARDA,
     CenarioMaturacao,
     ConfigNowcast,
+    _ic_por_mundo,
+    _vies_por_mundo,
     agregar,
+    motivo_guarda,
     avaliar_mundo,
     fatores_maturacao,
     nowcast_coorte,
@@ -139,8 +143,55 @@ def test_mudanca_de_regime_degrada_e_estavel_nao():
     faixas = ((3, 6),)
     ag_e = agregar([avaliar_mundo(estavel, r, AS_OF, cfg) for r in rngs(7, 25)], faixas)[0]
     ag_r = agregar([avaliar_mundo(regime, r, AS_OF, cfg) for r in rngs(7, 25)], faixas)[0]
-    assert abs(ag_e["com_guarda"]["vies_relativo"]) < 0.08
-    assert ag_r["com_guarda"]["vies_relativo"] < -0.25  # subestima quando o atraso fica mais lento
+    ve, vr = ag_e["com_guarda"]["vies_relativo"], ag_r["com_guarda"]["vies_relativo"]
+    assert ve["ic95"][0] <= 0 <= ve["ic95"][1] or abs(ve["estimativa"]) < 0.05
+    assert vr["ic95"][1] < -0.2  # subestima quando o atraso fica mais lento (IC por mundo exclui 0)
     assert ag_r["cobertura_razao"]["estimativa"] < ag_e["cobertura_razao"]["estimativa"] - 0.2
     # resultado negativo preservado: bootstrap só do fator ignora ruído de processo e sub-cobre
     assert ag_e["cobertura_boot"]["estimativa"] < 0.6 < ag_e["cobertura_razao"]["estimativa"]
+
+
+def test_guarda_unica_motivos_e_precedencia():
+    cfg = _cfg()
+    m = motivo_guarda([0.5, 0.1, np.nan, 0.5, 0.5], [20, 20, 20, 5, 20], [1.0, 1.0, 1.0, 1.0, np.nan], cfg)
+    assert m.tolist() == ["", "maturidade_abaixo_do_minimo", "fator_indefinido",
+                          "coortes_maduras_insuficientes", "observacao_ausente"]
+    assert set(MOTIVOS_GUARDA) >= set(m.tolist()) - {""}
+    # limiar é inclusivo: m == maturidade_minima publica
+    assert motivo_guarda(0.3, 10, 1.0, cfg)[0] == ""
+
+
+def test_guarda_aplicada_no_monte_carlo():
+    lenta = _cenario(pmf_atraso=pmf_atraso_lognormal(12.0, 1.2, A))
+    w = avaliar_mundo(lenta, np.random.default_rng(2), AS_OF, _cfg())
+    baixo = w["fator"] < 0.3
+    assert baixo[0] and np.isfinite(w["sem_guarda"][0])
+    assert np.all(np.isnan(w["com_guarda"][baixo]))
+    assert set(w["motivo_guarda"][baixo]) == {"maturidade_abaixo_do_minimo"}
+    assert np.all(np.isfinite(w["com_guarda"][~baixo]))
+    w2 = avaliar_mundo(lenta, np.random.default_rng(2), AS_OF, _cfg(min_coortes=999))
+    assert np.all(np.isnan(w2["com_guarda"]))
+    assert set(w2["motivo_guarda"]) == {"coortes_maduras_insuficientes"}
+    ag = agregar([w, w2], ((0, 0),), n_boot=0)[0]
+    assert ag["motivos_insuficiente"] == {"coortes_maduras_insuficientes": 1, "maturidade_abaixo_do_minimo": 1}
+
+
+def test_ic_por_mundo_usa_mundo_como_unidade():
+    valores = np.array([[1.0, 1.0, 1.0, 1.0], [0.0, 9.0, 9.0, 9.0], [0.0, 0.0, 0.0, 0.0]])
+    mascara = np.array([[True, True, True, True], [True, False, False, False], [True, True, False, False]])
+    r = _ic_por_mundo(valores, mascara)
+    assert r["n"] == 3 and r["n_celulas"] == 7
+    assert r["estimativa"] == pytest.approx(1.0 / 3)   # média das médias por mundo (por célula daria 4/7)
+
+
+def test_vies_por_mundo_ic_bootstrap_deterministico():
+    rng = np.random.default_rng(0)
+    V = rng.uniform(1, 2, (50, 3))
+    E = V * (1 + rng.normal(0.1, 0.05, (50, 1)))  # erro comum ao mundo: +10%
+    OK = np.ones_like(V, dtype=bool)
+    OK[0] = False
+    a = _vies_por_mundo(E, V, OK, 500, 0)
+    b = _vies_por_mundo(E, V, OK, 500, 0)
+    assert a == b and a["n_mundos"] == 49 and a["n_mundos_sem_estimativa"] == 1
+    assert a["ic95"][0] < a["estimativa"] < a["ic95"][1]
+    assert 0.05 < a["ic95"][0] and a["ic95"][1] < 0.15

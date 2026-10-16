@@ -115,7 +115,8 @@ def cauda_pesada(seed: int, n_traj: int, T: int, n_piloto: int) -> dict:
 def atraso(seed: int, n_traj: int, T: int, media_atraso: float, janela: int, lag_ingenuo: int) -> dict:
     """Conversão com atraso D ~ Geom(1/media). Estimando de negócio: p_W = P(converter com D <= W).
     - oráculo: vê o desfecho final no instante da chegada (impossível; referência);
-    - janela_fechada: alimenta a unidade só quando a janela W fecha (válido, atrasa W passos);
+    - janela_fechada: alimenta a unidade só quando a janela W fecha. É a MESMA sequência do oráculo
+      deslocada W no calendário (validade herdada por identidade; mede-se só o atraso de decisão);
     - lag_ingenuo: alimenta após L passos tratando 'ainda não converteu' como 0 (ausência -> 0)."""
     out = {}
     pD_W = 1 - (1 - 1 / media_atraso) ** janela
@@ -143,9 +144,13 @@ def atraso(seed: int, n_traj: int, T: int, media_atraso: float, janela: int, lag
         out[f"p{p}"] = {
             "p": p, "p_W_verdadeira": p_W, "mu0": mu0, "estimando_do_lag_ingenuo": p * pD_L,
             "seed": seed + 30 + i,
-            **{m: {k: v for k, v in agregar(_concat(l), T, desloc[m]).items() if not k.startswith("largura")}
+            **{m: {k: v for k, v in agregar(_concat(l), T, desloc[m], horizonte_calendario=T).items()
+                   if not k.startswith("largura")}
                for m, l in acum.items()},
         }
+        # 'janela_fechada' é, POR CONSTRUÇÃO, a sequência do oráculo deslocada W passos no calendário:
+        # sua validade é herdada (identidade), não uma descoberta. O que se mede é o custo em calendário.
+        out[f"p{p}"]["janela_fechada"]["derivado_do_oraculo_deslocado_W"] = True
     return out
 
 

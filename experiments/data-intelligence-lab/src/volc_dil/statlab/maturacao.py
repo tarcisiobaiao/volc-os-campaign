@@ -35,12 +35,12 @@ from volc_dil.statlab.base import ResultadoInsuficiente
 # ---------------------------------------------------------------------------
 
 def pmf_atraso_lognormal(mediana: float, sigma: float, maximo: int) -> np.ndarray:
-    """PMF discreta em 0..maximo de floor(D), D ~ LogNormal(log(mediana), sigma), truncada."""
-    bordas = np.arange(1, maximo + 1, dtype=float)
+    """PMF discreta em 0..maximo de floor(D), D ~ LogNormal(log(mediana), sigma), truncada:
+    pmf[k] = P(k <= D < k+1) para k = 0..maximo; a massa P(D >= maximo + 1) é descartada
+    (hipótese do cenário) e a PMF é renormalizada."""
+    bordas = np.arange(1, maximo + 2, dtype=float)  # F(1), ..., F(maximo + 1)
     cdf = stats.lognorm.cdf(bordas, s=sigma, scale=mediana)
-    pmf = np.diff(np.concatenate([[0.0], cdf, [1.0]]))
-    pmf[-1] = 0.0  # massa além de ``maximo`` é descartada (hipótese do cenário) e renormalizada
-    pmf = pmf[: maximo + 1]
+    pmf = np.diff(np.concatenate([[0.0], cdf]))      # k = 0..maximo, inclui floor(D) == maximo
     return pmf / pmf.sum()
 
 
@@ -230,6 +230,26 @@ class ConfigNowcast:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
+MOTIVOS_GUARDA = ("observacao_ausente", "coortes_maduras_insuficientes", "fator_indefinido",
+                  "maturidade_abaixo_do_minimo")
+
+
+def motivo_guarda(fator: Any, n_coortes: Any, observado: Any, cfg: ConfigNowcast) -> np.ndarray:
+    """Guarda ÚNICA de maturação (usada por ``nowcast_coorte`` e pelo Monte Carlo).
+    Vetorizada: devolve, por célula, "" quando o número pode ser publicado ou o 1º motivo de
+    ``insuficiente`` na ordem de ``MOTIVOS_GUARDA``."""
+    m = np.atleast_1d(np.asarray(fator, dtype=float))
+    n = np.atleast_1d(np.asarray(n_coortes, dtype=float))
+    o = np.atleast_1d(np.asarray(observado, dtype=float))
+    m, n, o = np.broadcast_arrays(m, n, o)
+    motivo = np.full(m.shape, "", dtype=object)
+    with np.errstate(invalid="ignore"):
+        condicoes = (~np.isfinite(o), ~(n >= cfg.min_coortes), ~np.isfinite(m), ~(m >= cfg.maturidade_minima))
+    for nome, cond in zip(reversed(MOTIVOS_GUARDA), reversed(condicoes)):
+        motivo = np.where(cond, nome, motivo)  # o primeiro motivo da lista prevalece
+    return motivo
+
+
 def nowcast_coorte(triangulo: np.ndarray, as_of: int, coorte: int, cfg: ConfigNowcast,
                    rng: np.random.Generator | None = None) -> dict[str, Any] | ResultadoInsuficiente:
     """Nowcast de uma coorte no ``as_of`` com guarda. Retorna dict com estimativa, baseline
@@ -249,15 +269,12 @@ def nowcast_coorte(triangulo: np.ndarray, as_of: int, coorte: int, cfg: ConfigNo
     fat = fatores_maturacao(triangulo, as_of, janela_coortes=cfg.janela_coortes, metodo=cfg.metodo)
     m = fat["fator"][idade]
     n = int(fat["n_coortes"][idade])
-    if n < cfg.min_coortes:
-        return ResultadoInsuficiente("coortes_maduras_insuficientes",
-                                     {"n_coortes": n, "min_coortes": cfg.min_coortes, "idade": idade})
-    if not np.isfinite(m):
-        return ResultadoInsuficiente("fator_indefinido", {"idade": idade, "n_coortes": n})
-    if m < cfg.maturidade_minima:
-        return ResultadoInsuficiente("maturidade_abaixo_do_minimo",
-                                     {"fator": float(m), "maturidade_minima": cfg.maturidade_minima,
-                                      "idade": idade, "observado": float(obs)})
+    motivo = motivo_guarda(m, n, obs, cfg)[0]
+    if motivo:
+        return ResultadoInsuficiente(motivo, {
+            "idade": idade, "n_coortes": n, "min_coortes": cfg.min_coortes,
+            "fator": float(m) if np.isfinite(m) else None, "maturidade_minima": cfg.maturidade_minima,
+            "observado": float(obs)})
     out: dict[str, Any] = {
         "status": "estimado", "estimativa": float(obs / m), "observado": float(obs),
         "fator": float(m), "idade": idade, "n_coortes": n, "metodo": cfg.metodo,
@@ -314,11 +331,12 @@ def avaliar_mundo(cen: CenarioMaturacao, rng: np.random.Generator, as_of: int, c
     verdade = verdade_total[coortes]
     with np.errstate(divide="ignore", invalid="ignore"):
         sem_guarda = obs / m
-    valido = np.isfinite(m) & (m >= cfg.maturidade_minima) & (ncoort >= cfg.min_coortes) & np.isfinite(obs)
+    motivos = motivo_guarda(m, ncoort, obs, cfg)
+    valido = motivos == ""
     com_guarda = np.where(valido, sem_guarda, np.nan)
 
     res = {"idade": idades, "verdade": verdade, "observado": obs, "fator": m,
-           "sem_guarda": sem_guarda, "com_guarda": com_guarda}
+           "sem_guarda": sem_guarda, "com_guarda": com_guarda, "motivo_guarda": motivos}
 
     if cfg.nivel_intervalo is not None and cfg.metodo == "coortes_maduras":
         q = (1 - cfg.nivel_intervalo) / 2
@@ -371,12 +389,37 @@ def _ic_por_mundo(valores: np.ndarray, mascara: np.ndarray) -> dict[str, Any]:
     return out
 
 
-def agregar(mundos: list[dict[str, np.ndarray]], faixas: tuple[tuple[int, int], ...] = FAIXAS_IDADE
-            ) -> list[dict[str, Any]]:
+def _vies_por_mundo(E: np.ndarray, V: np.ndarray, OK: np.ndarray, n_boot: int, seed_boot: int
+                    ) -> dict[str, Any]:
+    """Viés relativo agregado (razão de somas) com IC95 por BOOTSTRAP DE MUNDOS (cluster).
+    Mundos sem estimativa válida na faixa ficam fora (contados)."""
+    num = np.where(OK, E - V, 0.0).sum(axis=1)
+    den = np.where(OK, V, 0.0).sum(axis=1)
+    usa = OK.any(axis=1) & (den > 0)
+    k = int(usa.sum())
+    out: dict[str, Any] = {"estimativa": None, "ic95": [None, None], "n_mundos": k,
+                           "n_mundos_sem_estimativa": int((~usa).sum()),
+                           "metodo_ic": f"bootstrap de mundos B={n_boot} seed={seed_boot}"}
+    if k == 0:
+        return out
+    nu, de = num[usa], den[usa]
+    out["estimativa"] = float(nu.sum() / de.sum())
+    if k >= 2 and n_boot > 0:
+        idx = np.random.default_rng(seed_boot).integers(0, k, size=(n_boot, k))
+        b = nu[idx].sum(axis=1) / de[idx].sum(axis=1)
+        out["ic95"] = [float(np.quantile(b, 0.025)), float(np.quantile(b, 0.975))]
+    return out
+
+
+def agregar(mundos: list[dict[str, np.ndarray]], faixas: tuple[tuple[int, int], ...] = FAIXAS_IDADE,
+            n_boot: int = 2000, seed_boot: int = 0) -> list[dict[str, Any]]:
     """Agrega MAE, MAPE, viés relativo, cobertura e taxa de 'insuficiente' por faixa de idade.
     MAPE e cobertura excluem (e contam) verdades == 0 e estimativas ausentes; nada vira 0.
-    ICs de Monte Carlo são por mundo (cluster). Viés relativo e APE máx/p99 são agregados."""
+    ICs de Monte Carlo são por mundo (cluster): médias por mundo para MAPE/cobertura/insuficiente e
+    bootstrap de mundos para o viés relativo (razão de somas). APE máx/p99 são descritivos."""
     pilha = {k: np.stack([w[k] for w in mundos]) for k in mundos[0] if k != "idade"}
+    if "motivo_guarda" not in pilha:
+        pilha["motivo_guarda"] = np.full(pilha["verdade"].shape, "", dtype=object)
     idade = mundos[0]["idade"]
     saida = []
     for lo, hi in faixas:
@@ -396,7 +439,6 @@ def agregar(mundos: list[dict[str, np.ndarray]], faixas: tuple[tuple[int, int], 
                 APE = np.where(OKP, np.abs(E - V) / np.where(V > 0, V, 1), np.nan)
                 REL = np.where(OKP, (E - V) / np.where(V > 0, V, 1), np.nan)
             ape = APE[OKP]
-            erro = (E - V)[OK]
             linha[nome] = {
                 "n_estimados": int(OK.sum()),
                 "n_total": int(E.size),
@@ -405,10 +447,12 @@ def agregar(mundos: list[dict[str, np.ndarray]], faixas: tuple[tuple[int, int], 
                 "mape": _ic_por_mundo(np.nan_to_num(APE), OKP),
                 "ape_p99": float(np.quantile(ape, 0.99)) if ape.size else None,
                 "ape_max": float(ape.max()) if ape.size else None,
-                "vies_relativo": (float(erro.sum() / V[OK].sum()) if OK.any() and V[OK].sum() > 0 else None),
+                "vies_relativo": _vies_por_mundo(E, V, OK, n_boot, seed_boot),
                 "erro_relativo_medio": _ic_por_mundo(np.nan_to_num(REL), OKP),
                 "n_verdade_zero_excluida_mape": int((OK & (V <= 0)).sum()),
             }
+        mot = pilha["motivo_guarda"][:, sel].ravel()
+        linha["motivos_insuficiente"] = {k: int((mot == k).sum()) for k in MOTIVOS_GUARDA if (mot == k).any()}
         for tipo in ("razao", "boot"):
             klo, khi = f"ic_{tipo}_lo", f"ic_{tipo}_hi"
             if klo in pilha:

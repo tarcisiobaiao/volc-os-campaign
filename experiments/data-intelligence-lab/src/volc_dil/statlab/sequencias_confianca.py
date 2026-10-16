@@ -47,8 +47,9 @@ def validar_unitario(x: np.ndarray) -> np.ndarray:
     return x
 
 
-def cs_prpl_eb(x: Any, alpha: float, c: float = 0.5) -> tuple[np.ndarray, np.ndarray]:
-    """CS PrPl-EB ao longo do último eixo. Retorna (lo, hi) com a mesma forma de ``x``."""
+def cs_prpl_eb_componentes(x: Any, alpha: float, c: float = 0.5) -> dict[str, np.ndarray]:
+    """Componentes brutos da PrPl-EB (antes do recorte e da interseção): centro, margem, lambda,
+    v e psi. Expostos para testes com valores de referência calculados à mão."""
     if not 0 < alpha < 1:
         raise ValueError("alpha em (0, 1)")
     x = validar_unitario(x)
@@ -66,8 +67,14 @@ def cs_prpl_eb(x: Any, alpha: float, c: float = 0.5) -> tuple[np.ndarray, np.nda
     sl = np.cumsum(lam, axis=-1)
     centro = np.cumsum(lam * x, axis=-1) / sl
     margem = (log2a + np.cumsum(v * psi, axis=-1)) / sl
-    lo = np.maximum.accumulate(np.clip(centro - margem, 0.0, 1.0), axis=-1)
-    hi = np.minimum.accumulate(np.clip(centro + margem, 0.0, 1.0), axis=-1)
+    return {"centro": centro, "margem": margem, "lam": lam, "v": v, "psi": psi}
+
+
+def cs_prpl_eb(x: Any, alpha: float, c: float = 0.5) -> tuple[np.ndarray, np.ndarray]:
+    """CS PrPl-EB ao longo do último eixo. Retorna (lo, hi) com a mesma forma de ``x``."""
+    k = cs_prpl_eb_componentes(x, alpha, c)
+    lo = np.maximum.accumulate(np.clip(k["centro"] - k["margem"], 0.0, 1.0), axis=-1)
+    hi = np.minimum.accumulate(np.clip(k["centro"] + k["margem"], 0.0, 1.0), axis=-1)
     return lo, hi
 
 
@@ -159,8 +166,11 @@ def rodar_monte_carlo(rng: np.random.Generator, gerador: Gerador, n_traj: int, T
     return {m: {k: np.concatenate([d[k] for d in lst]) for k in lst[0]} for m, lst in acum.items()}
 
 
-def agregar(res: dict[str, np.ndarray], T: int, deslocamento: int = 0) -> dict[str, Any]:
-    """Agrega com IC de Monte Carlo. ``deslocamento`` soma atraso de calendário ao tempo de decisão."""
+def agregar(res: dict[str, np.ndarray], T: int, deslocamento: int = 0,
+            horizonte_calendario: int | None = None) -> dict[str, Any]:
+    """Agrega com IC de Monte Carlo. ``deslocamento`` soma atraso de calendário ao tempo de decisão;
+    ``horizonte_calendario`` mede a fração que decide até um MESMO instante de calendário (comparável
+    entre estratégias com atrasos diferentes)."""
     from volc_dil.statlab.base import ic_media, ic_mediana, ic_proporcao
 
     n = int(res["violou"].size)
@@ -179,6 +189,9 @@ def agregar(res: dict[str, np.ndarray], T: int, deslocamento: int = 0) -> dict[s
         td = np.where(res["decidiu"], res["t_decisao"] + deslocamento, np.inf)
         med = float(np.median(td))
         out["t_mediano_decisao_calendario"] = med if np.isfinite(med) else f"> {T + deslocamento}"
+        if horizonte_calendario is not None:
+            out["frac_decidiu_ate_calendario_H"] = ic_proporcao(int((td <= horizonte_calendario).sum()), n)
+            out["horizonte_calendario_H"] = int(horizonte_calendario)
     for k, v in res.items():
         if k.startswith("largura_t"):
             out[k] = ic_media(v)

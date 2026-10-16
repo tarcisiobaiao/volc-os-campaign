@@ -5,6 +5,8 @@ import pytest
 
 from volc_dil.statlab.shrinkage import (
     eb_hurdle,
+    metricas_estimador,
+    pesos_topk,
     eb_normal_media,
     gamma_poisson_em_dinheiro,
     posterior_beta,
@@ -79,3 +81,27 @@ def test_gamma_poisson_em_dinheiro_depende_da_unidade_e_alternativas_nao():
                      d["soma_log2"] + 2 * lg * d["soma_log"] + d["x"] * lg**2, 0.9,
                      np.random.default_rng(0), 200)
     np.testing.assert_allclose(h100["media"], 100 * h1["media"], rtol=1e-8)
+
+
+def test_estimador_constante_sem_calibracao_e_topk_por_desempate_aleatorio():
+    rng = np.random.default_rng(1)
+    verdade = rng.random(100)
+    n = np.full(100, 50.0)
+    const = np.full(100, 0.37)
+    m = metricas_estimador(verdade, const, 10, n)
+    assert m["inclinacao_calibracao"] is None and m["calibracao_nao_aplicavel_estimador_constante"]
+    # top-k de um estimador constante = sorteio: 10 * (1 - 10/100) = 9 vencedores por sorte esperados
+    assert m["vencedores_por_sorte_topk"] == pytest.approx(9.0)
+    assert m["regret_topk"] == pytest.approx(1 - verdade.mean() / np.sort(verdade)[-10:].mean())
+    # o resultado não depende da ordem dos índices
+    perm = rng.permutation(100)
+    m2 = metricas_estimador(verdade[perm], const, 10, n)
+    assert m2["vencedores_por_sorte_topk"] == pytest.approx(m["vencedores_por_sorte_topk"])
+    # estimador que varia tem calibração definida
+    assert metricas_estimador(verdade, verdade + rng.normal(0, 0.1, 100), 10, n)["inclinacao_calibracao"] is not None
+
+
+def test_pesos_topk_empates_somam_k():
+    w = pesos_topk(np.array([0.9, 0.5, 0.5, 0.5, 0.1, np.nan]), 2)
+    np.testing.assert_allclose(w, [1, 1 / 3, 1 / 3, 1 / 3, 0, 0])
+    assert w.sum() == pytest.approx(2)

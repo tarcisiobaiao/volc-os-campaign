@@ -94,6 +94,8 @@ def main() -> None:
         seed_cen = args.seed + 1000 * i
         por_metodo = {}
         for nome_cfg, cfg in cfgs.items():
+            if nome_cfg == "link_ratio" and not ("regime" in cen.nome or cen.nome == "receita_estavel"):
+                continue  # variante só onde é comparada (mantém o JSON < 300 KB)
             # mesma seed por cenário => mesmos mundos para os dois métodos (pareado)
             mundos = [avaliar_mundo(cen, r, AS_OF, cfg) for r in rngs(seed_cen, args.n_mundos)]
             por_metodo[nome_cfg] = agregar(mundos)

@@ -451,6 +451,7 @@
    "p0.05": {
     "estimando_do_lag_ingenuo": 0.0110844,
     "janela_fechada": {
+     "derivado_do_oraculo_deslocado_W": true,
      "erro_so_no_horizonte_fixo_T": {
       "estimativa": 0.016,
       "ic95": [
@@ -491,6 +492,14 @@
       ],
       "n": 1000
      },
+     "frac_decidiu_ate_calendario_H": {
+      "estimativa": 0.001,
+      "ic95": [
+       0.000176546,
+       0.00564256
+      ],
+      "n": 1000
+     },
      "frac_decidiu_horizonte_fixo_T": {
       "estimativa": 0.001,
       "ic95": [
@@ -499,6 +508,7 @@
       ],
       "n": 1000
      },
+     "horizonte_calendario_H": 10000,
      "t_mediano_decisao_calendario": "> 11000",
      "t_mediano_primeira_violacao_entre_violadas": {
       "estimativa": 803.5,
@@ -551,6 +561,14 @@
       ],
       "n": 1000
      },
+     "frac_decidiu_ate_calendario_H": {
+      "estimativa": 0.0,
+      "ic95": [
+       2.1684e-19,
+       0.00382676
+      ],
+      "n": 1000
+     },
      "frac_decidiu_horizonte_fixo_T": {
       "estimativa": 0.0,
       "ic95": [
@@ -559,6 +577,7 @@
       ],
       "n": 1000
      },
+     "horizonte_calendario_H": 10000,
      "t_mediano_decisao_calendario": "> 10050",
      "t_mediano_primeira_violacao_entre_violadas": {
       "estimativa": 208.0,
@@ -612,6 +631,14 @@
       ],
       "n": 1000
      },
+     "frac_decidiu_ate_calendario_H": {
+      "estimativa": 0.001,
+      "ic95": [
+       0.000176546,
+       0.00564256
+      ],
+      "n": 1000
+     },
      "frac_decidiu_horizonte_fixo_T": {
       "estimativa": 0.001,
       "ic95": [
@@ -620,6 +647,7 @@
       ],
       "n": 1000
      },
+     "horizonte_calendario_H": 10000,
      "t_mediano_decisao_calendario": "> 10000",
      "t_mediano_primeira_violacao_entre_violadas": {
       "estimativa": 803.5,
@@ -638,6 +666,7 @@
    "p0.075": {
     "estimando_do_lag_ingenuo": 0.0166266,
     "janela_fechada": {
+     "derivado_do_oraculo_deslocado_W": true,
      "erro_so_no_horizonte_fixo_T": {
       "estimativa": 0.021,
       "ic95": [
@@ -678,6 +707,14 @@
       ],
       "n": 1000
      },
+     "frac_decidiu_ate_calendario_H": {
+      "estimativa": 1.0,
+      "ic95": [
+       0.996173,
+       1.0
+      ],
+      "n": 1000
+     },
      "frac_decidiu_horizonte_fixo_T": {
       "estimativa": 1.0,
       "ic95": [
@@ -686,6 +723,7 @@
       ],
       "n": 1000
      },
+     "horizonte_calendario_H": 10000,
      "t_mediano_decisao_calendario": 2462.5,
      "t_mediano_primeira_violacao_entre_violadas": {
       "estimativa": 396.0,
@@ -738,6 +776,14 @@
       ],
       "n": 1000
      },
+     "frac_decidiu_ate_calendario_H": {
+      "estimativa": 0.0,
+      "ic95": [
+       2.1684e-19,
+       0.00382676
+      ],
+      "n": 1000
+     },
      "frac_decidiu_horizonte_fixo_T": {
       "estimativa": 0.0,
       "ic95": [
@@ -746,6 +792,7 @@
       ],
       "n": 1000
      },
+     "horizonte_calendario_H": 10000,
      "t_mediano_decisao_calendario": "> 10050",
      "t_mediano_primeira_violacao_entre_violadas": {
       "estimativa": 139.0,
@@ -799,6 +846,14 @@
       ],
       "n": 1000
      },
+     "frac_decidiu_ate_calendario_H": {
+      "estimativa": 1.0,
+      "ic95": [
+       0.996173,
+       1.0
+      ],
+      "n": 1000
+     },
      "frac_decidiu_horizonte_fixo_T": {
       "estimativa": 1.0,
       "ic95": [
@@ -807,6 +862,7 @@
       ],
       "n": 1000
      },
+     "horizonte_calendario_H": 10000,
      "t_mediano_decisao_calendario": 1462.5,
      "t_mediano_primeira_violacao_entre_violadas": {
       "estimativa": 396.0,

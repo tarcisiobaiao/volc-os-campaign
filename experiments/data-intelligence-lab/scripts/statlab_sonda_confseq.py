@@ -39,39 +39,55 @@ def _trechos(log: Path, padroes: list[str]) -> list[str]:
     return achadas[:12]
 
 
+def _status_instalacao(log: Path) -> dict:
+    """Deriva o status do log (não fixo): SUCESSO se o uv registrou a instalação de confseq."""
+    if not log.exists():
+        return {"resultado": "NAO_EXECUTADA", "versao": None}
+    texto = log.read_text(errors="replace")
+    instalou = re.search(r"^\s*\+ confseq==(\S+)", texto, re.M)
+    tentou = re.search(r"confseq==([0-9][\w.]*)", texto)
+    if instalou:
+        return {"resultado": "SUCESSO", "versao": instalou.group(1)}
+    return {"resultado": "FALHOU", "versao_tentada": tentou.group(1) if tentou else None,
+            "sem_wheel_utilizavel": bool(re.search(r"no usable wheels", texto)),
+            "boost_ausente": bool(re.search(r"Could NOT find Boost", texto)),
+            "falha_de_build": bool(re.search(r"Failed to build", texto))}
+
+
 def main() -> None:
     py = SONDA / "confseq" / "bin" / "python"
     importa = {"tentado": py.exists()}
     if py.exists():
         r = subprocess.run([str(py), "-c", "import confseq, sys; print(getattr(confseq, '__version__', '?'))"],
                            capture_output=True, text=True, timeout=60)
-        importa.update({"codigo_saida": r.returncode,
+        importa.update({"codigo_saida": r.returncode, "importou": r.returncode == 0,
                         "stdout": r.stdout.strip()[:200], "stderr_ultima_linha": (r.stderr.strip().splitlines() or [""])[-1][:200]})
+    padrao = _status_instalacao(SONDA / "install.log")
+    binario = _status_instalacao(SONDA / "install_binary.log")
+    utilizavel = importa.get("importou", False)
     resultado = {
-        "schema": "volc_dil.statlab.sonda_confseq/v1",
+        "schema": "volc_dil.statlab.sonda_confseq/v2",
         "plataforma": {"sistema": platform.system(), "arquitetura": platform.machine(),
                        "python_da_sonda": "3.13.0 (/usr/local/bin/python3.13)"},
         "comando_exclude_newer": "2026-10-01T00:00:00Z",
-        "instalacao_padrao": {
-            "resultado": "FALHOU",
-            "versao_resolvida": "confseq==0.0.11 (sdist; único candidato)",
-            "trechos_log": _trechos(SONDA / "install.log",
-                                    [r"Resolved", r"Building confseq", r"Failed to build", r"Could NOT find Boost",
-                                     r"Ninja", r"CMake Generate step failed"]),
-        },
-        "instalacao_somente_wheel": {
-            "resultado": "FALHOU",
-            "motivo": "nenhuma versão de confseq tem wheel utilizável para cp313 macOS arm64",
-            "trechos_log": _trechos(SONDA / "install_binary.log", [r"no usable wheels", r"unsatisfiable", r"Wheels are required"]),
-        },
+        "instalacao_padrao": {**padrao, "trechos_log": _trechos(
+            SONDA / "install.log", [r"Resolved", r"Building confseq", r"Failed to build", r"Could NOT find Boost",
+                                    r"Ninja", r"CMake Generate step failed", r"Installed", r"\+ confseq"])},
+        "instalacao_somente_wheel": {**binario, "trechos_log": _trechos(
+            SONDA / "install_binary.log", [r"no usable wheels", r"unsatisfiable", r"Wheels are required",
+                                           r"Installed", r"\+ confseq"])},
         "importacao_no_venv_da_sonda": importa,
-        "decisao": ("não usar confseq no ambiente principal; CS implementada em NumPy "
+        "confseq_utilizavel": utilizavel,
+        "decisao": ("confseq importa na sonda; ainda assim não entra no ambiente principal sem revisão"
+                    if utilizavel else
+                    "não usar confseq no ambiente principal; CS implementada em NumPy "
                     "(volc_dil.statlab.sequencias_confianca, PrPl-EB). Compilar exigiria Boost >= 1.70 "
                     "e CMake/Ninja instalados globalmente — proibido nesta fase."),
         "nao_testado": "build com Boost local isolado; comparação numérica confseq vs implementação própria",
     }
     n = gravar_json(LAB / "results" / "statlab" / "sonda_confseq.json", resultado)
-    print(f"gravado sonda_confseq.json ({n} bytes)")
+    print(f"gravado sonda_confseq.json ({n} bytes): padrão={padrao['resultado']} wheel={binario['resultado']} "
+          f"import={'ok' if utilizavel else 'falhou'}")
 
 
 if __name__ == "__main__":

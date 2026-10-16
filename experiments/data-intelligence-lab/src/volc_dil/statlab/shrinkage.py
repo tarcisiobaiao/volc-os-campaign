@@ -271,27 +271,45 @@ def gerar_n(rng: np.random.Generator, K: int, mediana_n: float, sigma_n: float) 
     return np.floor(rng.lognormal(np.log(mediana_n), sigma_n, K)).astype(float)
 
 
+def pesos_topk(est: np.ndarray, top_k: int) -> np.ndarray:
+    """Probabilidade de cada unidade entrar no top-k sob DESEMPATE ALEATÓRIO (em expectativa).
+    Evita que o resultado dependa da ordem dos índices quando há empates (ex.: estimador
+    constante, ou várias taxas cruas iguais a 1/5). NaN nunca é escolhido."""
+    e = np.where(np.isfinite(est), est, -np.inf)
+    kth = np.sort(e)[::-1][top_k - 1]
+    acima = e > kth
+    empate = e == kth
+    vagas = top_k - int(acima.sum())
+    return acima.astype(float) + empate * (vagas / max(int(empate.sum()), 1))
+
+
 def metricas_estimador(verdade: np.ndarray, est: np.ndarray, top_k: int, n: np.ndarray,
                        lo: np.ndarray | None = None, hi: np.ndarray | None = None) -> dict[str, Any]:
     """MSE (excluindo NaN, contados), vencedores por sorte no top-k, regret do top-k,
-    fração do top-k com n abaixo do quartil 25%, inclinação de calibração e cobertura."""
+    fração do top-k com n abaixo do quartil 25% (todos em expectativa sob desempate aleatório),
+    inclinação de calibração (não aplicável a estimador ~constante) e cobertura."""
     ok = np.isfinite(est)
     # MSE sempre no MESMO conjunto (unidades com n > 0) para comparar estimadores
     comum = ok & (n > 0)
     erro2 = (est[comum] - verdade[comum]) ** 2
-    ordem_est = np.argsort(-np.where(ok, est, -np.inf), kind="mergesort")[:top_k]
+    w = pesos_topk(est, top_k)
     ordem_ver = np.argsort(-verdade, kind="mergesort")[:top_k]
-    sorte = int(np.setdiff1d(ordem_est, ordem_ver).size)
+    no_top_real = np.zeros(verdade.size, dtype=bool)
+    no_top_real[ordem_ver] = True
     q25 = np.quantile(n, 0.25)
     xs, ys = est[ok], verdade[ok]
-    inclin = float(np.cov(xs, ys)[0, 1] / np.var(xs, ddof=1)) if xs.size > 2 and np.var(xs) > 0 else None
+    # calibração cov/var só tem sentido se o estimador varia em relação à verdade; um estimador
+    # constante (média do grupo) tem var ~1e-35 por arredondamento e a razão vira ruído
+    constante = xs.size < 3 or not (np.std(xs) > 1e-6 * max(np.std(ys), 1e-300))
+    inclin = None if constante else float(np.cov(xs, ys)[0, 1] / np.var(xs, ddof=1))
     m: dict[str, Any] = {
         "mse": float(erro2.mean()) if erro2.size else None,
         "n_excluidos_sem_estimativa": int((~ok).sum()),
-        "vencedores_por_sorte_topk": sorte,
-        "regret_topk": float(1 - verdade[ordem_est].mean() / verdade[ordem_ver].mean()),
-        "frac_topk_n_baixo": float(np.mean(n[ordem_est] <= q25)),
+        "vencedores_por_sorte_topk": float(np.sum(w * ~no_top_real)),
+        "regret_topk": float(1 - (np.sum(w * verdade) / top_k) / verdade[ordem_ver].mean()),
+        "frac_topk_n_baixo": float(np.sum(w * (n <= q25)) / top_k),
         "inclinacao_calibracao": inclin,
+        "calibracao_nao_aplicavel_estimador_constante": bool(constante),
     }
     if lo is not None and hi is not None:
         oki = np.isfinite(lo) & np.isfinite(hi)
@@ -458,5 +476,7 @@ def agregar_replicas(reps: list[dict[str, Any]], estimadores: list[str]) -> dict
             linha[k] = ic_media(np.array([np.nan if v is None else v for v in vals], dtype=float))
         mse = np.array([r[est]["mse"] for r in reps], dtype=float)
         linha["mse_relativo_ao_cru"] = ic_media(mse / mse_cru)
+        linha["frac_replicas_calibracao_nao_aplicavel"] = float(np.mean(
+            [bool(r[est].get("calibracao_nao_aplicavel_estimador_constante")) for r in reps]))
         saida[est] = linha
     return saida

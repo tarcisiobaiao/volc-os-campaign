@@ -21,38 +21,70 @@ sys.path.insert(0, str(LAB / "src"))
 import numpy as np  # noqa: E402
 
 from volc_dil.statlab.base import envelope, gravar_json, rngs  # noqa: E402
-from volc_dil.statlab.fdr import agregar, bh_propria, bh_statsmodels, na_fronteira, replica_celulas  # noqa: E402
+from volc_dil.statlab.fdr import agregar, bh_propria, bh_statsmodels, replica_celulas  # noqa: E402
 
 Q = 0.05
 
 
-def conferir_bh(seed: int, n_casos: int) -> dict:
-    """BH própria == statsmodels em p-valores aleatórios, com empates e m variados."""
+def bh_mutante_pontual(p: np.ndarray, q: float) -> np.ndarray:
+    """Contraprova da conferência: BH ERRADA sem o passo step-up (rejeita só p_(i) <= q i/m pontual)."""
+    p = np.asarray(p, dtype=float)
+    o = np.argsort(p, kind="mergesort")
+    r = np.zeros(p.size, dtype=bool)
+    r[o] = p[o] <= q * np.arange(1, p.size + 1) / p.size
+    return r
+
+
+def conferir_bh(seed: int, n_casos: int, bh=bh_propria) -> dict:
+    """BH própria == statsmodels em p-valores aleatórios, com empates e m variados.
+    Uma divergência só é atribuída à fronteira se o PONTO DE CORTE que as separa é um empate exato:
+    com k_max = maior nº de rejeições entre as duas, o k_max-ésimo menor p deve ser == q*k_max/m
+    (até rtol 1e-9). Qualquer outra divergência conta como defeito."""
     rng = np.random.default_rng(seed)
     div_fronteira = 0
     div_fora_fronteira = 0
+    exemplos = []
     for _ in range(n_casos):
         m = int(rng.integers(1, 400))
         p = rng.beta(0.3, 1.0, m)
         if rng.random() < 0.5:
             p = np.round(p, 2)  # força empates (inclusive empates exatos com q k / m)
         for q in (0.01, 0.05, 0.2):
-            a, b = bh_propria(p, q), bh_statsmodels(p, q)
-            if not np.array_equal(a, b):
-                # divergência só é aceitável se TODAS as diferenças estão em p == q k / m
-                if na_fronteira(p, q)[a != b].all() or _fronteira_do_corte(p, q):
-                    div_fronteira += 1
-                else:
-                    div_fora_fronteira += 1
+            a, b = bh(p, q), bh_statsmodels(p, q)
+            if np.array_equal(a, b):
+                continue
+            if _divergencia_no_corte_exato(p, q, a, b):
+                div_fronteira += 1
+                if len(exemplos) < 3:
+                    k = int(max(a.sum(), b.sum()))
+                    exemplos.append({"m": m, "q": q, "k_corte": k, "p_no_corte": float(np.sort(p)[k - 1]),
+                                     "rejeicoes_propria": int(a.sum()), "rejeicoes_statsmodels": int(b.sum())})
+            else:
+                div_fora_fronteira += 1
     return {"n_casos": n_casos * 3, "divergencias_fora_da_fronteira": div_fora_fronteira,
-            "divergencias_por_empate_exato_na_fronteira": div_fronteira, "seed": seed,
+            "divergencias_por_empate_exato_na_fronteira": div_fronteira, "exemplos_fronteira": exemplos,
+            "seed": seed,
             "nota": "na fronteira exata a regra BH rejeita; a implementação própria usa tolerância 1e-12 "
                     "e o statsmodels compara p/ecdf <= q, então o arredondamento pode divergir"}
 
 
-def _fronteira_do_corte(p: np.ndarray, q: float) -> bool:
-    """O ponto de corte k* é decidido por um p na fronteira (afeta todas as células abaixo dele)."""
-    return bool(na_fronteira(p, q).any())
+def _divergencia_no_corte_exato(p: np.ndarray, q: float, a: np.ndarray, b: np.ndarray) -> bool:
+    """Step-up: as duas regras só podem diferir no nº de rejeições k. A divergência é de ponto
+    flutuante se, e só se, ambos os conjuntos são prefixos por valor, o menor está contido no maior e
+    o p do corte maior está na fronteira q k / m."""
+    ka, kb = int(a.sum()), int(b.sum())
+    if ka == kb:
+        return False
+    # step-up rejeita sempre um PREFIXO por valor: {p <= max p rejeitado} (empates entram juntos)
+    for r in (a, b):
+        if r.any() and not np.array_equal(r, p <= p[r].max()):
+            return False
+    menor, maior = (a, b) if ka < kb else (b, a)
+    if np.any(menor & ~maior):
+        return False
+    k = max(ka, kb)
+    p_corte = np.sort(p)[k - 1]
+    return bool(np.isclose(p_corte, q * k / p.size, rtol=1e-9, atol=0))
 
 
 def main() -> None:
@@ -74,7 +106,10 @@ def main() -> None:
                                        olhadas=tuple(range(500, 5001, 500))),
         "pi1_20pct_n20000_uma_olhada": dict(frac_verdadeiras=0.2, n_por_braco=20000, olhadas=None),
     }
-    resultados = {"conferencia_bh_propria_vs_statsmodels": conferir_bh(args.seed, 1000), "cenarios": {}}
+    conf = conferir_bh(args.seed, 1000)
+    conf["contraprova_mutante_sem_step_up_divergencias_fora_da_fronteira"] = \
+        conferir_bh(args.seed, 1000, bh_mutante_pontual)["divergencias_fora_da_fronteira"]
+    resultados = {"conferencia_bh_propria_vs_statsmodels": conf, "cenarios": {}}
     for i, (nome, c) in enumerate(cenarios.items()):
         seed_c = args.seed + 100 * (i + 1)
         reps = [replica_celulas(r, base["m"], c["frac_verdadeiras"], base["p_base"], base["lift"],

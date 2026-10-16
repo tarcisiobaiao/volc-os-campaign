@@ -1,14 +1,19 @@
 {
  "comando_exclude_newer": "2026-10-01T00:00:00Z",
+ "confseq_utilizavel": false,
  "decisao": "não usar confseq no ambiente principal; CS implementada em NumPy (volc_dil.statlab.sequencias_confianca, PrPl-EB). Compilar exigiria Boost >= 1.70 e CMake/Ninja instalados globalmente — proibido nesta fase.",
  "importacao_no_venv_da_sonda": {
   "codigo_saida": 1,
+  "importou": false,
   "stderr_ultima_linha": "ModuleNotFoundError: No module named 'confseq'",
   "stdout": "",
   "tentado": true
  },
  "instalacao_padrao": {
+  "boost_ausente": true,
+  "falha_de_build": true,
   "resultado": "FALHOU",
+  "sem_wheel_utilizavel": false,
   "trechos_log": [
    "Resolved 21 packages in 664ms",
    "Building confseq==0.0.11",
@@ -19,15 +24,18 @@
    "CMake Error: CMake was unable to find a build program corresponding to \"Ninja\".  CMAKE_MAKE_PROGRAM is not set.  You probably need to select a different build tool.",
    "CMake Generate step failed.  Build files cannot be regenerated correctly."
   ],
-  "versao_resolvida": "confseq==0.0.11 (sdist; único candidato)"
+  "versao_tentada": "0.0.11"
  },
  "instalacao_somente_wheel": {
-  "motivo": "nenhuma versão de confseq tem wheel utilizável para cp313 macOS arm64",
+  "boost_ausente": false,
+  "falha_de_build": false,
   "resultado": "FALHOU",
+  "sem_wheel_utilizavel": true,
   "trechos_log": [
    "cause: Because all versions of confseq have no usable wheels and you require confseq, we can conclude that your requirements are unsatisfiable.",
    "hint: Wheels are required for `confseq` because building from source is disabled for all packages (i.e., with `--no-build`)"
-  ]
+  ],
+  "versao_tentada": null
  },
  "nao_testado": "build com Boost local isolado; comparação numérica confseq vs implementação própria",
  "plataforma": {
@@ -35,5 +43,5 @@
   "python_da_sonda": "3.13.0 (/usr/local/bin/python3.13)",
   "sistema": "Darwin"
  },
- "schema": "volc_dil.statlab.sonda_confseq/v1"
+ "schema": "volc_dil.statlab.sonda_confseq/v2"
 }
