@@ -1,7 +1,7 @@
 # FINAL-REPORT — Fundação Data Intelligence (missão multiagente, 16/10/2026)
 
 Branch `lab/data-foundation-20261016` (local, sem push, não integrada ao `main`), sobre a 1ª execução do Lab.
-Suíte: **879 testes verdes, 1 pulado com motivo** (medição grande opcional). Nada foi escrito fora deste
+Suíte: **914 testes verdes, 1 pulado com motivo** (medição grande opcional). Nada foi escrito fora deste
 repositório local; produção foi só lida, com trava `default_transaction_read_only=on`.
 
 ## Em uma frase
@@ -43,17 +43,20 @@ falha; replay sem futuro (política trapaceira detectada); reprocessamento tardi
 timeout e retry seguros sem prender o processo; nenhuma escrita externa no shadow (varredura e espião);
 nenhuma credencial em artefato; nenhuma dependência de `*.supabase.co`; RLS e grants nas migrations
 candidatas; rollback; equivalência serial × paralela; equivalência Python × SQL do `as_of`; determinismo byte a
-byte dos resultados. Duas revisões adversariais independentes (R1: 26 achados, todos respondidos; R2: ver
-`handoffs/REVISAO-ADVERSARIAL-R2.md`).
+byte dos resultados. Duas revisões adversariais independentes: R1 (26 achados) e R2 (23 achados, 3 altos), todos
+respondidos com teste que falha antes e passa depois (`handoffs/RESPOSTA-R1.md`, `handoffs/RESPOSTA-R2.md`). Não houve
+terceira revisão independente das respostas à R2.
 
 ## Simulado (não é eficácia)
 
-- Nenhuma política de decisão superou `equal` no simulador (resultado negativo, igual à 1ª execução).
-- Suportados em sintético: nowcast intradiário do custo D0 (erro 15% do ingênuo); e-BH controla FDR com olhadas
-  repetidas; alocação côncava reduz regret, mas o ganho vem de cortar ROAS < 1, não da curva; conformal ACI mantém
-  cobertura sob quebra.
+- Nenhuma política de decisão superou `equal` no simulador: a regra de margem madura perde em 19 de 19 cenários
+  (resultado negativo, igual à 1ª execução). O kernel bloqueia ação de verba quando a cobertura de receita não é
+  comprovada por `/earnings`.
+- Suportados em sintético: nowcast intradiário do custo D0 (erro 15% do ingênuo) e e-BH (FDR controlado com olhadas
+  repetidas). Parcial: alocação côncava reduz regret também com painel `as_of` maduro, mas o ganho vem de cortar
+  ROAS < 1, não da curva. Conformal ACI mantém cobertura sob quebra.
 - Refutados ou sem ganho: Bornhuetter-Ferguson, EB em campanha nova, CUSUM/BOCPD sobre média móvel, Thompson,
-  HGB sobre Ridge; SH/ASHA e surrogate seguem em hold.
+  HGB sobre Ridge, e H5b (DiD × antes/depois; refutada na errata da R2). SH/ASHA e surrogate seguem em hold.
 
 ## Pendente
 
@@ -76,7 +79,8 @@ para replay real e aplicar o delta de roadmap/curadoria + grafo.
 
 Agenda atual consome 92 operações Google Ads/dia/conta + 26 fixas → 162 contas no nível Basic. A ×100 com vertical
 completa e coleta horária: v21 como está 1,95 TB em 3 anos; política recomendada (largo tipado, dedup, rollup) 30 GB;
-`dil_obs` com D2' 2,0 TB (717 GB com termos 1×/dia). `as_of` de ponto 0,02 ms em 1e6 linhas.
+`dil_obs` com D2' ~2,5 TB medido com ids no formato real (1.158 B por valor, 276 B por confirmação; o modelo da
+frente B com ids curtos dava 2,0 TB). Termos 1×/dia corta ~65%. `as_of` de ponto ~0,001 s em 1e6 linhas.
 
 ## Herdado da 1ª execução
 
