@@ -113,13 +113,15 @@ def main() -> None:
     seed = 20261501
     mu0 = taxa_destino_simulador(seed)
     fdr = parte_fdr(mu0, 40 if a.rapido else 400, m=50, n_alt=10, n=2000, lift=1.25, seed=seed + 1)
+    # descritivo adicional (não pré-registrado como hipótese): efeito fraco, onde o custo de poder do e-BH aparece
+    fdr_fraco = parte_fdr(mu0, 20 if a.rapido else 200, m=50, n_alt=10, n=2000, lift=1.10, seed=seed + 3)
     cs = parte_cs(seed + 2, 4 if a.rapido else 12, 5 if a.rapido else 25, T=1500, janela_limite=200)
-    res = {"mu0_taxa_destino_derivada_do_simulador": mu0, "fdr": fdr, "cs": cs,
+    res = {"mu0_taxa_destino_derivada_do_simulador": mu0, "fdr": fdr, "fdr_efeito_fraco_descritivo": fdr_fraco, "cs": cs,
            "H4b_suportada": bool(cs["taxa_destino_erro_uniforme"]["ic95"][0] <= ALPHA
                                   and (cs["receita_limite_violado_recusa"]["estimativa"] > 0.5
                                        or cs["receita_recortada_erro_uniforme"]["estimativa"] > ALPHA))}
-    obj = {"manifesto": manifesto(__file__, seeds=[seed, seed + 1, seed + 2],
-                                  parametros={"q": Q, "alpha": ALPHA, "m": 50, "n_alt": 10, "n": 2000, "lift": 1.25,
+    obj = {"manifesto": manifesto(__file__, seeds=[seed, seed + 1, seed + 2, seed + 3],
+                                  parametros={"q": Q, "alpha": ALPHA, "m": 50, "n_alt": 10, "n": 2000, "lift": 1.25, "lift_fraco_descritivo": 1.10,
                                               "T_cs": 1500, "janela_limite": 200}), "resultados": res}
     saida("m4_sequencial.json", obj, rapido=a.rapido)
 

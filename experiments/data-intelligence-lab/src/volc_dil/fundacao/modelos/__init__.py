@@ -83,13 +83,13 @@ from .maturacao import (
     triangulo_de_tabela,
 )
 from .mudanca import bocpd, bocpd_posterior, calibrar_limiar, cusum, detectar_quebra, media_movel
-from .sequencial import ForaDoSuporte, bh, e_bh, eprocesso_media_limitada, normalizar_por_limite, p_binomial_unilateral
-from .tabular import FeatureMeta, ajustar_e_prever, checar_vazamento, features_no_corte, vazamento_empirico
+from .sequencial import ForaDoSuporte, bh, cs_prpl_eb, e_bh, eprocesso_media_limitada, normalizar_por_limite, p_binomial_unilateral
+from .tabular import FeatureMeta, ModeloAjustado, ajustar, ajustar_e_prever, checar_vazamento, features_no_corte, vazamento_empirico
 
 __all__ = [
-    "Achado", "bh", "ConfigMonitor", "ConfigNowcast", "CurvaResposta", "FeatureMeta", "ForaDoSuporte", "Gulosa", "LinUCB",
+    "Achado", "bh", "cs_prpl_eb", "ConfigMonitor", "ConfigNowcast", "CurvaResposta", "FeatureMeta", "ForaDoSuporte", "Gulosa", "LinUCB",
     "Log", "POLITICAS", "PropensaoAusente", "ResultadoInsuficiente", "TabelaVersoes", "ThompsonLinear", "Uniforme",
-    "VERSAO_MODELOS", "aci", "ajustar_e_prever", "ajustar_resposta", "alocar_guloso", "alocar_igual", "alocar_orcamento",
+    "VERSAO_MODELOS", "aci", "ModeloAjustado", "ajustar", "ajustar_e_prever", "ajustar_resposta", "alocar_guloso", "alocar_igual", "alocar_orcamento",
     "alocar_proporcional", "bocpd", "bocpd_posterior", "calibrar_limiar", "checar_vazamento", "cobertura", "controle_sintetico",
     "controle_sintetico_placebo", "curva_intradiaria", "cusum", "detectar_anomalias", "detectar_quebra", "dias_iso",
     "did_painel", "dr", "e_bh", "encolher_media", "encolher_taxa", "eprocesso_media_limitada", "epoch", "escores",

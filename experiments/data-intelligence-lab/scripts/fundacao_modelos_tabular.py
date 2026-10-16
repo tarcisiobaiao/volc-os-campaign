@@ -66,7 +66,8 @@ def um_mundo(cen, seed, C, D):
                 Xs.append(feats[oo][ok]); ys.append(lab[ok])
             Xtr, ytr = np.vstack(Xs), np.concatenate(ys)
             vaz_tr = ytr + rng.normal(0, 0.1 * sd_alvo, ytr.size)  # feature do futuro injetada (o próprio alvo)
-            modelos = {"Xtr": Xtr, "ytr": ytr, "vaz": vaz_tr}
+            modelos = {"ytr": ytr, "ridge": M.ajustar("ridge", Xtr, ytr), "hgb": M.ajustar("hgb", Xtr, ytr, seed=seed),
+                       "ridge_vaz": M.ajustar("ridge", np.column_stack([Xtr, vaz_tr]), ytr)}
         X = feats[o]
         y = final[:, o + HORIZ]
         ok = np.isfinite(y)
@@ -74,11 +75,10 @@ def um_mundo(cen, seed, C, D):
         alvo_teste.append(yo)
         pred["ultimo_maduro"].append(np.where(np.isfinite(Xo[:, i_ult]), Xo[:, i_ult], np.nanmean(modelos["ytr"])))
         pred["media_maduros"].append(np.where(np.isfinite(Xo[:, i_med]), Xo[:, i_med], np.nanmean(modelos["ytr"])))
-        pred["ridge"].append(M.ajustar_e_prever("ridge", modelos["Xtr"], modelos["ytr"], Xo))
-        pred["hgb"].append(M.ajustar_e_prever("hgb", modelos["Xtr"], modelos["ytr"], Xo, seed=seed))
+        pred["ridge"].append(modelos["ridge"].prever(Xo))
+        pred["hgb"].append(modelos["hgb"].prever(Xo))
         vz_te = yo + rng.normal(0, 0.1 * sd_alvo, yo.size)
-        pred["ridge_com_vazamento"].append(M.ajustar_e_prever("ridge", np.column_stack([modelos["Xtr"], modelos["vaz"]]),
-                                                              modelos["ytr"], np.column_stack([Xo, vz_te])))
+        pred["ridge_com_vazamento"].append(modelos["ridge_vaz"].prever(np.column_stack([Xo, vz_te])))
         # checagem por metadado: a feature injetada só existe quando o alvo amadurece (≥ corte o + HORIZ + 3)
         metas = [M.FeatureMeta(n, cortes[o]) for n in nomes] + [M.FeatureMeta("lucro_alvo_final",
                                                                                cortes[min(o + HORIZ + 3, D - 1)] + 1)]

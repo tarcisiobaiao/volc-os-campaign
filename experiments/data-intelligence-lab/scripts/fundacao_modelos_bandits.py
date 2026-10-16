@@ -103,8 +103,10 @@ def main() -> None:
     except M.PropensaoAusente as exc:
         res["sem_propensao"] = f"recusado: {exc}"
     o = res["estavel"]["ope"]
-    res["H7b_suportada"] = bool(all(o[x]["ips_nao_viesado_mundo1"] and o[x]["inventada_viesada_mundo1"]
-                                    and o[x]["snips_dr_variancia_menor"] for x in ("oraculo",))
+    # pré-registro: vale para as políticas-alvo avaliadas (as duas), sem escolher a favorável depois
+    res["H7b_por_alvo"] = {x: {k: o[x][k] for k in ("ips_nao_viesado_mundo1", "inventada_viesada_mundo1",
+                                                     "snips_dr_variancia_menor")} for x in o}
+    res["H7b_suportada"] = bool(all(all(v.values()) for v in res["H7b_por_alvo"].values())
                                 and res["sem_propensao"].startswith("recusado"))
     obj = {"manifesto": manifesto(__file__, seeds=seeds, parametros={"C": C, "D": D, "K": K, "contextos": N_CTX,
                                                                      "logger": "eps_greedy 0.2", "n_logs_mundo1": n_log}),

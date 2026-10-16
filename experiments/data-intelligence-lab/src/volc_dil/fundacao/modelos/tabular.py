@@ -82,25 +82,40 @@ def imputar(X: np.ndarray, medias: Optional[np.ndarray] = None) -> tuple[np.ndar
     return np.column_stack([Xi, falta.astype(float)]), medias
 
 
-def ajustar_e_prever(modelo: str, Xtr: np.ndarray, ytr: np.ndarray, Xte: np.ndarray, *, seed: int = 0) -> np.ndarray:
+class ModeloAjustado:
+    """Modelo já treinado (para reusar entre origens até o próximo retreino)."""
+
+    def __init__(self, nome: str, modelo: Any, medias: Optional[np.ndarray]) -> None:
+        self.nome, self._m, self._medias = nome, modelo, medias
+
+    def prever(self, X: np.ndarray) -> np.ndarray:
+        if self._medias is not None:
+            X, _ = imputar(X, self._medias)
+        return self._m.predict(X)
+
+
+def ajustar(modelo: str, Xtr: np.ndarray, ytr: np.ndarray, *, seed: int = 0) -> ModeloAjustado:
     if modelo == "ridge":
         from sklearn.linear_model import RidgeCV
         from sklearn.pipeline import make_pipeline
         from sklearn.preprocessing import StandardScaler
 
         A, med = imputar(Xtr)
-        B, _ = imputar(Xte, med)
         m = make_pipeline(StandardScaler(), RidgeCV(alphas=np.logspace(-2, 4, 13)))
         m.fit(A, ytr)
-        return m.predict(B)
+        return ModeloAjustado(modelo, m, med)
     if modelo == "hgb":
         from sklearn.ensemble import HistGradientBoostingRegressor
 
         m = HistGradientBoostingRegressor(max_iter=150, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=20,
                                           l2_regularization=1.0, random_state=seed)
         m.fit(Xtr, ytr)
-        return m.predict(Xte)
+        return ModeloAjustado(modelo, m, None)
     raise ValueError(f"modelo desconhecido: {modelo}")
+
+
+def ajustar_e_prever(modelo: str, Xtr: np.ndarray, ytr: np.ndarray, Xte: np.ndarray, *, seed: int = 0) -> np.ndarray:
+    return ajustar(modelo, Xtr, ytr, seed=seed).prever(Xte)
 
 
 def vazamento_empirico(mae_sem: float, mae_com: float, *, ganho_implausivel: float, nome: str) -> Achado:
@@ -112,5 +127,5 @@ def vazamento_empirico(mae_sem: float, mae_com: float, *, ganho_implausivel: flo
                   estatistica=float(ganho), limiar=ganho_implausivel, detalhes={"feature": nome})
 
 
-__all__ = ["FINAL", "FeatureMeta", "ajustar_e_prever", "checar_vazamento", "features_no_corte", "imputar",
+__all__ = ["FINAL", "FeatureMeta", "ModeloAjustado", "ajustar", "ajustar_e_prever", "checar_vazamento", "features_no_corte", "imputar",
            "vazamento_empirico"]

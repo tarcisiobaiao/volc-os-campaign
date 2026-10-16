@@ -78,6 +78,8 @@ def um_mundo(nome, seed, C):
     oraculo = float(-sol.fun) if sol.success else float("nan")
     return {"lucro": lucro, "oraculo_grade": oraculo, "regret": {n: oraculo - v for n, v in lucro.items()},
             "violacoes": violacoes, "frac_curvas_identificaveis": float(np.mean([c.identificavel for c in curvas])),
+            "frac_b_no_teto": float(np.mean([c.b >= 0.95 - 1e-9 for c in curvas])),
+            "b_mediano": float(np.median([c.b for c in curvas])),
             "desvio_log_gasto_mediano": float(np.median([c.desvio_log_gasto for c in curvas]))}
 
 
@@ -96,6 +98,8 @@ def main() -> None:
                  "oraculo_grade": M.ic_bootstrap_media([w["oraculo_grade"] for w in ws]),
                  "frac_curvas_identificaveis": M.ic_bootstrap_media([w["frac_curvas_identificaveis"] for w in ws]),
                  "desvio_log_gasto_mediano": M.ic_bootstrap_media([w["desvio_log_gasto_mediano"] for w in ws]),
+                 "frac_b_no_teto": M.ic_bootstrap_media([w["frac_b_no_teto"] for w in ws]),
+                 "b_mediano": M.ic_bootstrap_media([w["b_mediano"] for w in ws]),
                  "violacoes_de_restricao": sum(len(v) for w in ws for v in w["violacoes"].values())}
         for b in ("equal", "proporcional_herdado", "greedy", "status_quo"):
             d = pareado(reg["concava"], reg[b])
