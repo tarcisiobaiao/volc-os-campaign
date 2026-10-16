@@ -1,0 +1,221 @@
+{
+ "manifesto": {
+  "catalogo_sha256": "d449d43f12ee20fdff245663329e8779aaa96faa39a4e71617cf746ec8601600",
+  "natureza": "simulacao_com_seed_sem_dado_real",
+  "parametros": {
+   "C": 50,
+   "D": 60,
+   "horizonte": 1,
+   "n_lags": 7,
+   "origem_teste0": 30,
+   "retreino": 5
+  },
+  "pre_registro": "results/fundacao/modelos/PRE-REGISTRO.md",
+  "script": "fundacao_modelos_tabular.py",
+  "seeds": [
+   20262301,
+   20262302,
+   20262303,
+   20262304,
+   20262305,
+   20262306,
+   20262307,
+   20262308,
+   20262309,
+   20262310
+  ],
+  "sha256_codigo": "33320fee7f418097c74ade67658680a1641fc9d67651a7f81ab60a91d5f4dc55",
+  "teto_de_estado": "testado com sintético",
+  "versoes": {
+   "catalogo": "1.0.0",
+   "implementacao": "CPython",
+   "modelos": "0.1.0",
+   "numpy": "2.5.3",
+   "python": "3.13.0",
+   "scipy": "1.18.1",
+   "simulador": "1.0.0",
+   "sklearn": "1.9.1",
+   "statlab": "0.1.0",
+   "statsmodels": "0.15.0"
+  }
+ },
+ "resultados": {
+  "H12_suportada": true,
+  "estavel": {
+   "alarme_falso_empirico_modelo_honesto": 0.0,
+   "deteccao_vazamento_empirica": 1.0,
+   "deteccao_vazamento_metadado": 1.0,
+   "ganho_mae_com_vazamento": {
+    "estimativa": 0.629219,
+    "ic95": [
+     0.57197,
+     0.677365
+    ],
+    "n": 10,
+    "n_excluidos": 0
+   },
+   "hgb_supera_2pct": false,
+   "mae": {
+    "hgb": {
+     "estimativa": 4.31321,
+     "ic95": [
+      3.85401,
+      4.76804
+     ],
+     "n": 10,
+     "n_excluidos": 0
+    },
+    "media_maduros": {
+     "estimativa": 4.20082,
+     "ic95": [
+      3.76625,
+      4.6544
+     ],
+     "n": 10,
+     "n_excluidos": 0
+    },
+    "ridge": {
+     "estimativa": 4.22446,
+     "ic95": [
+      3.74593,
+      4.70516
+     ],
+     "n": 10,
+     "n_excluidos": 0
+    },
+    "ridge_com_vazamento": {
+     "estimativa": 1.60287,
+     "ic95": [
+      1.27003,
+      1.9899
+     ],
+     "n": 10,
+     "n_excluidos": 0
+    },
+    "ultimo_maduro": {
+     "estimativa": 5.50152,
+     "ic95": [
+      4.9257,
+      6.07768
+     ],
+     "n": 10,
+     "n_excluidos": 0
+    }
+   },
+   "mae_rel_hgb_sobre_media_maduros": {
+    "estimativa": 1.02675,
+    "ic95": [
+     1.01005,
+     1.04297
+    ],
+    "n": 10
+   },
+   "mae_rel_ridge_sobre_media_maduros": {
+    "estimativa": 1.00563,
+    "ic95": [
+     0.9886,
+     1.02237
+    ],
+    "n": 10
+   },
+   "mae_rel_ultimo_maduro_sobre_media_maduros": {
+    "estimativa": 1.30963,
+    "ic95": [
+     1.29157,
+     1.32953
+    ],
+    "n": 10
+   },
+   "ridge_supera_2pct": false,
+   "ultimo_maduro_supera_2pct": false
+  },
+  "quebra_regime_rpm": {
+   "alarme_falso_empirico_modelo_honesto": 0.0,
+   "deteccao_vazamento_empirica": 1.0,
+   "deteccao_vazamento_metadado": 1.0,
+   "ganho_mae_com_vazamento": {
+    "estimativa": 0.611552,
+    "ic95": [
+     0.561629,
+     0.654311
+    ],
+    "n": 10,
+    "n_excluidos": 0
+   },
+   "hgb_supera_2pct": false,
+   "mae": {
+    "hgb": {
+     "estimativa": 6.0948,
+     "ic95": [
+      5.34294,
+      6.79018
+     ],
+     "n": 10,
+     "n_excluidos": 0
+    },
+    "media_maduros": {
+     "estimativa": 5.55572,
+     "ic95": [
+      4.96669,
+      6.07604
+     ],
+     "n": 10,
+     "n_excluidos": 0
+    },
+    "ridge": {
+     "estimativa": 5.60689,
+     "ic95": [
+      4.93214,
+      6.18462
+     ],
+     "n": 10,
+     "n_excluidos": 0
+    },
+    "ridge_com_vazamento": {
+     "estimativa": 2.20205,
+     "ic95": [
+      1.81074,
+      2.64165
+     ],
+     "n": 10,
+     "n_excluidos": 0
+    },
+    "ultimo_maduro": {
+     "estimativa": 6.03503,
+     "ic95": [
+      5.40065,
+      6.61263
+     ],
+     "n": 10,
+     "n_excluidos": 0
+    }
+   },
+   "mae_rel_hgb_sobre_media_maduros": {
+    "estimativa": 1.09703,
+    "ic95": [
+     1.04694,
+     1.15684
+    ],
+    "n": 10
+   },
+   "mae_rel_ridge_sobre_media_maduros": {
+    "estimativa": 1.00921,
+    "ic95": [
+     0.978326,
+     1.04811
+    ],
+    "n": 10
+   },
+   "mae_rel_ultimo_maduro_sobre_media_maduros": {
+    "estimativa": 1.08627,
+    "ic95": [
+     1.0701,
+     1.10323
+    ],
+    "n": 10
+   },
+   "ridge_supera_2pct": false,
+   "ultimo_maduro_supera_2pct": false
+  }
+ }
+}
