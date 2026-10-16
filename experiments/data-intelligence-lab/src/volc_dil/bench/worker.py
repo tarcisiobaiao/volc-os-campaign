@@ -3,7 +3,7 @@
 Executado pelo orquestrador (`scripts/bench_executar.py`) em subprocesso isolado para que o
 pico de RSS (medido pelo pai via `os.wait4`) seja só desta medição.
 
-Uso: python -I worker.py --engine {python_puro,contrato,duckdb,polars,volc_atual,vazio}
+Uso: python -I worker.py --engine {python_puro,contrato,duckdb,polars,polars_de_tuplas,volc_atual,vazio}
                          --parquet P --jsonl J --as-of US --reps 5 --threads 4 --raiz-src S [--raiz-repo R]
 """
 from __future__ import annotations
@@ -71,19 +71,20 @@ def main() -> int:
         _, out["normalizar_linhas_google_ads"] = _medir(norm, a.reps)
         out["linhas_normalizadas"] = len(fx["google_ads_rows"])
     else:
+        from volc_dil.bench import dados as E_dados
         from volc_dil.bench import engines as E
 
         if a.engine == "python_puro":
             out["import_s"] = time.perf_counter() - t0
             linhas, out["carga_jsonl"] = _medir(lambda: _ler_jsonl(a.jsonl), a.reps_carga)
-            (res, emp), out["operacao"] = _medir(lambda: E.op_python(linhas, a.as_of), a.reps)
+            (res, dup), out["operacao"] = _medir(lambda: E.op_python(linhas, a.as_of), a.reps)
             out["exportacao"] = {"mediana_s": 0.0, "nota": "resultado já é lista de tuplas Python"}
         elif a.engine == "contrato":
             out["import_s"] = time.perf_counter() - t0
             linhas, out["carga_jsonl"] = _medir(lambda: _ler_jsonl(a.jsonl), a.reps_carga)
             obs, out["conversao_para_contrato"] = _medir(lambda: E.para_observacoes(linhas), a.reps_carga)
             del linhas
-            (res, emp), out["operacao"] = _medir(lambda: E.op_contrato(obs, a.as_of), a.reps)
+            (res, dup), out["operacao"] = _medir(lambda: E.op_contrato(obs, a.as_of), a.reps)
             out["exportacao"] = {"mediana_s": 0.0, "nota": "resultado já é lista de tuplas Python"}
         elif a.engine == "duckdb":
             con = E.conectar_duckdb(a.threads)
@@ -96,7 +97,7 @@ def main() -> int:
                 con.execute(f"CREATE OR REPLACE TABLE obs AS SELECT * FROM read_parquet('{a.parquet}')")
 
             _, out["carga_parquet"] = _medir(carga, a.reps_carga)
-            emp, out["operacao"] = _medir(lambda: E.op_duckdb(con, a.as_of), a.reps)
+            dup, out["operacao"] = _medir(lambda: E.op_duckdb(con, a.as_of), a.reps)
             res, out["exportacao"] = _medir(lambda: E.exportar_duckdb(con), max(2, a.reps_carga))
         elif a.engine == "polars":
             import polars as pl
@@ -104,15 +105,25 @@ def main() -> int:
             out["import_s"] = time.perf_counter() - t0
             out["polars_threads"] = pl.thread_pool_size()
             df, out["carga_parquet"] = _medir(lambda: pl.read_parquet(a.parquet), a.reps_carga)
-            (nativo, emp), out["operacao"] = _medir(lambda: E.op_polars(df.lazy(), a.as_of), a.reps)
+            (nativo, dup), out["operacao"] = _medir(lambda: E.op_polars(df.lazy(), a.as_of), a.reps)
             (_, _), out["scan_parquet_mais_operacao"] = _medir(lambda: E.op_polars(pl.scan_parquet(a.parquet), a.as_of),
                                                                a.reps_carga)
+            res, out["exportacao"] = _medir(lambda: E.exportar_polars(nativo), max(2, a.reps_carga))
+        elif a.engine == "polars_de_tuplas":
+            # cenário "dados já em memória Python" (como no replay): paga a conversão tuplas -> Polars
+            import polars as pl  # noqa: F401
+
+            out["import_s"] = time.perf_counter() - t0
+            linhas, out["carga_jsonl"] = _medir(lambda: _ler_jsonl(a.jsonl), a.reps_carga)
+            df, out["conversao_tuplas_para_polars"] = _medir(lambda: E_dados.para_polars(linhas), a.reps_carga)
+            del linhas
+            (nativo, dup), out["operacao"] = _medir(lambda: E.op_polars(df.lazy(), a.as_of), a.reps)
             res, out["exportacao"] = _medir(lambda: E.exportar_polars(nativo), max(2, a.reps_carga))
         else:
             raise SystemExit(f"engine desconhecida: {a.engine}")
         out["n_linhas_resultado"] = len(res)
-        out["n_empates"] = emp
-        out["resultado_sha256"] = E.hash_resultado(list(res), emp)
+        out["n_duplicatas_exatas"] = dup
+        out["resultado_sha256"] = E.hash_resultado(list(res))
     out["parede_total_s"] = time.perf_counter() - t0
     print(json.dumps(out, sort_keys=True))
     return 0

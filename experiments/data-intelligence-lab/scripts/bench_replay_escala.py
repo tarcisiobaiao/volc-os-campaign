@@ -16,7 +16,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "src"))
 
-from volc_dil.contracts import Snapshot, manifesto_execucao  # noqa: E402
+from volc_dil.contracts import Snapshot, manifesto_execucao, sha256_codigo  # noqa: E402
 from volc_dil.replay import Proporcional, cenario_mini  # noqa: E402
 from volc_dil.replay import motor  # noqa: E402
 from volc_dil.replay.cenario import Mundo  # noqa: E402
@@ -56,7 +56,7 @@ def medir(n_unidades: int, n_dias: int = 20) -> dict:
     Mundo.emitir = emitir
     try:
         t0 = time.perf_counter()
-        motor.executar(espec, pol)
+        motor.executar(espec, pol, medir_preliminar=False)
         total = time.perf_counter() - t0
     finally:
         motor.Snapshot = Snapshot
@@ -67,16 +67,49 @@ def medir(n_unidades: int, n_dias: int = 20) -> dict:
             "obs_por_snapshot_max": max(obs), "snapshot_ms_por_decisao": round(acum["snapshot_s"] / (n_dias - 1) * 1000, 2)}
 
 
+def perfil_snapshot(n_linhas: int = 20_000) -> dict:
+    """Perfil (cProfile) de Snapshot.construir sobre observações da bancada: onde vai o tempo."""
+    import cProfile
+    import pstats
+
+    from volc_dil.bench import dados, engines
+
+    obs = engines.para_observacoes(dados.gerar(n_linhas, 1))
+    from datetime import datetime, timedelta, timezone
+    as_of = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(microseconds=dados.as_of_padrao_us())
+    prof = cProfile.Profile()
+    prof.enable()
+    Snapshot.construir(obs, as_of)
+    prof.disable()
+    st = pstats.Stats(prof).stats
+    total = next(v[3] for k, v in st.items() if k[2] == "construir")
+    def cum(nome):
+        return sum(v[3] for k, v in st.items() if k[2] == nome)
+    def chamadas(nome):
+        return sum(v[1] for k, v in st.items() if k[2] == nome)
+    return {"n_observacoes": len(obs), "construir_s": round(total, 3),
+            "frac_sha256_de": round(cum("sha256_de") / total, 3), "frac_para_json": round(cum("para_json") / total, 3),
+            "chamadas_sha256_de": chamadas("sha256_de"), "chamadas_para_json": chamadas("para_json"),
+            "nota": "frações de tempo cumulativo (podem se sobrepor: sha256_de inclui serialização)"}
+
+
 def main() -> int:
     pontos = [medir(n) for n in (8, 50, 200, 500)]
+    perfil = perfil_snapshot()
+    print(perfil)
     for p in pontos:
         print(p)
     saida = {"natureza": "sintetico",
              "manifesto": manifesto_execucao(nome="replay_escala_v0", seed=cenario_mini().seed, entradas={},
                                              parametros={"unidades": [8, 50, 200, 500], "dias": 20,
-                                                         "politica": "proportional", "janela_consulta_dias": 14}),
+                                                         "politica": "proportional", "janela_consulta_dias": 14,
+                                                         "medir_preliminar": False},
+                                             codigo_sha256=sha256_codigo(
+                                                 [str(p) for p in sorted((RAIZ / "src" / "volc_dil" / "replay").glob("*.py"))]
+                                                 + [str(Path(__file__).resolve())]),
+                                             resultado=pontos),
              "nota": "1 repetição por ponto; tempos de parede; ordem de grandeza.",
-             "pontos": pontos}
+             "pontos": pontos, "perfil_snapshot": perfil}
     SAIDA.parent.mkdir(parents=True, exist_ok=True)
     SAIDA.write_text(json.dumps(saida, indent=1, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
     return 0

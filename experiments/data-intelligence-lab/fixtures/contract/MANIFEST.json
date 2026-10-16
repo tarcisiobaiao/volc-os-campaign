@@ -2,7 +2,7 @@
  "arquivo": "observacoes_exemplo.json",
  "n_observacoes": 8,
  "natureza": "sintetico",
- "sha256": "884f039feecc59b5af4c28ce6d014378e88a21eab46378a040c334a098c391d1",
+ "sha256": "7d7beb98fa146451482323e42a01f56c15794e7020516740b50ecd26dbc6ab7c",
  "snapshots": {
   "d+1_04h": {
    "as_of": "2026-09-02T04:00:00-03:00",
@@ -17,7 +17,7 @@
     "nao_coletado": 1,
     "zero_confirmado": 1
    },
-   "fingerprint": "cc111748761f3757cb2d539ff4d18e26650ea51d5f38bf471bb86b7bf5daf721",
+   "fingerprint": "00c48b1f0e60ded20cee903b090a02ffd53c16b8a26a999b3d76ee86714ab135",
    "fontes": [
     "browser_beacon",
     "google_ads",
@@ -53,7 +53,7 @@
     "nao_coletado": 1,
     "zero_confirmado": 1
    },
-   "fingerprint": "90021c6c8f5029097984c571ec35e470b5cf65c6b4b13e7dd905aeac623cd4b0",
+   "fingerprint": "747e78d6e025a3d161b1603c5e9dbfa419a63bd478c3f1451f16e820e6317312",
    "fontes": [
     "browser_beacon",
     "google_ads",

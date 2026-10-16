@@ -23,6 +23,7 @@ from sklearn.linear_model import RidgeCV
 from sklearn.preprocessing import StandardScaler
 
 ALPHAS = np.logspace(-3, 3, 13)
+SKILL_MIN = 0.01  # 1% de redução de MAE vs média por unidade: parâmetro de relevância, não regra
 
 
 @dataclass(frozen=True)
@@ -136,6 +137,9 @@ def grade(mundos: list[Mundo], nomes: list[str], seeds: range, *, hgb_min_treino
             "forca_sinal": m.forca_sinal, "features": nomes, "seeds": len(seeds),
             "ridge_skill_media_ic95": ic_media(sk),
             "ridge_p_skill_pos": float(np.mean(sk > 0)) if len(sk) else None,
+            # efeito mínimo prático: sob sinal nulo a skill média é ~0,0005 com IC > 0 em n grande (F1-10),
+            # então "IC > 0" não é critério; exige-se melhora de MAE acima de SKILL_MIN.
+            "ridge_p_skill_acima_min": float(np.mean(sk > SKILL_MIN)) if len(sk) else None,
             "ridge_r2_oot_media_ic95": ic_media(np.array([x for x in r2s if x is not None])),
             "ridge_cobertura80_media_ic95": ic_media(np.array(cobs)),
             "hgb_skill_media_ic95": ic_media(np.array(hskills)) if hskills else None,

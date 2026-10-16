@@ -24,7 +24,8 @@ from sklearn.preprocessing import StandardScaler  # noqa: E402
 from volc_dil.contracts import manifesto_execucao, sha256_arquivo, sha256_codigo  # noqa: E402
 from volc_dil.surrogate import ParametrosPortao, avaliar_viabilidade  # noqa: E402
 from volc_dil.surrogate.experiment import ALPHAS, Mundo, grade  # noqa: E402
-from volc_dil.surrogate.real_probe import GOLDEN_META, SENAC, carregar_golden_meta, carregar_senac  # noqa: E402
+from volc_dil.surrogate.real_probe import (  # noqa: E402
+    GOLDEN_META, SENAC, carregar_golden_meta, carregar_senac, contar_zeros_ambiguos_senac)
 
 SEED0 = 20261015
 
@@ -82,6 +83,7 @@ def main():
         "senac_campaign_day": avaliar_viabilidade(senac, grao_alvo="campaign_day", parametros=p).para_json(),
         "meta_campaign_day": avaliar_viabilidade(meta, grao_alvo="campaign_day", parametros=p).para_json(),
         "meta_session": avaliar_viabilidade(meta, grao_alvo="session", parametros=p).para_json(),
+        "senac_zeros_ambiguos": contar_zeros_ambiguos_senac(RAIZ),
         "meta_descritivo_valido": descritivo_real(meta, ["meta_spend", "meta_impressions", "meta_clicks"]),
         "meta_descritivo_com_circular": descritivo_real(
             meta, ["meta_spend", "meta_impressions", "meta_clicks", "gam_impressions", "gam_clicks"]),
@@ -99,12 +101,14 @@ def main():
             linha = grade([Mundo(u, t, forca_sinal=0.25)], feats, range(SEED0, SEED0 + 100), hgb_min_treino=None)[0]
             linha["caso"] = nome
             out["contraprovas"].append(linha)
-    cal = [g for g in out["grade"] if g["forca_sinal"] == 0.25 and g["ridge_p_skill_pos"] is not None
-           and g["ridge_p_skill_pos"] >= 0.8 and g["ridge_skill_media_ic95"][1] > 0]
+    cal = [g for g in out["grade"] if g["forca_sinal"] == 0.25 and g["ridge_p_skill_acima_min"] is not None
+           and g["ridge_p_skill_acima_min"] >= 0.8]
+    nulo = [g for g in out["grade"] if g["forca_sinal"] == 0.0]
     out["calibracao_portao"] = {
-        "criterio": "P(skill_ridge>0) >= 0.8 e IC95 inferior da skill média > 0, sinal fraco (0.25)",
+        "criterio": "P(skill_ridge > SKILL_MIN=0.01) >= 0.8, sinal fraco (0.25); conferido contra sinal nulo",
+        "max_p_skill_acima_min_sob_sinal_nulo": max(g["ridge_p_skill_acima_min"] for g in nulo),
         "menor_volume": min(cal, key=lambda g: g["linhas"]) if cal else None,
-        "parametros_portao_usados": p.__dict__,
+        "parametros_portao_usados": {k: (str(v) if not isinstance(v, (int, float)) else v) for k, v in p.__dict__.items()},
     }
     out["manifesto"] = manifesto_execucao(
         nome="surrogate_fase6", seed=SEED0, entradas=out["real"]["entradas_sha256"],

@@ -1,7 +1,9 @@
 """Equivalência da bancada: contrato == Python puro == DuckDB == Polars (dados SINTÉTICOS).
 
 Cada teste tenta quebrar um invariante: null != 0, moedas não somadas, identidade exata,
-empate de versão detectado, e que uma engine "ingênua" (SUM ignorando NULL) é pega pelo hash.
+empate de versão, reentrega duplicada, linha malformada, e que uma engine "ingênua" (SUM
+ignorando NULL) é pega pelo hash. Fora do caminho feliz as quatro engines precisam dar a
+MESMA resposta linha a linha — ou a MESMA exceção (F1-03).
 """
 from __future__ import annotations
 
@@ -23,25 +25,43 @@ def linhas():
     return dados.gerar(3000, seed=11)
 
 
-def _todas(linhas, tmp_path, *, ingenuo=False):
+def _duckdb_polars(linhas, tmp_path, *, ingenuo=False):
     pq = tmp_path / "obs.parquet"
     dados.para_polars(linhas).write_parquet(pq)
     con = E.conectar_duckdb(2)
     con.execute(f"CREATE TABLE obs AS SELECT * FROM read_parquet('{pq}')")
-    emp_d = E.op_duckdb(con, AS_OF, ingenuo=ingenuo)
+    dup_d = E.op_duckdb(con, AS_OF, ingenuo=ingenuo)
     r_d = E.exportar_duckdb(con)
-    nat, emp_p = E.op_polars(pl.scan_parquet(pq), AS_OF, ingenuo=ingenuo)
-    r_p = E.exportar_polars(nat)
-    return {"duckdb": (r_d, emp_d), "polars": (r_p, emp_p)}
+    nat, dup_p = E.op_polars(pl.scan_parquet(pq), AS_OF, ingenuo=ingenuo)
+    return {"duckdb": (r_d, dup_d), "polars": (E.exportar_polars(nat), dup_p)}
+
+
+def _quatro(linhas, tmp_path):
+    saida = {"python": E.op_python(linhas, AS_OF), "contrato": E.op_contrato(E.para_observacoes(linhas), AS_OF)}
+    saida.update(_duckdb_polars(linhas, tmp_path))
+    return saida
+
+
+def _todas_levantam(linhas, tmp_path, exc):
+    with pytest.raises(exc):
+        E.op_python(linhas, AS_OF)
+    with pytest.raises(exc):
+        E.op_contrato(E.para_observacoes(linhas), AS_OF)
+    pq = tmp_path / "obs_ruim.parquet"
+    dados.para_polars(linhas).write_parquet(pq)
+    con = E.conectar_duckdb(1)
+    con.execute(f"CREATE TABLE obs AS SELECT * FROM read_parquet('{pq}')")
+    with pytest.raises(exc):
+        E.op_duckdb(con, AS_OF)
+    with pytest.raises(exc):
+        E.op_polars(pl.scan_parquet(pq), AS_OF)
 
 
 def test_quatro_implementacoes_dao_o_mesmo_hash(linhas, tmp_path):
-    r_py, e_py = E.op_python(linhas, AS_OF)
-    r_ct, e_ct = E.op_contrato(E.para_observacoes(linhas), AS_OF)
-    outras = _todas(linhas, tmp_path)
-    h = {E.hash_resultado(r_py, e_py), E.hash_resultado(r_ct, e_ct)} | {E.hash_resultado(*v) for v in outras.values()}
-    assert len(h) == 1
-    assert e_py == 0 and len(r_py) > 100
+    r = _quatro(linhas, tmp_path)
+    assert len({E.hash_resultado(v[0]) for v in r.values()}) == 1
+    assert len(r["python"][0]) > 100
+    assert r["python"][1] == r["duckdb"][1] == r["polars"][1] == 0
 
 
 def test_dataset_exercita_as_armadilhas(linhas):
@@ -55,10 +75,10 @@ def test_dataset_exercita_as_armadilhas(linhas):
 
 
 def test_sum_ingenuo_que_ignora_null_e_detectado(linhas, tmp_path):
-    certo = _todas(linhas, tmp_path)
-    ingenuo = _todas(linhas, tmp_path, ingenuo=True)
+    certo = _duckdb_polars(linhas, tmp_path)
+    ingenuo = _duckdb_polars(linhas, tmp_path, ingenuo=True)
     for engine in ("duckdb", "polars"):
-        assert E.hash_resultado(*certo[engine]) != E.hash_resultado(*ingenuo[engine])
+        assert E.hash_resultado(certo[engine][0]) != E.hash_resultado(ingenuo[engine][0])
         pares = list(zip(sorted(certo[engine][0], key=lambda x: x[:3]), sorted(ingenuo[engine][0], key=lambda x: x[:3])))
         # existe grupo onde o certo diz "sem valor" e o ingênuo inventou um número
         assert any(c[8] is None and i[8] is not None and c[12] and c[12] > 0 for c, i in pares)
@@ -71,6 +91,10 @@ def test_semantica_crua_das_engines_e_o_risco_documentado():
     assert con.execute("SELECT sum(x) FROM (VALUES (NULL::BIGINT)) t(x)").fetchone()[0] is None
     assert pl.Series([1, None, 2], dtype=pl.Int64).sum() == 3
     assert pl.Series([None, None], dtype=pl.Int64).sum() == 0  # Polars: tudo nulo vira 0!
+    # comparação de moeda com NULL: `<>` devolve NULL (lógica de 3 valores); o plano usa a forma NULL-segura
+    assert con.execute("SELECT (NULL::VARCHAR <> 'USD') IS NULL, NULL::VARCHAR IS DISTINCT FROM 'USD'").fetchone() == (True, True)
+    assert "IS DISTINCT FROM r.moeda" in E.sql_duckdb(AS_OF) and "c.moeda <> r.moeda" not in E.sql_duckdb(AS_OF)
+    assert pl.Series([None], dtype=pl.Utf8).ne_missing(pl.Series(["USD"])).to_list() == [True]
 
 
 def test_grupo_com_membro_nulo_fica_sem_valor_em_todas(tmp_path):
@@ -81,11 +105,9 @@ def test_grupo_com_membro_nulo_fica_sem_valor_em_todas(tmp_path):
         base[:2] + ("mobile",) + base[3:8] + (None, None, "falha", "preliminary", "unknown"),
         base[:2] + ("tablet",) + base[3:8] + (None, None, "nao_coletado", "preliminary", "unknown"),
     ]
-    r_py, _ = E.op_python(linhas, AS_OF)
-    assert r_py[0][3] is None and r_py[0][4] == "falha" and r_py[0][7] == 2  # pior estado vence; null != 0
-    outras = _todas(linhas, tmp_path)
-    for v in outras.values():
-        assert E.hash_resultado(*v) == E.hash_resultado(r_py, 0)
+    r = _quatro(linhas, tmp_path)
+    assert r["python"][0][0][3] is None and r["python"][0][0][4] == "falha" and r["python"][0][0][7] == 2
+    assert all(v[0] == r["python"][0] for v in r.values())
 
 
 def test_moedas_nunca_somadas(tmp_path):
@@ -93,30 +115,60 @@ def test_moedas_nunca_somadas(tmp_path):
           "medido", "revised", "complete")
     l2 = ("acc-A", "cmp-y", "mobile", "2026-08-02", "revenue", "publisher", "reported_revenue", AS_OF - 5, 9, "USD",
           "medido", "revised", "complete")
-    r_py, _ = E.op_python([l1, l2], AS_OF)
-    assert r_py[0][8] is None and r_py[0][9] == "moedas_misturadas" and r_py[0][10] is None
-    for v in _todas([l1, l2], tmp_path).values():
-        assert E.hash_resultado(*v) == E.hash_resultado(r_py, 0)
-    r_ct, _ = E.op_contrato(E.para_observacoes([l1, l2]), AS_OF)
-    assert r_ct == r_py
+    r = _quatro([l1, l2], tmp_path)
+    assert r["python"][0][0][8] is None and r["python"][0][0][9] == "moedas_misturadas" and r["python"][0][0][10] is None
+    assert all(v[0] == r["python"][0] for v in r.values())
 
 
-def test_empate_de_versao_e_contado_e_contrato_recusa(linhas, tmp_path):
-    alvo = next(x for x in linhas if x[dados.I_MICROS] is not None and x[dados.I_DISP] <= AS_OF)
+# ── F1-03: fora do caminho feliz ───────────────────────────────────────────
+
+CUSTO = ("acc-A", "cmp-z", "desktop", "2026-08-02", "cost", "google_ads", None, AS_OF - 10, 5_000_000, "BRL",
+         "medido", "mature", "complete")
+RECEITA = ("acc-A", "cmp-z", "desktop", "2026-08-02", "revenue", "publisher", "reported_revenue", AS_OF - 10, 8_000_000,
+           "BRL", "medido", "revised", "complete")
+
+
+def test_f103a_reentrega_identica_e_deduplicada_igual_em_todas(tmp_path):
+    r = _quatro([CUSTO, CUSTO, RECEITA], tmp_path)
+    esperado = [("acc-A", "cmp-z", "2026-08-02", 5_000_000, "medido", "BRL", 1, 0,
+                 8_000_000, "medido", "BRL", 1, 0, 3_000_000, None)]
+    for nome, (linhas_res, _) in r.items():
+        assert linhas_res == esperado, nome
+    assert r["python"][1] == r["duckdb"][1] == r["polars"][1] == 1  # duplicata contada, não somada
+
+
+def test_f103a_versoes_diferentes_no_mesmo_instante_levantam_em_todas(tmp_path):
+    gemeo = CUSTO[:8] + (6_000_000,) + CUSTO[9:]
+    _todas_levantam([CUSTO, gemeo, RECEITA], tmp_path, E.EmpateDeVersao)
+
+
+def test_f103b_micros_com_moeda_nula_e_malformada_em_todas(tmp_path):
+    ruim = CUSTO[:9] + (None,) + CUSTO[10:]
+    receita_usd = RECEITA[:9] + ("USD",) + RECEITA[10:]
+    _todas_levantam([ruim, receita_usd], tmp_path, E.LinhaMalformada)
+
+
+def test_f103c_medido_sem_micros_e_malformada_em_todas(tmp_path):
+    ruim = CUSTO[:8] + (None,) + CUSTO[9:]
+    _todas_levantam([ruim, RECEITA], tmp_path, E.LinhaMalformada)
+
+
+def test_f103_zero_confirmado_nao_zero_e_estado_fora_do_vocabulario(tmp_path):
+    _todas_levantam([CUSTO[:10] + ("zero_confirmado",) + CUSTO[11:], RECEITA], tmp_path, E.LinhaMalformada)
+    _todas_levantam([CUSTO[:10] + ("inventado",) + CUSTO[11:], RECEITA], tmp_path, E.LinhaMalformada)
+
+
+def test_empate_no_dataset_grande_levanta_em_todas(linhas, tmp_path):
+    alvo = next(x for x in linhas if x[dados.I_MICROS] is not None and x[dados.I_DISP] <= AS_OF
+                and x[dados.I_ESTADO] == "medido")
     gemeo = alvo[:dados.I_MICROS] + (alvo[dados.I_MICROS] + 1,) + alvo[dados.I_MICROS + 1:]
-    com_empate = linhas + [gemeo]
-    _, e_py = E.op_python(com_empate, AS_OF)
-    outras = _todas(com_empate, tmp_path)
-    assert e_py >= 1
-    assert outras["duckdb"][1] == e_py and outras["polars"][1] == e_py
-    with pytest.raises(E.EmpateDeVersao):
-        E.op_contrato(E.para_observacoes(com_empate), AS_OF)
+    _todas_levantam(linhas + [gemeo], tmp_path, E.EmpateDeVersao)
 
 
 def test_ordem_de_chegada_nao_importa(linhas):
     embaralhadas = list(linhas)
     random.Random(1).shuffle(embaralhadas)
-    assert E.hash_resultado(*E.op_python(linhas, AS_OF)) == E.hash_resultado(*E.op_python(embaralhadas, AS_OF))
+    assert E.hash_resultado(E.op_python(linhas, AS_OF)[0]) == E.hash_resultado(E.op_python(embaralhadas, AS_OF)[0])
 
 
 def test_corte_as_of_exclui_revisoes_futuras(linhas):
@@ -124,7 +176,7 @@ def test_corte_as_of_exclui_revisoes_futuras(linhas):
     assert futuras  # o corte realmente remove algo
     r_tudo, _ = E.op_python(linhas, 2**62)
     r_corte, _ = E.op_python(linhas, AS_OF)
-    assert E.hash_resultado(r_tudo, 0) != E.hash_resultado(r_corte, 0)
+    assert E.hash_resultado(r_tudo) != E.hash_resultado(r_corte)
 
 
 def test_duckdb_sem_autoload_nem_autoinstall():

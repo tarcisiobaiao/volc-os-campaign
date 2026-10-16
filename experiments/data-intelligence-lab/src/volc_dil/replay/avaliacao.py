@@ -100,9 +100,13 @@ def metricas(execucao: ExecucaoReplay) -> dict:
     decs = execucao.decisoes
     return {
         "politica": execucao.politica,
+        "declaracao": execucao.declaracao,
         "por_moeda": por_moeda,
         "n_decisoes": len(decs),
-        "decisoes_com_dado_preliminar": sum(1 for d in decs if d.insumos_preliminares > 0),
+        "decisoes_com_dado_preliminar_declarado": sum(1 for d in decs if d.insumos_preliminares > 0),
+        "decisoes_que_dependeram_de_preliminar_medido": (
+            sum(1 for d in decs if d.dependeu_de_preliminar) if all(d.dependeu_de_preliminar is not None for d in decs)
+            else None),
         "decisoes_sem_insumo": sum(1 for d in decs if d.insumos == 0),
         "exclusoes_unidade_dia": sum(len(d.excluidas) for d in decs),
         "notas_identidade": sum(len(d.notas) for d in decs),

@@ -11,6 +11,8 @@ from .aggregate import (
     agregar,
     contribuicao,
     exigir_mesma_identidade,
+    familia_de_fonte,
+    origens_circulares,
     rotulo_economico,
     verificar_nao_circular,
 )
@@ -34,7 +36,7 @@ __all__ = [
     "Dinheiro", "ESQUEMA_SNAPSHOT", "EstadoMedida", "IdentidadeIncompativel", "MICROS", "Maturidade",
     "Metrica", "MetodoAtribuicao", "MoedasDiferentes", "Observacao", "RECEITA_CONTABIL",
     "ROTULO_ECONOMICO", "Snapshot", "ValueKind", "ValueKindsMisturados", "VazamentoDeFuturo",
-    "VersaoAmbigua", "agregar", "contribuicao", "exigir_mesma_identidade", "json_canonico",
+    "VersaoAmbigua", "agregar", "contribuicao", "exigir_mesma_identidade", "familia_de_fonte", "json_canonico", "origens_circulares",
     "manifesto_execucao", "rotulo_economico", "sha256_arquivo", "sha256_codigo", "sha256_de", "verificar_nao_circular",
     "verificar_sem_futuro", "versoes",
 ]

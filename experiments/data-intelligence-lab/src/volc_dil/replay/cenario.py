@@ -92,6 +92,15 @@ class Unidade:
     prelim_otimista: bool
 
 
+# Linhagem/coleta OPACAS (F1-01): nada que uma política leia no snapshot pode carregar
+# seed, nome de cenário ou outro atalho para reconstruir o mundo.
+LINHAGEM_OPACA = "replay-sint-v0"
+
+
+def _coleta_opaca(e: "EspecCenario", tipo: str, entidade_id: str, d: date) -> str:
+    return "col-" + hashlib.sha256(f"{e.seed}|{e.nome}|{tipo}|{entidade_id}|{d.isoformat()}".encode()).hexdigest()[:20]
+
+
 def _rng(*partes: object) -> random.Random:
     semente = hashlib.sha256("|".join(str(p) for p in partes).encode()).hexdigest()
     return random.Random(int(semente[:16], 16))
@@ -224,10 +233,10 @@ class Mundo:
             if gasto.moeda != u.moeda:
                 raise ValueError("alocação em moeda diferente da unidade (o motor deveria ter recusado)")
             comum = dict(unidade=u.chave, janela_inicio=ini, janela_fim=fim, timezone=TZ_NOME,
-                         versao_fonte="sint-v0", linhagem=(f"cenario:{e.nome}", f"seed:{e.seed}"))
+                         versao_fonte="sint-v0", linhagem=(LINHAGEM_OPACA,))
             # custo
             t_custo = fim + timedelta(hours=e.atraso_custo_h)
-            cid = f"{e.nome}:custo:{u.chave.entidade_id}:{d.isoformat()}"
+            cid = _coleta_opaca(e, "custo", u.chave.entidade_id, d)
             if sorteio.custo_nao_coletado:
                 saida.append(Observacao(
                     metrica=Metrica.CUSTO, valor=None, estado=EstadoMedida.NAO_COLETADO,
@@ -245,13 +254,13 @@ class Mundo:
             verdade = self.receita_verdadeira(u.chave, i, gasto.micros)
             t_pre = fim + timedelta(hours=e.atraso_prelim_h)
             t_rev = fim + timedelta(days=e.dias_revisao - 1, hours=e.atraso_prelim_h)
-            rid = f"{e.nome}:receita:{u.chave.entidade_id}:{d.isoformat()}"
+            rid = _coleta_opaca(e, "receita", u.chave.entidade_id, d)
             if sorteio.receita_nao_coletada:
-                for t, sufixo in ((t_pre, ":v1"), (t_rev, ":v2")):
+                for t, sufixo, mat in ((t_pre, ":v1", Maturidade.PRELIMINAR), (t_rev, ":v2", Maturidade.REVISADA)):
                     saida.append(Observacao(
                         metrica=Metrica.RECEITA, valor=None, estado=EstadoMedida.NAO_COLETADO,
                         observado_em=t, disponivel_em=t, fonte=FONTE_RECEITA, coleta_id=rid + sufixo,
-                        cobertura=Cobertura.DESCONHECIDA, maturidade=Maturidade.PRELIMINAR,
+                        cobertura=Cobertura.DESCONHECIDA, maturidade=mat,
                         metodo=MetodoAtribuicao.AGGREGATE_CAMPAIGN_DATE, value_kind=ValueKind.REPORTED_REVENUE,
                         motivo="relatório do publisher não trouxe a campanha", **comum))
                 continue

@@ -22,13 +22,14 @@ from volc_dil.contracts import (
     ChaveUnidade,
     ContratoViolado,
     Dinheiro,
+    Maturidade,
     MoedasDiferentes,
     Observacao,
     Snapshot,
 )
 
 from .cenario import EspecCenario, Mundo, as_of_decisao
-from .politicas import ContextoDecisao, Decisao, Politica
+from .politicas import ContextoDecisao, Decisao, Politica, declaracao
 
 Cortador = Callable[[Sequence[Observacao], datetime, int], list[Observacao]]
 
@@ -49,7 +50,8 @@ class RegistroDecisao:
     alocacao: dict[str, dict]  # entidade -> {micros, moeda}
     excluidas: dict[str, str]
     insumos: int
-    insumos_preliminares: int
+    insumos_preliminares: int  # autodeclarado pela política
+    dependeu_de_preliminar: Optional[bool]  # MEDIDO pelo motor: decisão muda sem números preliminares?
     notas: tuple[str, ...]
 
     def para_json(self) -> dict:
@@ -57,7 +59,8 @@ class RegistroDecisao:
             "dia": self.dia, "as_of": self.as_of, "politica": self.politica,
             "snapshot_fingerprint": self.snapshot_fingerprint, "n_obs_snapshot": self.n_obs_snapshot,
             "alocacao": self.alocacao, "excluidas": self.excluidas, "insumos": self.insumos,
-            "insumos_preliminares": self.insumos_preliminares, "notas": list(self.notas),
+            "insumos_preliminares": self.insumos_preliminares,
+            "dependeu_de_preliminar": self.dependeu_de_preliminar, "notas": list(self.notas),
         }
 
 
@@ -68,6 +71,11 @@ class ExecucaoReplay:
     decisoes: tuple[RegistroDecisao, ...]
     alocacoes: tuple[dict[ChaveUnidade, Dinheiro], ...]  # uma por dia do horizonte
     n_observacoes_log: int
+    declaracao: dict
+
+
+def _assinatura(aloc: dict[ChaveUnidade, Dinheiro]) -> tuple:
+    return tuple(sorted((u.entidade_id, u.conta, v.micros, v.moeda) for u, v in aloc.items()))
 
 
 def validar_decisao(dec: Decisao, ctx: ContextoDecisao) -> None:
@@ -82,6 +90,8 @@ def validar_decisao(dec: Decisao, ctx: ContextoDecisao) -> None:
             raise MoedasDiferentes(f"{u.entidade_id}: alocado em {v.moeda}, unidade opera em {ctx.moeda_por_unidade[u]}")
         if v.micros < 0:
             raise ContratoViolado("orçamento negativo")
+        if v.micros < ctx.piso_micros[v.moeda]:
+            raise ContratoViolado(f"{u.entidade_id}: {v.micros} abaixo do piso {ctx.piso_micros[v.moeda]} ({v.moeda})")
         somas[v.moeda] = somas[v.moeda] + v if v.moeda in somas else v
     for moeda, total in ctx.orcamento_total.items():
         if somas.get(moeda, Dinheiro(0, moeda)).micros != total:
@@ -96,6 +106,7 @@ def executar(
     janela_consulta_dias: int = 14,
     piso_bps: int = 1000,
     observador: Optional[Callable[[Snapshot, ContextoDecisao], None]] = None,
+    medir_preliminar: bool = True,
 ) -> ExecucaoReplay:
     mundo = Mundo(espec)
     log: list[Observacao] = []
@@ -113,23 +124,32 @@ def executar(
             as_of = as_of_decisao(dia)
             visiveis = cortar(log, as_of, janela_consulta_dias)
             snap = Snapshot.construir(visiveis, as_of, politica_futuro="falhar",
-                                      rotulo=f"{espec.nome}/{politica.nome}/{dia.isoformat()}")
+                                      rotulo=f"decisao/{dia.isoformat()}")  # opaco: sem cenário/seed (F1-01)
             ctx = ContextoDecisao(dia=dia, as_of=as_of, unidades=unidades, moeda_por_unidade=moedas,
                                   orcamento_total=orc, alocacao_atual=dict(alocacao), piso_micros=piso)
             if observador is not None:  # só para auditoria/testes; não altera a decisão
                 observador(snap, ctx)
             dec = politica.decidir(snap, ctx)
             validar_decisao(dec, ctx)
+            dependeu = None
+            if medir_preliminar:
+                # Medição por EFEITO (F1-06): mesma política, mesmo contexto, snapshot sem nenhum
+                # número preliminar. Se a decisão muda, ela dependeu de preliminar — declare ou não.
+                sem_prelim = [o for o in visiveis if not (o.maturidade is Maturidade.PRELIMINAR and o.valor is not None)]
+                snap2 = Snapshot.construir(sem_prelim, as_of, politica_futuro="falhar", rotulo=f"decisao/{dia.isoformat()}")
+                dec2 = politica.decidir(snap2, ctx)
+                dependeu = _assinatura(dec.alocacao) != _assinatura(dec2.alocacao)
             alocacao = dict(dec.alocacao)
             decisoes.append(RegistroDecisao(
                 dia=dia.isoformat(), as_of=as_of.isoformat(), politica=politica.nome,
                 snapshot_fingerprint=snap.fingerprint, n_obs_snapshot=len(snap.observacoes),
                 alocacao={u.entidade_id: v.para_json() for u, v in sorted(alocacao.items())},
                 excluidas={u.entidade_id: m for u, m in sorted(dec.excluidas.items())},
-                insumos=dec.insumos, insumos_preliminares=dec.insumos_preliminares, notas=dec.notas))
+                insumos=dec.insumos, insumos_preliminares=dec.insumos_preliminares,
+                dependeu_de_preliminar=dependeu, notas=dec.notas))
         alocacoes.append(dict(alocacao))
         log.extend(mundo.emitir(i, alocacao))
-    return ExecucaoReplay(espec, politica.nome, tuple(decisoes), tuple(alocacoes), len(log))
+    return ExecucaoReplay(espec, politica.nome, tuple(decisoes), tuple(alocacoes), len(log), declaracao(politica))
 
 
 def log_completo(espec: EspecCenario, alocacoes: Sequence[dict[ChaveUnidade, Dinheiro]]) -> list[Observacao]:

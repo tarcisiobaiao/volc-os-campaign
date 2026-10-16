@@ -11,11 +11,16 @@ from __future__ import annotations
 import csv
 import json
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
 from .feasibility import Feature, LinhaRotulada
+
+
+def _d1(dia: date) -> datetime:
+    """Disponibilidade DECLARADA (não medida) de relatório diário de mídia: fim do dia + 1 dia."""
+    return datetime(dia.year, dia.month, dia.day, tzinfo=timezone.utc) + timedelta(days=2)
 
 SENAC = Path("backend/app/trafego/shadow_experimentos/senac-shadow-20261015/transformacao.csv")
 GOLDEN_META = Path("backend/tests/goldens/atribuicao-meta-adset-v1.json")
@@ -26,16 +31,23 @@ def carregar_senac(raiz: Path) -> list[LinhaRotulada]:
     with open(raiz / SENAC, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
             reconciliado = r["estado"] == "reconciliado" and r["maduro"] == "True"
-            rot = float(Decimal(r["revenue_usd"])) if reconciliado and r["revenue_usd"] not in ("", "None") else None
+            bruto = r["revenue_usd"]
+            rot = float(Decimal(bruto)) if reconciliado and bruto not in ("", "None") else None
+            # A fonte JoinAds legada tem `revenue DEFAULT 0`: 0,00 não distingue "medido zero" de
+            # "não veio" (o próprio resultado.json da fonte avisa). Zero vira ambíguo, não rótulo (F1-11).
+            zero_ambiguo = rot == 0.0
+            if zero_ambiguo:
+                rot = None
             def num(v):  # null != 0: campo vazio vira None, não 0
                 return None if v in ("", "None", None) else float(Decimal(v))
+            dia = date.fromisoformat(r["date"])
             linhas.append(LinhaRotulada(
-                unidade_id="senac-campanha-1", periodo=date.fromisoformat(r["date"]), grao="campaign_day",
+                unidade_id="senac-campanha-1", periodo=dia, grao="campaign_day",
                 rotulo=rot, rotulo_maduro=r["maduro"] == "True", origem_rotulo="joinads",
                 features={
-                    "clicks": Feature(num(r["clicks"]), "google_ads"),
-                    "custo": Feature(num(r["custo_brl"]), "google_ads"),
-                    "valor_conversao_google": Feature(num(r["valor_conversao_google"]), "google_ads_conversion"),
+                    "clicks": Feature(num(r["clicks"]), "google_ads", _d1(dia)),
+                    "custo": Feature(num(r["custo_brl"]), "google_ads", _d1(dia)),
+                    "valor_conversao_google": Feature(num(r["valor_conversao_google"]), "google_ads_conversion", _d1(dia)),
                 },
             ))
     return linhas
@@ -52,8 +64,12 @@ def carregar_golden_meta(raiz: Path) -> list[LinhaRotulada]:
         a["spend"] += Decimal(l["spend"])
         a["impressions"] += l["impressions"]
         a["clicks"] += l["clicks"]
-        a["gam_imp"] += l["gam_impressions"] or 0
-        a["gam_clicks"] += l["gam_clicks"] or 0
+        # null != 0: um nulo torna a soma desconhecida (F1-11)
+        for campo, chave in (("gam_impressions", "gam_imp"), ("gam_clicks", "gam_clicks")):
+            if l[campo] is None or a[chave] is None:
+                a[chave] = None
+            else:
+                a[chave] += l[campo]
         if l["gam_revenue_original"] is None:
             a["rev_nulo"] = True
         else:
@@ -63,16 +79,26 @@ def carregar_golden_meta(raiz: Path) -> list[LinhaRotulada]:
     linhas = []
     for (cid, dia), a in sorted(acc.items()):
         rot = None if (a["rev_nulo"] or a["sem_utm"]) else float(a["rev"])
+        d = date.fromisoformat(dia)
         linhas.append(LinhaRotulada(
-            unidade_id=cid, periodo=date.fromisoformat(dia), grao="campaign_day", rotulo=rot,
+            unidade_id=cid, periodo=d, grao="campaign_day", rotulo=rot,
             # o golden não declara maturidade por linha: assumimos maduro (otimista para o veredito)
             rotulo_maduro=True, origem_rotulo="gam",
             features={
-                "meta_spend": Feature(float(a["spend"]), "meta"),
-                "meta_impressions": Feature(float(a["impressions"]), "meta"),
-                "meta_clicks": Feature(float(a["clicks"]), "meta"),
-                "gam_impressions": Feature(float(a["gam_imp"]), "gam"),  # mesma fonte da receita
-                "gam_clicks": Feature(float(a["gam_clicks"]), "gam"),
+                "meta_spend": Feature(float(a["spend"]), "meta", _d1(d)),
+                "meta_impressions": Feature(float(a["impressions"]), "meta", _d1(d)),
+                "meta_clicks": Feature(float(a["clicks"]), "meta", _d1(d)),
+                # mesma fonte da receita: circulares
+                "gam_impressions": Feature(None if a["gam_imp"] is None else float(a["gam_imp"]), "gam", _d1(d)),
+                "gam_clicks": Feature(None if a["gam_clicks"] is None else float(a["gam_clicks"]), "gam", _d1(d)),
             },
         ))
     return linhas
+
+
+def contar_zeros_ambiguos_senac(raiz: Path) -> int:
+    """Dias reconciliados e maduros com receita 0,00 — ambíguos por causa do DEFAULT 0 da fonte."""
+    with open(raiz / SENAC, newline="", encoding="utf-8") as f:
+        return sum(1 for r in csv.DictReader(f)
+                   if r["estado"] == "reconciliado" and r["maduro"] == "True"
+                   and r["revenue_usd"] not in ("", "None") and Decimal(r["revenue_usd"]) == 0)

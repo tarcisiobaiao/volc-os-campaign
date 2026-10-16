@@ -1,12 +1,13 @@
 {
  "manifesto": {
-  "codigo_sha256": null,
+  "codigo_sha256": "6b7fd04e5dadd3de137409db3b4e024099b52186cf87821573e99f86b3294535",
   "entradas_sha256": {},
-  "fingerprint": "bdfa70823a5a864950de528084ab22f1c0d2c7d30b7416d8a1d85da2da335a0e",
+  "fingerprint": "4e35d6615d04b1ec1efc8610d862a24426df7612e3b552cf0aac8930fa90131c",
   "nome": "replay_escala_v0",
   "parametros": {
    "dias": 20,
    "janela_consulta_dias": 14,
+   "medir_preliminar": false,
    "politica": "proportional",
    "unidades": [
     8,
@@ -15,7 +16,7 @@
     500
    ]
   },
-  "resultado_sha256": null,
+  "resultado_sha256": "5f44d41bc55fa6091dd894fe0ceeef40a39acab2d1a16ad10cc7b8ddfca697ee",
   "seed": 7,
   "versoes": {
    "duckdb": "1.5.6",
@@ -31,50 +32,59 @@
  },
  "natureza": "sintetico",
  "nota": "1 repetição por ponto; tempos de parede; ordem de grandeza.",
+ "perfil_snapshot": {
+  "chamadas_para_json": 37063,
+  "chamadas_sha256_de": 12433,
+  "construir_s": 0.345,
+  "frac_para_json": 0.273,
+  "frac_sha256_de": 0.408,
+  "n_observacoes": 20078,
+  "nota": "frações de tempo cumulativo (podem se sobrepor: sha256_de inclui serialização)"
+ },
  "pontos": [
   {
    "decisoes": 19,
-   "emissao_s": 0.005,
+   "emissao_s": 0.007,
    "n_dias": 20,
    "n_unidades": 9,
    "obs_por_snapshot_max": 234,
    "politica_s": 0.004,
-   "snapshot_ms_por_decisao": 2.32,
-   "snapshot_s": 0.044,
-   "total_s": 0.054
+   "snapshot_ms_por_decisao": 2.59,
+   "snapshot_s": 0.049,
+   "total_s": 0.061
   },
   {
    "decisoes": 19,
-   "emissao_s": 0.027,
+   "emissao_s": 0.035,
    "n_dias": 20,
    "n_unidades": 51,
    "obs_por_snapshot_max": 1326,
-   "politica_s": 0.015,
-   "snapshot_ms_por_decisao": 13.26,
-   "snapshot_s": 0.252,
-   "total_s": 0.297
+   "politica_s": 0.019,
+   "snapshot_ms_por_decisao": 13.88,
+   "snapshot_s": 0.264,
+   "total_s": 0.321
   },
   {
    "decisoes": 19,
-   "emissao_s": 0.102,
+   "emissao_s": 0.124,
    "n_dias": 20,
    "n_unidades": 201,
    "obs_por_snapshot_max": 5226,
-   "politica_s": 0.062,
-   "snapshot_ms_por_decisao": 51.83,
-   "snapshot_s": 0.985,
-   "total_s": 1.158
+   "politica_s": 0.073,
+   "snapshot_ms_por_decisao": 55.66,
+   "snapshot_s": 1.058,
+   "total_s": 1.264
   },
   {
    "decisoes": 19,
-   "emissao_s": 0.257,
+   "emissao_s": 0.319,
    "n_dias": 20,
    "n_unidades": 501,
    "obs_por_snapshot_max": 13026,
-   "politica_s": 0.163,
-   "snapshot_ms_por_decisao": 141.73,
-   "snapshot_s": 2.693,
-   "total_s": 3.139
+   "politica_s": 0.191,
+   "snapshot_ms_por_decisao": 145.78,
+   "snapshot_s": 2.77,
+   "total_s": 3.307
   }
  ]
 }

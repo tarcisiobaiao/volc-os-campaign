@@ -118,6 +118,8 @@ class Estatica:
     """current/static: mantém a alocação vigente."""
 
     nome = "static"
+    usa_preliminar = False
+    aceita_parcial = False
 
     def decidir(self, snapshot: Snapshot, ctx: ContextoDecisao) -> Decisao:
         exigir_snapshot_do_corte(snapshot, ctx)
@@ -128,6 +130,8 @@ class Igual:
     """equal: orçamento de cada moeda dividido igualmente."""
 
     nome = "equal"
+    usa_preliminar = False
+    aceita_parcial = False
 
     def decidir(self, snapshot: Snapshot, ctx: ContextoDecisao) -> Decisao:
         exigir_snapshot_do_corte(snapshot, ctx)
@@ -142,7 +146,10 @@ class Igual:
 class Proporcional:
     """proportional: pesos = contribuição contábil média diária conhecida (receita − custo).
 
-    Usa a versão mais recente conhecida (inclusive PRELIMINAR). Dia sem valor é pulado
+    Usa a versão mais recente conhecida (inclusive PRELIMINAR, de cobertura parcial): isso é
+    OPT-IN explícito (`aceita_parcial=True` -> `contribuicao(..., aceitar_parcial=True)`) e
+    aparece no relatório. Com `aceita_parcial=False` ela só usa contribuição de cobertura
+    completa (revisada). Dia sem valor é pulado
     (média só sobre dias com valor); unidade sem nenhum dia com valor fica fora com motivo
     e mantém a alocação vigente. Contribuição <= 0 recebe só o piso.
     """
@@ -150,6 +157,11 @@ class Proporcional:
     janela_dias: int = 7
     nome: str = "proportional"
     ausente_como_zero: bool = False  # True = anti-baseline ingênua (bug deliberado)
+    aceita_parcial: bool = True  # opt-in declarado: preliminar/parcial entra na decisão
+
+    @property
+    def usa_preliminar(self) -> bool:
+        return self.aceita_parcial or self.ausente_como_zero
 
     def _medias(self, snapshot: Snapshot, ctx: ContextoDecisao):
         idx = indexar(snapshot)
@@ -174,14 +186,15 @@ class Proporcional:
                 if c is None or r is None:
                     porque.append(f"{d}:sem_{'custo' if c is None else 'receita'}")
                     continue
-                contrib = contribuicao(c, r)  # exige mesma identidade, janela e timezone
+                # exige mesma identidade, janela e timezone; parcial/preliminar só com opt-in
+                contrib = contribuicao(c, r, aceitar_parcial=self.aceita_parcial)
                 if contrib.valor is None:
                     porque.append(f"{d}:{contrib.motivo}")
                     continue
                 soma += contrib.valor.micros
                 n += 1
                 insumos += 1
-                prelim += r.maturidade is Maturidade.PRELIMINAR
+                prelim += contrib.preliminar
             if self.ausente_como_zero:
                 medias[u] = soma // self.janela_dias  # lacuna pesa como zero na média
             elif n == 0:
@@ -228,6 +241,8 @@ class GulosaConservadora:
     teto_bps: int = 2000
     margem_bps: int = 500
     nome: str = "greedy_conservador"
+    usa_preliminar = False
+    aceita_parcial = False
 
     def decidir(self, snapshot: Snapshot, ctx: ContextoDecisao) -> Decisao:
         exigir_snapshot_do_corte(snapshot, ctx)
@@ -251,9 +266,12 @@ class GulosaConservadora:
                 if r.maturidade is Maturidade.PRELIMINAR or r.cobertura is not Cobertura.COMPLETA:
                     falta = f"{d}:receita_nao_madura"
                     break
-                contrib = contribuicao(c, r)  # exige mesma identidade/janela/tz
+                contrib = contribuicao(c, r)  # sem opt-in: cobertura parcial não vira número
                 if contrib.valor is None:
                     falta = f"{d}:{contrib.motivo}"
+                    break
+                if contrib.preliminar or not contrib.cobertura_completa:
+                    falta = f"{d}:contribuicao_nao_madura"
                     break
                 rec += r.valor.micros
                 cus += c.valor.micros
@@ -282,6 +300,12 @@ class GulosaConservadora:
                 j -= 1
         return Decisao(aloc, excluidas=motivos, insumos=insumos, insumos_preliminares=0,
                        notas=notas_identidade(snapshot, ctx))
+
+
+def declaracao(politica) -> dict:
+    """O que a política declara consumir; o motor MEDE o uso real de preliminar por efeito."""
+    return {"nome": politica.nome, "usa_preliminar": bool(getattr(politica, "usa_preliminar", True)),
+            "aceita_parcial": bool(getattr(politica, "aceita_parcial", True))}
 
 
 def baselines() -> list:

@@ -182,7 +182,7 @@ Evidência: P10-T06 partial ("falta contrato comum de source, job, run…"), P10
 
 **D17 — FDR → novo.** Nada na base. Lab: sim, como relatório de avaliação.
 
-**D18 — Curvas marginais → novo.** Com dado real é **não identificável hoje**: a única série econômica real tem gasto ~R$ 60/dia com teto aparente (`transformacao.csv`, 07–11/10) e nenhuma variação de orçamento controlada; a SPEC exige excluir underdelivery (`SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md:127`). Lab: sim, só sintético.
+**D18 — Curvas marginais → novo.** Com dado real é **não identificável hoje**: a única série econômica real tem gasto ~dezenas de R$/dia com teto aparente (`transformacao.csv`, 07–11/10) e nenhuma variação de orçamento controlada; a SPEC exige excluir underdelivery (`SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md:127`). Lab: sim, só sintético.
 
 **D19 — Risco/downside → novo.** Pesquisa B refutou Mean-CVaR como objetivo (B23, `RELATORIO-B.md:107-111`). Lab: só como métricas de replay (drawdown, quantis), separadas do objetivo.
 

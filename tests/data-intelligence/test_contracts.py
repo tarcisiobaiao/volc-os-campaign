@@ -36,6 +36,10 @@ D0 = datetime(2026, 9, 1, tzinfo=SP)
 UNI = ChaveUnidade("acc-1", "campaign", "c-1", ("campaign", "day"))
 
 
+def uni(i: int) -> ChaveUnidade:
+    return ChaveUnidade("acc-1", "campaign", f"c-{i}", ("campaign", "day"))
+
+
 def obs(**kw) -> Observacao:
     base = dict(
         unidade=UNI,
@@ -159,9 +163,9 @@ def test_membro_sem_valor_anula_agregado_por_padrao():
 
 def test_agregacao_recusa_moeda_e_value_kind_misturados():
     with pytest.raises(MoedasDiferentes):
-        agregar([obs(), obs(valor=Dinheiro(1, "USD"))])
+        agregar([obs(), obs(unidade=uni(2), valor=Dinheiro(1, "USD"))])
     with pytest.raises(ValueKindsMisturados):
-        agregar([receita(), receita(value_kind=ValueKind.ESTIMATED_REVENUE)])
+        agregar([receita(), receita(unidade=uni(2), value_kind=ValueKind.ESTIMATED_REVENUE)])
 
 
 # ── identidade ─────────────────────────────────────────────────────────────
@@ -213,10 +217,12 @@ def test_snapshot_recusa_versoes_conflitantes_no_mesmo_instante():
 
 def test_cobertura_completa_em_janela_aberta_e_indicio_de_futuro():
     as_of = D0 + timedelta(hours=12)
-    intradia = obs(observado_em=D0 + timedelta(hours=10), disponivel_em=D0 + timedelta(hours=11))
+    # desde a resposta a F1-14 a própria observação recusa "completa" medida antes do fim da janela
     with pytest.raises(ContratoViolado):
-        Snapshot.construir([intradia], as_of)
-    ok = Snapshot.construir([replace(intradia, cobertura=Cobertura.PARCIAL)], as_of)
+        obs(observado_em=D0 + timedelta(hours=10), disponivel_em=D0 + timedelta(hours=11))
+    intradia = obs(observado_em=D0 + timedelta(hours=10), disponivel_em=D0 + timedelta(hours=11),
+                   cobertura=Cobertura.PARCIAL)
+    ok = Snapshot.construir([intradia], as_of)
     assert ok.manifesto["n_incluidas"] == 1
 
 
@@ -272,4 +278,91 @@ def test_fixture_do_contrato_reproduz_manifesto():
     observacoes = [Observacao.de_json(d) for d in dados["observacoes"]]
     for nome, esperado in manifesto["snapshots"].items():
         s = Snapshot.construir(observacoes, datetime.fromisoformat(esperado["as_of"]), rotulo=nome)
-        assert s.manifesto == esperado
+        assert s.manifesto_json() == esperado
+
+
+# ── respostas à revisão adversarial F1 ─────────────────────────────────────
+
+def test_f1_02_offset_e_ordem_do_grao_nao_criam_fato_novo():
+    utc = timezone.utc
+    prelim = receita(maturidade=Maturidade.PRELIMINAR, cobertura=Cobertura.PARCIAL)
+    revisada_utc = receita(
+        valor=Dinheiro(12_000_000, "BRL"), maturidade=Maturidade.REVISADA, coleta_id="run-r2",
+        unidade=ChaveUnidade("acc-1", "campaign", "c-1", ("day", "campaign")),
+        janela_inicio=D0.astimezone(utc), janela_fim=(D0 + timedelta(days=1)).astimezone(utc),
+        observado_em=(D0 + timedelta(days=3)).astimezone(utc), disponivel_em=(D0 + timedelta(days=3, hours=1)).astimezone(utc))
+    assert prelim.chave_logica == revisada_utc.chave_logica
+    s = Snapshot.construir([prelim, revisada_utc], D0 + timedelta(days=4))
+    assert s.manifesto["n_incluidas"] == 1 and s.manifesto["n_versoes_substituidas"] == 1
+
+
+def test_f1_02_agregar_recusa_o_mesmo_fato_duas_vezes():
+    with pytest.raises(ContratoViolado):
+        agregar([receita(), receita(coleta_id="reentrega")])
+
+
+def test_f1_08_contribuicao_marca_ou_recusa_insumo_fraco():
+    inferida = contribuicao(obs(), receita(metodo=MetodoAtribuicao.INFERRED))
+    assert inferida.valor is None and "método" in inferida.motivo
+    parcial = receita(cobertura=Cobertura.PARCIAL, maturidade=Maturidade.PRELIMINAR)
+    assert contribuicao(obs(), parcial).valor is None
+    marcada = contribuicao(obs(), parcial, aceitar_parcial=True)
+    assert marcada.valor == Dinheiro(5_000_000, "BRL")
+    assert marcada.preliminar and marcada.cobertura_completa is False
+
+
+def test_f1_14_enum_como_str_nao_burla_regras():
+    with pytest.raises(ContratoViolado):
+        receita(metrica="revenue", value_kind="observed_auction_signal")
+    with pytest.raises(ContratoViolado):
+        obs(estado="zero_confirmado", valor=Dinheiro(5, "BRL"))
+    o = obs(metrica="cost", estado="medido")
+    assert o.metrica is Metrica.CUSTO and o.estado is EstadoMedida.MEDIDO
+
+
+def test_f1_14_sinal_invalido_e_politica_futuro_desconhecida():
+    with pytest.raises(ContratoViolado):
+        obs(metrica=Metrica.SINAL, valor="abc")
+    with pytest.raises(ContratoViolado):
+        obs(metrica=Metrica.SINAL, valor=Decimal("NaN"))
+    with pytest.raises(ContratoViolado):
+        Snapshot.construir([obs()], D0 + timedelta(days=2), politica_futuro="falha")
+
+
+def test_f1_14_completa_medida_no_meio_da_janela_e_recusada():
+    with pytest.raises(ContratoViolado):
+        obs(observado_em=D0 + timedelta(hours=10), disponivel_em=D0 + timedelta(days=2))
+
+
+def test_f1_14_filtrar_exige_identidade_completa():
+    outra = ChaveUnidade("acc-2", "campaign", "c-1", ("campaign", "day"))
+    s = Snapshot.construir([obs(), obs(unidade=outra)], D0 + timedelta(days=2))
+    assert len(s.filtrar(unidade=UNI)) == 1
+
+
+def test_f1_15_manifesto_e_somente_leitura():
+    s = Snapshot.construir([obs()], D0 + timedelta(days=2))
+    with pytest.raises(TypeError):
+        s.manifesto["fingerprint"] = "0" * 64  # type: ignore[index]
+    assert s.fingerprint == s.manifesto["fingerprint"]
+
+
+@pytest.mark.parametrize("kw", [
+    dict(disponivel_em=D0 + timedelta(days=1)),                       # disponível antes de observado
+    dict(observado_em=D0 - timedelta(hours=1), cobertura=Cobertura.PARCIAL),  # observado antes da janela
+    dict(janela_fim=D0),                                              # janela vazia
+    dict(value_kind=ValueKind.REPORTED_REVENUE),                      # value_kind em custo
+    dict(metrica=Metrica.CLIQUES, valor=-1),                          # contagem negativa
+])
+def test_f1_16_guardas_da_observacao(kw):
+    with pytest.raises(ContratoViolado):
+        obs(**kw)
+
+
+def test_f1_16_guardas_da_identidade_e_janela():
+    with pytest.raises(ContratoViolado):
+        ChaveUnidade("acc-1", "campaign", "c-1", ("campanha_inventada",))
+    with pytest.raises(ContratoViolado):
+        ChaveUnidade("acc-1", "campaign", "c-1", ("campaign",), (("z", "1"), ("a", "2")))
+    with pytest.raises(IdentidadeIncompativel):
+        contribuicao(obs(), receita(janela_inicio=D0 + timedelta(hours=1), janela_fim=D0 + timedelta(days=1)))

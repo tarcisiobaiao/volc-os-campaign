@@ -71,7 +71,7 @@ manifesto = {"arquivo": destino.name, "sha256": sha256_arquivo(str(destino)), "n
              "natureza": "sintetico", "snapshots": {}}
 for nome, corte in cortes.items():
     s = Snapshot.construir(obs, corte, rotulo=nome)
-    manifesto["snapshots"][nome] = s.manifesto
+    manifesto["snapshots"][nome] = s.manifesto_json()
 (destino.parent / "MANIFEST.json").write_text(json.dumps(manifesto, ensure_ascii=False, indent=1, sort_keys=True) + "\n",
                                                encoding="utf-8")
 print(json_canonico({k: manifesto[k] for k in ("sha256", "n_observacoes")}))

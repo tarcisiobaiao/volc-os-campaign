@@ -14,7 +14,7 @@ chave lógica; nunca sobrescreve a anterior.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Mapping, Optional, Union
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -53,6 +53,11 @@ GRAOS_CONHECIDOS = frozenset(
 )
 
 
+def _utc(v: datetime) -> str:
+    """Representação canônica de instante: UTC. O offset de origem não muda a identidade (F1-02)."""
+    return v.astimezone(timezone.utc).isoformat()
+
+
 class ContratoViolado(ValueError):
     """Observação que não respeita o contrato econômico mínimo."""
 
@@ -83,8 +88,10 @@ class ChaveUnidade:
             v = getattr(self, nome)
             if not isinstance(v, str) or not v.strip():
                 raise ContratoViolado(f"identidade: {nome} vazio")
-        if not self.grao:
-            raise ContratoViolado("identidade: grão vazio")
+        if not self.grao or not isinstance(self.grao, tuple):
+            raise ContratoViolado("identidade: grão vazio ou não-tupla")
+        # grão é um conjunto: ("day","campaign") e ("campaign","day") são a mesma identidade (F1-02)
+        object.__setattr__(self, "grao", tuple(sorted(set(self.grao))))
         desconhecidos = set(self.grao) - GRAOS_CONHECIDOS
         if desconhecidos:
             raise ContratoViolado(f"grão desconhecido: {sorted(desconhecidos)}")
@@ -135,6 +142,20 @@ class Observacao:
     linhagem: tuple[str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
+        # Enums chegam coagidos: uma str "revenue" não pode escapar das regras por `is` (F1-14)
+        for nome, tipo in (("metrica", Metrica), ("estado", EstadoMedida), ("cobertura", Cobertura),
+                           ("maturidade", Maturidade), ("metodo", MetodoAtribuicao)):
+            try:
+                object.__setattr__(self, nome, tipo(getattr(self, nome)))
+            except ValueError as exc:
+                raise ContratoViolado(f"{nome} fora do vocabulário: {getattr(self, nome)!r}") from exc
+        if self.value_kind is not None:
+            try:
+                object.__setattr__(self, "value_kind", ValueKind(self.value_kind))
+            except ValueError as exc:
+                raise ContratoViolado(f"value_kind fora do vocabulário: {self.value_kind!r}") from exc
+        if not isinstance(self.unidade, ChaveUnidade):
+            raise ContratoViolado("unidade precisa ser ChaveUnidade")
         _instante("janela_inicio", self.janela_inicio)
         _instante("janela_fim", self.janela_fim)
         _instante("observado_em", self.observado_em)
@@ -151,6 +172,9 @@ class Observacao:
             raise ContratoViolado("observado_em anterior ao início da janela")
         if not self.fonte or not self.versao_fonte or not self.coleta_id:
             raise ContratoViolado("fonte, versao_fonte e coleta_id são obrigatórios (linhagem)")
+        if self.cobertura is Cobertura.COMPLETA and self.observado_em < self.janela_fim:
+            # medido no meio da janela não pode ser completo, mesmo que o as_of seja posterior (F1-14)
+            raise ContratoViolado("cobertura completa observada antes do fim da janela")
         self._validar_valor()
 
     def _validar_valor(self) -> None:
@@ -165,6 +189,10 @@ class Observacao:
                 raise ContratoViolado("valor ausente precisa de motivo")
         if isinstance(v, float):
             raise ContratoViolado("float proibido no contrato; use Dinheiro, int ou Decimal")
+        if v is not None and not isinstance(v, (Dinheiro, int, Decimal)) or isinstance(v, bool):
+            raise ContratoViolado(f"tipo de valor não aceito: {type(v).__name__}")
+        if isinstance(v, Decimal) and not v.is_finite():
+            raise ContratoViolado("Decimal não finito (NaN/Inf) não é valor")
         if self.estado is EstadoMedida.ZERO_CONFIRMADO:
             zero = v.eh_zero() if isinstance(v, Dinheiro) else v == 0
             if not zero:
@@ -212,8 +240,8 @@ class Observacao:
         return (
             self.unidade,
             self.metrica.value,
-            self.janela_inicio.isoformat(),
-            self.janela_fim.isoformat(),
+            _utc(self.janela_inicio),
+            _utc(self.janela_fim),
             self.timezone,
             self.fonte,
             self.value_kind.value if self.value_kind else None,
@@ -234,11 +262,11 @@ class Observacao:
             "metrica": self.metrica.value,
             "valor": valor,
             "estado": self.estado.value,
-            "janela_inicio": self.janela_inicio.isoformat(),
-            "janela_fim": self.janela_fim.isoformat(),
+            "janela_inicio": _utc(self.janela_inicio),
+            "janela_fim": _utc(self.janela_fim),
             "timezone": self.timezone,
-            "observado_em": self.observado_em.isoformat(),
-            "disponivel_em": self.disponivel_em.isoformat(),
+            "observado_em": _utc(self.observado_em),
+            "disponivel_em": _utc(self.disponivel_em),
             "fonte": self.fonte,
             "versao_fonte": self.versao_fonte,
             "coleta_id": self.coleta_id,

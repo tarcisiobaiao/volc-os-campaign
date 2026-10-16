@@ -14,11 +14,12 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+from types import MappingProxyType
 from datetime import datetime
 from typing import Iterable, Literal, Optional
 
 from .fingerprint import sha256_de
-from .observation import ContratoViolado, Observacao
+from .observation import ChaveUnidade, ContratoViolado, Observacao
 from .vocab import Cobertura, Metrica
 
 ESQUEMA_SNAPSHOT = "volc-dil.snapshot.v1"
@@ -47,15 +48,40 @@ def verificar_sem_futuro(observacoes: Iterable[Observacao], as_of: datetime) -> 
             )
 
 
+def _descongelar(x):
+    if isinstance(x, MappingProxyType):
+        return {k: _descongelar(v) for k, v in x.items()}
+    if isinstance(x, tuple):
+        return [_descongelar(v) for v in x]
+    return x
+
+
+def _congelar(x):
+    if isinstance(x, dict):
+        return MappingProxyType({k: _congelar(v) for k, v in x.items()})
+    if isinstance(x, list):
+        return tuple(_congelar(v) for v in x)
+    return x
+
+
 @dataclass(frozen=True)
 class Snapshot:
     as_of: datetime
     observacoes: tuple[Observacao, ...]
     manifesto: dict
 
+    def __post_init__(self) -> None:
+        # manifesto somente leitura: uma política não consegue reescrever o fingerprint (F1-15)
+        object.__setattr__(self, "manifesto", _congelar(dict(self.manifesto)))
+        object.__setattr__(self, "_fingerprint", self.manifesto["fingerprint"])
+
+    def manifesto_json(self) -> dict:
+        """Cópia mutável e serializável do manifesto (listas, dicts)."""
+        return _descongelar(self.manifesto)
+
     @property
     def fingerprint(self) -> str:
-        return self.manifesto["fingerprint"]
+        return self._fingerprint  # type: ignore[attr-defined]
 
     @classmethod
     def construir(
@@ -67,6 +93,8 @@ class Snapshot:
         rotulo: str = "",
     ) -> "Snapshot":
         _exigir_tz(as_of)
+        if politica_futuro not in ("excluir", "falhar"):
+            raise ContratoViolado(f"politica_futuro desconhecida: {politica_futuro!r}")  # F1-14
         todas = list(observacoes)
         if politica_futuro == "falhar":
             verificar_sem_futuro(todas, as_of)
@@ -117,12 +145,12 @@ class Snapshot:
         }
         return cls(as_of=as_of, observacoes=tuple(escolhidas), manifesto=manifesto)
 
-    def filtrar(self, *, metrica: Optional[Metrica] = None, entidade_id: Optional[str] = None) -> list[Observacao]:
+    def filtrar(self, *, metrica: Optional[Metrica] = None, unidade: Optional[ChaveUnidade] = None) -> list[Observacao]:
+        """Filtra por métrica e/ou identidade COMPLETA (conta incluída). Não há filtro só por id (F1-14)."""
         return [
             o
             for o in self.observacoes
-            if (metrica is None or o.metrica is metrica)
-            and (entidade_id is None or o.unidade.entidade_id == entidade_id)
+            if (metrica is None or o.metrica is metrica) and (unidade is None or o.unidade == unidade)
         ]
 
     def verificar_integridade(self) -> None:
@@ -131,3 +159,5 @@ class Snapshot:
         corpo = [o.para_json() for o in self.observacoes]
         if sha256_de({"as_of": self.as_of.isoformat(), "observacoes": corpo}) != self.fingerprint:
             raise ContratoViolado("fingerprint do snapshot não confere")
+        if self.manifesto["fingerprint"] != self.fingerprint or self.manifesto["n_incluidas"] != len(self.observacoes):
+            raise ContratoViolado("manifesto do snapshot não confere com o conteúdo")

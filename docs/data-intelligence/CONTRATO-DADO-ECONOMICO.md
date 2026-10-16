@@ -2,7 +2,7 @@
 
 **Estado:** implementado e testado no laboratório (`experiments/data-intelligence-lab/src/volc_dil/contracts/`, stdlib apenas).
 **Não é:** schema de produção, migration ou substituto do núcleo `volc_ads/economia/` (que hoje só existe em `wip/*`).
-**Prova:** `tests/data-intelligence/test_contracts.py` — 24 contraprovas + reprodução da fixture.
+**Prova:** `tests/data-intelligence/test_contracts.py` (contraprovas + reprodução da fixture; contagem atual na suíte).
 
 ## 1. A unidade de fato: `Observacao`
 
@@ -60,3 +60,16 @@ Regras cruzadas que o construtor recusa:
 
 - Vocabulário (`EstadoMedida`, `MetodoAtribuicao`) é 1:1 com `volc_ads/economia/nucleo.py` em `wip/original-worktree-pre-qg-real-20261007` (commit 043c77f5). Diferenças: o lab acrescenta `value_kind`, `disponivel_em`, `maturidade`, `cobertura` categórica e `MetodoAtribuicao.NAO_APLICAVEL`.
 - Quando o núcleo for integrado à linha principal, o caminho é: núcleo importa/define `ValueKind` e `disponivel_em`; o lab passa a importar o núcleo e apaga sua cópia. Até lá, nada aqui é autoridade de produção.
+
+## 8. Endurecimento após a revisão adversarial F1 (2026-10-16)
+
+| Achado | Mudança no contrato |
+|---|---|
+| F1-02 | `chave_logica`, `para_json` e fingerprint usam instantes em **UTC**; o grão é um conjunto (ordenado/deduplicado). Preliminar em −03:00 e revisada em UTC agora são o mesmo fato. `agregar` recusa chave lógica repetida (reentrega/duplicata não soma). |
+| F1-08 | `contribuicao` devolve `None` para método `inferred`/`unreconciled`/`not_identifiable` e para cobertura não completa (salvo `aceitar_parcial=True`); o resultado carrega `preliminar`, `cobertura_completa`, maturidades, método e `value_kind`. |
+| F1-14 | Enums são coagidos no construtor (`"revenue"` como str não escapa das regras); valor precisa ser `Dinheiro`, `int` ou `Decimal` finito; `complete` exige `observado_em >= janela_fim`; `politica_futuro` desconhecida levanta; `Snapshot.filtrar` filtra por `ChaveUnidade` completa. |
+| F1-15 | `Snapshot.manifesto` é somente leitura (`MappingProxyType`, listas viram tuplas) e o fingerprint é fixado na construção; `manifesto_json()` devolve a cópia serializável; `verificar_integridade` confere também as contagens. |
+| F1-04 | Regra única de circularidade: `origens_circulares` (vocabulário fechado `FAMILIAS_DE_FONTE`; famílias que medem a mesma receita publisher contam como iguais) usada pelo contrato e pelo portão do surrogate; `verificar_nao_circular` checa entidade (conta, tipo, id) e interseção temporal independente de grão/dimensão. |
+| F1-16 | Testes para as oito guardas que sobreviviam a mutação. |
+
+Efeito: fingerprints mudaram (UTC); fixtures regeneradas e conferidas.

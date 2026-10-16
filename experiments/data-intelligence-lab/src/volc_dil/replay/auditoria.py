@@ -6,23 +6,27 @@ lógica. Se a decisão não muda em nenhum dos snapshots auditados, a política 
 como se tratasse null como 0 (ou ignora completamente a lacuna) — sinal de alerta.
 Se muda, a política reage à diferença entre ausência e zero.
 
+O zero de substituição tem a cobertura que um valor real teria naquela versão (completa se
+não for preliminar), para que uma política correta que exige cobertura completa o enxergue.
+
 Políticas que não leem dado nenhum (static, equal) também não mudam; para não confundir
-"cega a dados" com "null como zero", um segundo teste dobra todos os valores presentes:
-se nem isso muda a decisão, a política é classificada como `cega_a_dados`.
+"cega a dados" com "null como zero", um segundo teste perturba a receita de UMA unidade
+(×3, não preserva razões entre unidades — F1-07): se nenhuma perturbação muda a decisão,
+a política é classificada como `cega_a_dados`.
 """
 from __future__ import annotations
 
 from dataclasses import replace
 
-from volc_dil.contracts import Cobertura, Dinheiro, EstadoMedida, Observacao, Snapshot
+from volc_dil.contracts import Cobertura, Dinheiro, EstadoMedida, Maturidade, Metrica, Observacao, Snapshot
 from volc_dil.contracts.vocab import COM_VALOR
 
 from .politicas import ContextoDecisao, Decisao, Politica
 
 
 def _como_zero(o: Observacao, moeda: str) -> Observacao:
-    return replace(o, valor=Dinheiro(0, moeda), estado=EstadoMedida.ZERO_CONFIRMADO, motivo=None,
-                   cobertura=Cobertura.PARCIAL if o.cobertura is Cobertura.DESCONHECIDA else o.cobertura)
+    cob = Cobertura.PARCIAL if o.maturidade is Maturidade.PRELIMINAR else Cobertura.COMPLETA
+    return replace(o, valor=Dinheiro(0, moeda), estado=EstadoMedida.ZERO_CONFIRMADO, motivo=None, cobertura=cob)
 
 
 def snapshot_null_vira_zero(snap: Snapshot, ctx: ContextoDecisao) -> Snapshot:
@@ -35,9 +39,11 @@ def snapshot_null_vira_zero(snap: Snapshot, ctx: ContextoDecisao) -> Snapshot:
     return Snapshot.construir(trocadas, snap.as_of, politica_futuro="falhar", rotulo="auditoria_null_zero")
 
 
-def snapshot_valores_dobrados(snap: Snapshot) -> Snapshot:
-    trocadas = [replace(o, valor=Dinheiro(o.valor.micros * 2 + 1_000_000, o.valor.moeda), estado=EstadoMedida.MEDIDO)
-                if isinstance(o.valor, Dinheiro) else o for o in snap.observacoes]
+def snapshot_unidade_perturbada(snap: Snapshot, unidade) -> Snapshot:
+    """Receita de UMA unidade ×3 (+1 unidade monetária): muda razões entre unidades."""
+    trocadas = [replace(o, valor=Dinheiro(o.valor.micros * 3 + 1_000_000, o.valor.moeda), estado=EstadoMedida.MEDIDO)
+                if o.unidade == unidade and o.metrica is Metrica.RECEITA and isinstance(o.valor, Dinheiro) else o
+                for o in snap.observacoes]
     return Snapshot.construir(trocadas, snap.as_of, politica_futuro="falhar", rotulo="auditoria_sensibilidade")
 
 
@@ -53,9 +59,11 @@ def auditar_null_vs_zero(politica: Politica, casos: list[tuple[Snapshot, Context
         n_com_lacuna += 1
         a = politica.decidir(snap, ctx)
         b = politica.decidir(snapshot_null_vira_zero(snap, ctx), ctx)
-        c = politica.decidir(snapshot_valores_dobrados(snap), ctx)
         n_diverge += _assinatura(a) != _assinatura(b)
-        n_sensivel += _assinatura(a) != _assinatura(c)
+        for u in sorted(ctx.unidades):
+            if _assinatura(politica.decidir(snapshot_unidade_perturbada(snap, u), ctx)) != _assinatura(a):
+                n_sensivel += 1
+                break
     cega = n_com_lacuna > 0 and n_sensivel == 0
     return {
         "politica": politica.nome,

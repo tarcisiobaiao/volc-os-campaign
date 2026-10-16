@@ -7,10 +7,8 @@
   "senac_campaign_day": {
    "veredito": "dados_insuficientes",
    "motivos": [
-    "unidades com rótulo 1 < 20",
-    "períodos de treino fora do tempo 11 < 42",
-    "períodos de teste fora do tempo 5 < 18",
-    "linhas maduras 16 < 1200"
+    "unidades com ≥63 períodos de treino e ≥27 de teste: 0 < 50",
+    "linhas maduras 14 < 4500"
    ],
    "contagens": {
     "linhas": 25,
@@ -18,28 +16,28 @@
      "campaign_day"
     ],
     "grao_rotulo": "campaign_day",
-    "linhas_maduras": 16,
-    "linhas_sem_rotulo_ou_imaturas": 9,
+    "linhas_maduras": 14,
+    "linhas_sem_rotulo_ou_imaturas": 11,
     "unidades_com_rotulo": 1,
-    "periodos_com_rotulo": 16,
-    "periodos_treino_oot": 11,
-    "periodos_teste_oot": 5
+    "unidades_com_profundidade": 0,
+    "periodos_com_rotulo": 14,
+    "periodos_treino_oot": 10,
+    "periodos_teste_oot": 4
    },
    "features_validas": [
     "clicks",
     "custo",
     "valor_conversao_google"
    ],
-   "features_circulares": []
+   "features_circulares": [],
+   "features_vazamento_ou_sem_as_of": []
   },
   "meta_campaign_day": {
    "veredito": "dados_insuficientes",
    "motivos": [
-    "features circulares removidas (mesma origem do rótulo): ['gam_clicks', 'gam_impressions']",
-    "unidades com rótulo 7 < 20",
-    "períodos de treino fora do tempo 12 < 42",
-    "períodos de teste fora do tempo 5 < 18",
-    "linhas maduras 62 < 1200"
+    "features circulares removidas (mesma família de fonte do rótulo): ['gam_clicks', 'gam_impressions']",
+    "unidades com ≥63 períodos de treino e ≥27 de teste: 0 < 50",
+    "linhas maduras 62 < 4500"
    ],
    "contagens": {
     "linhas": 64,
@@ -50,6 +48,7 @@
     "linhas_maduras": 62,
     "linhas_sem_rotulo_ou_imaturas": 2,
     "unidades_com_rotulo": 7,
+    "unidades_com_profundidade": 0,
     "periodos_com_rotulo": 17,
     "periodos_treino_oot": 12,
     "periodos_teste_oot": 5
@@ -62,12 +61,13 @@
    "features_circulares": [
     "gam_clicks",
     "gam_impressions"
-   ]
+   ],
+   "features_vazamento_ou_sem_as_of": []
   },
   "meta_session": {
    "veredito": "nao_identificavel",
    "motivos": [
-    "alvo em 'session' é mais fino que o rótulo em 'campaign_day': exigiria ratear receita agregada"
+    "alvo 'session' não é derivável por soma do rótulo em 'campaign_day' (exigiria ratear ou inventar identidade)"
    ],
    "contagens": {
     "linhas": 64,
@@ -76,8 +76,10 @@
     ]
    },
    "features_validas": [],
-   "features_circulares": []
+   "features_circulares": [],
+   "features_vazamento_ou_sem_as_of": []
   },
+  "senac_zeros_ambiguos": 2,
   "meta_descritivo_valido": {
    "n_treino": 49,
    "n_teste": 3,
@@ -135,6 +137,7 @@
     -0.05017361578000415
    ],
    "ridge_p_skill_pos": 0.46,
+   "ridge_p_skill_acima_min": 0.16,
    "ridge_r2_oot_media_ic95": [
     -2.011341520727994,
     -2.561936021749292,
@@ -165,6 +168,7 @@
     -0.0030569410290911796
    ],
    "ridge_p_skill_pos": 0.44,
+   "ridge_p_skill_acima_min": 0.36,
    "ridge_r2_oot_media_ic95": [
     -0.04889261218944954,
     -0.08787597084405138,
@@ -195,6 +199,7 @@
     0.0018454960641171936
    ],
    "ridge_p_skill_pos": 0.505,
+   "ridge_p_skill_acima_min": 0.32,
    "ridge_r2_oot_media_ic95": [
     0.02276169963219866,
     -0.008410263300028645,
@@ -225,6 +230,7 @@
     0.0007570830933898246
    ],
    "ridge_p_skill_pos": 0.545,
+   "ridge_p_skill_acima_min": 0.055,
    "ridge_r2_oot_media_ic95": [
     0.12832440941893847,
     0.1151206499181254,
@@ -259,6 +265,7 @@
     0.0007873908315903164
    ],
    "ridge_p_skill_pos": 0.615,
+   "ridge_p_skill_acima_min": 0.0,
    "ridge_r2_oot_media_ic95": [
     0.15727878916957685,
     0.14973993593491497,
@@ -293,6 +300,7 @@
     0.0007418726445112121
    ],
    "ridge_p_skill_pos": 0.76,
+   "ridge_p_skill_acima_min": 0.0,
    "ridge_r2_oot_media_ic95": [
     0.16802624586279857,
     0.16308289901464607,
@@ -327,6 +335,7 @@
     -0.046085162396417245
    ],
    "ridge_p_skill_pos": 0.495,
+   "ridge_p_skill_acima_min": 0.215,
    "ridge_r2_oot_media_ic95": [
     -1.935142672802295,
     -2.456037903410866,
@@ -357,6 +366,7 @@
     0.013391594492701718
    ],
    "ridge_p_skill_pos": 0.52,
+   "ridge_p_skill_acima_min": 0.47,
    "ridge_r2_oot_media_ic95": [
     -0.025511292648772402,
     -0.06589324899649102,
@@ -387,6 +397,7 @@
     0.02330153829195338
    ],
    "ridge_p_skill_pos": 0.685,
+   "ridge_p_skill_acima_min": 0.605,
    "ridge_r2_oot_media_ic95": [
     0.051829872500278235,
     0.021914965104334157,
@@ -417,6 +428,7 @@
     0.024721377469054052
    ],
    "ridge_p_skill_pos": 0.915,
+   "ridge_p_skill_acima_min": 0.79,
    "ridge_r2_oot_media_ic95": [
     0.15160239237177464,
     0.13961658520774878,
@@ -451,6 +463,7 @@
     0.022612837321244153
    ],
    "ridge_p_skill_pos": 0.995,
+   "ridge_p_skill_acima_min": 0.915,
    "ridge_r2_oot_media_ic95": [
     0.17737671521280776,
     0.17063392469892957,
@@ -485,6 +498,7 @@
     0.02259808176007303
    ],
    "ridge_p_skill_pos": 1.0,
+   "ridge_p_skill_acima_min": 0.995,
    "ridge_r2_oot_media_ic95": [
     0.18693626957620949,
     0.18260506116966524,
@@ -519,6 +533,7 @@
     -0.016717677892342006
    ],
    "ridge_p_skill_pos": 0.55,
+   "ridge_p_skill_acima_min": 0.33,
    "ridge_r2_oot_media_ic95": [
     -2.1052351177105146,
     -2.7941692487538274,
@@ -549,6 +564,7 @@
     0.05817111792376174
    ],
    "ridge_p_skill_pos": 0.72,
+   "ridge_p_skill_acima_min": 0.67,
    "ridge_r2_oot_media_ic95": [
     0.022034615814530208,
     -0.020754332498852744,
@@ -579,6 +595,7 @@
     0.06311518686444033
    ],
    "ridge_p_skill_pos": 0.83,
+   "ridge_p_skill_acima_min": 0.8,
    "ridge_r2_oot_media_ic95": [
     0.10421568319224074,
     0.07503651081031257,
@@ -609,6 +626,7 @@
     0.06736282994198639
    ],
    "ridge_p_skill_pos": 0.985,
+   "ridge_p_skill_acima_min": 0.96,
    "ridge_r2_oot_media_ic95": [
     0.1985712549558317,
     0.18913939058532256,
@@ -643,6 +661,7 @@
     0.06417952470220639
    ],
    "ridge_p_skill_pos": 1.0,
+   "ridge_p_skill_acima_min": 1.0,
    "ridge_r2_oot_media_ic95": [
     0.21757667345892578,
     0.21225976115781287,
@@ -677,6 +696,7 @@
     0.06370136358629479
    ],
    "ridge_p_skill_pos": 1.0,
+   "ridge_p_skill_acima_min": 1.0,
    "ridge_r2_oot_media_ic95": [
     0.22319871496481675,
     0.21989502365358374,
@@ -713,6 +733,7 @@
     0.01688021878727458
    ],
    "ridge_p_skill_pos": 0.5,
+   "ridge_p_skill_acima_min": 0.45,
    "ridge_r2_oot_media_ic95": [
     -0.04029464264046797,
     -0.09622384464468656,
@@ -745,6 +766,7 @@
     0.8051026535819765
    ],
    "ridge_p_skill_pos": 1.0,
+   "ridge_p_skill_acima_min": 1.0,
    "ridge_r2_oot_media_ic95": [
     0.9442096103629765,
     0.9371826471439005,
@@ -777,6 +799,7 @@
     0.038212807847725225
    ],
    "ridge_p_skill_pos": 0.59,
+   "ridge_p_skill_acima_min": 0.53,
    "ridge_r2_oot_media_ic95": [
     -0.039522970117640055,
     -0.12897633744110013,
@@ -808,6 +831,7 @@
     0.022444112710638436
    ],
    "ridge_p_skill_pos": 0.99,
+   "ridge_p_skill_acima_min": 0.9,
    "ridge_r2_oot_media_ic95": [
     0.1769472889965848,
     0.16747099385309236,
@@ -840,6 +864,7 @@
     0.8179927983770339
    ],
    "ridge_p_skill_pos": 1.0,
+   "ridge_p_skill_acima_min": 1.0,
    "ridge_r2_oot_media_ic95": [
     0.9615027876231241,
     0.960442014690882,
@@ -872,6 +897,7 @@
     0.06383954985836658
    ],
    "ridge_p_skill_pos": 1.0,
+   "ridge_p_skill_acima_min": 1.0,
    "ridge_r2_oot_media_ic95": [
     0.22552107744548383,
     0.21672151091691577,
@@ -888,11 +914,12 @@
   }
  ],
  "calibracao_portao": {
-  "criterio": "P(skill_ridge>0) >= 0.8 e IC95 inferior da skill média > 0, sinal fraco (0.25)",
+  "criterio": "P(skill_ridge > SKILL_MIN=0.01) >= 0.8, sinal fraco (0.25); conferido contra sinal nulo",
+  "max_p_skill_acima_min_sob_sinal_nulo": 0.36,
   "menor_volume": {
-   "unidades": 20,
-   "periodos": 60,
-   "linhas": 1200,
+   "unidades": 50,
+   "periodos": 90,
+   "linhas": 4500,
    "forca_sinal": 0.25,
    "features": [
     "s1",
@@ -901,34 +928,36 @@
    ],
    "seeds": 200,
    "ridge_skill_media_ic95": [
-    0.022346395097815643,
-    0.019971412726577233,
-    0.024721377469054052
+    0.02142399159520192,
+    0.020235145869159685,
+    0.022612837321244153
    ],
-   "ridge_p_skill_pos": 0.915,
+   "ridge_p_skill_pos": 0.995,
+   "ridge_p_skill_acima_min": 0.915,
    "ridge_r2_oot_media_ic95": [
-    0.15160239237177464,
-    0.13961658520774878,
-    0.1635881995358005
+    0.17737671521280776,
+    0.17063392469892957,
+    0.18411950572668595
    ],
    "ridge_cobertura80_media_ic95": [
-    0.7852083333333334,
-    0.781235345648754,
-    0.7891813210179128
+    0.7881740740740741,
+    0.7862183310990274,
+    0.7901298170491209
    ],
    "hgb_skill_media_ic95": [
-    -0.09207277434315919,
-    -0.10313438814445608,
-    -0.0810111605418623
+    -0.02533486205884333,
+    -0.030119510800168746,
+    -0.020550213317517912
    ],
    "hgb_seeds": 50
   },
   "parametros_portao_usados": {
-   "min_unidades": 20,
-   "min_periodos_treino": 42,
-   "min_periodos_teste": 18,
-   "min_linhas_maduras": 1200,
-   "fracao_teste": 0.3
+   "min_unidades": 50,
+   "min_periodos_treino_por_unidade": 63,
+   "min_periodos_teste_por_unidade": 27,
+   "min_linhas_maduras": 4500,
+   "fracao_teste": 0.3,
+   "tolerancia_disponibilidade": "1 day, 0:00:00"
   }
  },
  "manifesto": {
@@ -974,8 +1003,8 @@
    "seeds_contraprova": 100,
    "fracao_teste": 0.3
   },
-  "codigo_sha256": "320985bb1e94e166427a54d90cfc8b802316285ea2589eab0b4b48d57bb407d7",
-  "resultado_sha256": "8d30e324b315821af0e23ca2b5de20afdf47ba6c5d400c2d45620c8e3d2a9cd3",
+  "codigo_sha256": "7977411a975d59225951802b48939781bba14afcb6070c9effd5410b69ed2043",
+  "resultado_sha256": "cf2d58b8a0d1a1a6edb3c09c0711ffac9d5ef9f3954ad4249344ee627552a7d7",
   "versoes": {
    "python": "3.13.0",
    "plataforma": "macOS-15.6-arm64-arm-64bit-Mach-O",
@@ -987,7 +1016,7 @@
    "polars": "1.44.2",
    "pandas": "3.0.6"
   },
-  "fingerprint": "5cecd6d316d213ed392846e2b1cfa7730548c0ee8f643a907b50b21428eb62a2"
+  "fingerprint": "a07afefc10c74886d7354f7ab9362b7caf2002ac6ca12663d7a9b7e7534d547b"
  },
- "segundos": 84.7
+ "segundos": 82.2
 }

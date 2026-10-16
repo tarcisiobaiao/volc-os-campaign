@@ -9,8 +9,11 @@
 """
 from __future__ import annotations
 
+import ast
 import importlib.util
+import inspect
 import json
+import textwrap
 from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
@@ -19,6 +22,7 @@ import pytest
 
 from volc_dil.contracts import (
     ChaveUnidade,
+    ContratoViolado,
     Dinheiro,
     IdentidadeIncompativel,
     Maturidade,
@@ -41,10 +45,11 @@ from volc_dil.replay import (
     proporcional_ingenua,
     relatorio_cenario,
 )
+from volc_dil.replay import politicas as P
 from volc_dil.replay.auditoria import auditar_null_vs_zero
-from volc_dil.replay.avaliacao import bytes_relatorio, drawdown_maximo
+from volc_dil.replay.avaliacao import alocacao_oraculo, bytes_relatorio, drawdown_maximo, metricas
 from volc_dil.replay.cenario import EspecCenario, Mundo, dia_de, repartir
-from volc_dil.replay.motor import cortar_as_of
+from volc_dil.replay.motor import cortar_as_of, validar_decisao
 from volc_dil.replay.politicas import Decisao, indexar
 
 LAB = Path(__file__).resolve().parents[2] / "experiments" / "data-intelligence-lab"
@@ -217,8 +222,37 @@ def test_e_decisao_usa_preliminar_e_nao_a_revisada():
         assert idx.get((ctx.unidades[0], Metrica.RECEITA, ctx.dia - timedelta(days=1))) is None  # ainda não reportado
     assert verificados > 0
     assert all(d.insumos_preliminares > 0 for d in ex.decisoes[3:])
+    # uso de preliminar MEDIDO por efeito no motor (não autodeclarado) — F1-06
+    assert sum(1 for d in ex.decisoes if d.dependeu_de_preliminar) > 0
     gulosa = executar(espec, GulosaConservadora())
     assert all(d.insumos_preliminares == 0 for d in gulosa.decisoes)
+    assert all(d.dependeu_de_preliminar is False for d in gulosa.decisoes)
+
+
+def _gulosa_mutante_que_le_preliminar():
+    """Mutante F1-06: lê preliminar/parcial mas continua declarando insumos_preliminares=0."""
+    src = textwrap.dedent(inspect.getsource(P.GulosaConservadora.decidir))
+    trocas = {
+        "if r.maturidade is Maturidade.PRELIMINAR or r.cobertura is not Cobertura.COMPLETA:": "if False:",
+        "if contrib.preliminar or not contrib.cobertura_completa:": "if False:",
+        "contrib = contribuicao(c, r)": "contrib = contribuicao(c, r, aceitar_parcial=True)",
+    }
+    for a, b in trocas.items():
+        assert a in src, a
+        src = src.replace(a, b)
+    ns: dict = {}
+    exec(compile(src, "mutante", "exec"), P.__dict__, ns)
+    return type("GulosaMutante", (P.GulosaConservadora,), {"decidir": ns["decidir"]})(dias_maturacao=2)
+
+
+def test_e_motor_mede_uso_de_preliminar_que_a_politica_nao_declara():
+    espec = replace(cenario_mini(), p_receita_falha_prelim=0.0, p_receita_nao_coletada=0.0)
+    mut = executar(espec, _gulosa_mutante_que_le_preliminar())
+    assert all(d.insumos_preliminares == 0 for d in mut.decisoes)  # a mentira declarada
+    assert sum(1 for d in mut.decisoes if d.dependeu_de_preliminar) > 0  # o motor pega
+    m = metricas(mut)
+    assert m["decisoes_com_dado_preliminar_declarado"] == 0
+    assert m["decisoes_que_dependeram_de_preliminar_medido"] > 0
 
 
 def test_e_snapshot_registra_versao_substituida():
@@ -287,3 +321,110 @@ def test_b_auditoria_nao_confunde_politica_cega_com_null_como_zero():
     for p in (Estatica(), Igual()):
         r = auditar_null_vs_zero(p, casos)
         assert r["cega_a_dados"] is True and r["suspeita_null_como_zero"] is False
+
+
+# ── F1-01: política trapaceira (contraprova permanente) ────────────────────
+
+class _Trapaceira:
+    """Lê só snapshot+contexto e tenta reconstruir o mundo pela linhagem/coleta/rótulo."""
+
+    nome = "trapaceira_linhagem"
+
+    def decidir(self, snap, ctx):
+        P.exigir_snapshot_do_corte(snap, ctx)
+        textos = [x for o in snap.observacoes for x in (*o.linhagem, o.coleta_id)] + [str(snap.manifesto["rotulo"])]
+        pistas = {}
+        for t in textos:
+            for parte in t.replace("/", ":").split(":"):
+                if parte.isdigit():
+                    pistas.setdefault("seed", int(parte))
+            for nome in ("mini", "estacionario", "quebra_regime"):
+                if nome in t:
+                    pistas["cenario"] = nome
+        if "seed" not in pistas or "cenario" not in pistas:
+            return Decisao(dict(ctx.alocacao_atual))
+        espec = replace(cenario_mini(), seed=pistas["seed"])
+        i = (ctx.dia - espec.inicio).days
+        return Decisao(alocacao_oraculo(Mundo(espec), i))
+
+
+def test_f101_snapshot_nao_carrega_seed_nem_cenario():
+    _, casos = _capturar(cenario_mini(), Estatica())
+    for snap, _ in casos:
+        textos = [x for o in snap.observacoes for x in (*o.linhagem, o.coleta_id, o.versao_fonte, o.fonte)]
+        textos.append(str(snap.manifesto["rotulo"]))
+        assert not any("seed" in t or "mini" in t or "cenario" in t for t in textos)
+
+
+def test_f101_trapaceira_nao_acha_o_mundo_e_vira_static():
+    espec = cenario_mini()
+    trap = executar(espec, _Trapaceira(), medir_preliminar=False)
+    est = executar(espec, Estatica(), medir_preliminar=False)
+    assert [d.alocacao for d in trap.decisoes] == [d.alocacao for d in est.decisoes]
+
+
+def test_f101_alocacao_de_oraculo_abaixo_do_piso_e_recusada():
+    espec = cenario_mini()
+    _, casos = _capturar(espec, Estatica())
+    snap, ctx = casos[3]
+    aloc = dict(ctx.alocacao_atual)
+    brl = sorted(u for u in ctx.unidades if ctx.moeda_por_unidade[u] == "BRL")
+    tirar = aloc[brl[0]].micros - ctx.piso_micros["BRL"] + 1
+    aloc[brl[0]] = Dinheiro(aloc[brl[0]].micros - tirar, "BRL")
+    aloc[brl[1]] = Dinheiro(aloc[brl[1]].micros + tirar, "BRL")
+    with pytest.raises(ContratoViolado, match="piso"):
+        validar_decisao(Decisao(aloc), ctx)
+
+
+def test_f101_modulos_de_politica_nao_importam_a_verdade():
+    proibidos = {"Mundo", "alocacao_oraculo", "catalogo", "EspecCenario", "cenario_mini", "metricas"}
+    for nome in ("politicas.py", "auditoria.py"):
+        arvore = ast.parse((LAB / "src" / "volc_dil" / "replay" / nome).read_text(encoding="utf-8"))
+        importados = {a.asname or a.name for n in ast.walk(arvore) if isinstance(n, ast.ImportFrom) for a in n.names}
+        assert not (importados & proibidos), (nome, importados & proibidos)
+
+
+# ── F1-07: auditoria pega greedy por razão com null→0 ──────────────────────
+
+class _GulosaNullComoZero(GulosaConservadora):
+    nome = "greedy_null_as_zero"
+
+    def decidir(self, snapshot, ctx):
+        from fractions import Fraction
+        from volc_dil.contracts.vocab import COM_VALOR
+        P.exigir_snapshot_do_corte(snapshot, ctx)
+        idx = indexar(snapshot)
+        dias = [ctx.dia - timedelta(days=self.dias_maturacao + k) for k in range(self.janela_dias)]
+        roi = {}
+        for u in ctx.unidades:
+            rec = cus = 0
+            for d in dias:
+                c, r = idx.get((u, Metrica.CUSTO, d)), idx.get((u, Metrica.RECEITA, d))
+                cus += c.valor.micros if c is not None and c.estado in COM_VALOR else 0  # BUG: null -> 0
+                rec += r.valor.micros if r is not None and r.estado in COM_VALOR else 0
+            if cus:
+                roi[u] = Fraction(rec, cus)
+        aloc = {u: ctx.alocacao_atual[u] for u in ctx.unidades}
+        for moeda, us in P._por_moeda(ctx).items():
+            el = sorted((u for u in us if u in roi), key=lambda u: (-roi[u], u))
+            i, j = 0, len(el) - 1
+            while i < j:
+                m, p = el[i], el[j]
+                if roi[m] <= roi[p] * Fraction(10_000 + self.margem_bps, 10_000):
+                    break
+                cm, cp = aloc[m].micros, aloc[p].micros
+                delta = min(cp * self.teto_bps // 10_000, cm * self.teto_bps // 10_000, max(cp - ctx.piso_micros[moeda], 0))
+                if delta > 0:
+                    aloc[m], aloc[p] = Dinheiro(cm + delta, moeda), Dinheiro(cp - delta, moeda)
+                i += 1
+                j -= 1
+        return Decisao(aloc)
+
+
+def test_f107_auditoria_pega_greedy_null_como_zero_e_nao_acusa_greedy_correta():
+    espec = replace(cenario_mini(), n_dias=20, p_receita_falha_prelim=0.3, p_receita_nao_coletada=0.15)
+    _, casos = _capturar(espec, Estatica())
+    ruim = auditar_null_vs_zero(_GulosaNullComoZero(), casos)
+    boa = auditar_null_vs_zero(GulosaConservadora(), casos)
+    assert ruim["cega_a_dados"] is False and ruim["suspeita_null_como_zero"] is True
+    assert boa["suspeita_null_como_zero"] is False and boa["decisoes_que_distinguem_null_de_zero"] > 0

@@ -24,7 +24,7 @@ sys.path.insert(0, str(SRC))
 
 from volc_dil.bench import dados  # noqa: E402
 from volc_dil.bench.engines import CONFIG_DUCKDB, para_observacoes  # noqa: E402
-from volc_dil.contracts import json_canonico, manifesto_execucao, sha256_arquivo  # noqa: E402
+from volc_dil.contracts import json_canonico, manifesto_execucao, sha256_arquivo, sha256_codigo  # noqa: E402
 
 ARTEFATOS = RAIZ / "artifacts" / "bench"
 SAIDA = RAIZ / "results" / "bench" / "bench_resultados.json"
@@ -144,7 +144,7 @@ def main() -> int:
         bloco = {"dados": prep["info"], "engines": {}}
         print(f"\n== n={n} linhas={prep['info']['n_linhas']} parquet={prep['info']['parquet_bytes']} "
               f"jsonl={prep['info']['jsonl_plano_bytes']}", flush=True)
-        engines = ["python_puro", "duckdb", "polars"] + (["contrato"] if n <= LIMITE_CONTRATO else [])
+        engines = ["python_puro", "duckdb", "polars", "polars_de_tuplas"] + (["contrato"] if n <= LIMITE_CONTRATO else [])
         for e in engines:
             r = rodar_com_rss(e, threads=th, reps=args.reps, parquet=prep["parquet"], jsonl=prep["jsonl"], as_of=as_of)
             bloco["engines"][e] = r
@@ -168,6 +168,9 @@ def main() -> int:
         entradas={f"parquet_{n}": b["dados"]["parquet_sha256"] for n, b in resultado["tamanhos"].items()},
         parametros={"tamanhos": tamanhos, "reps": args.reps, "threads": th, "as_of_us": as_of,
                     "duckdb_config": CONFIG_DUCKDB, "limite_contrato": LIMITE_CONTRATO, "timeout_s": TIMEOUT_S},
+        codigo_sha256=sha256_codigo([str(p) for p in sorted((SRC / "volc_dil" / "bench").glob("*.py"))]
+                                    + [str(Path(__file__).resolve())]),
+        resultado=resultado,
     )
     saida = {"natureza": "sintetico", "manifesto": manifesto, "maquina": _maquina(),
              "threads": {"OMP_NUM_THREADS": th, "POLARS_MAX_THREADS": th, "duckdb_threads": th, "extra": "1 thread em n>=1e5"},
