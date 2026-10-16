@@ -380,6 +380,15 @@ def gerar_mundo(params: ParametrosMundo, seed: int,
     bot_k[:, :, 1] += n_bot - bot_k.sum(axis=2)
     bot_det = _ppf_binom(_uniformes(seed, "u_bot_deteccao", shp), bot_k, p.bot_deteccao)
 
+    # corte rígido do limite diário (Google: até 2× o orçamento diário num dia): a partir da hora em
+    # que o gasto acumulado do dia passaria do limite, a campanha para de servir no resto do dia.
+    bruto_h = np.rint((cliq_h + bot_k) * cpc_t * MICROS).sum(axis=2).reshape(C, D, 24)
+    limite = p.limite_diario_x_orcamento * orc_hora.reshape(C, D, 24).max(axis=2)
+    serve = (np.cumsum(bruto_h, axis=2) <= limite[:, :, None]).reshape(C, T)
+    corte = ~serve & ativo
+    m3 = serve[:, :, None]
+    imp, cliq_h, inval, bot_k, bot_det = imp * m3, cliq_h * m3, inval * m3, bot_k * m3, bot_det * m3
+
     cliques = cliq_h + bot_k
     custo_bruto = np.rint(cliques * cpc_t * MICROS).astype(np.int64)
     credito = np.rint((inval + bot_det) * cpc_t * MICROS).astype(np.int64)
@@ -425,6 +434,6 @@ def gerar_mundo(params: ParametrosMundo, seed: int,
         "pageviews": pv + pv_bot, "pageviews_bot": pv_bot, "destino": destino, "receita_micros": receita,
     }
     flags = {"existe": existe, "ativo": ativo, "pausada_dia": pausada_dia & existe.reshape(C, D, 24).any(axis=2),
-             "theta": theta, "bot_hora": bot_hora, "pico_rpm_hora": pico, "orcamento_hora_micros": orc_hora,
+             "theta": theta, "corte_limite_diario": corte, "bot_hora": bot_hora, "pico_rpm_hora": pico, "orcamento_hora_micros": orc_hora,
              "fator_rpm": fator_rpm, "fator_cpc": fator_cpc}
     return Mundo(p, seed, campanhas, dias, arrays, flags, tz)

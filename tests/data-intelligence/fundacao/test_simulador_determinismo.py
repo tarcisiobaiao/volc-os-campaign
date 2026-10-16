@@ -52,12 +52,19 @@ def test_pacote_bytes_identicos_em_duas_geracoes():
 
 
 def test_mundos_pareados_so_diferem_no_que_o_cenario_injeta():
-    base, bot = _sim("estavel"), _sim("outlier_bot")
-    # mesmo acaso para tudo que não é bot: impressões e cliques humanos idênticos
-    assert np.array_equal(base.mundo.horario("impressoes"), bot.mundo.horario("impressoes"))
+    # pareamento vale entre cenários que só diferem nos parâmetros injetados (estavel difere em frac_novas)
+    e_bot = cenario("outlier_bot")
+    e_base = replace(e_bot, nome="outlier_bot_sem_bot", mundo=replace(e_bot.mundo, p_bot_hora=0.0, p_pico_rpm_hora=0.0))
+    base = simular(e_base, SEED, n_campanhas=8, n_dias=14)
+    bot = _sim("outlier_bot")
+    # mesmo acaso para tudo que não é bot: impressões e cliques humanos idênticos, exceto nas horas
+    # em que o gasto do bot fez a campanha bater o limite diário (corte rígido, efeito legítimo do cenário)
+    servem = ~(base.mundo.flags["corte_limite_diario"] | bot.mundo.flags["corte_limite_diario"])
+    assert servem.mean() > 0.95
+    assert np.array_equal(base.mundo.horario("impressoes")[servem], bot.mundo.horario("impressoes")[servem])
     humano_base = base.mundo.horario("cliques") - base.mundo.horario("cliques_bot")
     humano_bot = bot.mundo.horario("cliques") - bot.mundo.horario("cliques_bot")
-    assert np.array_equal(humano_base, humano_bot)
+    assert np.array_equal(humano_base[servem], humano_bot[servem])
     assert bot.mundo.horario("cliques_bot").sum() > 0 and base.mundo.horario("cliques_bot").sum() == 0
 
 

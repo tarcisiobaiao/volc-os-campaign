@@ -73,6 +73,7 @@ class ParametrosMundo:
     orcamento_razao_min: float = 0.6
     orcamento_razao_max: float = 1.6
     overdelivery: float = 1.0
+    limite_diario_x_orcamento: float = 2.0  # corte rígido: o dia para de servir ao atingir 2× o orçamento
     mudancas_orcamento: tuple[MudancaOrcamento, ...] = ()
     # sazonalidade
     amp_diaria: float = 0.55

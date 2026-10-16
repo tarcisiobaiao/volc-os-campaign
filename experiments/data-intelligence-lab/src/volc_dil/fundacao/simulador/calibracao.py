@@ -34,6 +34,7 @@ FONTES_PARAMETROS: dict[str, tuple[str, str]] = {
     "funil_passos/continuacao/aterrissagem": (ARBITRARIO, "funil de pauta paginada; sem dado de sessão com receita (não identificável)"),
     "amp_diaria/hora_pico/fator_fds_*": (ARBITRARIO, "forma plausível (vale de madrugada, pico à noite); sem série horária real versionada"),
     "share_dispositivo/mult_*_dispositivo/prob_pais": (ARBITRARIO, "maioria mobile e BR; números escolhidos"),
+    "limite_diario_x_orcamento": (LITERATURA, "Ajuda do Google Ads: gasto diário pode chegar a 2× o orçamento médio diário; corte rígido modelado"),
     "elasticidade_cpc/overdelivery": (ARBITRARIO, "pacing em expectativa (κ=1); o Google permite até 2× o orçamento diário num dia (documentação Google Ads, não verificada)"),
     "taxa_cliques_invalidos/bot_*": (ARBITRARIO, f"{_MATRIZ}: 'invalid clicks podem ajustar depois' [H]; magnitude escolhida"),
     "tau_aprendizado_h/amp_*_aprendizado/volume_inicial": (LITERATURA, "período de aprendizado de lances automáticos ~até 7 dias (Ajuda do Google Ads); amplitudes arbitrárias"),
