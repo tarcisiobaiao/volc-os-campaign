@@ -30,6 +30,12 @@ no console, não aqui.
 
 Uso:
     backend/.venv/bin/python scripts/autorizar-google.py [caminho/do/client_secret.json]
+    python3 scripts/autorizar-google.py --gtm-publish [client_secret.json]
+    python3 scripts/autorizar-google.py --gtm-deploy [client_secret.json]
+
+`--gtm-deploy` cria uma credencial separada com somente os quatro escopos usados
+no ciclo workspace -> tag -> versao -> publish. Ela nao substitui Ads nem a
+credencial de auditoria read-only.
 """
 from __future__ import annotations
 
@@ -57,6 +63,14 @@ ESCOPOS_PADRAO = [
 
 DESTINO_PADRAO = pathlib.Path.home() / ".config" / "volc" / "google-oauth.json"
 DESTINO_GTM_PUBLICACAO = pathlib.Path.home() / ".config" / "volc" / "google-gtm-publish-oauth.json"
+DESTINO_GTM_DEPLOY = pathlib.Path.home() / ".config" / "volc" / "google-gtm-deploy-oauth.json"
+
+ESCOPOS_GTM_DEPLOY = [
+    "https://www.googleapis.com/auth/tagmanager.readonly",
+    "https://www.googleapis.com/auth/tagmanager.edit.containers",
+    "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
+    "https://www.googleapis.com/auth/tagmanager.publish",
+]
 
 
 def _porta_livre() -> int:
@@ -141,11 +155,20 @@ def main() -> None:
               "client_secret_891119529554-qp053mpvh5jkun5eu2o8dt1uanqgp92d."
               "apps.googleusercontent.com.json")
     publicar_gtm = "--gtm-publish" in sys.argv[1:]
-    argumentos = [a for a in sys.argv[1:] if a != "--gtm-publish"]
+    deploy_gtm = "--gtm-deploy" in sys.argv[1:]
+    if publicar_gtm and deploy_gtm:
+        raise SystemExit("Use apenas um entre --gtm-publish e --gtm-deploy.")
+    argumentos = [a for a in sys.argv[1:] if a not in {"--gtm-publish", "--gtm-deploy"}]
     caminho = pathlib.Path(argumentos[0] if argumentos else padrao)
-    escopos = (["https://www.googleapis.com/auth/tagmanager.publish"]
-               if publicar_gtm else ESCOPOS_PADRAO)
-    destino = DESTINO_GTM_PUBLICACAO if publicar_gtm else DESTINO_PADRAO
+    if deploy_gtm:
+        escopos = ESCOPOS_GTM_DEPLOY
+        destino = DESTINO_GTM_DEPLOY
+    elif publicar_gtm:
+        escopos = ["https://www.googleapis.com/auth/tagmanager.publish"]
+        destino = DESTINO_GTM_PUBLICACAO
+    else:
+        escopos = ESCOPOS_PADRAO
+        destino = DESTINO_PADRAO
     if not caminho.exists():
         raise SystemExit(f"Não achei o client secret em {caminho}")
 
@@ -195,7 +218,7 @@ def main() -> None:
     print("\n── provando cada API com o token novo ──")
     _sondar("Google Tag Manager v2",
             "https://tagmanager.googleapis.com/tagmanager/v2/accounts", tok["access_token"])
-    if not publicar_gtm:
+    if not publicar_gtm and not deploy_gtm:
         _sondar("GA4 Admin",
                 "https://analyticsadmin.googleapis.com/v1beta/accountSummaries", tok["access_token"])
         _sondar("Google Ads v25",

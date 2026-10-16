@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-15T22:02:16-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-16T13:17:18-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 930 arquivos: 667 Markdown e 263 SQL;
-- 928 versionados e 2 ainda não versionados;
+- 935 arquivos: 669 Markdown e 266 SQL;
+- 935 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 171 SQL com palavras de mutação de alto risco.
+- 174 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,9 +17,9 @@ Gerado em `2026-10-15T22:02:16-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 56 |
-| `documentation` | 477 |
+| `documentation` | 478 |
 | `generated` | 2 |
-| `module-guide` | 45 |
+| `module-guide` | 46 |
 | `product-document` | 23 |
 | `project-control` | 4 |
 | `reference` | 12 |
@@ -27,7 +27,7 @@ Gerado em `2026-10-15T22:02:16-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 148 |
+| `sql-needs-review` | 151 |
 | `sql-validation` | 13 |
 
 ## Duplicatas exatas
@@ -79,8 +79,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/get_rotated_campaign_highlights_v2.sql` | `sql-needs-lineage` | 3 | 10 |
 | `src/sql/joinads/01_joinads_metrics.sql` | `sql-migration-line` | 4 | 7 |
 | `src/sql/joinads/03_limpa_ingestao_ruim.sql` | `sql-migration-line` | 1 | 0 |
-| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | 3 | 6 |
-| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | 2 | 2 |
+| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | 3 | 5 |
+| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | 2 | 3 |
 | `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/merge_projects_fix.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/pautador/02_publicacao_por_projeto.sql` | `sql-migration-line` | 1 | 0 |
@@ -137,6 +137,9 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260909215941_creative_pack_append_revisions.sql` | `sql-needs-review` | 6 | 12 |
 | `supabase/migrations/20260909234342_creative_generation_versions.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/20260910143000_gam_attribution_grain_router.sql` | `sql-needs-review` | 5 | 20 |
+| `supabase/migrations/20261015153301_harden_volc_measurement.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/20261016155958_measurement_event_id_v31.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/rollback_20261016155958_measurement_event_id_v31.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | 33 | 126 |
@@ -197,7 +200,7 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v21_pacote_reverter.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v23_01_receita_datada_cambio.sql` | `sql-needs-review` | 18 | 51 |
 | `supabase/migrations/v23_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
-| `supabase/migrations/v25_01_conversao_offline_ledger.sql` | `sql-needs-review` | 14 | 50 |
+| `supabase/migrations/v25_01_conversao_offline_ledger.sql` | `sql-needs-review` | 14 | 48 |
 | `supabase/migrations/v25_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
@@ -324,8 +327,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/get_rotated_campaign_highlights_read_only.sql` | `sql-needs-lineage` | high | 2 | 6 |
 | `src/sql/get_rotated_campaign_highlights_simple.sql` | `sql-needs-lineage` | high | 3 | 8 |
 | `src/sql/get_rotated_campaign_highlights_v2.sql` | `sql-needs-lineage` | high | 3 | 10 |
-| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | high | 3 | 6 |
-| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | high | 2 | 2 |
+| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | high | 3 | 5 |
+| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | high | 2 | 3 |
 | `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/merge_projects_fix.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/n8n_insert_examples.sql` | `sql-needs-lineage` | medium | 1 | 0 |

@@ -11,9 +11,11 @@ arquivos permitem revisão, comparação e recuperação sem depender do editor 
 - `volc-sensor-v3.html`: coleta somente eventos comportamentais allowlisted e os
   envia em lote para `volc-ingest`.
 
-Ambos foram publicados na versão 35 do contêiner em 15/10/2026. A versão 34 é o
-rollback imediato. A publicação foi feita em workspace isolado e não reativou as
-tags legadas de escrita direta no Supabase.
+O wrapper entrou na versão 35. O sensor v3.1 foi publicado na versão 36 em
+16/10/2026, corrigindo a colisão entre eventos legítimos do mesmo tipo ocorridos
+no mesmo segundo. A versão 35 é o rollback imediato do código do sensor. A
+publicação foi feita em workspace isolado e não reativou as tags legadas de
+escrita direta no Supabase.
 
 ## Fronteira de dados
 

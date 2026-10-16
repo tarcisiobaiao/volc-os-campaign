@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-15T22:02:16-03:00",
+  "generated_at": "2026-10-16T13:17:18-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 930,
-    "markdown": 667,
-    "sql": 263,
-    "tracked": 928,
-    "untracked": 2,
+    "files": 935,
+    "markdown": 669,
+    "sql": 266,
+    "tracked": 935,
+    "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 56,
-      "documentation": 477,
+      "documentation": 478,
       "generated": 2,
-      "module-guide": 45,
+      "module-guide": 46,
       "product-document": 23,
       "project-control": 4,
       "reference": 12,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 42,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 148,
+      "sql-needs-review": 151,
       "sql-validation": 13
     },
     "sql_risk": {
-      "high": 171,
+      "high": 174,
       "medium": 66,
       "read-only-or-ddl-free": 26
     }
@@ -1266,10 +1266,10 @@
       "path": "docs/architecture/ADR-ORQUESTRACAO-MULTISSUPERFICIE-AGENTES.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
-      "bytes": 5024,
-      "lines": 136,
-      "sha256": "87166acb9d41bba77c2db340e26c4be986e3fbbe42a6e02c133864da2fe776ab",
+      "tracked": true,
+      "bytes": 5234,
+      "lines": 138,
+      "sha256": "8d97fcb14f5b52a345f78377cab0493490e2038fb23e0b562d40a6232bce892c",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1677,7 +1677,7 @@
       "tracked": true,
       "bytes": 26276,
       "lines": 343,
-      "sha256": "3748e07b4e9bfb49275da2d7bd4673f2f145d13091a950b3cb7c49d212f834f6",
+      "sha256": "b0f3cc082b6bf6d38409e07e568dc6ee49bff13da57994aefe9684e5893193e7",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6342,7 +6342,7 @@
       "path": "docs/operations/CLUSTERS-AGENTES-20261015.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 4539,
       "lines": 86,
       "sha256": "60fbb7d9af8bff019d955c25f797de3282b3894f7bffb17ee170ae7eea104a3c",
@@ -6358,6 +6358,18 @@
       "bytes": 5220,
       "lines": 94,
       "sha256": "fe4b40b87a2794366f3db2db75cedca2b55385af6e08696b436e7d6024d73f9a",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/operations/VOLC-MEASUREMENT-V3-2026-10-15.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4278,
+      "lines": 89,
+      "sha256": "d9d803d16eb8e62487cbd6d227b68c952ec0bb841662cb93da2af7734ad6cad0",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7527,6 +7539,18 @@
       "sql_risk": null
     },
     {
+      "path": "measurement/gtm/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 2356,
+      "lines": 60,
+      "sha256": "df4211f0396c1cd7ba5d7113980acb219e88a0c84c544f64a269ba4bcbd29df5",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "scripts/archive/README.md",
       "extension": ".md",
       "classification": "archived",
@@ -8339,7 +8363,7 @@
       "lines": 269,
       "sha256": "42df7bc0e9adf143231847157943c8057635d7be17f6149c032f0cc839a18df5",
       "graph_nodes": 3,
-      "graph_degree": 6,
+      "graph_degree": 5,
       "sql_risk": "high"
     },
     {
@@ -8351,7 +8375,7 @@
       "lines": 239,
       "sha256": "8dba7a8bfdb08e4db45a522a14da15ed4679ff1dddfc6c296ab50801753dd3d0",
       "graph_nodes": 2,
-      "graph_degree": 2,
+      "graph_degree": 3,
       "sql_risk": "high"
     },
     {
@@ -9675,6 +9699,30 @@
       "sql_risk": "high"
     },
     {
+      "path": "supabase/migrations/20261015153301_harden_volc_measurement.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 988,
+      "lines": 24,
+      "sha256": "dcae6aa49e03c4e167a357eb2a7c576497e206f48f0bf4929b01601454b6dbba",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/20261016155958_measurement_event_id_v31.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1088,
+      "lines": 37,
+      "sha256": "059942751891a8dd431eae0b141ccc2fe679c371f8d427a9a1bf44fca0a92f6f",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
       "path": "supabase/migrations/PLANO-v11_03.md",
       "extension": ".md",
       "classification": "documentation",
@@ -9697,6 +9745,18 @@
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
+    },
+    {
+      "path": "supabase/migrations/rollback_20261016155958_measurement_event_id_v31.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 767,
+      "lines": 30,
+      "sha256": "1dfd59fe864366779d181c71cc47c0f88edbfaed53b67679807b18770025dd8f",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
     },
     {
       "path": "supabase/migrations/v10_01_intencao_e_lote.sql",
@@ -10499,7 +10559,7 @@
       "lines": 429,
       "sha256": "dbfcfdfc96cc9624fd150657517904d8bd7ae5a71cf1326055c919fe5e79f739",
       "graph_nodes": 14,
-      "graph_degree": 50,
+      "graph_degree": 48,
       "sql_risk": "high"
     },
     {

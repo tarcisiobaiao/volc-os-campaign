@@ -66,3 +66,23 @@ prova de manifestação individual do visitante.
   é a primeira peça operacional do Tracking Control Plane.
 - Os fatos históricos com host/path vazios não foram retroativamente corrigidos.
 
+## Atualização v3.1 — 16/10/2026
+
+A versão 36 do container publicou `VOLC Sensor v3.1` em workspace isolado, sem
+alterar as tags de conversão. O envelope ganhou `seq`, monotônico por pageview,
+e `raw_events` ganhou `event_seq`; a chave de idempotência passou a ser
+`(sid, pid, event_name, ts_sec, event_seq)`. Isso preserva eventos legítimos do
+mesmo tipo no mesmo segundo sem perder a deduplicação de um envelope repetido.
+
+Provas da implantação:
+
+- migration aplicada pelo owner real `supabase_admin`, em transação;
+- backup prévio do DDL e do `volc-ingest` preservado no host;
+- banco descartável reteve dois scrolls no mesmo segundo e recusou rollback
+  destrutivo;
+- Edge Function v3.1 aceitou três eventos, com sequências 1, 2 e 3;
+- workspace GTM 37: zero conflito, uma mudança, quick preview sem erro;
+- versão 36 criada e publicada sem erro de compilação;
+- versão 35 continua sendo rollback imediato da tag; a coluna aditiva pode
+  permanecer sem prejudicar envelopes v3.0, que recebem `event_seq = 0`.
+
