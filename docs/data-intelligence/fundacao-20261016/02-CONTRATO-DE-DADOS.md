@@ -8,7 +8,7 @@ Thread A da missão "Fundação Data Intelligence" (2026-10-16). Branch `lab/dil
 | Adaptadores v21 / JoinAds v2 | `.../observacao/adaptadores.py` | testado hermeticamente, só com **linhas sintéticas** |
 | Migration candidata | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_*.sql` | testada em **PostgreSQL 16 descartável**; não aplicada em nenhum banco operacional |
 | Particionamento (opcional) | `.../migrations_candidatas/dil_obs_0002_*.OPCIONAL*.sql` | testado em PG16 descartável |
-| Testes | `tests/data-intelligence/fundacao/test_observacao_*.py`, `test_schema_pg_*.py` | 1ª entrega: 171 testes; resposta à R1: +44 (suíte inteira 692 verdes após o merge da missão) |
+| Testes | `tests/data-intelligence/fundacao/test_observacao_*.py`, `test_schema_pg_*.py` | 1ª entrega: 171 testes; resposta à R1: +44; D1–D3: +8 (suíte inteira 786 verdes após o merge com D, `62df98be`) |
 
 Nada aqui foi validado em produção, rodado em shadow ou calibrado com dado real.
 A revisão adversarial R1 (`handoffs/REVISAO-ADVERSARIAL-R1.md`) achou 13 defeitos desta thread; as
@@ -113,9 +113,10 @@ perde informação de propósito; por isso `agregar_observacoes` devolve também
 - **Chave natural** (`chave_natural`): sha256 de fonte, conta, entidade, grão, dimensões, métrica,
   value_kind, janela (UTC) e timezone. **Não** entram valor, status, moeda nem relógios de conhecimento —
   por isso `missing` e o `observed` posterior são versões do mesmo fato.
-- **Chave de idempotência** (`chave_base`): sha256 de chave natural + `payload_sha256` + `schema_version`
-  + coletor (nome, versão). É a identidade de uma **leitura**.
-- **Chave de reafirmação**: sha256 de `chave_base` + `available_at` (caso A→B→A, §6).
+- **Chave de idempotência** (`chave_base`, coluna `chave_idempotencia` no banco): sha256 de chave natural +
+  `payload_sha256` + `schema_version` + coletor (nome, versão) + **`observed_at`** (v2, D1/D2). É a identidade
+  de uma **leitura**: retry/reentrega = mesma chave; o mesmo payload relido em outra hora = leitura nova.
+- (Removida na v2: a "chave de reafirmação" do caso A→B→A. A volta de A já é uma leitura nova.)
 - Serialização canônica **não é JSON** (o `jsonb::text` do Postgres difere do `json.dumps`): campos
   unidos por US (0x1F), pares de dimensão por RS (0x1E), nome/valor por GS (0x1D), grão ordenado por ponto
   de código, instantes `YYYY-MM-DDTHH:MM:SS.ffffffZ`. Caracteres de controle são proibidos nos campos.
@@ -133,10 +134,9 @@ coletor exige run e lote novos (o payload é compartilhado por conteúdo).
 
 | Situação | Resultado |
 |---|---|
-| `chave_base` nova | `inserido` (tipo `leitura`) |
+| `chave_base` nova | `inserido` |
 | mesma `chave_base`, conteúdo (status, valor, unidade, moeda, cobertura) diferente | erro `conflito_idempotencia` (coletor não determinístico) |
-| mesma `chave_base`, versão vigente é desta leitura **ou** `available_at` não posterior | `noop` (retry, cron que relê o mesmo dado, reentrega fora de ordem) |
-| mesma `chave_base`, outra versão ficou vigente depois e o novo `available_at` é posterior | `reafirmado`: nova linha, chave de reafirmação (A→B→A: a fonte retrata e volta) |
+| mesma `chave_base`, mesmo conteúdo | `noop` (retry, reentrega, reentrega fora de ordem) |
 | outra leitura do mesmo fato com o mesmo `available_at` | erro `versao_ambigua` (UNIQUE `(chave_natural, available_at)`) |
 
 - Restatement é **sempre linha nova**. UPDATE/DELETE/TRUNCATE não existem (§10).
@@ -146,20 +146,36 @@ coletor exige run e lote novos (o payload é compartilhado por conteúdo).
   observação em voo entra na contagem ou é recusada, nunca grava num run já fechado. Provado com duas
   sessões psql paralelas.
 - Reentrega fora de ordem é conservadora: pode atrasar conhecimento, nunca antecipá-lo.
-- Dedup entre execuções: a mesma leitura relida pelo cron seguinte é `noop` e o conhecimento continua
-  datado da primeira leitura.
+- **Releitura (D2, decisão):** o cron que relê o mesmo payload em outra hora é uma leitura nova (outro
+  `observed_at`) e vira versão. Duas alternativas foram rejeitadas: (a) tirar a cobertura do conteúdo e dar
+  `noop` à releitura — perde-se que a janela fechou (o último D0 e o D+1 06h têm o mesmo payload no padrão
+  real) e a ordem por `observed_at` (D1) deixa de ser exata quando uma leitura intermediária chega atrasada;
+  (b) cobertura/estado da janela na chave sem `observed_at` — resolve o conflito mas mantém o problema da
+  ordem. Custo: no padrão real (5 campanhas, 1 muda por hora, ~80% de repetição) o D0 grava 5 linhas/hora
+  em vez de ~1; para o volume do VOLC isso é irrelevante, e quem quer só pontos de mudança deduplica por
+  conteúdo na leitura (o replay da D já faz). Prova: `test_d2_*` (Python e banco).
 
 ## 7. `as_of` e `latest`
 
-- `as_of(obs, t)` (puro): por chave natural, a versão de **maior `available_at <= t`**; status preservado;
-  independe da ordem de entrada; ambiguidade levanta erro em vez de escolher.
+- **Ordem de versão (D1, regra):** entre as versões de um fato com `available_at <= t`, vence a de **maior
+  `observed_at`**; empate → maior `available_at`; depois `chave_idempotencia` (inalcançável: o UNIQUE
+  `(chave_natural, available_at)` já impede o empate). Uma leitura antiga entregue atrasada fica no
+  histórico mas não desfaz a mais nova. Antes vencia a maior `available_at`: no simulador
+  `atraso_receita_longo` (20 × 20) isso divergia do consumidor correto da E; agora 0 divergências
+  (`test_d1_equivale_ao_consumidor_do_simulador_em_atraso_receita_longo`, que também mede a regra antiga > 0).
+- `as_of(obs, t)` (puro): aplica a ordem acima; status preservado; independe da ordem de entrada. Erro de
+  ambiguidade (D3) só quando o **topo** empata entre leituras diferentes — empate em versões já superadas não
+  importa para o estado em t e não levanta (antes dependia da ordem em que as versões chegavam). Leituras
+  diferentes empatadas no topo não são desempatadas por hash (escolheria ao acaso): levantam.
+  `vigente_entre(itens, obs=, base=)` é a regra única; o `FluxoIndexado` da thread D delega a ela.
 - `latest(obs, agora)` = `as_of(obs, agora)`; não há relógio implícito.
-- SQL: `dil_obs.observacao_as_of(t)` (`DISTINCT ON (chave_natural) ... ORDER BY chave_natural, available_at DESC`,
-  SECURITY INVOKER) e `dil_obs.observacao_latest` = `observacao_as_of(now())`. A view é derivada do
-  histórico; o histórico não é tocado. Índice único `(chave_natural, available_at DESC)` serve o as_of.
+- SQL: `dil_obs.observacao_as_of(t)` (`DISTINCT ON (chave_natural) ... ORDER BY chave_natural, observed_at DESC,
+  available_at DESC, chave_idempotencia DESC`, SECURITY INVOKER) e `dil_obs.observacao_latest` =
+  `observacao_as_of(now())`. A view é derivada do histórico; o histórico não é tocado. Índice
+  `ix_obs_asof (chave_natural, observed_at DESC, available_at DESC)` serve o as_of.
 - Equivalência: `test_equivalencia_as_of_sql_python` gera 8 sequências aleatórias (seed 1610, 8–30 leituras
-  com retries, A→B→A e ausências), compara o resultado de cada registro e o as_of em 9 cortes; e exige que
-  os três caminhos (`inserido`, `noop`, `reafirmado`) tenham sido exercitados.
+  com retries, A→B→A, ausências e `observed_at` fora da ordem de chegada), compara o resultado de cada
+  registro e o as_of em 9 cortes; e exige que os dois caminhos (`inserido`, `noop`) tenham sido exercitados.
 - Atenção a consumidores SQL: `sum(valor)` ignora NULL. O total sem a contagem de `valor IS NULL` ao lado
   mente (ver `test_missing_unavailable_late_distintos_no_banco`). Em Python, `agregar_observacoes` compõe
   `volc_dil.contracts.agregar`: vazio → ausente; qualquer membro sem valor → total sem valor (salvo
@@ -286,7 +302,7 @@ O schema genérico `dil_obs` **é redundante** com v21 e JoinAds v2 para Google 
 | TRUNCATE bloqueado | não (trigger só UPDATE/DELETE, por linha) | não | sim (trigger de statement) |
 | RLS forçado | sim | não (só ENABLE) | sim |
 | defaults que inventam valor | contadores `DEFAULT 0` na execução | `currency_code DEFAULT 'USD'`, `payload_sha256 DEFAULT '0'*64`, `data_status DEFAULT 'observed'` | nenhum DEFAULT em métrica ou moeda |
-| idempotência entre execuções | não (UNIQUE `(run_id, observation_key)`: cada run regrava) | `observation_key` PK | `chave_base` (leitura) |
+| idempotência | por execução (UNIQUE `(run_id, observation_key)`: cada run regrava) | `observation_key` PK | por leitura (`chave_idempotencia` com `observed_at`): retry e reentrega são no-op; releitura é versão |
 | relógio do latest | `collected_at` (n8n) | `collected_at`, e só runs `completed/partial` | `available_at` limitado pelo banco |
 | hash | de `jsonb::text` (v21_02, no banco) | de `jsonb::text` (trigger) | dos bytes recebidos, conferido por CHECK |
 
@@ -314,8 +330,8 @@ consumidor. Os 3 runs v21 presos em `running` (recibo L9) não mudam o status da
   instante sem offset ISO, identidade com controle/espaço de borda, timezone fora da base (caixa exata),
   dimensões fora de ordem, lote inexistente, linhagem divergente (run/fonte/coletor/schema/payload), run
   finalizado, `available_at` anterior ao recebimento dos bytes pelo banco, isolamento diferente de READ COMMITTED.
-- `finalizar_run` (R1-F8): inseridas, reafirmadas e dead letters são contadas pelo banco; o chamador informa
-  `n_lidas` e `n_noop` (obrigatórios, `n_lidas >= inseridas + reafirmadas + noop`); valor informado que não
+- `finalizar_run` (R1-F8): inseridas e dead letters são contadas pelo banco; o chamador informa
+  `n_lidas` e `n_noop` (obrigatórios, `n_lidas >= inseridas + noop`); valor informado que não
   bate é erro; repetir o mesmo fechamento é `noop`. CHECK com `IS NOT NULL` explícito nas contagens de run fechado.
 - Quem aplica (R1-F2/F22): superusuário aplica sem virar membro de nada; não-superusuário com CREATEROLE se
   concede `dil_obs_dono` só durante a transação e a revoga no fim (se já for membro permanente, WARNING).
@@ -355,8 +371,8 @@ observed/zero_confirmed. Maturidade e método de atribuição **não** vêm da f
 |---|---|---|
 | chave calculada pelo banco | chave enviada pelo coletor | o escritor não pode escolher a própria identidade |
 | serialização US/RS/GS | JSON canônico | `jsonb::text` ≠ `json.dumps`; o banco não reproduziria |
-| idempotência por leitura (payload + coletor) | por execução (`run_id`) | cron relê o mesmo dado; dedup entre execuções evita versões falsas |
-| reafirmação A→B→A | `noop` sempre que a chave já existe | a retratação da fonte sumiria do as_of |
+| idempotência por leitura (payload + coletor + `observed_at`) | por execução (`run_id`); sem `observed_at` (1ª entrega) | sem `observed_at`, a releitura virava no-op e a ordem por `observed_at` ficava inexata; a janela que fecha com o mesmo payload batia em conflito (D1/D2) |
+| ordem de versão por `observed_at` | por `available_at` (1ª entrega) | leitura antiga entregue atrasada voltava o as_of ao valor antigo (D1) |
 | `available_at` limitado por `lote.recebido_em` e `now()` | confiar no coletor | backfill retroativo vazaria futuro no replay |
 | `observed` ≠ 0 | permitir `observed` 0 | zero afirmado e zero sintetizado precisam de nomes diferentes |
 | float recusado | arredondar | dinheiro em float é bug silencioso |
@@ -383,7 +399,7 @@ recusa dependente externo, mutações M1–M7/M11/M13/M18 mortas, cluster en_US.
 concorrentes para H3/H4):
 validação de status × valor, relógios, unidade/moeda/value_kind; chaves estáveis a offset e ordem de grão;
 igualdade de chaves Python × PostgreSQL; idempotência (reinserção = no-op, contagem igual) em Python e SQL;
-restatement como versão nova; reafirmação; conflito; versão ambígua; reentrega fora de ordem; as_of antes/depois
+restatement como versão nova; A→B→A; conflito; versão ambígua; reentrega fora de ordem; as_of antes/depois
 de reprocessamento tardio; propriedade com seed fixa (150 sequências) para idempotência, as_of vs dado bruto,
 independência de ordem e "não olha o futuro"; equivalência as_of SQL × Python (8 sequências); concordância
 de validação Python × SQL em 25 mutações; 18 CHECKs disparando em inserção direta; append-only para

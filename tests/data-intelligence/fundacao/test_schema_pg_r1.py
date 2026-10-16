@@ -32,8 +32,9 @@ def _sha(b: bytes) -> str:
 
 def _obs_json(obs, *, conta: str, payload: bytes, run_id: str, lote_id: str, h: float = 30, **kw) -> dict:
     t = BASE + timedelta(hours=h)
+    kw.setdefault("observed_at", BASE + timedelta(hours=24))
     o = obs(payload=payload, conta=conta, janela_inicio=BASE, janela_fim=BASE + timedelta(days=1),
-            observed_at=BASE + timedelta(hours=24), available_at=t, ingested_at=t, run_id=run_id, lote_id=lote_id, **kw)
+            available_at=t, ingested_at=t, run_id=run_id, lote_id=lote_id, **kw)
     return o.para_json()
 
 
@@ -133,7 +134,7 @@ def test_r1_f3_lote_de_run_finalizado_nao_recebe(cluster_pg, banco, obs):
     """Prova do revisor (pg/t_linhagem.py): obs de outro run apontando para lote de run finalizado."""
     c = cluster_pg
     prep = _preparo(c, run_id="r-fin", payload=b"fin", lote_id="l-fin", t=BASE + timedelta(hours=30))
-    prep += "SELECT dil_obs.finalizar_run('r-fin', 'succeeded', 0, NULL, 0, NULL, NULL, NULL);\n"
+    prep += "SELECT dil_obs.finalizar_run('r-fin', 'succeeded', 0, NULL, 0, NULL, NULL);\n"
     j = _obs_json(obs, conta="fin", payload=b"fin", run_id="r-fin", lote_id="l-fin")
     assert "já finalizada" in c.falha(prep + _reg(j), db=banco, papel="dil_obs_escritor")
     # e um run novo não pode reaproveitar o lote do run fechado: precisa de lote próprio (mesmo payload)
@@ -151,7 +152,7 @@ def test_r1_f8_fechamento_com_contagens_do_banco_e_idempotente(cluster_pg, banco
     prep = _preparo(c, run_id="r-cnt", payload=b"cnt", lote_id="l-cnt", t=BASE + timedelta(hours=30))
     j = _obs_json(obs, conta="cnt", payload=b"cnt", run_id="r-cnt", lote_id="l-cnt")
     c.psql(prep + _reg(j) + _reg(j), db=banco, papel="dil_obs_escritor")
-    fim = "SELECT dil_obs.finalizar_run('r-cnt', 'succeeded', {}, {}, {}, NULL, NULL, NULL);"
+    fim = "SELECT dil_obs.finalizar_run('r-cnt', 'succeeded', {}, {}, {}, NULL, NULL);"
     # prova do revisor (pg/t_run.py): NULLs e contagens incoerentes eram aceitos
     assert "n_lidas e n_noop são obrigatórios" in c.falha(fim.format("NULL", "NULL", "NULL"), db=banco, papel="dil_obs_escritor")
     assert "o banco contou inseridas=1" in c.falha(fim.format(5, 999, 0), db=banco, papel="dil_obs_escritor")
@@ -160,18 +161,18 @@ def test_r1_f8_fechamento_com_contagens_do_banco_e_idempotente(cluster_pg, banco
     assert c.psql(fim.format(2, 1, 1), db=banco, papel="dil_obs_escritor") == "noop"  # retry após timeout do cliente
     assert c.psql(fim.format(2, "NULL", 1), db=banco, papel="dil_obs_escritor") == "noop"
     assert "já finalizada como succeeded" in c.falha(fim.format(3, "NULL", 1), db=banco, papel="dil_obs_escritor")
-    assert c.psql("SELECT n_lidas || '/' || n_inseridas || '/' || n_noop || '/' || n_reafirmadas || '/' || n_dead_letter "
-                  "FROM dil_obs.run_coleta WHERE run_id = 'r-cnt';", db=banco) == "2/1/1/0/0"
+    assert c.psql("SELECT n_lidas || '/' || n_inseridas || '/' || n_noop || '/' || n_dead_letter "
+                  "FROM dil_obs.run_coleta WHERE run_id = 'r-cnt';", db=banco) == "2/1/1/0"
 
 
 def test_r1_m4_check_de_contagens_no_banco(cluster_pg, banco):
     """Inserção direta (superusuário) de run fechado com contagem nula ou incoerente: o CHECK segura."""
     base = ("INSERT INTO dil_obs.run_coleta (run_id, fonte, coletor_nome, coletor_versao, iniciado_em, finalizado_em, status, "
-            "n_lidas, n_inseridas, n_noop, n_reafirmadas, n_dead_letter) VALUES ('{r}', 'google_ads', 'c', '1', now(), now(), "
+            "n_lidas, n_inseridas, n_noop, n_dead_letter) VALUES ('{r}', 'google_ads', 'c', '1', now(), now(), "
             "'succeeded', {v});")
-    assert "ck_run_contagens" in cluster_pg.falha(base.format(r="m4a", v="NULL, NULL, NULL, NULL, NULL"), db=banco)
-    assert "ck_run_contagens" in cluster_pg.falha(base.format(r="m4b", v="1, 5, 0, 0, 0"), db=banco)
-    cluster_pg.psql(base.format(r="m4c", v="5, 5, 0, 0, 0"), db=banco)
+    assert "ck_run_contagens" in cluster_pg.falha(base.format(r="m4a", v="NULL, NULL, NULL, NULL"), db=banco)
+    assert "ck_run_contagens" in cluster_pg.falha(base.format(r="m4b", v="1, 5, 0, 0"), db=banco)
+    cluster_pg.psql(base.format(r="m4c", v="5, 5, 0, 0"), db=banco)
 
 
 # ============================================================== M5: payload do lote
@@ -196,6 +197,55 @@ def test_r1_m7_releitura_no_instante_da_vigente_e_noop_no_banco(cluster_pg, banc
     sql += _reg(_obs_json(obs, conta="m7", payload=b"K1", run_id="r-m7", lote_id="l-k1b", h=40))
     res = [ln[2:] for ln in c.psql(sql, db=banco, papel="dil_obs_escritor").splitlines() if ln.startswith("R:")]
     assert res == ["inserido", "inserido", "noop"]
+
+
+# ============================================================== D1/D2 no banco
+def _asof_banco(c, db, t: datetime, conta: str) -> list[str]:
+    return c.psql(f"SELECT coalesce(valor::text, 'NULL') || ':' || status FROM dil_obs.observacao_as_of({_lit(t.isoformat())}) "
+                  f"WHERE conta = {_lit(conta)} ORDER BY chave_natural;", db=db).splitlines()
+
+
+def test_d1_leitura_antiga_atrasada_nao_desfaz_a_nova_no_banco(cluster_pg, banco, obs):
+    c = cluster_pg
+    sql = _preparo(c, run_id="r-d1a", payload=b"nova", lote_id="l-d1a", t=BASE + timedelta(hours=31))
+    sql += _reg(_obs_json(obs, conta="d1", payload=b"nova", run_id="r-d1a", lote_id="l-d1a", h=31,
+                          observed_at=BASE + timedelta(hours=30), valor=7_000_000))
+    sql += _preparo(c, run_id="r-d1b", payload=b"antiga", lote_id="l-d1b", t=BASE + timedelta(hours=40))
+    sql += _reg(_obs_json(obs, conta="d1", payload=b"antiga", run_id="r-d1b", lote_id="l-d1b", h=40,
+                          observed_at=BASE + timedelta(hours=26), valor=5_000_000))
+    res = [ln[2:] for ln in c.psql(sql, db=banco, papel="dil_obs_escritor").splitlines() if ln.startswith("R:")]
+    assert res == ["inserido", "inserido"]
+    assert _asof_banco(c, banco, BASE + timedelta(hours=41), "d1") == ["7000000:observed"]
+    assert _asof_banco(c, banco, BASE + timedelta(hours=35), "d1") == ["7000000:observed"]
+    assert c.psql("SELECT count(*) FROM dil_obs.observacao WHERE conta = 'd1';", db=banco) == "2"  # antiga no histórico
+
+
+def test_d2_releitura_d0_no_banco_igual_ao_registro(cluster_pg, banco, obs):
+    """Mesmo payload relido de hora em hora e depois com a janela fechada: tudo `inserido`, nada de conflito,
+    e o as_of do banco é o do Registro em cada corte."""
+    from volc_dil.fundacao.observacao import Registro
+
+    c = cluster_pg
+    leituras = []
+    for h, custo in ((6, 5_000_000), (7, 5_000_000), (8, 5_200_000), (9, 5_200_000), (30, 5_200_000)):
+        aberta = h < 24
+        kw = dict(status="partial", motivo="janela_aberta;cobertura_desconhecida") if aberta else {}
+        leituras.append((h, f"d2-{custo}".encode(), _obs_json(obs, conta="d2", payload=f"d2-{custo}".encode(),
+                                                              run_id=f"r-d2-{h}", lote_id=f"l-d2-{h}", h=h,
+                                                              observed_at=BASE + timedelta(hours=h), valor=custo, **kw)))
+    sql = ""
+    for h, payload, j in leituras:
+        sql += _preparo(c, run_id=f"r-d2-{h}", payload=payload, lote_id=f"l-d2-{h}", t=BASE + timedelta(hours=h)) + _reg(j)
+    res = [ln[2:] for ln in c.psql(sql, db=banco, papel="dil_obs_escritor").splitlines() if ln.startswith("R:")]
+    from volc_dil.fundacao.observacao import Observacao
+
+    reg = Registro()
+    assert res == [reg.registrar(Observacao.de_json(j)).value for _, _, j in leituras] == ["inserido"] * 5
+    for h in (6, 8, 9, 31):
+        t = BASE + timedelta(hours=h, minutes=30)
+        py = [f"{o.valor}:{o.status.value}" for o in reg.as_of(t).values()]
+        assert _asof_banco(c, banco, t, "d2") == py
+    assert _asof_banco(c, banco, BASE + timedelta(hours=31), "d2") == ["5200000:observed"]
 
 
 # ============================================================== relógio do banco
@@ -236,7 +286,7 @@ def test_r1_m6_chaves_e_ordem_iguais_em_cluster_utf8(cluster_pg_utf8, obs):
             available_at=BASE + timedelta(hours=30), ingested_at=BASE + timedelta(hours=30), run_id="r-u", lote_id="l-u")
     j = o.para_json()
     sql = (_preparo(c, run_id="r-u", payload=b"utf8", lote_id="l-u", t=o.available_at) + _reg(j)
-           + "RESET ROLE; SELECT 'K:' || chave_natural || '|' || chave_base FROM dil_obs.observacao WHERE conta = " + _lit(o.conta) + ";")
+           + "RESET ROLE; SELECT 'K:' || chave_natural || '|' || chave_idempotencia FROM dil_obs.observacao WHERE conta = " + _lit(o.conta) + ";")
     out = c.psql(sql, db=db, papel="dil_obs_escritor")
     assert "R:inserido" in out  # ordem por ponto de código aceita (sem COLLATE "C" seria recusada)
     chaves = [ln[2:] for ln in out.splitlines() if ln.startswith("K:")][0].split("|")
@@ -291,7 +341,7 @@ def test_r1_h4_fechamento_concorrente_espera_a_observacao_em_voo(cluster_pg, ban
     reg = _reg(_obs_json(obs, conta="h4", payload=b"h4", run_id="r-h4", lote_id="l-h4"))
     a = _sessao(c, banco, "SET ROLE dil_obs_escritor; BEGIN;\n" + reg + "SELECT pg_sleep(1.5);\nCOMMIT;\n")
     _esperar_trava(c, banco, "advisory")
-    fim = c.psql("SELECT dil_obs.finalizar_run('r-h4', 'succeeded', 1, NULL, 0, NULL, NULL, NULL);", db=banco, papel="dil_obs_escritor")
+    fim = c.psql("SELECT dil_obs.finalizar_run('r-h4', 'succeeded', 1, NULL, 0, NULL, NULL);", db=banco, papel="dil_obs_escritor")
     sa, ea = a.communicate(timeout=30)
     assert a.returncode == 0, ea
     assert fim == "finalizado" and "R:inserido" in sa

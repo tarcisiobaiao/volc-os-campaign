@@ -462,8 +462,8 @@ def _carga_dil_obs(obs_fab, agora_real: datetime):
         n_dl = 1 if run == "run-lento" else 0
         for _ in range(n_dl):
             linhas.append(f"SELECT dil_obs.registrar_dead_letter({_lit(run)}, {_lit('lote-' + run)}, NULL, 'chave_substituida', '{{}}'::jsonb);")
-        # [thread A, R1-F8] inseridas/reafirmadas/dead letter são contadas pelo banco (NULL = "conte você")
-        linhas.append(f"SELECT dil_obs.finalizar_run({_lit(run)}, 'succeeded', 5, NULL, 0, NULL, NULL, NULL);")
+        # [thread A, R1-F8] inseridas e dead letter são contadas pelo banco (NULL = "conte você")
+        linhas.append(f"SELECT dil_obs.finalizar_run({_lit(run)}, 'succeeded', 5, NULL, 0, NULL, NULL);")
     return "\n".join(linhas), obs_lista
 
 

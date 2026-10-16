@@ -13,7 +13,6 @@ from volc_dil.fundacao.observacao import (
     Registro,
     ResultadoRegistro,
     StatusObservacao,
-    TipoRegistro,
     agregar_observacoes,
     as_of,
     latest,
@@ -29,7 +28,8 @@ def _t(obs, horas: float):
 
 def _versao(obs, horas: float, *, payload: bytes, **kw):
     t = _t(obs, horas)
-    return obs(payload=payload, available_at=t, ingested_at=t + timedelta(minutes=1), observed_at=min(t, _t(obs, 28)) if horas >= 28 else _t(obs, 24), **kw)
+    kw.setdefault("observed_at", min(t, _t(obs, 28)) if horas >= 28 else _t(obs, 24))
+    return obs(payload=payload, available_at=t, ingested_at=t + timedelta(minutes=1), **kw)
 
 
 # ---------------------------------------------------------------- idempotência
@@ -74,16 +74,16 @@ def test_versao_ambigua_mesmo_available_at(obs):
         r.registrar(obs(payload=b"P2", valor=7_000_000))
 
 
-def test_reafirmacao_aba_missing_observed_missing(obs):
-    """A→B→A: a fonte volta a não ter a linha (ex.: JoinAds retrata). A volta é conhecimento novo."""
+def test_aba_missing_observed_missing(obs):
+    """A→B→A: a fonte volta a não ter a linha (ex.: JoinAds retrata). A volta é uma leitura nova (outro observed_at)."""
     r = Registro()
     falta = dict(status="missing", valor=None, moeda=None, motivo="linha_ausente_na_resposta")
-    a1 = _versao(obs, 28, payload=b"[]", **falta)
-    b = _versao(obs, 34, payload=b"P1")
-    a2 = _versao(obs, 40, payload=b"[]", run_id="run-3", lote_id="lote-3", **falta)
+    a1 = _versao(obs, 28, payload=b"[]", observed_at=_t(obs, 28), **falta)
+    b = _versao(obs, 34, payload=b"P1", observed_at=_t(obs, 34))
+    a2 = _versao(obs, 40, payload=b"[]", run_id="run-3", lote_id="lote-3", observed_at=_t(obs, 40), **falta)
     res = r.registrar_todas([a1, b, a2, a2])
-    assert res == [ResultadoRegistro.INSERIDO, ResultadoRegistro.INSERIDO, ResultadoRegistro.REAFIRMADO, ResultadoRegistro.NOOP]
-    assert [v.tipo for v in r.versoes] == [TipoRegistro.LEITURA, TipoRegistro.LEITURA, TipoRegistro.REAFIRMACAO]
+    assert res == [ResultadoRegistro.INSERIDO, ResultadoRegistro.INSERIDO, ResultadoRegistro.INSERIDO, ResultadoRegistro.NOOP]
+    assert len(r) == 3
     assert r.as_of(_t(obs, 36))[b.chave_natural].status is StatusObservacao.OBSERVED
     assert r.as_of(_t(obs, 41))[b.chave_natural].status is StatusObservacao.MISSING
 
@@ -197,6 +197,8 @@ def _gerar_sequencia(obs, rng: random.Random, n: int):
             kw["valor"] = valor * 1_000_000
         # o conteúdo de uma leitura é função do (payload, entidade, métrica): determinístico por construção
         kw["payload"] = p + ent.encode() + met.encode()
+        # D1: observed_at varia e nem sempre acompanha a chegada (leitura antiga que chega atrasada)
+        kw["observed_at"] = _t(obs, rng.randint(24, h))
         eventos.append(_versao(obs, h, run_id=f"run-{h}", lote_id=f"lote-{h}", **kw))
         if rng.random() < 0.3:  # retry imediato da mesma leitura
             eventos.append(eventos[-1])
@@ -233,8 +235,8 @@ def test_propriedade_idempotencia_e_as_of(obs):
 
 
 # ---------------------------------------------------------------- R1
-def test_r1_m7_mesma_leitura_no_instante_da_vigente_e_noop(obs):
-    """k1@t1, k2@t2, k1@t2: a releitura de k1 no MESMO instante da vigente não é reafirmação (seria ambígua)."""
+def test_r1_m7_reentrega_no_instante_de_outra_versao_e_noop(obs):
+    """k1@t1, k2@t2, reentrega de k1 com available_at = t2: é a MESMA leitura (mesmo observed_at) → no-op, não ambígua."""
     r = Registro()
     k1 = _versao(obs, 30, payload=b"K1")
     k2 = _versao(obs, 40, payload=b"K2", valor=7_000_000)

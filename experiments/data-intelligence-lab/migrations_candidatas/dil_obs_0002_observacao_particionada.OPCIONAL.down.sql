@@ -50,7 +50,7 @@ ALTER TABLE dil_obs.observacao RENAME TO observacao_part;
 ALTER INDEX dil_obs.observacao_pkey RENAME TO observacao_pkey_part;
 ALTER INDEX dil_obs.uq_obs_chave_idempotencia RENAME TO uq_obs_chave_idempotencia_part;
 ALTER INDEX dil_obs.uq_obs_versao RENAME TO uq_obs_versao_part;
-ALTER INDEX dil_obs.ix_obs_chave_base RENAME TO ix_obs_chave_base_part;
+ALTER INDEX dil_obs.ix_obs_asof RENAME TO ix_obs_asof_part;
 ALTER INDEX dil_obs.ix_obs_entidade RENAME TO ix_obs_entidade_part;
 ALTER INDEX dil_obs.ix_obs_lote RENAME TO ix_obs_lote_part;
 ALTER INDEX dil_obs.ix_obs_run RENAME TO ix_obs_run_part;
@@ -58,9 +58,7 @@ ALTER INDEX dil_obs.ix_obs_run RENAME TO ix_obs_run_part;
 CREATE TABLE dil_obs.observacao (
   observacao_id       bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   chave_idempotencia  text NOT NULL,
-  chave_base          text NOT NULL,
   chave_natural       text NOT NULL,
-  tipo_registro       text NOT NULL,
   fonte               text NOT NULL,
   conta               text NOT NULL,
   entidade_tipo       text NOT NULL,
@@ -92,11 +90,7 @@ CREATE TABLE dil_obs.observacao (
   cobertura_ppm       integer,
 
   CONSTRAINT uq_obs_chave_idempotencia UNIQUE (chave_idempotencia),
-  CONSTRAINT ck_obs_chaves CHECK (
-    chave_idempotencia ~ '^[0-9a-f]{64}$' AND chave_base ~ '^[0-9a-f]{64}$' AND chave_natural ~ '^[0-9a-f]{64}$'),
-  CONSTRAINT ck_obs_tipo_registro CHECK (
-    (tipo_registro = 'leitura' AND chave_idempotencia = chave_base)
-    OR (tipo_registro = 'reafirmacao' AND chave_idempotencia <> chave_base)),
+  CONSTRAINT ck_obs_chaves CHECK (chave_idempotencia ~ '^[0-9a-f]{64}$' AND chave_natural ~ '^[0-9a-f]{64}$'),
   CONSTRAINT ck_obs_fonte CHECK (fonte ~ '^[a-z][a-z0-9_]*$'),
   CONSTRAINT ck_obs_identidade CHECK (
     dil_obs._texto_ok(conta) AND dil_obs._texto_ok(entidade_tipo) AND dil_obs._texto_ok(entidade_id)
@@ -162,7 +156,8 @@ COMMENT ON COLUMN dil_obs.observacao.available_at IS 'Relógio do replay as_of: 
 
 -- uma versão por (fato, instante de conhecimento): torna o as_of determinístico e serve o DISTINCT ON
 CREATE UNIQUE INDEX uq_obs_versao ON dil_obs.observacao (chave_natural, available_at DESC);
-CREATE INDEX ix_obs_chave_base ON dil_obs.observacao (chave_base);
+-- serve o DISTINCT ON do as_of na ordem de versão (D1)
+CREATE INDEX ix_obs_asof ON dil_obs.observacao (chave_natural, observed_at DESC, available_at DESC);
 CREATE INDEX ix_obs_entidade ON dil_obs.observacao (fonte, conta, entidade_tipo, entidade_id, janela_inicio);
 CREATE INDEX ix_obs_lote ON dil_obs.observacao (lote_id);
 CREATE INDEX ix_obs_run ON dil_obs.observacao (run_id);

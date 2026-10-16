@@ -5,8 +5,8 @@ Domínio puro (stdlib + `volc_dil.contracts`). Ver
 Espelho em banco: `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_*.sql`.
 """
 from .adaptadores import AdaptacaoImpossivel, adaptar_google_ads_v21, adaptar_joinads_v2
-from .asof import AgregadoObservacao, agregar_observacoes, as_of, latest, para_contrato_economico
-from .chaves import chave_base, chave_natural, chave_reafirmacao, instante_canonico
+from .asof import AgregadoObservacao, agregar_observacoes, as_of, latest, para_contrato_economico, vigente_entre
+from .chaves import chave_base, chave_natural, instante_canonico
 from .modelo import CAMPOS_JSON, Coletor, EntidadeRef, Observacao, ObservacaoInvalida
 from .normalizador import (
     CampoMetrica,
@@ -18,14 +18,14 @@ from .normalizador import (
     normalizar,
     observacoes_sem_dado,
 )
-from .registro import ConflitoIdempotencia, Registro, ResultadoRegistro, TipoRegistro, VersaoRegistrada
+from .registro import ConflitoIdempotencia, Registro, ResultadoRegistro, VersaoRegistrada, ordem_versao
 from .vocab import MAPA_ESTADO_HERDADO, StatusObservacao, Unidade
 
 __all__ = [
     "AdaptacaoImpossivel", "adaptar_google_ads_v21", "adaptar_joinads_v2", "AgregadoObservacao", "CAMPOS_JSON", "CampoMetrica", "Coletor", "ConflitoIdempotencia", "ContextoLeitura",
     "EntidadeRef", "EsquemaPayload", "MAPA_ESTADO_HERDADO", "Observacao", "ObservacaoInvalida", "PayloadBruto",
-    "Registro", "Rejeicao", "ResultadoNormalizacao", "ResultadoRegistro", "StatusObservacao", "TipoRegistro",
+    "Registro", "Rejeicao", "ResultadoNormalizacao", "ResultadoRegistro", "StatusObservacao",
     "Unidade", "VersaoRegistrada", "agregar_observacoes", "as_of", "chave_base", "chave_natural",
-    "chave_reafirmacao", "instante_canonico", "latest", "normalizar", "observacoes_sem_dado",
-    "para_contrato_economico",
+    "instante_canonico", "latest", "normalizar", "observacoes_sem_dado",
+    "ordem_versao", "para_contrato_economico", "vigente_entre",
 ]

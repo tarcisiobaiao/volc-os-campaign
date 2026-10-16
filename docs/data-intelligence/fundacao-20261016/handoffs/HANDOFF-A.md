@@ -11,7 +11,7 @@ Nada foi aplicado fora de PostgreSQL descartável; nenhuma rede, nenhum segredo 
 | `experiments/data-intelligence-lab/src/volc_dil/fundacao/__init__.py` | docstring do pacote (outros workers criam o mesmo arquivo: conflito trivial no merge) |
 | `.../fundacao/observacao/vocab.py` | `StatusObservacao`, `Unidade`, `MAPA_ESTADO_HERDADO` |
 | `.../fundacao/observacao/modelo.py` | `Observacao`, `EntidadeRef`, `Coletor`, `ObservacaoInvalida` |
-| `.../fundacao/observacao/chaves.py` | chave natural, de idempotência e de reafirmação (espelho SQL) |
+| `.../fundacao/observacao/chaves.py` | chave natural e de idempotência (espelho SQL; v2 com `observed_at`) |
 | `.../fundacao/observacao/registro.py` | `Registro` append-only (oráculo do SQL) |
 | `.../fundacao/observacao/asof.py` | `as_of`, `latest`, `para_contrato_economico`, `agregar_observacoes` |
 | `.../fundacao/observacao/normalizador.py` | normalizador tolerante a schema drift |
@@ -42,7 +42,7 @@ Nenhum skip (o PostgreSQL 16.11 do Homebrew subiu em todas as execuções).
 | `test_observacao_normalizador.py` | 17 | schema drift, aliases, extras, chave substituída, float/precisão, nulo → missing, partial, missing × unavailable × late ponta a ponta |
 | `test_observacao_adaptadores.py` | 28 | v21 (zero sintetizado → missing; prova de linha; partial intradiário; relógios; keyword; maturação → versões) e JoinAds v2 (client × gross, chave substituída, data_status, hash zerado, entidades) |
 | `test_observacao_sem_segredos.py` | 3 | nenhum host hosted, JWT, chave, token, senha, caminho de credencial ou IP do servidor nos arquivos da thread; contraprova de que cada padrão detecta |
-| `test_schema_pg_observacao.py` | 43 | chaves Python = SQL; reinserção = no-op; restatement no as_of; reafirmação/conflito/ambígua; append-only (12 casos, superusuário); 18 CHECKs; 25 mutações com Python e SQL concordando; retroativo/futuro; hash do payload; missing/unavailable/late no banco; dead letter; RLS/grants; **equivalência as_of SQL × Python** (seed 1610, 8 sequências, 9 cortes cada) |
+| `test_schema_pg_observacao.py` | 43 | chaves Python = SQL; reinserção = no-op; restatement no as_of; A→B→A/conflito/ambígua; append-only (12 casos, superusuário); 18 CHECKs; 25 mutações com Python e SQL concordando; retroativo/futuro; hash do payload; missing/unavailable/late no banco; dead letter; RLS/grants; **equivalência as_of SQL × Python** (seed 1610, 8 sequências, 9 cortes cada) |
 | `test_schema_pg_rollback.py` | 2 | up → down → up com catálogo idêntico; down idempotente; up repetido falha atômico; papéis preservados se usados em outro banco |
 | `test_schema_pg_particionamento.py` | 1 | 0002: as_of idêntico antes/depois, no-op e inserção roteados, append-only pelo pai/partição/TRUNCATE, sem DEFAULT, rollback com catálogo idêntico a 0001 |
 
@@ -66,7 +66,7 @@ class ObservacaoInvalida(ContratoViolado); class ConflitoIdempotencia(ContratoVi
 
 class Registro:
     def __init__(self, observacoes=()): ...
-    def registrar(self, obs) -> ResultadoRegistro          # INSERIDO | NOOP | REAFIRMADO
+    def registrar(self, obs) -> ResultadoRegistro          # INSERIDO | NOOP  (REAFIRMADO removido em D1/D2)
     def registrar_todas(self, obs) -> list[ResultadoRegistro]
     versoes: tuple[VersaoRegistrada, ...]; observacoes: tuple[Observacao, ...]
     def vigente(self, chave_natural) -> VersaoRegistrada | None
@@ -89,7 +89,9 @@ def adaptar_joinads_v2(linha: Mapping, *, moeda_atestada: str | None = None) -> 
 Observacao.de_json_texto(texto: str) -> Observacao        # R1: lê como o banco (chave repetida, NaN, float recusados)
 AgregadoObservacao.cobertura_minima_ppm, .n_cobertura_desconhecida   # R1-F16
 ContextoLeitura(..., cobertura_ppm: int | None = None)    # R1-F17: cobertura declarada pela fonte
-def chave_natural(...), chave_base(...), chave_reafirmacao(...), instante_canonico(t)
+def chave_natural(...), chave_base(..., observed_at), instante_canonico(t)   # chave_reafirmacao e TipoRegistro removidos
+def ordem_versao(o) -> tuple                                # D1: (observed_at, available_at)
+def vigente_entre(itens, *, obs=..., base=...)              # D1/D3: regra única de versão vigente (FluxoIndexado da D usa)
 ```
 
 - **Thread D (replay/shadow):** use `Registro` + `as_of(t)` como fonte do estado em cada corte; para dado
@@ -131,7 +133,7 @@ def chave_natural(...), chave_base(...), chave_reafirmacao(...), instante_canoni
 | Tarefa | Estado atual | Proposta | Evidência |
 |---|---|---|---|
 | P06-T08 "Criar ledger canônico de coleta Google Ads por conta e data" | partial | **manter partial**; acrescentar evidência: contrato de leitura v21 → `Observacao` com regra zero-sem-linha → `missing` e `available_at = max(collected_at, created_at)` | `adaptadores.py`, `test_observacao_adaptadores.py` (28), 02 §9.1 |
-| P14-T02 "Provar replay e shadow antes de qualquer autonomia" | partial | manter partial; evidência: `as_of` puro e SQL equivalentes, append-only provado no banco, restatement/reafirmação | `test_schema_pg_observacao.py::test_equivalencia_as_of_sql_python`, `test_observacao_registro_asof.py::test_propriedade_idempotencia_e_as_of` |
+| P14-T02 "Provar replay e shadow antes de qualquer autonomia" | partial | manter partial; evidência: `as_of` puro e SQL equivalentes, append-only provado no banco, restatement e ordem de versão por observed_at (D1) | `test_schema_pg_observacao.py::test_equivalencia_as_of_sql_python`, `test_observacao_registro_asof.py::test_propriedade_idempotencia_e_as_of` |
 | P14-T06 "Criar o ledger e registry do preditivo" | todo | **todo → partial** só se o integrador aceitar `dil_obs`/`Registro` como base do ledger de observações do preditivo; registry de modelos não foi tocado | `dil_obs_0001_*.sql`, 02 §10 |
 | P14-T07 "Construir baseline preditivo sem vazamento de futuro" | todo | sem mudança de estado; registrar dependência: features devem vir de `as_of(t)` | 02 §7 |
 
@@ -155,7 +157,7 @@ numa cópia (script `mutar.py` no scratchpad): **M1, M2, M3, M4, M5, M6, M7 (Pyt
 | F2 aplicador continuava dono | membresia temporária: superusuário não se concede; não-superusuário se concede e revoga no fim; membro permanente → WARNING | `test_schema_pg_r1.py::test_r1_f2_aplicador_nao_superusuario_nao_continua_dono` (papel NOSUPERUSER CREATEROLE aplica; depois `SET ROLE`, UPDATE, TRUNCATE e DISABLE TRIGGER negados; down pelo mesmo aplicador), `test_r1_f2_membro_permanente_recebe_aviso` |
 | F3 linhagem solta | run da obs = run do lote, em andamento (FOR SHARE); fonte/coletor = run; schema = lote | `test_r1_f3_linhagem_conferida` (5 casos), `test_r1_f3_lote_de_run_finalizado_nao_recebe` (cenário `t_linhagem.py`) |
 | F4 moeda inventada a montante | moeda só com prova no payload ou `moeda_atestada`; senão `invalid` `moeda_nao_provada`/`moeda_divergente`; moeda sem prova não é gravada nem em linha sem valor. Documentado: v21 campanha-dia grava 'BRL' fixo, JoinAds `cfg.CURRENCY \|\| 'USD'` + DEFAULT 'USD' | `test_observacao_adaptadores.py::test_r1_f4_*` (2) |
-| F8 run fechado com contagens NULL/incoerentes; retry erra | `finalizar_run` conta inseridas/reafirmadas/dead letter, exige `n_lidas`/`n_noop`, coerência e é idempotente; CHECK com `IS NOT NULL` | `test_schema_pg_r1.py::test_r1_f8_*` (cenário `t_run.py`), `test_r1_m4_check_de_contagens_no_banco` |
+| F8 run fechado com contagens NULL/incoerentes; retry erra | `finalizar_run` conta inseridas/dead letter, exige `n_lidas`/`n_noop`, coerência e é idempotente; CHECK com `IS NOT NULL` | `test_schema_pg_r1.py::test_r1_f8_*` (cenário `t_run.py`), `test_r1_m4_check_de_contagens_no_banco` |
 | F9 SQL aceitava o que o Python recusa | entrada `json`; inteiro literal; tipos JSON; offset ISO obrigatório (SQL e `de_json`); `_texto_ok` em toda identidade (CHECK e função); `ingested_at` declarado ≥ `available_at`; Python com `available_timezones()` (caixa exata); `Observacao.de_json_texto` | `test_validacao_python_e_sql_concordam` (37 mutações, todos os casos de `t_div.py`), `test_r1_m18_*` (4), `test_observacao_contrato.py::test_r1_f9_*` (7), novos casos de CHECK |
 | F15 chave JoinAds mascarada a montante | `custom_key_ausente:<pedida>` (pedido do request ou do endpoint); `custom_key_forcado_upstream` em `key_value_country_adunit`/`pageviews_campaign_batch`; limite documentado (linhas substituídas são descartadas antes da tabela) | `test_r1_f15_custom_key_ausente_forcado_e_com_espaco` (casos (j), (k) e M13) |
 | F16 partial somado num total `medido` | `partial` fora do total por padrão; `cobertura_minima_ppm`, `n_cobertura_desconhecida` | `test_observacao_registro_asof.py::test_r1_f16_*` (cenário `t_agreg.py`) |
@@ -184,3 +186,24 @@ Mudanças que afetam outras threads:
 Delta de curadoria adicional (proposta): P06-T08 e P14-T02 continuam `partial`; anotar que a regra "nunca
 retroativo" agora é do relógio do banco e que adaptadores v21/v2 marcam moeda sem prova como `invalid` — o
 coletor v21 precisaria pedir `customer.currency_code` no GAQL para o custo deixar de ser `invalid`.
+
+### 7.1 Achados D1–D3 da thread D (tratados junto com a R1)
+
+Base: merge local de `lab/data-foundation-20261016` em `62df98be` (com D) → `ced64b37`.
+Suíte: **786 passed** (~150 s). Os 8 testes novos de D1–D3 falham todos no código anterior (`ced64b37`).
+
+| Achado | Decisão / correção | Teste |
+|---|---|---|
+| D1 ordem de versão: leitura antiga entregue atrasada voltava o `as_of` ao valor antigo (10/7.689 contra o `visao_as_of` da E em `atraso_receita_longo`) | regra única `ordem_versao = (observed_at, available_at)`: vence a medição mais recente; empate → conhecida por último; depois `chave_idempotencia` (inalcançável pelo UNIQUE). Igual em `as_of`, `Registro.vigente`, `observacao_as_of` (SQL, índice `ix_obs_asof`) e no `FluxoIndexado` da D (que agora delega a `vigente_entre`) | `test_observacao_ordem_versao.py::test_d1_*` (2; contra o simulador: 0 divergências com a regra nova, >0 com a antiga), `test_schema_pg_r1.py::test_d1_*`, geradores de propriedade e de equivalência SQL×Python agora com `observed_at` fora da ordem de chegada |
+| D2 releitura D0 com a mesma `chave_base` e outra cobertura → `ConflitoIdempotencia` | `observed_at` entra na chave da leitura (`dil_obs.chave_idempotencia.v2`): retry/reentrega = no-op; releitura em outra hora (inclusive a de D+1 com o MESMO payload e janela fechada) = versão nova. A "reafirmação" deixou de existir (removidos `TipoRegistro`, `REAFIRMADO`, `chave_reafirmacao`, colunas `chave_base`/`tipo_registro` e `n_reafirmadas`; `finalizar_run` tem 7 parâmetros). Alternativas rejeitadas e custo no 02 §6 | `test_d2_releitura_d0_do_padrao_real_*` (5 campanhas, 1 muda por hora, ≥75% de repetição: tudo `inserido`, retry `noop`, janela fecha), `test_d2_cobertura_declarada_*` (cobertura que muda = versão; mesma leitura com outra cobertura = conflito), `test_schema_pg_r1.py::test_d2_releitura_d0_no_banco_igual_ao_registro` |
+| D3 erro de ambiguidade já superada dependia da ordem de entrada | `vigente_entre` agrupa e decide pelo topo: ambiguidade só quando leituras diferentes empatam no topo; superadas não levantam; resultado e erro independem da ordem | `test_d3_*` (todas as permutações de um caso e propriedade com 200 conjuntos × 10 embaralhamentos) |
+
+Efeitos em outras threads (mudança mínima, marcada `[thread A, D*]`/`[thread A, R1-*]`):
+- D: `shadow/fluxo.py::FluxoIndexado.as_of` delega a `vigente_entre`; `shadow/linhas_formato_real.py` passa a
+  provar a moeda no payload (`customer.currencyCode` no v21; `batch_payload` com `currency` na JoinAds) — sem isso
+  o R1-F4 deixava custo e receita `invalid`; `test_shadow_real.py::test_replay_de_linhas_reais_ponta_a_ponta`:
+  com D2 a leitura de D+1 06h (mesmo payload, janela fechada) não é mais descartada como duplicata, o custo de
+  D-1 chega fechado e as baselines `equal`/`greedy` (sem portão de maturidade, 06 §11) realocam por construção —
+  saíram do conjunto "não corta" e ganharam uma asserção de que recebem o custo.
+- G: `finalizar_run` com 7 argumentos em `test_qualidade_pg_views.py`.
+- Contagem de "repetição" muda de natureza: quem precisa de pontos de mudança deduplica por conteúdo na leitura.

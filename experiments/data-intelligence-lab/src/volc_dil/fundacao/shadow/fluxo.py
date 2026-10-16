@@ -3,7 +3,7 @@
 `FluxoIndexado` calcula UMA vez por observação as chaves (natural e de idempotência, sha256 —
 caras) e ordena o fluxo por `(available_at, chave_natural, chave_base)`. Cada corte T é um
 prefixo do fluxo; `as_of(T)` aplica exatamente a regra de `volc_dil.fundacao.observacao.as_of`
-(maior `available_at <= T` por chave natural; ambiguidade levanta) sobre esse prefixo — a
+(entre as visíveis, maior `observed_at`, depois maior `available_at`; ambiguidade no topo levanta) sobre esse prefixo — a
 equivalência é provada em `test_shadow_corte.py` contra a função da thread A em todos os cortes.
 
 Fingerprint dos visíveis: hash encadeado sobre o prefixo ordenado, pré-calculado. A ordem do
@@ -24,6 +24,7 @@ from volc_dil.contracts.snapshot import VersaoAmbigua
 
 from ..observacao.chaves import instante_canonico
 from ..observacao.modelo import Observacao
+from ..observacao.asof import vigente_entre
 from ..observacao.registro import ConflitoIdempotencia
 
 
@@ -129,18 +130,15 @@ class FluxoIndexado:
         return self._hashes[n - 1] if n else hashlib.sha256(b"volc-dil.shadow.fluxo.v1").hexdigest()
 
     def as_of(self, t: datetime) -> dict[str, ItemFluxo]:
-        """{chave_natural: item vigente em t}. Mesma regra de `observacao.as_of`."""
-        vigentes: dict[str, ItemFluxo] = {}
+        """{chave_natural: item vigente em t}. Mesma regra de `observacao.as_of`.
+
+        [thread A, D1/D3] a seleção delega a `observacao.vigente_entre` (regra única: maior observed_at,
+        depois maior available_at; ambiguidade só no topo, independente da ordem)."""
+        grupos: dict[str, list[ItemFluxo]] = {}
         for i in self.visiveis(t):
-            atual = vigentes.get(i.chave_natural)
-            if atual is None or i.available_at > atual.available_at:
-                vigentes[i.chave_natural] = i
-            elif i.available_at == atual.available_at:
-                if i.chave_base != atual.chave_base:
-                    raise VersaoAmbigua("duas leituras diferentes do mesmo fato no mesmo available_at")
-                if i.obs.conteudo != atual.obs.conteudo:  # pragma: no cover - barrado no índice
-                    raise ConflitoIdempotencia("mesma leitura com conteúdo diferente")
-        return vigentes
+            grupos.setdefault(i.chave_natural, []).append(i)
+        return {nat: vigente_entre(itens, obs=lambda x: x.obs, base=lambda x: x.chave_base)
+                for nat, itens in grupos.items()}
 
     def n_versoes(self, t: datetime) -> dict[str, int]:
         """Quantas versões (leituras distintas) de cada fato eram conhecidas em t."""

@@ -284,13 +284,14 @@ class Observacao:
 
     @property
     def chave_base(self) -> str:
-        """Chave de idempotência da leitura (identidade + payload + esquema + coletor)."""
+        """Chave de idempotência da leitura (identidade + payload + esquema + coletor + observed_at)."""
         return chaves.chave_base(
             chave_natural_hex=self.chave_natural,
             payload_sha256=self.payload_sha256,
             schema_version=self.schema_version,
             coletor_nome=self.coletor.nome,
             coletor_versao=self.coletor.versao,
+            observed_at=self.observed_at,
         )
 
     @property

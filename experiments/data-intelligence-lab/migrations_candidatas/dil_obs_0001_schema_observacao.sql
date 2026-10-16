@@ -139,18 +139,18 @@ AS $$
     || chr(31) || dil_obs._ts(p_janela_inicio) || chr(31) || dil_obs._ts(p_janela_fim) || chr(31) || p_timezone)
 $$;
 
+-- v2 (D1/D2): observed_at entra na chave da LEITURA. Retry/reentrega = mesma chave = no-op; o mesmo payload
+-- relido em outra hora (janela que fechou, cobertura que mudou, cron D0) = leitura nova = versão nova.
 CREATE FUNCTION dil_obs._chave_base(
-  p_chave_natural text, p_payload_sha256 text, p_schema_version text, p_coletor_nome text, p_coletor_versao text
+  p_chave_natural text, p_payload_sha256 text, p_schema_version text, p_coletor_nome text, p_coletor_versao text,
+  p_observed_at timestamptz
 ) RETURNS text
 LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE SET search_path = ''
 AS $$
-  SELECT dil_obs._sha256_texto('dil_obs.chave_idempotencia.v1' || chr(31) || p_chave_natural || chr(31) || p_payload_sha256
-                               || chr(31) || p_schema_version || chr(31) || p_coletor_nome || chr(31) || p_coletor_versao)
+  SELECT dil_obs._sha256_texto('dil_obs.chave_idempotencia.v2' || chr(31) || p_chave_natural || chr(31) || p_payload_sha256
+                               || chr(31) || p_schema_version || chr(31) || p_coletor_nome || chr(31) || p_coletor_versao
+                               || chr(31) || dil_obs._ts(p_observed_at))
 $$;
-
-CREATE FUNCTION dil_obs._chave_reafirmacao(p_chave_base text, p_available_at timestamptz) RETURNS text
-LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE SET search_path = ''
-AS $$ SELECT dil_obs._sha256_texto('dil_obs.reafirmacao.v1' || chr(31) || p_chave_base || chr(31) || dil_obs._ts(p_available_at)) $$;
 
 -- ---------------------------------------------------------------------------
 -- 2. Tabelas
@@ -166,7 +166,6 @@ CREATE TABLE dil_obs.run_coleta (
   n_lidas         integer,
   n_inseridas     integer,
   n_noop          integer,
-  n_reafirmadas   integer,
   n_dead_letter   integer,
   erro            text,
   CONSTRAINT ck_run_textos CHECK (
@@ -179,13 +178,11 @@ CREATE TABLE dil_obs.run_coleta (
   -- contagens só existem quando a execução termina; nunca nascem 0 por default; no fim são
   -- obrigatórias (IS NOT NULL explícito: CHECK com NULL passaria — R1-F8) e coerentes
   CONSTRAINT ck_run_contagens CHECK (
-    (status = 'running' AND n_lidas IS NULL AND n_inseridas IS NULL AND n_noop IS NULL
-       AND n_reafirmadas IS NULL AND n_dead_letter IS NULL)
+    (status = 'running' AND n_lidas IS NULL AND n_inseridas IS NULL AND n_noop IS NULL AND n_dead_letter IS NULL)
     OR (status <> 'running'
-       AND n_lidas IS NOT NULL AND n_inseridas IS NOT NULL AND n_noop IS NOT NULL
-       AND n_reafirmadas IS NOT NULL AND n_dead_letter IS NOT NULL
-       AND n_lidas >= 0 AND n_inseridas >= 0 AND n_noop >= 0 AND n_reafirmadas >= 0 AND n_dead_letter >= 0
-       AND n_lidas >= n_inseridas + n_reafirmadas + n_noop))
+       AND n_lidas IS NOT NULL AND n_inseridas IS NOT NULL AND n_noop IS NOT NULL AND n_dead_letter IS NOT NULL
+       AND n_lidas >= 0 AND n_inseridas >= 0 AND n_noop >= 0 AND n_dead_letter >= 0
+       AND n_lidas >= n_inseridas + n_noop))
 );
 COMMENT ON TABLE dil_obs.run_coleta IS 'Uma execução de coletor. Única tabela com UPDATE: running → estado final, uma vez.';
 
@@ -220,9 +217,7 @@ COMMENT ON TABLE dil_obs.lote IS 'Um pedido à fonte e o payload que voltou. rec
 CREATE TABLE dil_obs.observacao (
   observacao_id       bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   chave_idempotencia  text NOT NULL,
-  chave_base          text NOT NULL,
   chave_natural       text NOT NULL,
-  tipo_registro       text NOT NULL,
   fonte               text NOT NULL,
   conta               text NOT NULL,
   entidade_tipo       text NOT NULL,
@@ -254,11 +249,7 @@ CREATE TABLE dil_obs.observacao (
   cobertura_ppm       integer,
 
   CONSTRAINT uq_obs_chave_idempotencia UNIQUE (chave_idempotencia),
-  CONSTRAINT ck_obs_chaves CHECK (
-    chave_idempotencia ~ '^[0-9a-f]{64}$' AND chave_base ~ '^[0-9a-f]{64}$' AND chave_natural ~ '^[0-9a-f]{64}$'),
-  CONSTRAINT ck_obs_tipo_registro CHECK (
-    (tipo_registro = 'leitura' AND chave_idempotencia = chave_base)
-    OR (tipo_registro = 'reafirmacao' AND chave_idempotencia <> chave_base)),
+  CONSTRAINT ck_obs_chaves CHECK (chave_idempotencia ~ '^[0-9a-f]{64}$' AND chave_natural ~ '^[0-9a-f]{64}$'),
   CONSTRAINT ck_obs_fonte CHECK (fonte ~ '^[a-z][a-z0-9_]*$'),
   CONSTRAINT ck_obs_identidade CHECK (
     dil_obs._texto_ok(conta) AND dil_obs._texto_ok(entidade_tipo) AND dil_obs._texto_ok(entidade_id)
@@ -324,7 +315,8 @@ COMMENT ON COLUMN dil_obs.observacao.available_at IS 'Relógio do replay as_of: 
 
 -- uma versão por (fato, instante de conhecimento): torna o as_of determinístico e serve o DISTINCT ON
 CREATE UNIQUE INDEX uq_obs_versao ON dil_obs.observacao (chave_natural, available_at DESC);
-CREATE INDEX ix_obs_chave_base ON dil_obs.observacao (chave_base);
+-- serve o DISTINCT ON do as_of na ordem de versão (D1)
+CREATE INDEX ix_obs_asof ON dil_obs.observacao (chave_natural, observed_at DESC, available_at DESC);
 CREATE INDEX ix_obs_entidade ON dil_obs.observacao (fonte, conta, entidade_tipo, entidade_id, janela_inicio);
 CREATE INDEX ix_obs_lote ON dil_obs.observacao (lote_id);
 CREATE INDEX ix_obs_run ON dil_obs.observacao (run_id);
@@ -414,21 +406,20 @@ BEGIN
   RETURN 'inserido';
 END $$;
 
--- Fechamento (R1-F8): inseridas, reafirmadas e dead letters são CONTADAS PELO BANCO; o chamador só
--- informa n_lidas (itens submetidos) e n_noop, que precisam ser coerentes; valores informados para as
--- contagens do banco precisam bater. Repetir o mesmo fechamento é 'noop'; outro desfecho é erro.
+-- Fechamento (R1-F8): inseridas e dead letters são CONTADAS PELO BANCO; o chamador só informa n_lidas
+-- (itens submetidos) e n_noop, que precisam ser coerentes; valores informados para as contagens do banco
+-- precisam bater. Repetir o mesmo fechamento é 'noop'; outro desfecho é erro.
 -- Trava a linha da execução (FOR UPDATE) antes de contar: observações em voo (que seguram FOR SHARE)
 -- entram na contagem ou são recusadas depois — nunca gravadas num run já fechado (R1-H4).
 CREATE FUNCTION dil_obs.finalizar_run(
   p_run_id text, p_status text, p_n_lidas integer, p_n_inseridas integer, p_n_noop integer,
-  p_n_reafirmadas integer, p_n_dead_letter integer, p_erro text
+  p_n_dead_letter integer, p_erro text
 ) RETURNS text
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
 DECLARE
   r dil_obs.run_coleta%ROWTYPE;
   v_ins integer;
-  v_reaf integer;
   v_dl integer;
 BEGIN
   IF p_status IS NULL OR p_status NOT IN ('succeeded', 'failed', 'partial') THEN
@@ -446,13 +437,11 @@ BEGIN
     END IF;
   END IF;
   -- contagens em comandos novos: em READ COMMITTED enxergam o que foi confirmado até a trava
-  SELECT count(*) FILTER (WHERE tipo_registro = 'leitura'), count(*) FILTER (WHERE tipo_registro = 'reafirmacao')
-    INTO v_ins, v_reaf FROM dil_obs.observacao WHERE run_id = p_run_id;
+  SELECT count(*) INTO v_ins FROM dil_obs.observacao WHERE run_id = p_run_id;
   SELECT count(*) INTO v_dl FROM dil_obs.dead_letter WHERE run_id = p_run_id;
   IF r.status <> 'running' THEN
     IF (r.status, r.n_lidas, r.n_noop, r.erro) IS NOT DISTINCT FROM (p_status, p_n_lidas, p_n_noop, p_erro)
        AND coalesce(p_n_inseridas, r.n_inseridas) = r.n_inseridas
-       AND coalesce(p_n_reafirmadas, r.n_reafirmadas) = r.n_reafirmadas
        AND coalesce(p_n_dead_letter, r.n_dead_letter) = r.n_dead_letter THEN
       RETURN 'noop';
     END IF;
@@ -463,18 +452,16 @@ BEGIN
     RAISE EXCEPTION 'contagem_incoerente: n_lidas e n_noop são obrigatórios e >= 0' USING ERRCODE = 'DLC01';
   END IF;
   IF p_n_inseridas IS DISTINCT FROM v_ins AND p_n_inseridas IS NOT NULL
-     OR p_n_reafirmadas IS DISTINCT FROM v_reaf AND p_n_reafirmadas IS NOT NULL
      OR p_n_dead_letter IS DISTINCT FROM v_dl AND p_n_dead_letter IS NOT NULL THEN
-    RAISE EXCEPTION 'contagem_incoerente: o banco contou inseridas=%, reafirmadas=%, dead_letter=%', v_ins, v_reaf, v_dl
-      USING ERRCODE = 'DLC01';
+    RAISE EXCEPTION 'contagem_incoerente: o banco contou inseridas=%, dead_letter=%', v_ins, v_dl USING ERRCODE = 'DLC01';
   END IF;
-  IF p_n_lidas < v_ins + v_reaf + p_n_noop THEN
-    RAISE EXCEPTION 'contagem_incoerente: n_lidas (%) menor que inseridas+reafirmadas+noop (%)', p_n_lidas,
-      v_ins + v_reaf + p_n_noop USING ERRCODE = 'DLC01';
+  IF p_n_lidas < v_ins + p_n_noop THEN
+    RAISE EXCEPTION 'contagem_incoerente: n_lidas (%) menor que inseridas+noop (%)', p_n_lidas, v_ins + p_n_noop
+      USING ERRCODE = 'DLC01';
   END IF;
   UPDATE dil_obs.run_coleta
      SET status = p_status, finalizado_em = greatest(dil_obs._agora(), iniciado_em), n_lidas = p_n_lidas,
-         n_inseridas = v_ins, n_noop = p_n_noop, n_reafirmadas = v_reaf, n_dead_letter = v_dl, erro = p_erro
+         n_inseridas = v_ins, n_noop = p_n_noop, n_dead_letter = v_dl, erro = p_erro
    WHERE run_id = p_run_id;
   RETURN 'finalizado';
 END $$;
@@ -551,9 +538,8 @@ BEGIN
 END $$;
 
 -- Regras idênticas a volc_dil.fundacao.observacao.Registro.registrar (oráculo do teste de equivalência):
---   chave_base nova → 'inserido'; mesma chave com conteúdo diferente → conflito_idempotencia;
---   mesma chave e (vigente é desta leitura ou available_at não é posterior) → 'noop';
---   senão → 'reafirmado' (A→B→A). Mesmo (chave_natural, available_at) com outra leitura → versao_ambigua.
+--   chave da leitura nova → 'inserido'; mesma chave com conteúdo diferente → conflito_idempotencia;
+--   mesma chave e mesmo conteúdo → 'noop'. Mesmo (chave_natural, available_at) com outra leitura → versao_ambigua.
 -- Entrada `json` (não jsonb): o texto original é preservado, então `5e0`, `1.0` e chave repetida são
 -- detectáveis (jsonb normalizaria) — paridade com Observacao.de_json_texto (R1-F9).
 CREATE FUNCTION dil_obs.registrar_observacao(p json) RETURNS text
@@ -586,10 +572,7 @@ DECLARE
   v_avail timestamptz;
   v_nat text;
   v_base text;
-  v_chave text;
-  v_tipo text;
   v_exist dil_obs.observacao%ROWTYPE;
-  v_vig dil_obs.observacao%ROWTYPE;
   v_lote dil_obs.lote%ROWTYPE;
   v_run dil_obs.run_coleta%ROWTYPE;
   v_payload_recebido timestamptz;
@@ -724,7 +707,7 @@ BEGIN
                                   v_dims, j ->> 'metrica', j ->> 'value_kind', (j ->> 'janela_inicio')::timestamptz,
                                   (j ->> 'janela_fim')::timestamptz, j ->> 'timezone');
   v_base := dil_obs._chave_base(v_nat, j ->> 'payload_sha256', j ->> 'schema_version', j ->> 'coletor_nome',
-                                j ->> 'coletor_versao');
+                                j ->> 'coletor_versao', (j ->> 'observed_at')::timestamptz);
   IF v_nat IS NULL OR v_base IS NULL THEN
     RAISE EXCEPTION 'contrato: campo de identidade nulo' USING ERRCODE = 'DLC01';
   END IF;
@@ -739,18 +722,7 @@ BEGIN
       RAISE EXCEPTION 'conflito_idempotencia: mesma leitura com conteúdo diferente (coletor não determinístico)'
         USING ERRCODE = 'DLI01';
     END IF;
-    SELECT * INTO v_vig FROM dil_obs.observacao WHERE chave_natural = v_nat ORDER BY available_at DESC LIMIT 1;
-    IF v_vig.chave_base = v_base OR v_avail <= v_vig.available_at THEN
-      RETURN 'noop';
-    END IF;
-    v_chave := dil_obs._chave_reafirmacao(v_base, v_avail);
-    IF EXISTS (SELECT 1 FROM dil_obs.observacao WHERE chave_idempotencia = v_chave) THEN
-      RETURN 'noop';
-    END IF;
-    v_tipo := 'reafirmacao';
-  ELSE
-    v_chave := v_base;
-    v_tipo := 'leitura';
+    RETURN 'noop';
   END IF;
 
   IF EXISTS (SELECT 1 FROM dil_obs.observacao WHERE chave_natural = v_nat AND available_at = v_avail) THEN
@@ -758,19 +730,19 @@ BEGIN
   END IF;
 
   INSERT INTO dil_obs.observacao (
-    chave_idempotencia, chave_base, chave_natural, tipo_registro, fonte, conta, entidade_tipo, entidade_id, grao,
+    chave_idempotencia, chave_natural, fonte, conta, entidade_tipo, entidade_id, grao,
     dimensoes, metrica, value_kind, valor, unidade, moeda, janela_inicio, janela_fim, timezone, observed_at,
     source_updated_at, available_at, ingested_at, run_id, request_id, lote_id, payload_sha256, payload_ref,
     schema_version, coletor_nome, coletor_versao, status, motivo, cobertura_ppm)
   VALUES (
-    v_chave, v_base, v_nat, v_tipo, j ->> 'fonte', j ->> 'conta', j ->> 'entidade_tipo', j ->> 'entidade_id', v_grao,
+    v_base, v_nat, j ->> 'fonte', j ->> 'conta', j ->> 'entidade_tipo', j ->> 'entidade_id', v_grao,
     v_dims, j ->> 'metrica', j ->> 'value_kind', v_valor, j ->> 'unidade', j ->> 'moeda',
     (j ->> 'janela_inicio')::timestamptz, (j ->> 'janela_fim')::timestamptz, j ->> 'timezone',
     (j ->> 'observed_at')::timestamptz, (j ->> 'source_updated_at')::timestamptz, v_avail,
     dil_obs._agora(),  -- relógio do banco: o escritor não declara quando escreveu
     j ->> 'run_id', j ->> 'request_id', j ->> 'lote_id', j ->> 'payload_sha256', j ->> 'payload_ref',
     j ->> 'schema_version', j ->> 'coletor_nome', j ->> 'coletor_versao', j ->> 'status', j ->> 'motivo', v_cob);
-  RETURN CASE v_tipo WHEN 'leitura' THEN 'inserido' ELSE 'reafirmado' END;
+  RETURN 'inserido';
 END $$;
 
 -- ---------------------------------------------------------------------------
@@ -782,10 +754,11 @@ AS $$
   SELECT DISTINCT ON (o.chave_natural) o.*
     FROM dil_obs.observacao AS o
    WHERE o.available_at <= t
-   ORDER BY o.chave_natural, o.available_at DESC
+   ORDER BY o.chave_natural, o.observed_at DESC, o.available_at DESC, o.chave_idempotencia DESC
 $$;
 COMMENT ON FUNCTION dil_obs.observacao_as_of(timestamptz) IS
-  'Estado conhecido em t: por chave_natural, a versão de maior available_at <= t. Status preservado.';
+  'Estado conhecido em t: por chave_natural, entre as versões com available_at <= t, a de maior observed_at '
+  '(empate: maior available_at; depois chave_idempotencia, inalcançável pelo UNIQUE). Status preservado.';
 
 CREATE VIEW dil_obs.observacao_latest WITH (security_invoker = true) AS
   SELECT * FROM dil_obs.observacao_as_of(now());
@@ -848,7 +821,7 @@ GRANT USAGE ON SCHEMA dil_obs TO dil_obs_escritor, dil_obs_leitor;
 
 GRANT EXECUTE ON FUNCTION
   dil_obs.registrar_run(text, text, text, text, timestamptz),
-  dil_obs.finalizar_run(text, text, integer, integer, integer, integer, integer, text),
+  dil_obs.finalizar_run(text, text, integer, integer, integer, integer, text),
   dil_obs.registrar_payload(text, bytea, text),
   dil_obs.registrar_lote(text, text, text, text, jsonb, timestamptz),
   dil_obs.registrar_dead_letter(text, text, text, text, jsonb),

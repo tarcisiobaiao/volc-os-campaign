@@ -91,8 +91,8 @@ def script_carga(observacoes, *, papel: str = "dil_obs_escritor", relogio="avail
             linhas.append(f"SELECT 'R:' || dil_obs.registrar_observacao({_lit(json.dumps(o.para_json()))}::json);")
     if finalizar:
         for run_id in sorted(runs):
-            # inseridas/reafirmadas/dead letter: o banco conta; n_lidas = chamadas feitas, n_noop desconhecido = 0
-            linhas.append(f"SELECT dil_obs.finalizar_run({_lit(run_id)}, 'succeeded', {chamadas.get(run_id, 0)}, NULL, 0, NULL, NULL, NULL);")
+            # inseridas/dead letter: o banco conta; n_lidas = chamadas feitas, n_noop desconhecido = 0
+            linhas.append(f"SELECT dil_obs.finalizar_run({_lit(run_id)}, 'succeeded', {chamadas.get(run_id, 0)}, NULL, 0, NULL, NULL);")
     if relogio is not None:
         linhas.append(sql_relogio(None, papel))
     return "\n".join(linhas)
@@ -104,7 +104,7 @@ def carregar(cluster, db, observacoes, *, papel: str = "dil_obs_escritor", **kw)
 
 
 def as_of_sql(cluster, db, t: datetime, conta: str) -> list[tuple]:
-    sql = (f"SELECT chave_natural, chave_base, status, coalesce(valor::text, 'NULL'), dil_obs._ts(available_at) "
+    sql = (f"SELECT chave_natural, chave_idempotencia, status, coalesce(valor::text, 'NULL'), dil_obs._ts(available_at) "
            f"FROM dil_obs.observacao_as_of({_lit(t.isoformat())}) WHERE conta = {_lit(conta)} ORDER BY chave_natural;")
     # _ts é interno (sem EXECUTE para o leitor): a formatação canônica roda como superusuário;
     # o caminho do papel leitor é provado em test_rls_e_grants_minimos e no latest
@@ -146,6 +146,13 @@ def test_chaves_python_iguais_as_do_postgres(cluster_pg, banco_obs, obs):
         obs(metrica="revenue", value_kind="reported_revenue", grao=("day", "campaign", "day")),
         obs(janela_inicio=datetime(2026, 3, 8, 1, 2, 3, 456789, tzinfo=timezone.utc),
             janela_fim=datetime(2026, 3, 9, tzinfo=timezone(timedelta(hours=5, minutes=30))), timezone="Asia/Kolkata"),
+        # D2: janela aberta e cobertura entram na chave da leitura
+        obs(status="partial", motivo="janela_aberta", cobertura_ppm=250_000, observed_at=BASE + timedelta(hours=6),
+            janela_inicio=BASE, janela_fim=BASE + timedelta(days=1), available_at=BASE + timedelta(hours=6),
+            ingested_at=BASE + timedelta(hours=6)),
+        obs(status="partial", motivo="janela_aberta;cobertura_desconhecida", observed_at=BASE + timedelta(hours=6),
+            janela_inicio=BASE, janela_fim=BASE + timedelta(days=1), available_at=BASE + timedelta(hours=6),
+            ingested_at=BASE + timedelta(hours=6)),
     ]
     for o in casos:
         j = o.para_json()
@@ -155,14 +162,10 @@ def test_chaves_python_iguais_as_do_postgres(cluster_pg, banco_obs, obs):
             "ARRAY(SELECT jsonb_array_elements_text(p->'grao')), p->'dimensoes', p->>'metrica', p->>'value_kind', "
             "(p->>'janela_inicio')::timestamptz, (p->>'janela_fim')::timestamptz, p->>'timezone') AS nat, p FROM p) "
             "SELECT nat || '|' || dil_obs._chave_base(nat, p->>'payload_sha256', p->>'schema_version', p->>'coletor_nome', "
-            "p->>'coletor_versao') || '|' || dil_obs._chave_reafirmacao(dil_obs._chave_base(nat, p->>'payload_sha256', "
-            "p->>'schema_version', p->>'coletor_nome', p->>'coletor_versao'), (p->>'available_at')::timestamptz) FROM n;"
+            "p->>'coletor_versao', (p->>'observed_at')::timestamptz) FROM n;"
         )
-        nat, base, reaf = cluster_pg.psql(sql, db=banco_obs).split("|")
-        from volc_dil.fundacao.observacao import chave_reafirmacao
-
+        nat, base = cluster_pg.psql(sql, db=banco_obs).split("|")
         assert (nat, base) == (o.chave_natural, o.chave_base)
-        assert reaf == chave_reafirmacao(chave_base_hex=o.chave_base, available_at=o.available_at)
 
 
 # ============================================================== idempotência e versões
@@ -189,18 +192,17 @@ def test_reprocessamento_tardio_aparece_depois_de_T_e_nao_antes(cluster_pg, banc
     assert latest == "5400000"
 
 
-def test_reafirmacao_conflito_e_versao_ambigua(cluster_pg, banco_obs, obs):
+def test_aba_conflito_e_versao_ambigua(cluster_pg, banco_obs, obs):
     falta = dict(status="missing", valor=None, moeda=None, motivo="linha_ausente_na_resposta")
-    a1 = o_pg(obs, 30, payload=b"aba-vazio", conta="aba", **falta)
-    b = o_pg(obs, 36, payload=b"aba-P1", conta="aba")
-    a2 = o_pg(obs, 40, payload=b"aba-vazio", conta="aba", run_id="run-aba-3", **falta)
-    assert carregar(cluster_pg, banco_obs, [a1, b, a2, a2]) == ["inserido", "inserido", "reafirmado", "noop"]
-    tipos = cluster_pg.psql("SELECT string_agg(tipo_registro, ',' ORDER BY available_at) FROM dil_obs.observacao WHERE conta='aba';",
-                            db=banco_obs)
-    assert tipos == "leitura,leitura,reafirmacao"
+    a1 = o_pg(obs, 30, payload=b"aba-vazio", conta="aba", observed_at=BASE + timedelta(hours=30), **falta)
+    b = o_pg(obs, 36, payload=b"aba-P1", conta="aba", observed_at=BASE + timedelta(hours=36))
+    a2 = o_pg(obs, 40, payload=b"aba-vazio", conta="aba", run_id="run-aba-3", observed_at=BASE + timedelta(hours=40), **falta)
+    assert carregar(cluster_pg, banco_obs, [a1, b, a2, a2]) == ["inserido", "inserido", "inserido", "noop"]
+    assert cluster_pg.psql("SELECT count(*) FROM dil_obs.observacao WHERE conta='aba';", db=banco_obs) == "3"
     assert [r[2] for r in as_of_sql(cluster_pg, banco_obs, BASE + timedelta(hours=41), "aba")] == ["missing"]
 
-    conflito = o_pg(obs, 30, payload=b"aba-vazio", conta="aba", status="unavailable", valor=None, moeda=None, motivo="x")
+    conflito = o_pg(obs, 30, payload=b"aba-vazio", conta="aba", status="unavailable", valor=None, moeda=None, motivo="x",
+                    observed_at=BASE + timedelta(hours=30))
     assert "conflito_idempotencia" in cluster_pg.falha(script_carga([conflito]), db=banco_obs, papel="dil_obs_escritor")
     ambigua = o_pg(obs, 36, payload=b"aba-P2", conta="aba", valor=9_000_000)
     assert "versao_ambigua" in cluster_pg.falha(script_carga([ambigua]), db=banco_obs, papel="dil_obs_escritor")
@@ -229,12 +231,12 @@ def test_append_only_papeis_sem_privilegio_e_run_finalizada(cluster_pg, banco_ob
 
 # ============================================================== null != 0 (CHECKs no próprio banco)
 def _insert_mutado(overrides: dict, conta: str) -> str:
-    cols = ["chave_idempotencia", "chave_base", "chave_natural", "tipo_registro", "fonte", "conta", "entidade_tipo",
+    cols = ["chave_idempotencia", "chave_natural", "fonte", "conta", "entidade_tipo",
             "entidade_id", "grao", "dimensoes", "metrica", "value_kind", "valor", "unidade", "moeda", "janela_inicio",
             "janela_fim", "timezone", "observed_at", "source_updated_at", "available_at", "ingested_at", "run_id",
             "request_id", "lote_id", "payload_sha256", "payload_ref", "schema_version", "coletor_nome", "coletor_versao",
             "status", "motivo", "cobertura_ppm"]
-    novo = {"chave_idempotencia": "encode(sha256('mut'::bytea), 'hex')", "chave_base": "encode(sha256('mut'::bytea), 'hex')",
+    novo = {"chave_idempotencia": "encode(sha256('mut'::bytea), 'hex')",
             "available_at": "available_at + interval '1 hour'", "ingested_at": "now()"}
     novo.update(overrides)
     sel = ", ".join(novo.get(c, c) for c in cols)
@@ -261,7 +263,7 @@ def _insert_mutado(overrides: dict, conta: str) -> str:
         ({"janela_fim": "janela_inicio"}, "ck_obs_janela"),
         ({"payload_ref": "'s3://bucket/ultimo.json'"}, "ck_obs_payload"),
         ({"metrica": "'revenue'"}, "ck_obs_value_kind_regra"),
-        ({"tipo_registro": "'reafirmacao'"}, "ck_obs_tipo_registro"),
+        ({"chave_natural": "'x'"}, "ck_obs_chaves"),
         ({"grao": "ARRAY['semana']"}, "ck_obs_grao"),
         # R1-F20: mutações que sobreviviam
         ({"observed_at": "janela_fim - interval '1 hour'"}, "ck_obs_janela_fechada"),  # M1
@@ -494,6 +496,7 @@ def _sequencia(obs, rng: random.Random, conta: str, n: int):
         else:
             kw["moeda"] = None
         # conta no payload: bytes são endereçados por conteúdo e o relógio simulado volta entre sequências
+        kw["observed_at"] = BASE + timedelta(hours=rng.randint(24, h))  # D1: chegada fora da ordem de medição
         eventos.append(o_pg(obs, h, payload=p + ent.encode() + met.encode() + conta.encode(), conta=conta, **kw))
         if rng.random() < 0.3:
             eventos.append(eventos[-1])
@@ -502,7 +505,7 @@ def _sequencia(obs, rng: random.Random, conta: str, n: int):
 
 def test_equivalencia_as_of_sql_python(cluster_pg, banco_obs, obs):
     rng = random.Random(1610)
-    total = {"inserido": 0, "noop": 0, "reafirmado": 0}
+    total = {"inserido": 0, "noop": 0}
     for k in range(8):
         conta = f"eq{k}"
         seq = _sequencia(obs, rng, conta, rng.randint(8, 30))
