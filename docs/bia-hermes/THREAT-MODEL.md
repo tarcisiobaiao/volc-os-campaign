@@ -58,3 +58,22 @@ Escopo: o caminho navegador → FastAPI `/api/agent/*` → ledger `agente_bia` (
 - **R6.** O restart controlado para ligar a API interrompe o Telegram por alguns segundos. O `aplicar` só roda sem agente ativo e com rollback automático.
 - **R4.** O filtro de resposta é por padrão textual, não uma garantia. A garantia real é o Hermes não ter acesso a segredo nenhum.
 - **R5.** Configurar toolsets expressa intenção. A prova em runtime é o smoke e o read-back da sessão sem `tool_calls` depois da primeira inferência.
+
+## Missão 3 (15/10/2026): anexos, fluxo e comandos
+
+| # | Ameaça | Mitigação | Prova |
+|---|---|---|---|
+| T23 | Arquivo malicioso (executável, script, HTML/SVG ativo, polyglot, ZIP genérico, DOCX com macro) | Tipo pelos BYTES contra extensão e Content-Type; assinaturas proibidas; imagem recodificada (polyglot vira só imagem); DOCX com teto de entradas/tamanho e sem `vbaProject`/`embeddings`. | `test_recusas_*`, prova real `falso.png` |
+| T24 | Bomba de descompressão / DoS por upload | 10 MB lidos em fluxo (413 sem ler o resto); limite de pixels conferido **no cabeçalho, antes de decodificar** (40 Mpx; o global do Pillow só avisava até 2×); imagem reduzida a 2048 px; PDF ≤ 300 páginas e extração que para no limite; cota 40 arquivos/80 MB por usuário. | `test_imagem_com_pixels_demais_*`, `test_pdf_com_paginas_demais_*` |
+| T25 | Anexo de outro usuário (IDOR) | Pasta por `sha256(dono)`, `Armazem.obter` confere UUID + dono no metadado; download, remoção, envio e `/fluxo` só do dono; 404 igual para "não existe" e "não é seu". | `test_anexo_de_outro_dono_e_404_e_nao_entra_em_mensagem` |
+| T26 | Corrida entre uploads paralelos apagando arquivo alheio | Trava por dono (thread + `flock`) em gravar/remover/limpar; órfão só é lixo depois de 10 min; cota conferida dentro da trava. | `test_uploads_paralelos_*` |
+| T27 | Injeção por conteúdo de arquivo | Texto em bloco com nonce aleatório por mensagem, declarado DADO; linhas que imitam a moldura neutralizadas; nomes sem colchetes/bidi e dentro de bloco; nunca no system prompt; e, acima de tudo, **zero ferramentas** no turno web (portão + auditoria). | `test_texto_do_arquivo_que_imita_*`, `test_nome_de_arquivo_*` |
+| T28 | Vazamento por streaming (raciocínio, tool call, segredo pelo prefixo) | Só `assistant.delta` é repassado; evento de ferramenta aborta o turno; `<think>` removido; últimos 64 caracteres retidos até o fim; mesmo filtro da resposta final; parcial só para o dono. | `test_parcial_retem_*`, `test_streaming_*`, `test_ferramenta_no_stream_*`, `test_fluxo_sse_*` |
+| T29 | Comando `/` encaminhado ao agente / comando que muda algo | Texto com `/` → 422 no servidor e interceptado no front; allowlist tipada; só `/status` roda no servidor (leitura), por despacho explícito; classes `requires_tool`/`external_mutation`/`telegram_only` bloqueadas com motivo. | `test_texto_com_barra_*`, `test_comando_*` |
+| T30 | XSS pela resposta (Markdown) | `react-markdown` com `skipHtml`, sem `dangerouslySetInnerHTML`; link só http(s)/mailto, `noopener noreferrer nofollow`, domínio visível; imagem remota nunca carregada. | `bia-widget.test.tsx` "Markdown sanitizado" |
+| T31 | Rascunho/estado de um usuário visto por outro | `key={user.id}` desmonta tudo; rascunho por usuário+conversa no `sessionStorage`; logout apaga os rascunhos da aba. | "troca de usuário isola conversa e rascunho", "logout … apaga os rascunhos" |
+
+### Revisão dos riscos R3 e R7 com o código do Hermes v0.18.0 (lido na VPS, só leitura)
+
+- A revisão de memória/skills em segundo plano só dispara se a ferramenta `memory` (ou `skill_manage`) estiver em `valid_tool_names` do agente do turno (`agent/turn_context.py:307-313`, `agent/turn_finalizer.py:455-459`). No `api_server` o toolset é vazio: **turnos web não disparam revisão nem gravam memória/skill sozinhos.** Não há provedor de memória externo configurado.
+- **R9 (novo, aberto).** O `session_search` do agente do Telegram (que TEM ferramentas) enxerga sessões `api_server`: só `subagent` e `tool` ficam ocultas (`tools/session_search_tool.py:36-41`). Texto de um arquivo de terceiros enviado na web pode, mais tarde, voltar como resultado de busca numa conversa do Telegram — um caminho indireto de injeção para uma superfície com ferramentas. Mitigações possíveis, todas fora desta missão e **decisão do dono**: (a) aceitar (operador único, conteúdo próprio); (b) restringir anexos a arquivos próprios; (c) pedir ao Hermes uma fonte oculta para sessões web; (d) profile separado para a web (já recusado na missão 2).

@@ -1,0 +1,18 @@
+{
+  "medido_em": "2026-10-15T23:06-03:00",
+  "como": "leitura somente (sqlite mode=ro) de /root/.hermes/state.db e gateway_state.json; mesmo critério de api_default.py sessoes()",
+  "linha_de_base_antes_da_web": {"fonte": "hermes-linha-de-base-prova.json (missão 2)", "max_msg_id": 14882, "por_source": {"cli": 1, "subagent": 11, "telegram": 18},
+                             "telegram_ativas": [{"id_sha": "95583f6986cd", "mensagens": 137}, {"id_sha": "9b9cef8c2895", "mensagens": 90}]},
+  "fim_da_missao2": {"sessoes_api_server": 2, "fonte": "PROVA-REAL-20261015.md"},
+  "depois_missao3": {"max_msg_id": 14910, "por_source": {"api_server": 4, "cli": 1, "subagent": 11, "telegram": 18},
+                     "telegram_ativas": [{"id_sha": "95583f6986cd", "mensagens": 137}, {"id_sha": "9b9cef8c2895", "mensagens": 90}],
+                     "mensagens_novas_por_source": {"api_server": 28}, "telegram_mensagens_novas": 0,
+                     "marcadores_exatos_volc_em_sessoes_telegram": 0,
+                     "mensagens_api_server_com_ferramenta": 0, "sessoes_api_server_no_formato_volc": "4/4"},
+  "gateway": {"pid": 1537673, "pid_vivo": true, "estado": "running", "telegram": "connected", "api_server": "connected",
+              "telegram_conectado_desde": "2026-10-16T00:40:32Z", "reinicios_na_missao3": 0, "systemd": "active"},
+  "config_yaml_sha256": "3ef53b81acef24e1c6d686f3763483571af00721442cceef1f1354121122fe43",
+  "config_yaml_igual_ao_recibo_da_missao2": true,
+  "platform_toolsets_api_server": [],
+  "observacao": "o critério case-insensitive acha 9 mensagens antigas do Telegram com 'contexto volc' em texto livre (anteriores à linha de base); o critério exato dos marcadores ([ref VOLC, [ANEXOS VOLC, [CONTEXTO VOLC, [IMAGENS ANEXADAS) dá 0"
+}

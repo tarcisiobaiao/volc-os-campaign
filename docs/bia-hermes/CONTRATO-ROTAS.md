@@ -106,3 +106,44 @@ Códigos públicos de erro: `hermes_timeout`, `hermes_conexao`, `hermes_resposta
 ## O que o corpo não aceita (cada um vira 422)
 
 `model`, `provider`, `profile`, `instructions`, `system_prompt`, `system_message`, `session_id`, `hermes_session_id`, `tools`, `url`, `sql`, `table`, `tabela`, `tenant`, `user_id`, `dono` e `role`, além de qualquer outro campo não listado acima.
+
+---
+
+## Missão 3 (15/10/2026): anexos, fluxo e comandos
+
+Mesmos portões acima, em todas. Nenhuma rota nova aceita URL, caminho, modelo, profile, sessão Hermes ou toolset.
+
+### `POST /api/agent/conversations/{id}/messages` (campos novos)
+
+`{"request_id", "texto"?, "contexto"?, "anexos"?: [uuid, …até 4]}`. Texto vazio com anexo vira "Veja os anexos.".
+- `texto` começando com `/<letra>` → **422 `comando_no_texto`** (comando nunca vai ao Hermes como texto).
+- Anexo que não existe, expirou ou é de outro dono → **422 `anexo_invalido`** (mesma resposta para os três). Repetido → `anexo_repetido`. Mais de 3 imagens ou 6 MB de imagem → `imagens_demais`.
+- O ledger guarda só a referência `{id, nome, tipo, familia, tamanho, sha256}` em `execucao.contexto.anexos`. No envio ao Hermes o servidor confere dono e SHA-256 de novo; divergência ou arquivo sumido → turno `failed` com `anexo_indisponivel`, sem chamar o Hermes.
+
+### `POST /api/agent/anexos`
+
+Corpo **cru** (o arquivo), `Content-Type` do arquivo, nome em `X-Bia-Nome` (URL-encoded; só exibição, normalizado no servidor). Limite lido em fluxo: 10 MB (**413 `arquivo_grande`** sem ler o resto).
+- 201: `{anexo: {id, nome, tipo, familia, mime, tamanho, sha256, criado_em, expira_em, paginas, largura, altura, caracteres, truncado}}`.
+- 422: `tipo_divergente`, `tipo_proibido`, `tipo_nao_suportado`, `arquivo_vazio`, `imagem_invalida`, `pdf_protegido`, `pdf_sem_texto`, `pdf_grande`, `docx_invalido`, `docx_com_conteudo_ativo`, `documento_vazio`. 413: `arquivo_grande`, `imagem_grande`. 429: `cota_excedida`. 503: `anexo_indisponivel` (disco), sem detalhe interno.
+- Mesmo arquivo do mesmo dono devolve o anexo existente com validade renovada.
+
+### `GET /api/agent/anexos/{id}`
+
+Bytes do PRÓPRIO anexo (imagem saneada ou documento original). `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store`, `Content-Security-Policy: sandbox`; imagem `inline`, documento `attachment`. Não é do dono / expirou → **404**.
+
+### `POST /api/agent/anexos/{id}/remover`
+
+`{}` → 200 `{removido: true}`; não é do dono → 404.
+
+### `GET /api/agent/runs/{id}/fluxo`  (SSE)
+
+`text/event-stream`, só leitura, só o dono. Eventos: `estado` `{execucao}` (recibo público), `parcial` `{texto}` (deltas reais do Hermes, filtrados; os últimos 64 caracteres ficam retidos até o fim; `<think>` removido), `aviso` `{codigo}`. Keepalive a cada 15 s. Termina em estado terminal ou `uncertain`. Cair e reassinar **nunca** reenvia nada.
+
+### `GET /api/agent/comandos`
+
+200: `{comandos: [{nome, descricao, args, origem, classe, disponivel, execucao, motivo, equivalente_web, aliases}]}` — 137 entradas (ver `CATALOGO-COMANDOS.md`).
+
+### `POST /api/agent/comandos/{nome}`
+
+`{conversa_id?}`. Só `disponivel` e `execucao == "backend"` (hoje: `status`). 404 `comando_desconhecido`; 403 `comando_indisponivel_na_web` (+`classe`); 409 `comando_local`; 501 `comando_sem_acao`.
+200: `{comando, resultado: {conversa, hermes: {versao, gateway}, sessao_web, avisos}, recibo: {executado_em, origem: "backend", somente_leitura: true, duracao_ms}}`. Lê o ledger e `GET /health/detailed` + `GET /api/sessions/{id}` do Hermes; não escreve nada.

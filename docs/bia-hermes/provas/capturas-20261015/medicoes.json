@@ -1,0 +1,501 @@
+{
+ "375-light-vazio": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-light-longa": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [
+   "a documentação do Google Ads (support.goog 298x41"
+  ],
+  "contraste_baixo": []
+ },
+ "375-light-fila": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-light-processando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-light-digitando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-light-incerta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-light-erro": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-light-upload": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-light-paleta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-light-conversas": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-dark-vazio": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-dark-longa": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [
+   "a documentação do Google Ads (support.goog 298x41"
+  ],
+  "contraste_baixo": []
+ },
+ "375-dark-fila": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-dark-processando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-dark-digitando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-dark-incerta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-dark-erro": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-dark-upload": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-dark-paleta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "375-dark-conversas": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-light-vazio": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-light-longa": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-light-fila": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-light-processando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-light-digitando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-light-incerta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-light-erro": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-light-upload": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-light-paleta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-light-conversas": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-dark-vazio": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-dark-longa": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-dark-fila": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-dark-processando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-dark-digitando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-dark-incerta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-dark-erro": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-dark-upload": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-dark-paleta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "768-dark-conversas": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-light-vazio": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-light-longa": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-light-fila": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-light-processando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-light-digitando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-light-incerta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-light-erro": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-light-upload": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-light-paleta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-light-conversas": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-dark-vazio": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-dark-longa": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-dark-fila": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-dark-processando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-dark-digitando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-dark-incerta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-dark-erro": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-dark-upload": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-dark-paleta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1024-dark-conversas": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-light-vazio": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-light-longa": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-light-fila": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-light-processando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-light-digitando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-light-incerta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-light-erro": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-light-upload": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-light-paleta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-light-conversas": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-dark-vazio": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-dark-longa": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-dark-fila": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-dark-processando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-dark-digitando": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-dark-incerta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-dark-erro": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-dark-upload": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-dark-paleta": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "1440-dark-conversas": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "reduzido-processando": {
+  "animacoes_ativas": 0,
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [],
+  "contraste_baixo": []
+ },
+ "zoom200-light-longa": {
+  "overflow_pagina": false,
+  "overflow_painel": false,
+  "alvos_pequenos": [
+   "a documentação do Google Ads (support.goog 346x18"
+  ],
+  "contraste_baixo": []
+ }
+}
