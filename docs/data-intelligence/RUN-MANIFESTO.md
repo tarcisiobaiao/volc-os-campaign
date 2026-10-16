@@ -89,6 +89,6 @@ Configuração local adicionada: `experiments/data-intelligence-lab/.gitignore` 
 
 Tudo que esta missão cria fora do Git está sob `experiments/data-intelligence-lab/{.tools,.venv,.uv-cache,artifacts}`. Remoção segura: apagar esses quatro diretórios. Nada fora do namespace foi criado.
 
-## 8. Arquivos e commits
+## 8. Arquivos e commits (fechamento 2026-10-16)
 
-Atualizado ao fim: ver `PROOF-RECEIPT.json`.
+16 commits na branch da missão, todos dentro do namespace; lista, hashes de fixtures, fingerprints, testes e declarações de zero efeito em `PROOF-RECEIPT.json`. Suíte final: 172 testes verdes. Grafo no fechamento: `current: false` (os arquivos do lab entraram nos insumos; 2669 insumos) — rebuild cabe ao integrador após merge. Disco livre final: 15 GiB; fora do Git: `.venv` 458 MB, `.uv-cache` 1,5 GB, `.tools` 40 MB, `artifacts` 0 B.

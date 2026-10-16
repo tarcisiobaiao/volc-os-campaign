@@ -346,4 +346,3 @@ Lida em modo somente leitura (`RELATORIO-B.md`, `experimentos/e1_*`, `e2_*`). N�
 - **Complementa/contradiz em parte**: B concluiu M ótimo = κ (EB acerta a dispersão); aqui o EB plug-in FALHA na cobertura mesmo acertando a média: sem heterogeneidade, nos vencedores raros reais e com n informativo. B refutou lognormal só nos positivos para lucro; o hurdle (P(conv) × valor|conv) não tem esse defeito para receita ≥ 0 — lucro negativo não foi testado.
 - **Novo**: guarda única de maturação com motivo (`ResultadoInsuficiente`) e D+1 com fator zero exato; refutação do bootstrap só do fator; IC por mundo para o viés (viés de seleção do guarda sustentado no D+1: sim; no cenário de centavo: não); link-ratio sob regime; cenário de centavo/D+3; cobertura uniforme de CS vs peeking e o custo em poder; contraprovas de cauda pesada e atraso; FDR com peeking; sonda confseq.
 - **Não refeito**: Bornhuetter-Ferguson (B mostrou BF ≥ CL; aqui não testado), OPE e bandits.
-

@@ -1,0 +1,35 @@
+{
+ "codigo_sha256": "abefb5da29b9ddfc8f3af9943fbdfa6ad170a5c9ef84db10482e79faaac5c90d",
+ "entradas_sha256": {},
+ "fingerprint": "5925a76a6f6ceb8e2c72171fb0c91aa5806226989b44416807c2e00a72a3a910",
+ "nome": "statlab_fase4",
+ "parametros": {
+  "seeds_por_resultado": {
+   "confidence_sequences.json": 20261015,
+   "fdr.json": 20261015,
+   "maturacao.json": 20261015,
+   "shrinkage.json": 20261015,
+   "sonda_confseq.json": null
+  }
+ },
+ "resultado_sha256": "c6173aa2da3898a38135e7e368038d86bf4f3c2c6d012aa31c3bc22203eb1061",
+ "resultados_sha256": {
+  "confidence_sequences.json": "3fd92fd90162c6929d68db3a39d6cee2696371c503cf861f207bcbd98013da22",
+  "fdr.json": "d19d1d2abf4de89b79b798e7d6aa35967835779fd8053d01204f30506ce8e15b",
+  "maturacao.json": "056b5ee8fafde77d28b30b8616109c1a9cd14129ae4ec2c8850cfa7afa66dcde",
+  "shrinkage.json": "36756a89c9ac35691bb5d09b3ab5a563f4cb3c596c3c87f7693bdb47da8df5ef",
+  "sonda_confseq.json": "365fbc1db0bc29439f435abe0991fd2e9f47d21c536428ed98659b87e3eab5c4"
+ },
+ "seed": null,
+ "versoes": {
+  "duckdb": "1.5.6",
+  "numpy": "2.5.3",
+  "pandas": "3.0.6",
+  "plataforma": "macOS-15.6-arm64-arm-64bit-Mach-O",
+  "polars": "1.44.2",
+  "python": "3.13.0",
+  "scikit-learn": "1.9.1",
+  "scipy": "1.18.1",
+  "statsmodels": "0.15.0"
+ }
+}

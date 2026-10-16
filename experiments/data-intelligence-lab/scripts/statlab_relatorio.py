@@ -541,7 +541,7 @@ def main() -> None:
           "dos JSONs e cada rótulo é decidido por regra explícita sobre o IC95 (ver `statlab_relatorio.py`).", ""]
     L += conclusoes_maturacao(m) + [""] + conclusoes_shrinkage(s) + [""] + conclusoes_cs(c) + [""] + conclusoes_fdr(fd) + [""]
     L += comparacao(m, s)
-    saida.write_text("\n".join(L) + "\n")
+    saida.write_text("\n".join(L).rstrip("\n") + "\n")
     print(f"gravado {saida} ({saida.stat().st_size} bytes)")
 
 

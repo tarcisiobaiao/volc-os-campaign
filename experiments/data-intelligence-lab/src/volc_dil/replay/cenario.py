@@ -326,4 +326,3 @@ def cenario_mini(seed: int = 7) -> EspecCenario:
     """Cenário pequeno para fixture versionada e testes rápidos."""
     return EspecCenario(nome="mini", seed=seed, n_unidades=3, n_unidades_outra_moeda=1, n_dias=12,
                         p_custo_nao_coletado=0.10, p_receita_falha_prelim=0.15, p_receita_nao_coletada=0.05)
-

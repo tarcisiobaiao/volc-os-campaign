@@ -1,0 +1,100 @@
+{
+  "esquema": "volc-dil.proof-receipt.v1",
+  "gerado_em": "2026-10-16",
+  "base_sha": "104bb0d089d6013c400014c443f9e79a77adbf20",
+  "branch": "lab/data-intelligence-overnight-20261015",
+  "worktree": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/worktrees/data-intelligence-overnight-20261015",
+  "commits_da_missao": [
+    "bef4c0da baseline, ambiente uv isolado e harness",
+    "c1903d5f contrato de dado econômico e snapshot as_of",
+    "3239fda4 decisões de bibliotecas (frente B)",
+    "16ae2958 classificação do catálogo e matriz de dados (frente A)",
+    "05d79fdb Stat Lab (frente D)",
+    "212245b6 fingerprint cobre código e resultado",
+    "574ac73b surrogate (fase 6)",
+    "45b6a6ed bancada DuckDB x Polars (frente C)",
+    "1db09c7d replay econômico v0 (frente C)",
+    "7fd5a029 perf do Snapshot",
+    "fc05316a swarm com pré-registro (frente E)",
+    "38c1cbfe consolidação, handoffs",
+    "9054059d respostas F1",
+    "39491835 respostas F2 Stat Lab",
+    "202bd2d1 respostas F2 swarm",
+    "(commit final) relatório final, recibo, revisão adversarial, manifesto do Stat Lab"
+  ],
+  "arquivos_alterados": {
+    "total_desde_a_base": "≈155 (git diff --name-only 104bb0d0..HEAD)",
+    "todos_dentro_do_namespace": true,
+    "prova": "git diff --name-only 104bb0d0..HEAD | grep -vE '^(experiments/data-intelligence-lab|docs/data-intelligence|tests/data-intelligence|research/data-intelligence)/' → vazio",
+    "areas": ["experiments/data-intelligence-lab/", "docs/data-intelligence/", "tests/data-intelligence/", "research/data-intelligence/"],
+    "configuracao_local_adicionada": ["experiments/data-intelligence-lab/.gitignore", "tests/data-intelligence/pytest.ini", "tests/data-intelligence/conftest.py"]
+  },
+  "ambiente": {
+    "python": "CPython 3.13.0 (/usr/local/bin/python3.13, arm64)",
+    "uv": "0.13.1, só em experiments/data-intelligence-lab/.tools/bootstrap (sem instalação global)",
+    "uv_lock_sha256": "0b08edcbf0f39f2b5fe29567922a816cd5eb2e84128aa970c15dd6fffa18a006",
+    "exclude_newer": "2026-10-01T00:00:00Z",
+    "dependencias": {"duckdb": "1.5.6", "polars": "1.44.2", "numpy": "2.5.3", "scipy": "1.18.1", "statsmodels": "0.15.0", "scikit-learn": "1.9.1", "pandas": "3.0.6 (transitiva)", "pytest": "9.1.1 (dev)"},
+    "sondas_descartaveis": "optuna, mabwiser, vowpalwabbit, lightgbm, catboost, cvxpy, ortools, pymc-marketing, google-ads-mcp, confseq (falhou) — venvs isolados em .tools/probe-*, apagados ou gitignored; nenhuma entrou no lock",
+    "fora_do_git": {".venv": "458 MB", ".uv-cache": "1.5 GB", ".tools": "40 MB", "artifacts": "0 B"},
+    "disco_livre_final": "15 GiB (baseline 19 GiB; outras frentes ativas na máquina)"
+  },
+  "datasets_e_fixtures": [
+    {"caminho": "experiments/data-intelligence-lab/fixtures/contract/observacoes_exemplo.json", "natureza": "sintético", "sha256": "7d7beb98fa146451482323e42a01f56c15794e7020516740b50ecd26dbc6ab7c", "manifesto": "fixtures/contract/MANIFEST.json"},
+    {"caminho": "experiments/data-intelligence-lab/fixtures/replay/cenario_mini.json", "natureza": "sintético", "sha256": "2e0818fb346657b1949c33238ab7bba0a1e087ec24e59142e5ca1260a199c12c", "manifesto": "fixtures/replay/MANIFEST.json"},
+    {"caminho": "backend/app/trafego/shadow_experimentos/senac-shadow-20261015/transformacao.csv", "natureza": "histórico real versionado, somente leitura; só contagens gravadas", "sha256": "dd007e94b0806f10246bce153830af9ffda181535d79bcc137d01b1d5063641b"},
+    {"caminho": "backend/tests/goldens/atribuicao-meta-adset-v1.json", "natureza": "histórico real pseudonimizado versionado, somente leitura; só contagens/métricas gravadas", "sha256": "574ad13d19fbf3c78f7b9c070f8a89f45a5cb5e8fb0ea5e2da951307c11e0076"},
+    {"caminho": "experiments/data-intelligence-lab/results/swarm/PRE-REGISTRO.md", "natureza": "pré-registro do critério do swarm", "sha256": "453e0aff170c7323e6640750c6c113ce62e43d7cdc02065bd131f662d599cf52"}
+  ],
+  "resultados_fingerprint": {
+    "replay/replay_resultados.json": "2e0158b71dcbef28…",
+    "bench/bench_resultados.json": "e750fefcb7bfaf29…",
+    "bench/replay_escala.json": "4e35d6615d04b1ec…",
+    "surrogate/surrogate_results.json": "a07afefc10c74886…",
+    "statlab/MANIFEST.json": "5925a76a6f6ceb8e…",
+    "swarm/swarm_principal.json": "c6173a76133fcde8…",
+    "swarm/swarm_pos_registro_did.json": "e1aea000372a7276…",
+    "swarm/swarm_pos_registro_saturacao.json": "7144157942214889…"
+  },
+  "testes": {
+    "comando": "OMP_NUM_THREADS=2 experiments/data-intelligence-lab/.venv/bin/python -m pytest tests/data-intelligence -q",
+    "resultado": "172 passed (~14 s)",
+    "isolamento": "pytest.ini próprio (conftest da raiz não carrega); conftest bloqueia socket.connect/create_connection; contraprova test_rede_bloqueada_contraprova",
+    "mutacao": {"statlab": "19/19 mutantes mortos (.tools/probe-d/mutacao_resultado.json, gitignored)", "swarm": "11/11 (results/swarm/swarm_mutantes.json)", "contrato_replay": "8 mutantes sobreviventes apontados por F1-16 receberam testes"},
+    "determinismo": "replay, surrogate, statlab e swarm reexecutados com hash de resultado idêntico (ver relatórios por frente e ADVERSARIAL-REVIEW)",
+    "git_diff_check": "limpo (104bb0d0..HEAD)"
+  },
+  "producao_acessada": false,
+  "supabase_lido_ou_escrito": false,
+  "apis_externas_produtivas_chamadas": false,
+  "rede_usada": "somente leitura pública: PyPI (resolução/instalação em venvs isolados), GitHub API/PyPI JSON e docs públicas pelo worker B; nenhuma API autenticada",
+  "migrations_aplicadas": false,
+  "mutacoes_google_ads": false,
+  "n8n_cron_systemd_gtm_wordpress_alterados": false,
+  "segredos_lidos_ou_impressos": false,
+  "env_real_lido_ou_editado": false,
+  "roadmap_curadoria_grafo_editados": false,
+  "merge_push_rebase_deploy": false,
+  "provas_de_zero_efeito": [
+    "nenhum import de requests/httpx/urllib.request/socket/supabase/google.ads/psycopg/aiohttp em src/ ou scripts/ do lab (grep; socket só no conftest e na contraprova de bloqueio)",
+    "nenhuma referência a database.agenciavolc, *.supabase.co, googleads.googleapis ou .env em src/scripts do lab (grep)",
+    "secret scan das linhas adicionadas desde a base: 0 ocorrências de padrões de chave/token/senha",
+    "teste AST anti-rede no swarm; teste AST que impede políticas do replay de importar o simulador/oráculo",
+    "DuckDB com autoinstall/autoload de extensões desligados e verificados"
+  ],
+  "frescor_do_grafo": {
+    "baseline": "current=true (input 9e9ecd08…, 2603 insumos)",
+    "final": "current=false — 'código, SQL ou fonte operacional mudou' (2669 insumos); a diferença são os arquivos do laboratório; rebuild cabe ao integrador após merge"
+  },
+  "limitacoes_e_falhas_abertas": [
+    "Todas as conclusões quantitativas são sintéticas ou com n minúsculo real; nada é validação real.",
+    "Isolamento política×simulador no replay é por regra de código (AST), não criptográfico.",
+    "Política ASHA simulada sem referência externa; a conferência 60/60 com Optuna cobre outra regra.",
+    "Precedência do pré-registro do swarm apoiada só em mtime do filesystem (commit posterior aos grids).",
+    "Viés de seleção do guarda de maturação no cenário de centavo não demonstrado (IC inclui 0).",
+    "Polars 2.0 (Freedom Lab) e pandas não testados; determinismo entre plataformas não testado.",
+    "confseq não instala em Py3.13 arm64 (exige Boost); CS própria em NumPy.",
+    "Arquivo sensível fora do namespace (docs/growth-engine/diagnostico/evidencia.json com payments_account) apenas sinalizado no handoff.",
+    "Núcleo econômico, ledger v21 e JoinAds v2 seguem só em branches wip; o contrato do lab é cópia autocontida até a integração."
+  ]
+}
