@@ -1,0 +1,36 @@
+# fonte main: volc-os-workbook/ROADMAP-VIVO.json @ 104bb0d0 (updated_at 2026-10-15); fonte wip: idem @ 4be92dfc == arquivo sujo do checkout oficial (updated_at 2026-10-15)
+id	status_main	linha_main	status_wip	linha_wip	titulo
+P05-T07	partial	703	partial	544	Explicar por que uma campanha Search não escala
+P05-T08	partial	720	partial	560	Fechar governança bidirecional de termos e negativas
+P05-T09	partial	736	todo	576	Criar o guardião canônico das primeiras 72 horas
+P06-T02	partial	909	partial	673	Consolidar ingestão de custo por data e conta
+P06-T03	partial	915	partial	679	Reativar e reconciliar fontes de receita
+P06-T04	partial	926	partial	685	Unificar moeda, câmbio, impostos e revshare
+P06-T05	partial	932	partial	691	Criar recibos e alertas de rotina parada
+P06-T06	partial	938	partial	697	Entregar o Ads Health Monitor mínimo
+P06-T07	partial	948	partial	707	Criar o Tracking Control Plane em modo leitura
+P06-T08	partial	954	partial	713	Criar ledger canônico de coleta Google Ads por conta e data
+P06-T09	AUSENTE	-	partial	730	Reconciliar lucro por visita comprada no grão campanha-dia
+P07-T02	todo	991	todo	770	Definir evento e valor elegíveis para envio
+P08-T02	partial	1054	partial	820	Fechar vínculo campanha → funil → URLs
+P08-T03	todo	1060	partial	826	Corrigir host/path vazios e identidade de página
+P08-T07	partial	1084	partial	850	Versionar a telemetria comportamental e fechar o agregador do funil
+P09-T01	partial	1159	partial	908	Persistir eventos operacionais e recomendações versionadas
+P09-T09	todo	1252	todo	990	Provar ORAKUL em shadow antes do primeiro canário
+P09-T10	todo	1272	todo	1010	Fechar o contrato econômico e o snapshot do Budget-ROI Allocator
+P09-T11	todo	1290	todo	1028	Provar o Budget-ROI Allocator em replay offline
+P09-T13	todo	1325	todo	1063	Rodar o Budget-ROI Allocator em shadow com propostas T1
+P09-T14	partial	1341	partial	1079	Operacionalizar a coleta contínua de inteligência oficial Google Ads
+P10-T04	partial	1463	partial	1134	Instrumentar heartbeat e deadman
+P10-T06	partial	1480	partial	1151	Criar o Data Pipeline Registry sobre jobs reais
+P10-T16	partial	1616	partial	1285	Adaptar os workflows n8n de relatorio ao ledger v12 e decidir a autoridade de agenda
+P10-T24	partial	1925	AUSENTE	-	Fundar o Freedom Lab: ambiente, banco descartável, brokers de leitura e contrato de experimento
+P10-T27	partial	1981	AUSENTE	-	Ledger de migrations com aprovação por hash (v20_01/v20_02)
+P14-T02	partial	2446	partial	1715	Provar replay e shadow antes de qualquer autonomia
+P14-T06	todo	2502	todo	1767	Criar o ledger e registry do preditivo
+P14-T07	todo	2519	todo	1784	Construir baseline preditivo sem vazamento de futuro
+P14-T08	todo	2529	todo	1794	Calibrar intervalos, champion/challenger e drift
+P14-T09	todo	2539	todo	1804	Expor simulador read-only de planned_spend
+P14-T10	partial	2553	AUSENTE	-	Corrigir a validade científica do Predictive Core offline
+P15-T03	todo	2601	todo	1844	Construir painel semanal versionado com linhagem
+P16-T05	reserved	2684	reserved	1926	Provisionar GTM/GA4 e validar o contrato de medição
