@@ -1,0 +1,53 @@
+# Recibo A-inv 01 — refs, ancestralidade e ocorrência dos IDs
+# gerado em 2026-10-16T12:10:32Z a partir de /Users/mac/Desktop/VOLC-OS-CAMPAIGN/worktrees/data-intelligence-overnight-20261015 (HEAD 3b22477d); somente leitura
+
+## refs
+main = 104bb0d089d6013c400014c443f9e79a77adbf20 2026-10-15 22:02:59 -0300 docs(control-plane): split agent work into owned lanes
+043c77f5 = 043c77f545aeb182758694544511d25152f1dcf3 2026-10-15 13:53:58 -0300 feat(economia): reconciliação de lucro por visita comprada no grão campanha-dia
+0f0bb287 = 0f0bb287f35f39274a856e69d4bb48a9c8e422bf 2026-10-15 12:23:39 -0300 feat(google-ads): ativa coleta canonica shadow
+192bc065 = 192bc06525944984d7fad9def4ce4ca34a4b0f02 2026-10-15 15:40:01 -0300 wip(historico/joinads): preservação L1 — coleta canônica JoinAds v2 de 15/10 (flows n8n, 
+918e9571 = 918e9571b3025b32dff4ea3ec4d434e70bbfc9f0 2026-10-15 15:40:01 -0300 wip(historico/measurement): preservação L1 — VOLC Measurement v3 de 15/10 (sensor GTM, wra
+4be92dfc = 4be92dfc9fd0ca9ad233b31145b99f6fe7529526 2026-10-15 15:40:00 -0300 wip(historico/fontes-de-verdade): preservação L1 — versões NÃO integradas de Roadmap, cu
+992ff362 = 992ff362eb3967c4fc90d5026b492e44cd5e36b6 2026-10-15 15:40:00 -0300 wip(historico/desconhecido): preservação L1 — editorial v2/redator, volc_ads copy/campanha
+
+## ancestralidade
+043c77f5 é ancestral de 192bc065
+043c77f5 é ancestral de 918e9571
+043c77f5 é ancestral de 4be92dfc
+043c77f5 é ancestral de 992ff362
+0f0bb287 é ancestral de 043c77f5
+merge-base main 043c77f5: NENHUM
+
+## arquivos contendo cada ID (git grep -l | wc -l)
+ID                        main  043c77f5  0f0bb287  192bc065  918e9571  4be92dfc  992ff362
+Ps9yLfQkHeaAbyZZ             0        18         2        18        18        19        18
+7yxs1aOlzWkkkSf9             0        18         2        18        18        19        18
+TFlmThr4930oPneE             0        18         2        18        18        19        18
+cpb6tNxt211UkAn2             0         0         0         1         0         0         0
+jDX397ViVcRQft4A             0         0         0         1         0         0         0
+U0jEfGt30HqbUq1o             2         4         2         5         4         4         4
+RpxB9ppefxZWujEV             2         4         2         5         4         4         4
+hN15qFAVOqH0135q             5        13         3        13        13        13        13
+tKUItcd0AoD9mozV             5        12         2        12        12        12        12
+GTM-N4KS27ZV                 3        16         0        16        18        16        16
+
+## presença de caminhos-chave (git cat-file -e)
+supabase/migrations/v12_04_gads_fato_canonico_dia.sql                          sim         -         -         -
+supabase/migrations/v17_01_gads_fatos_granulares.sql                           sim         -         -         -
+supabase/migrations/v17_04_arbitragem_reconciliada.sql                         sim         -         -         -
+supabase/migrations/v23_01_receita_datada_cambio.sql                           sim         -         -         -
+supabase/migrations/v21_01_google_ads_coleta_canonica.sql                        -       sim       sim       sim
+supabase/migrations/v21_01_meta_capi_sites_privilegios.sql                     sim         -         -         -
+supabase/migrations/20261015163636_economia_atribuicao_campanha_dia.sql          -       sim       sim       sim
+supabase/migrations/20261015163704_joinads_collection_canonical.sql              -         -       sim         -
+supabase/migrations/20261015153301_harden_volc_measurement.sql                   -         -         -       sim
+supabase/functions/volc-ingest/index.ts                                          -         -         -       sim
+measurement/gtm/volc-sensor-v3.html                                              -         -         -       sim
+volc_ads/coleta/__main__.py                                                    sim         -         -         -
+volc_ads/economia/nucleo.py                                                      -       sim       sim       sim
+deploy/gads-coleta/README.md                                                   sim         -         -         -
+n8n/volc_gads_campanha_dia_d0.json                                             sim         -         -         -
+n8n/joinads_v2_intraday.json                                                     -         -       sim         -
+scripts/instalar_coleta_canonica_google_ads_n8n.py                               -       sim       sim       sim
+src/sql/joinads/01_joinads_metrics.sql                                         sim       sim       sim       sim
+(colunas: main 043c77f5 192bc065 918e9571)
