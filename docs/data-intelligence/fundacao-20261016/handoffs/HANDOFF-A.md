@@ -149,7 +149,7 @@ Correções em `f8de6875`; ajuste mínimo em 2 testes da thread G em `6f7014dc` 
 Suíte: **692 passed** (650 após o merge + 44 testes novos − 2 substituídos), ~95 s. Dos 44 testes novos,
 **43 falham no código anterior** (`d550b445`, rodado numa cópia com os testes novos); o 44º
 (`test_r1_m7_...` em Python) passa no código correto e existe para matar a mutação M7. Mutações reaplicadas
-numa cópia (script `mutar.py` no scratchpad): **M1, M2, M3, M4, M5, M6, M7 (Python e SQL), M11, M13 e M18 mortas**.
+numa cópia (script `mutar.py` no scratchpad): **M1, M2, M3, M4, M5, M6, M7 (Python e SQL), M11, M13 e M18 mortas**. (Depois, em D2, o trecho de M7 — `<=` na regra de reafirmação — deixou de existir; o teste continua cobrindo a reentrega no instante de outra versão.)
 
 | Achado | Correção | Teste (falha antes, passa depois) |
 |---|---|---|
