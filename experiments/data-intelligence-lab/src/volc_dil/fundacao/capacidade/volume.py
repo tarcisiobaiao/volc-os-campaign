@@ -174,6 +174,7 @@ class PerfilBytes:
     payload_linha_individual: dict[str, float]  # bytes/linha quando cada linha é um payload (dedup por linha)
     manifesto_por_lote: float = 250.0  # linha do lote (chaves, sha256, contagem) sem o payload
     hash_por_linha: float = 56.0  # entrada de índice sha256(linha) → lote, no modo "linha_em_lote"
+    confirmacao_por_observacao: float = 0.0  # D2' da frente A: releitura idêntica = linha estreita (heap + PK)
     rollup_por_linha: float = 300.0  # linha larga de rollup diário (heap + índices)
     sobrecarga_particao_bytes: float = 49_152.0  # fixa por partição (heap + 3 índices vazios, ~6 páginas)
     fator_particao: float = 1.0  # multiplicador em observação+índices (PK passa a incluir a chave de partição)
@@ -254,6 +255,7 @@ class Politica:
     particao_mensal: bool = False
     retencao_bruto_dias: int | None = None  # None = guarda tudo; senão o rollup diário guarda o resto
     rollup_diario: bool = False
+    confirmacoes: bool = False  # D2': cada releitura redundante grava 1 confirmação estreita por observação
     rotulo: str = ""
 
     def __post_init__(self) -> None:
@@ -261,6 +263,8 @@ class Politica:
             raise ParametroInvalido(f"dedup_payload ∈ {DEDUP_PAYLOAD}")
         if self.retencao_bruto_dias is not None and not self.rollup_diario:
             raise ParametroInvalido("retenção do bruto exige rollup diário (senão é perda de dado)")
+        if self.confirmacoes and not self.dedup_observacao:
+            raise ParametroInvalido("confirmação só existe quando a releitura igual não vira versão")
 
 
 @dataclass
@@ -274,11 +278,14 @@ class ResultadoCenario:
     bytes_indices_dia: float
     bytes_payload_dia: float
     bytes_rollup_dia: float
+    bytes_confirmacao_dia: float = 0.0
+    confirmacoes_dia: float = 0.0
     acumulado_gb: dict[str, float] = field(default_factory=dict)
 
     @property
     def bytes_dia(self) -> float:
-        return self.bytes_observacao_dia + self.bytes_indices_dia + self.bytes_payload_dia + self.bytes_rollup_dia
+        return (self.bytes_observacao_dia + self.bytes_indices_dia + self.bytes_payload_dia + self.bytes_rollup_dia
+                + self.bytes_confirmacao_dia)
 
     @property
     def gb_dia(self) -> float:
@@ -288,8 +295,10 @@ class ResultadoCenario:
         return {
             "chamadas_dia": self.chamadas_dia, "lotes_dia": self.lotes_dia, "observacoes_dia": self.observacoes_dia,
             "linhas_payload_dia": self.linhas_payload_dia, "gb_dia": self.gb_dia,
+            "confirmacoes_dia": self.confirmacoes_dia,
             "bytes_dia": {"observacao": self.bytes_observacao_dia, "indices": self.bytes_indices_dia,
-                          "payload": self.bytes_payload_dia, "rollup": self.bytes_rollup_dia},
+                          "payload": self.bytes_payload_dia, "rollup": self.bytes_rollup_dia,
+                          "confirmacao": self.bytes_confirmacao_dia},
             "acumulado_gb": dict(self.acumulado_gb),
         }
 
@@ -318,10 +327,15 @@ def calcular_cenario(jobs: list[Job], escala: Escala, perfil: PerfilBytes, polit
     b_obs = obs * perfil.heap_por_observacao * fp
     b_idx = obs * perfil.indices_por_observacao * fp if politica.com_indices else 0.0
     b_roll = sum(r.linhas_logicas_novas_dia for r in rs) * perfil.rollup_por_linha if politica.rollup_diario else 0.0
+    # D2': cada releitura que não mudou nada grava uma confirmação por observação (conservador: a mudança é
+    # contada por LINHA — se uma métrica da linha muda, todas contam como versão)
+    conf = (sum((r.linhas_lidas_dia - r.linhas_distintas_dia) * fator(r) for r in rs) if politica.confirmacoes else 0.0)
+    b_conf = conf * perfil.confirmacao_por_observacao
     res = ResultadoCenario(jobs=rs, observacoes_dia=obs, linhas_payload_dia=linhas_payload, lotes_dia=lotes,
                            chamadas_dia=sum(r.chamadas_dia for r in rs), bytes_observacao_dia=b_obs,
-                           bytes_indices_dia=b_idx, bytes_payload_dia=b_pay, bytes_rollup_dia=b_roll)
-    bruto_dia = b_obs + b_idx + b_pay
+                           bytes_indices_dia=b_idx, bytes_payload_dia=b_pay, bytes_rollup_dia=b_roll,
+                           bytes_confirmacao_dia=b_conf, confirmacoes_dia=conf)
+    bruto_dia = b_obs + b_idx + b_pay + b_conf
     for nome, dias in HORIZONTES.items():
         dias_bruto = dias if politica.retencao_bruto_dias is None else min(dias, politica.retencao_bruto_dias)
         total = bruto_dia * dias_bruto + b_roll * dias

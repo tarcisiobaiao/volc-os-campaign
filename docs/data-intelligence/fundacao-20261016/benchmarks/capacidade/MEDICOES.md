@@ -4,8 +4,7 @@
 
 - PostgreSQL 16.11 (Homebrew) on aarch64-apple-darwin24.6.0, c; config {'autovacuum': 'off', 'block_size': '8192', 'default_toast_compression': 'pglz', 'fsync': 'on', 'shared_buffers': '32768', 'synchronous_commit': 'on', 'wal_level': 'minimal', 'work_mem': '65536'}; amostras {'as_of_ponto': 5000, 'snapshot': 60, 'ingestao': 60, 'global': 5}
 - duração 1.643 s; pico amostrado do diretório do cluster 3,20 GiB; cluster apagado: True
-- linhas `dil_obs_0001` (DDL pré-D2) vêm da rodada dedicada (`pg_medicoes_dil_obs.json`): {'duracao_s': 877.5725960731506, 'cluster_apagado': True, 'pico_amostrado_dir_cluster_bytes': 2503589990, 'amostras': {'as_of_ponto': 5000, 'snapshot': 60, 'ingestao': 60, 'global': 5}}
-- linhas `dil_obs_0001_d2` (DDL pós-D2, só 1e5 por disco livre de ~6 GiB) vêm de `pg_medicoes_dil_obs_d2.json`: {'duracao_s': 28.7290301322937, 'cluster_apagado': True, 'pico_amostrado_dir_cluster_bytes': 408551526}
+- linhas `dil_obs_0001` (DDL FINAL da frente A, HEAD 962b868c) vêm da rodada dedicada (`pg_medicoes_dil_obs.json`): {'duracao_s': 154.7205228805542, 'cluster_apagado': True, 'pico_amostrado_dir_cluster_bytes': 1342775398, 'amostras': {'as_of_ponto': 5000, 'snapshot': 60, 'ingestao': 60, 'global': 5}}
 
 ## Tamanho
 
@@ -25,9 +24,10 @@
 | v21 | não | 1e+06 | 999900 | 630,4 | 220,3 | 106,3 | v21_h_1e06_cix 56.3, v21_h_1e06_gd 1.1, v21_h_1e06_gm 50.8, v21_h_1e06_pk 30.1, v21_h_1e06_rix 7.1, v21_h_1e06_uq 64.7 |
 | longo | não | 1e+07 | 9999000 | 167,2 | 90,2 | 257,5 | longo_h_1e07_as_of 646.1, longo_h_1e07_brin 0.1, longo_h_1e07_pk 214.2 |
 | longo | sim | 1e+07 | 9999000 | 167,2 | 99,3 | 266,5 | longo_p_1e07_2026_07_conta_id_nivel_entidade_id_segmento_di_idx 222.6, longo_p_1e07_2026_07_disponivel_em_idx 0.0, longo_p_1e07_2026_07_pkey 103.5, longo_p_1e07_2026_08_conta_id_nivel_entidade_id_segmento_di_idx 222.6, longo_p_1e07_2026_08_disponivel_em_idx 0.0, longo_p_1e07_2026_08_pkey 103.5, longo_p_1e07_2026_09_conta_id_nivel_entidade_id_segmento_di_idx 201.0, longo_p_1e07_2026_09_disponivel_em_idx 0.0, longo_p_1e07_2026_09_pkey 93.5, longo_p_1e07_2026_10_conta_id_nivel_entidade_id_segmento_di_idx 0.0, longo_p_1e07_2026_10_disponivel_em_idx 0.0, longo_p_1e07_2026_10_pkey 0.0 |
-| dil_obs_0001 | não | 1e+05 | 99000 | 630,7 | 449,6 | 1.080 | ix_obs_chave_base 11.8, ix_obs_entidade 2.4, ix_obs_lote 0.6, ix_obs_run 0.6, observacao_pkey 2.1, uq_obs_chave_idempotencia 11.8, uq_obs_versao 13.0 |
-| dil_obs_0001 | não | 1e+06 | 999900 | 630,4 | 453,3 | 1.084 | ix_obs_chave_base 119.3, ix_obs_entidade 28.9, ix_obs_lote 6.2, ix_obs_run 6.2, observacao_pkey 21.4, uq_obs_chave_idempotencia 119.3, uq_obs_versao 131.0 |
-| dil_obs_0001_d2 | não | 1e+05 | 99000 | 570,0 | 473,3 | 1.043 | ix_obs_asof 14.1, ix_obs_entidade 2.4, ix_obs_lote 0.6, ix_obs_run 0.6, observacao_pkey 2.1, uq_obs_chave_idempotencia 11.8, uq_obs_versao 13.0 |
+| dil_obs_0001 | não | 1e+05 | 99000 | 500,5 | 322,6 | 823,1 | ix_obs_asof 9.5, ix_obs_entidade 2.4, ix_obs_run 0.6, observacao_pkey 2.1, uq_obs_chave_idempotencia 7.4, uq_obs_versao 8.4 |
+| dil_obs_0001 | não | 1e+06 | 999900 | 500,1 | 322,9 | 823,1 | ix_obs_asof 95.6, ix_obs_entidade 28.9, ix_obs_run 6.2, observacao_pkey 21.4, uq_obs_chave_idempotencia 72.2, uq_obs_versao 83.5 |
+| dil_obs.confirmacao (D2') | não | 1e+05 | 99000 | 126,5 | 100,2 | 226,7 (por confirmação) | pk_confirmacao 9.5 |
+| dil_obs.confirmacao (D2') | não | 1e+06 | 999900 | 126,1 | 100,3 | 226,4 (por confirmação) | pk_confirmacao 95.6 |
 
 ## Latência por chamada (ms)
 
@@ -71,35 +71,27 @@
 | longo | sim | 1e+07 | ingestao_lote_1000_dedup | 60 | 9,592 | 17,941 | 31,804 | 38,027 | 52,134 | 19,269 | 7,147 |
 | longo | sim | 1e+07 | ingestao_lote_5000_cru | 60 | 37,132 | 63,457 | 109,860 | 325,982 | 350,398 | 77,095 | 54,879 |
 | longo | sim | 1e+07 | ingestao_lote_5000_dedup | 60 | 42,352 | 67,388 | 128,427 | 137,671 | 182,600 | 76,446 | 24,842 |
-| dil_obs_0001 | não | 1e+05 | as_of_ponto | 5000 | 0,016 | 0,018 | 0,103 | 0,192 | 1,045 | 0,032 | 0,040 |
-| dil_obs_0001 | não | 1e+06 | as_of_ponto | 5000 | 0,017 | 0,069 | 0,701 | 2,043 | 40,158 | 0,217 | 0,876 |
-| dil_obs_0001_d2 | não | 1e+05 | as_of_ponto | 5000 | 0,017 | 0,018 | 0,019 | 0,023 | 0,779 | 0,018 | 0,011 |
+| dil_obs_0001 | não | 1e+05 | as_of_ponto | 5000 | 0,017 | 0,019 | 0,030 | 0,094 | 0,808 | 0,022 | 0,018 |
+| dil_obs_0001 | não | 1e+06 | as_of_ponto | 5000 | 0,017 | 0,020 | 0,085 | 0,186 | 2,185 | 0,030 | 0,053 |
 
 ## Consultas globais (s, mediana após 1 aquecimento; todas as repetições no JSON)
 
 | variante | n alvo | medida | chaves | p50 s | máx s | repetições (s) |
 |---|---:|---|---:|---:|---:|---|
-| dil_obs_0001 | 1e+05 | as_of_global_funcao_meio | 44000 | 0,124 | 0,159 | 0.375, 0.159, 0.124, 0.119, 0.138, 0.124 |
-| dil_obs_0001 | 1e+05 | as_of_global_consulta_meio | 44000 | 0,035 | 0,046 | 0.028, 0.029, 0.046, 0.035, 0.034, 0.036 |
-| dil_obs_0001 | 1e+05 | as_of_global_consulta_linha_inteira_meio | 44000 | 0,097 | 0,118 | 0.047, 0.061, 0.097, 0.118, 0.101, 0.054 |
-| dil_obs_0001 | 1e+05 | as_of_global_funcao_fim | 90000 | 0,994 | 1,530 | 1.295, 0.936, 1.530, 0.982, 0.994, 1.141 |
-| dil_obs_0001 | 1e+05 | as_of_global_consulta_fim | 90000 | 0,021 | 0,022 | 0.028, 0.021, 0.022, 0.020, 0.021, 0.020 |
-| dil_obs_0001 | 1e+05 | as_of_global_consulta_linha_inteira_fim | 90000 | 0,066 | 0,104 | 0.035, 0.052, 0.066, 0.100, 0.063, 0.104 |
-| dil_obs_0001 | 1e+05 | latest_view | – | 0,864 | 1,432 | 1.214, 0.694, 0.647, 0.958, 1.432, 0.864 |
-| dil_obs_0001 | 1e+06 | as_of_global_funcao_meio | 444400 | 8,498 | 9,856 | 16.411, 9.856, 8.498, 7.634, 9.645, 7.728 |
-| dil_obs_0001 | 1e+06 | as_of_global_consulta_meio | 444400 | 0,117 | 0,475 | 3.698, 0.163, 0.475, 0.097, 0.117, 0.092 |
-| dil_obs_0001 | 1e+06 | as_of_global_consulta_linha_inteira_meio | 444400 | 0,179 | 0,186 | 0.189, 0.186, 0.174, 0.166, 0.183, 0.179 |
-| dil_obs_0001 | 1e+06 | as_of_global_funcao_fim | 909000 | 17,470 | 24,851 | 16.192, 14.346, 24.851, 17.470, 18.254, 14.014 |
-| dil_obs_0001 | 1e+06 | as_of_global_consulta_fim | 909000 | 0,179 | 0,186 | 0.454, 0.179, 0.154, 0.142, 0.179, 0.186 |
-| dil_obs_0001 | 1e+06 | as_of_global_consulta_linha_inteira_fim | 909000 | 0,316 | 0,436 | 0.330, 0.436, 0.316, 0.268, 0.330, 0.279 |
-| dil_obs_0001 | 1e+06 | latest_view | – | 19,004 | 38,820 | 44.835, 17.907, 20.553, 38.820, 19.004, 16.996 |
-| dil_obs_0001_d2 | 1e+05 | as_of_global_funcao_meio | 44000 | 0,081 | 0,114 | 0.141, 0.114, 0.084, 0.081, 0.070, 0.078 |
-| dil_obs_0001_d2 | 1e+05 | as_of_global_consulta_meio | 44000 | 0,019 | 0,023 | 0.023, 0.017, 0.019, 0.023, 0.020, 0.017 |
-| dil_obs_0001_d2 | 1e+05 | as_of_global_consulta_linha_inteira_meio | 44000 | 0,031 | 0,031 | 0.034, 0.030, 0.031, 0.031, 0.031, 0.027 |
-| dil_obs_0001_d2 | 1e+05 | as_of_global_funcao_fim | 90000 | 0,648 | 0,975 | 1.104, 0.648, 0.742, 0.482, 0.975, 0.506 |
-| dil_obs_0001_d2 | 1e+05 | as_of_global_consulta_fim | 90000 | 0,037 | 0,046 | 0.038, 0.033, 0.032, 0.037, 0.037, 0.046 |
-| dil_obs_0001_d2 | 1e+05 | as_of_global_consulta_linha_inteira_fim | 90000 | 0,045 | 0,062 | 0.054, 0.062, 0.060, 0.045, 0.039, 0.036 |
-| dil_obs_0001_d2 | 1e+05 | latest_view | – | 0,632 | 0,697 | 0.441, 0.534, 0.632, 0.608, 0.697, 0.670 |
+| dil_obs_0001 | 1e+05 | as_of_global_funcao_meio | 44000 | 0,040 | 0,048 | 0.036, 0.040, 0.048, 0.045, 0.028, 0.027 |
+| dil_obs_0001 | 1e+05 | as_of_global_consulta_meio | 44000 | 0,018 | 0,023 | 0.018, 0.021, 0.018, 0.017, 0.018, 0.023 |
+| dil_obs_0001 | 1e+05 | as_of_global_consulta_linha_inteira_meio | 44000 | 0,028 | 0,039 | 0.027, 0.026, 0.027, 0.039, 0.028, 0.030 |
+| dil_obs_0001 | 1e+05 | as_of_global_funcao_fim | 90000 | 0,045 | 0,055 | 0.040, 0.055, 0.045, 0.039, 0.045, 0.036 |
+| dil_obs_0001 | 1e+05 | as_of_global_consulta_fim | 90000 | 0,024 | 0,032 | 0.022, 0.023, 0.021, 0.032, 0.024, 0.024 |
+| dil_obs_0001 | 1e+05 | as_of_global_consulta_linha_inteira_fim | 90000 | 0,042 | 0,053 | 0.040, 0.043, 0.037, 0.035, 0.042, 0.053 |
+| dil_obs_0001 | 1e+05 | latest_view | – | 0,040 | 0,046 | 0.049, 0.040, 0.039, 0.043, 0.040, 0.046 |
+| dil_obs_0001 | 1e+06 | as_of_global_funcao_meio | 444400 | 0,164 | 0,226 | 1.586, 0.164, 0.183, 0.226, 0.145, 0.151 |
+| dil_obs_0001 | 1e+06 | as_of_global_consulta_meio | 444400 | 0,088 | 0,097 | 0.087, 0.087, 0.085, 0.097, 0.088, 0.091 |
+| dil_obs_0001 | 1e+06 | as_of_global_consulta_linha_inteira_meio | 444400 | 0,189 | 0,241 | 0.170, 0.189, 0.241, 0.213, 0.177, 0.188 |
+| dil_obs_0001 | 1e+06 | as_of_global_funcao_fim | 909000 | 0,363 | 0,557 | 0.317, 0.275, 0.296, 0.363, 0.378, 0.557 |
+| dil_obs_0001 | 1e+06 | as_of_global_consulta_fim | 909000 | 0,134 | 0,233 | 0.163, 0.233, 0.156, 0.134, 0.130, 0.132 |
+| dil_obs_0001 | 1e+06 | as_of_global_consulta_linha_inteira_fim | 909000 | 0,290 | 0,368 | 0.252, 0.290, 0.304, 0.260, 0.286, 0.368 |
+| dil_obs_0001 | 1e+06 | latest_view | – | 0,399 | 0,655 | 0.424, 0.346, 0.381, 0.399, 0.655, 0.431 |
 | longo (snapshot total) | 1e+05 | pg_snapshot | – | 0,071 | – | 0.091, 0.071, 0.056, 0.086, 0.071, 0.069 |
 | longo (snapshot total) | 1e+06 | pg_snapshot | – | 0,691 | – | 1.238, 0.904, 0.644, 0.691, 0.722, 0.602 |
 | parquet | 1e+05 | duckdb / polars | 44000 | 0,009 / 0,013 | – | duck 0.018, 0.034, 0.009, 0.020, 0.009, 0.009; pl 0.233, 0.013, 0.018, 0.013, 0.024, 0.010 |

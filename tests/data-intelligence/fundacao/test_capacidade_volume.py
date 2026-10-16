@@ -187,3 +187,17 @@ def test_redundancia_de_coletor_jovem_reproduz_o_recibo_real_com_p_zero():
     assert 1 - p0["distintas"] / 23891 == pytest.approx(1 - 2525 / 23891, abs=0.003)
     estacionario = redundancia_observada([(d - 7, d - 1) for d in range(100, 107) for _ in range(6)], 318.0)
     assert estacionario["leituras_por_dia_logico"][99] == 42  # regime estacionário: 41/42 = 97,6% com p = 0
+
+
+def test_d2_linha_grava_versao_quando_muda_e_confirmacao_estreita_na_releitura():
+    j = Job(nome="t", fonte="google_ads", base="termo_dia", cron="23 */4 * * *", janela=(1, 7), metricas_por_linha=5,
+            p_revisao_fechado=0.0, tipo_payload="termo")
+    perfil = PerfilBytes(**{**PERFIL.__dict__, "confirmacao_por_observacao": 211.0})
+    d2 = calcular_cenario([j], ESC, perfil, Politica(dedup_observacao=True, dedup_payload="linha_em_lote", confirmacoes=True))
+    dd = calcular_cenario([j], ESC, perfil, Politica(dedup_observacao=True, dedup_payload="linha_em_lote"))
+    r = calcular_job(j, ESC)
+    assert d2.observacoes_dia == dd.observacoes_dia  # versões: só quando muda
+    assert d2.confirmacoes_dia == pytest.approx((r.linhas_lidas_dia - r.linhas_distintas_dia) * 5)
+    assert d2.bytes_dia - dd.bytes_dia == pytest.approx(d2.confirmacoes_dia * 211.0)
+    with pytest.raises(ParametroInvalido):
+        Politica(dedup_observacao=False, dedup_payload="nenhum", confirmacoes=True)

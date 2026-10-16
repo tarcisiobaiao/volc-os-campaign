@@ -188,7 +188,7 @@ def test_backoff_exponencial_com_teto_e_deterministico():
 
 
 # ---------------------------------------------------------------- idempotência e A→B→A (F10)
-def test_mesmo_slot_e_no_op_e_releitura_igual_em_outra_hora_e_versao_nova_d2():
+def test_mesmo_slot_e_no_op_e_releitura_igual_em_outra_hora_e_confirmacao_d2_linha():
     sink = SinkMemoria(relogio_sink())
     r1 = run_coleta(ped("06:00"), **gravar(sink))
     r2 = run_coleta(ped("06:00"), **gravar(sink))
@@ -200,7 +200,7 @@ def test_mesmo_slot_e_no_op_e_releitura_igual_em_outra_hora_e_versao_nova_d2():
     assert r3.status == "concluido" and r3.inseridas == 0 and r3.noop == 0 and r3.confirmadas == 9
     assert len(sink.registro) == 9 and len(sink.registro.confirmacoes) == 9
     assert len(sink.payloads) == 3  # o payload bruto continua deduplicado por conteúdo
-    # e o as_of continua mostrando os mesmos valores (a versão nova repete o conteúdo)
+    # e o as_of continua mostrando os mesmos valores (confirmação não entra no as_of)
     fim = sink.as_of(sink.instantes_de_gravacao()[-1])
     assert sorted(v[3] for v in fim.values() if v[0] == "impressions") == [100, 101, 102]
 

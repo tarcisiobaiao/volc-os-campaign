@@ -2,8 +2,8 @@
 
 > Gerado por `experiments/data-intelligence-lab/scripts/fundacao_capacidade_modelo.py` a partir de `pg_medicoes.json` e `horas_campanha_d30.json`. Não editar à mão. Modelo determinístico; bytes medidos em PostgreSQL 16 descartável com DDL de medição (aproximação, ver `04-CADENCIA-E-CAPACIDADE.md`).
 
-- fingerprint `6655c88181b111b4…`, código `4d2fa68084640ad9…`, resultado `b7f3bcd70b7b00ad…`
-- entradas: `horas_campanha_d30.json` `c9f9d1054204…`, `pg_medicoes.json` `26486db6e4dd…`, `pg_medicoes_dil_obs.json` `f1373638e53c…`, `pg_medicoes_dil_obs_d2.json` `30814a01e7e8…`
+- fingerprint `04b08339ea7a88e7…`, código `24a42c9780c88dfa…`, resultado `262f8a8c6cd693d3…`
+- entradas: `horas_campanha_d30.json` `c9f9d1054204…`, `pg_medicoes.json` `26486db6e4dd…`, `pg_medicoes_dil_obs.json` `6a3c4e9b679d…`
 
 ## 1. Perfis de bytes (medidos, 1e6 linhas, sem partição)
 
@@ -13,7 +13,7 @@
 | largo_tipado | largo | 204,9 | 81,5 | 75 / 172 | 718 / 1.109 |
 | longo_tipado | longo | 167,3 | 90,3 | 75 / 172 | 718 / 1.109 |
 | largo_jsonb | largo | 431,3 | 81,5 | 75 / 172 | 718 / 1.109 |
-| dil_obs_real | longo | 570,0 | 473,3 | 75 / 172 | 718 / 1.109 |
+| dil_obs_real | longo | 500,1 | 322,9 | 75 / 172 | 718 / 1.109 |
 | v21_real | largo | 1.140 | 0,0 | 75 / 172 | 718 / 1.109 |
 
 ## 2. Jobs na escala atual (agenda documentada)
@@ -95,10 +95,10 @@ Contas que cabem na quota (operações = a·contas + b; piso sem retries): atual
 | recomendada | largo_tipado | 82.889 | 82.889 | 0,06 GB | 1,68 GB | 22,17 GB | 30,17 GB |
 | compacto_sem_dedup | longo_tipado | 7.436.543 | 1.457.157 | 2,01 GB | 60,42 GB | 797,59 GB | 2.207 GB |
 | compacto_dedup_linha | longo_tipado | 474.213 | 82.889 | 0,19 GB | 5,74 GB | 75,74 GB | 209,63 GB |
-| compacto_dedup_linha_em_lote | dil_obs_real | 474.213 | 82.889 | 0,48 GB | 14,47 GB | 191,06 GB | 528,80 GB |
-| registro_d2 | dil_obs_real | 7.436.543 | 82.889 | 7,25 GB | 217,43 GB | 2.870 GB | 7.944 GB |
-| registro_d2 | largo_tipado | 1.457.157 | 82.889 | 0,41 GB | 12,31 GB | 162,51 GB | 449,78 GB |
-| recomendada | dil_obs_real | 474.213 | 82.889 | 0,51 GB | 15,30 GB | 202,01 GB | 210,01 GB |
+| compacto_dedup_linha_em_lote | dil_obs_real | 474.213 | 82.889 | 0,39 GB | 11,56 GB | 152,53 GB | 422,17 GB |
+| registro_d2_linha | dil_obs_real | 474.213 | 82.889 | 1,85 GB | 55,60 GB | 733,87 GB | 2.031 GB |
+| registro_d2_linha_13m | dil_obs_real | 474.213 | 82.889 | 1,88 GB | 56,32 GB | 743,46 GB | 751,46 GB |
+| recomendada | dil_obs_real | 474.213 | 82.889 | 0,41 GB | 12,28 GB | 162,13 GB | 170,12 GB |
 
 ## 4b. R1 F13 — redundância real × prevista (termos)
 

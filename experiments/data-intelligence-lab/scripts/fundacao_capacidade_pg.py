@@ -330,12 +330,12 @@ begin
 end $$;
 create or replace procedure bench_as_of_dil_obs(contas int, ent int, dias int, n int, rotulo text)
 language plpgsql as $$
-declare t0 timestamptz; i int; c int; e int; d int; m int; r bigint; asof timestamptz; k text;
+declare t0 timestamptz; i int; c int; e int; d int; m int; r bigint; asof timestamptz; k bytea;
 begin
   for i in 1..n loop
     c := 1 + ((i * 2654435761::bigint) % contas); e := 1 + ((i * 40503::bigint) % ent);
     d := (i * 7919) % dias; m := 1 + (i % 5);
-    k := encode(sha256(convert_to(c || ':' || e || ':' || d || ':' || m, 'UTF8')), 'hex');
+    k := sha256(convert_to(c || ':' || e || ':' || d || ':' || m, 'UTF8'));
     asof := timestamptz '2026-07-01 09:00+00' + (d+1) * interval '1 day' + interval '3 hours';
     t0 := clock_timestamp();
     -- EXECUTE (planeja a cada chamada), igual às outras variantes, para comparar o mesmo custo
@@ -474,9 +474,9 @@ def _aplicar_dil_obs(cl: Cluster) -> None:
                   values ('lote-bench', 'run-bench', encode(sha256('bench'::bytea), 'hex'), 'v1', '{}',
                           '2026-07-01 00:00+00', '2026-07-01 00:00+00')""")
     else:
-        # cluster descartável: desliga a trava append-only só para esvaziar entre escalas
-        cl.sql("alter table dil_obs.observacao disable trigger tg_obs_append_only; truncate dil_obs.observacao; "
-               "alter table dil_obs.observacao enable trigger tg_obs_append_only")
+        # cluster descartável: desliga as travas só para esvaziar entre escalas
+        cl.sql("alter table dil_obs.observacao disable trigger all; truncate dil_obs.observacao cascade; "
+               "alter table dil_obs.observacao enable trigger all")
 
 
 def medir_dil_obs(cl: Cluster, n_alvo: int) -> dict:
@@ -486,11 +486,12 @@ def medir_dil_obs(cl: Cluster, n_alvo: int) -> dict:
     armazenamento e leitura, não a RPC. Formato longo (1 linha por métrica), 10% das chaves com 2 versões.
     """
     contas, ent, dias = _dims(n_alvo, N_MET)
-    _guarda_disco(cl, int(n_alvo * 1500))
+    _guarda_disco(cl, int(n_alvo * 1100))  # 787 B/valor + confirmação ~211 B (DDL final)
     _aplicar_dil_obs(cl)
     disp = "(timestamptz '2026-07-01 09:00+00' + (d+1) * interval '1 day' + v * interval '6 hours')"
-    nat = "encode(sha256(convert_to(c || ':' || e || ':' || d || ':' || m, 'UTF8')), 'hex')"
-    base = "encode(sha256(convert_to(c || ':' || e || ':' || d || ':' || m || ':' || v, 'UTF8')), 'hex')"
+    # DDL final da frente A: chaves = digest sha256 bytea (32 bytes)
+    nat = "sha256(convert_to(c || ':' || e || ':' || d || ':' || m, 'UTF8'))"
+    base = "sha256(convert_to(c || ':' || e || ':' || d || ':' || m || ':' || v, 'UTF8'))"
     t0 = time.perf_counter()
     # DDL pós-D2 da frente A: sem chave_base/tipo_registro; observed_at entra na chave de idempotência
     cl.sql(f"""insert into dil_obs.observacao (chave_idempotencia, chave_natural, fonte, conta,
@@ -541,6 +542,21 @@ def medir_dil_obs(cl: Cluster, n_alvo: int) -> dict:
     rot = f"dilobs_{n_alvo:.0e}_asof".replace("+", "")
     cl.sql(f"call bench_as_of_dil_obs({contas}, {ent}, {dias}, {N_ASOF}, '{rot}')")
     res["as_of_ponto"] = _tempos(cl, rot)
+    # D2': releitura idêntica = confirmação estreita (dil_obs.confirmacao). Uma confirmação por observação
+    # (a mesma chave relida 1 hora depois), medida pelo tamanho real da tabela.
+    if cl.sql("select to_regclass('dil_obs.confirmacao') is not null") == "t":
+        t1 = time.perf_counter()
+        cl.sql("""insert into dil_obs.confirmacao (chave_natural, observed_at, available_at, run_id, lote_id,
+                    observacao_confirmada, registrado_em)
+                  select o.chave_natural, o.observed_at + interval '1 hour', o.available_at + interval '1 hour',
+                         o.run_id, o.lote_id, o.observacao_id, o.available_at + interval '1 hour'
+                  from dil_obs.observacao o""")
+        res["confirmacao_carga_s"] = time.perf_counter() - t1
+        cl.sql("vacuum (freeze, analyze) dil_obs.confirmacao")
+        res["confirmacao"] = _tamanhos(cl, "dil_obs.confirmacao")
+        res["confirmacao"]["bytes_por_confirmacao"] = res["confirmacao"]["total_bytes"] / max(1, res["confirmacao"]["linhas"])
+        cl.sql("alter table dil_obs.confirmacao disable trigger all; truncate dil_obs.confirmacao; "
+               "alter table dil_obs.confirmacao enable trigger all")
     res["explain_as_of_global"] = cl.sql(
         "explain (costs off) select distinct on (chave_natural) chave_natural from dil_obs.observacao "
         "where available_at <= '2026-08-15 12:00+00' order by chave_natural, observed_at desc, available_at desc")
@@ -694,10 +710,12 @@ def main() -> int:
     ap.add_argument("--payload-linhas", type=int, default=20000)
     ap.add_argument("--apenas-dil-obs", action="store_true", help="só o DDL real da frente A (escalas <= 1e6)")
     ap.add_argument("--margem-livre-gib", type=float, default=6.0, help="disco livre mínimo a preservar")
+    ap.add_argument("--teto-gib", type=float, default=4.0, help="teto do diretório do cluster")
     a = ap.parse_args()
     escalas = [int(float(x)) for x in a.escalas.split(",")]
-    global MARGEM_LIVRE
+    global MARGEM_LIVRE, LIMITE_CLUSTER
     MARGEM_LIVRE = int(a.margem_livre_gib * GIB)
+    LIMITE_CLUSTER = int(a.teto_gib * GIB)
     lab = Path(__file__).resolve().parents[1]
     raiz = Path(a.raiz_tmp) if a.raiz_tmp else lab / "artifacts" / "fundacao_capacidade_pg"
     if raiz.exists():
