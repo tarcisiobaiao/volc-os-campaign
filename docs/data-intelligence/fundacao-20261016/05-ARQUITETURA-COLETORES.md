@@ -1,7 +1,7 @@
 # 05 — Arquitetura de coletores (frente B)
 
 Estado (taxonomia do manifesto §7): o esqueleto de coletor seguro está **construído e testado
-hermeticamente** (`volc_dil.fundacao.capacidade.coletor`, 23 testes; revisado após a R1 — F10, F11, F12,
+hermeticamente** (`volc_dil.fundacao.capacidade.coletor`, 26 testes; revisado após a R1 — F10, F11, F12,
 ver `handoffs/HANDOFF-B.md` §8). O inventário abaixo é
 **leitura de repositório**, não leitura de produção: "ativo" significa "o documento/recibo de
 15/10 diz ativo", não que esta frente viu o n8n.
@@ -102,7 +102,7 @@ Notas 0–3 (3 = melhor). Critério de peso: o que dá prova e reversibilidade, 
  cron ── dispara run_coleta(slot) ─▶ executor seguro ─ adaptador read-only ─▶ API (Ads/JoinAds)
         (webhook/HTTP interno)        │ timeout · retry backoff · dead letter
                                       ├─ grava lote bruto (hash por linha, linhas novas em lote)
-                                      ├─ grava só linhas novas ou reafirmadas (Registro da frente A)
+                                      ├─ grava leituras pelo Registro da frente A (D1/D2)
                                       ├─ heartbeat + recibo do run (status, contagens, erros)
                                       └─ dead letter (pedido + motivo) ──────────▶ reprocesso
  GTM (navegador) ── lote 10 s/20 ev ─▶ volc-ingest (Edge) ─▶ raw_events (append, upsert idempotente)
@@ -139,8 +139,8 @@ executar_lote(pedidos, *, paralelismo=1, ...)  # leitura serial ou paralela; gra
 | `RespostaLeitura(linhas, contexto)` | linhas cruas + `ContextoFonte` (fonte, entidade, grão, janela, timezone, coletor, esquema, moeda só se provada) |
 | `modo` | `dry_run` (padrão: lê e normaliza, **nada é gravado em lugar nenhum**, nem heartbeat) ou `gravar` (só em `SinkMemoria`, tipo exato) |
 | `ReciboRun.status` | `concluido` · `dry_run` · `ja_concluido` (mesmo slot = no-op, nem lê) · `dead_letter` |
-| contagens | `linhas_lidas`, `observacoes`, `inseridas`, `reafirmadas`, `noop`, `rejeicoes`, `payloads_distintos`, `tentativas`, `erros[]` |
-| observação | **`Observacao` canônica da frente A**, produzida por `volc_dil.fundacao.observacao.normalizar` (uma linha = um payload endereçado por conteúdo) e registrada pelo `Registro` da frente A (INSERIDO / NOOP / REAFIRMADO). `available_at` = relógio monotônico do sink no instante da gravação (o coletor não declara quando o VOLC soube) |
+| contagens | `linhas_lidas`, `observacoes`, `inseridas`, `noop`, `rejeicoes`, `payloads_distintos`, `tentativas`, `erros[]` |
+| observação | **`Observacao` canônica da frente A**, produzida por `volc_dil.fundacao.observacao.normalizar` (uma linha = um payload endereçado por conteúdo) e registrada pelo `Registro` da frente A (INSERIDO / NOOP). Regras D1/D2 da frente A: `observed_at` entra na chave da leitura (retry = NOOP; releitura em outra hora = versão nova) e a versão vigente é a de maior `observed_at`. `observed_at` = carimbo do transporte (`RespostaLeitura.observado_em`) ou fim da leitura — **nunca o slot** (uma execução atrasada ou de backfill lê o estado de quando roda); precisa ser ≤ `available_at`, senão dead letter `observado_em_invalido`. `available_at` = relógio monotônico do sink na gravação |
 
 ### 3.2 Garantias do executor (todas testadas)
 
@@ -151,10 +151,10 @@ executar_lote(pedidos, *, paralelismo=1, ...)  # leitura serial ou paralela; gra
 | Timeout que não prende o processo | prazo propagado ao transporte + leitura em thread *daemon*; tentativa estourada é abandonada e seu resultado nunca é consumido | `test_timeout_retry_sucesso_sem_duplicar…`; `test_fonte_presa_nao_impede_o_processo_de_sair` (subprocesso com fonte presa 60 s e timeout 0,2 s: sai em < 10 s; a versão anterior levava 20 s, R1 `t_hang.py`) |
 | Retry seguro | só `ErroTransitorio`; backoff exponencial com *full jitter* e teto, semente por chave | `test_backoff_exponencial_com_teto_e_deterministico` |
 | Falha permanente / esgotamento | `ErroPermanente`, `TravaViolada` ou desconhecida → dead letter sem retry; transitório esgotado → dead letter; reprocesso não duplica | `test_falha_permanente…` (2), `test_transitorio_esgotado…` |
-| Idempotência | slot repetido = `ja_concluido` sem leitura; reler a mesma linha = NOOP (mesmo sha256 → mesma chave de leitura) | `test_mesmo_slot_e_no_op…` |
-| A→B→A | a volta ao valor A depois de B vira REAFIRMAÇÃO (nova versão), e o `as_of` em cada corte mostra 10, 20, 10. A regra da frente A versiona por payload: se a linha muda, todas as métricas da linha ganham versão | `test_a_b_a_e_preservado_como_reafirmacao` |
+| Idempotência | slot repetido = `ja_concluido` sem leitura; retry/reentrega da mesma leitura (mesmo carimbo) = NOOP; releitura do mesmo valor em outra hora = versão nova (D2; payload bruto continua deduplicado: 3 payloads para 18 observações) | `test_mesmo_slot_e_no_op_e_releitura_igual_em_outra_hora_e_versao_nova_d2`, `test_retry_da_mesma_leitura_e_noop` |
+| A→B→A | a volta ao valor A depois de B é uma leitura nova (D2) e, por ser a de maior `observed_at`, vence (D1): o `as_of` em cada corte mostra 10, 20, 10; gravar as mesmas leituras fora de ordem dá as mesmas versões e o mesmo estado final (só o conhecimento intermediário muda, como deve) | `test_a_b_a_e_preservado_como_leitura_nova`, `test_d1_gravacao_fora_de_ordem_nao_desfaz_a_leitura_mais_recente` |
 | Ausência ≠ zero; dinheiro | `null` → `missing` (`valor_nulo_na_fonte`); `0` → `zero_confirmed`; decimal → micros; precisão acima de micros → `invalid` | `test_ausencia_vira_missing…`, `test_precisao_acima_de_micros…` |
-| Serial × paralelo | 18 pedidos embaralhados (6 contas × 3 slots, padrão A→B→A, erros transitórios, latência aleatória): a sequência de `as_of` em **todos os 18 cortes de gravação** e os instantes de gravação são idênticos ao serial em 8 rodadas paralelas; mutante "gravar na ordem de chegada" é morto | `test_equivalencia_serial_paralelo_compara_as_of_em_todos_os_cortes` |
+| Serial × paralelo | semântica: **mesmas leituras ⇒ mesma história**. 18 pedidos embaralhados (6 contas × 3 slots, A→B→A, erros transitórios, latência aleatória), cada leitura com carimbo determinístico do transporte: conjunto de versões (chave, status, valor, `observed_at`), `as_of` nos 18 cortes de gravação e instantes de gravação idênticos ao serial em 8 rodadas. Sem o carimbo (observed = fim da leitura), o paralelo diverge — e é correto que divirja: leituras em instantes diferentes são leituras diferentes | `test_equivalencia_serial_paralelo_mesmas_leituras_mesma_historia` |
 
 ### 3.3 Heartbeat, dead letter e backfill no banco (proposta, não aplicada)
 

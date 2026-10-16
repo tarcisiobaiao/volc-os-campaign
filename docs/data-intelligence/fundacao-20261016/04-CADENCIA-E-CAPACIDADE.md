@@ -1,6 +1,6 @@
 # 04 — Cadência e capacidade (frente B)
 
-Estado: modelo **construído e testado hermeticamente** (46 testes de capacidade + 23 do coletor);
+Estado: modelo **construído e testado hermeticamente** (46 testes de capacidade + 26 do coletor);
 bytes **medidos** num PostgreSQL 16 descartável com dados **sintéticos**, mais **três números reais**
 lidos read-only pelo integrador (1.140 B/linha da `google_ads_observation`, redundância real de termos,
 GIN sem uso — `receipts/leituras-externas/RECIBO-LEITURAS-20261016.md:30-33,69`). Contagens de linhas e
@@ -23,10 +23,10 @@ Artefatos (gerados, não editar à mão):
 |---|---|---|
 | 1 | Termos: **89,4%** de redundância **medida** (23.891 lidas → 2.525 distintas) com ~21 h de vida do coletor; em regime estacionário (42 leituras por termo-dia) o esperado é **97,1%** (p de revisão 0,005). O modelo com p = 0 e as 13 execuções reais prevê 2.546 distintas (real 2.525, −0,8%): a diferença 10,6% × 4,3% apontada na R1 é idade do coletor (H5), não premissa errada | recibo :31,:69; `MODELO.md` §4b; `test_redundancia_de_coletor_jovem…` |
 | 2 | Linha **real** da v21: **1.140 B** (recibo, 24.141 linhas); réplica sintética **851 B** (subestimava 25%); a mesma linha tipada em colunas: **286 B** (4,0× menor que a real) | recibo :32; `MEDICOES.md` |
-| 3 | Por valor de métrica: largo tipado **36 B**, largo JSONB 64 B, réplica v21 106 B, longo tipado 258 B, longo com texto 348 B e **DDL real da frente A (`dil_obs_0001`, longo) 1.084 B** | `MEDICOES.md`, 1e6 linhas |
+| 3 | Por valor de métrica: largo tipado **36 B**, largo JSONB 64 B, réplica v21 106 B, longo tipado 258 B, longo com texto 348 B e **DDL real da frente A (`dil_obs_0001`, longo) 1.043 B** após D2 (1.084 B antes) | `MEDICOES.md`, 1e6 linhas |
 | 4 | Payload GAQL de campanha (448 B de JSON): **718 B** gravado linha a linha (abaixo do limiar do TOAST) × **75 B/linha** em lote jsonb de 200 (termos: 1.109 × 172 B; lz4 130 B) — payload sintético, compressão real será pior | `MEDICOES.md` |
 | 5 | Hoje (1 conta, agenda documentada): v21 com bytes reais **≈17 MB/dia** → 6,8 GB em 13 meses, 18,8 GB em 3 anos; política recomendada **0,43 MB/dia** → 0,17 GB / 0,24 GB | `MODELO.md` §3 |
-| 6 | ×100, vertical completa, horária 24 h: v21 real **1,78 GB/dia → 704 GB em 13 m e 1,9 TB em 3 a**; recomendada (largo tipado) **0,06 GB/dia → 22 GB e 30 GB**; a mesma política sobre o DDL longo da frente A: 209 GB e 217 GB | `MODELO.md` §4 |
+| 6 | ×100, vertical completa, horária 24 h: v21 real **1,78 GB/dia → 704 GB em 13 m e 1,9 TB em 3 a**; recomendada (largo tipado) **0,06 GB/dia → 22 GB e 30 GB**; a mesma política sobre o DDL longo da frente A: 202 GB e 210 GB; com a regra D2 da frente A (toda releitura vira versão) sobre esse DDL: **2,9 TB e 7,9 TB** (§6) | `MODELO.md` §4 |
 | 7 | Quota Google Ads (R1 F7): a agenda atual faz **92 operações/dia por conta + 26 fixas** (D0/D-1: `customer_client` + 4 GAQL por conta) → cabem **162 contas** no Basic (15.000/dia), 31 no Explorer; com D0 a cada 10 min, **24 contas**; com termos 1×/dia, 182 | J:P/collector-inventory.json:111-117,136-142,161-168; comum.md:173-181 |
 | 8 | `as_of` por chave (EXECUTE, planejamento incluído, n = 5.000): p50 **0,058 ms** (1e6) e **0,216 ms** (1e7), p99 0,24 / 1,25 ms; ingestão de lote de 1.000 + commit: p50 **11–21 ms** (n = 60; ≈48–91 mil linhas/s nesta rodada, com a máquina disputada). `as_of` **global** na função real `dil_obs.observacao_as_of`: **10–27 s** em 1e6 linhas (consulta inline equivalente: 0,2–0,3 s) | `MEDICOES.md` |
 
@@ -161,7 +161,7 @@ Variantes da tabela de observação:
 | `largo` | 1 linha por entidade×leitura, 8 métricas `bigint` (2 nulas) | PK; único `as_of` sem métrica; BRIN |
 | `jsonb` | igual ao largo, métricas num `jsonb` | idem |
 | `v21` | réplica de `google_ads_observation` (J:supabase/migrations/v21_01_google_ads_coleta_canonica.sql:94-145) | PK uuid; `UNIQUE (run_id, observation_key)`; 2 btree; 2 GIN `jsonb_path_ops` |
-| `dil_obs_0001` | **DDL real candidato da frente A** (`migrations_candidatas/dil_obs_0001_schema_observacao.sql`), formato longo, chaves sha256 em hex, inserção direta como superusuário (sem a RPC) | PK; `uq_obs_chave_idempotencia`; `uq_obs_versao (chave_natural, available_at desc)`; `ix_obs_chave_base`, `ix_obs_entidade`, `ix_obs_lote`, `ix_obs_run` |
+| `dil_obs_0001` | **DDL real candidato da frente A** (`migrations_candidatas/dil_obs_0001_schema_observacao.sql`), formato longo, chaves sha256 em hex, inserção direta como superusuário (sem a RPC); medido antes (1e5, 1e6) e depois de D2 (1e5) | PK; `uq_obs_chave_idempotencia`; `uq_obs_versao (chave_natural, available_at desc)`; pré-D2 `ix_obs_chave_base`, pós-D2 `ix_obs_asof`; `ix_obs_entidade`, `ix_obs_lote`, `ix_obs_run` |
 
 ### 5.1 Tamanho (1e6 linhas; 1e5 e 1e7 iguais a ±1% por linha)
 
@@ -174,11 +174,16 @@ Variantes da tabela de observação:
 | jsonb | 431,3 | 81,5 | 512,8 | 64,1 |
 | v21 (réplica) | 630,4 | 220,3 | 850,7 | 106,3 |
 | **v21 real (produção, recibo :32)** | – | – | **1.140** | ~143 (8 métricas) |
-| **dil_obs_0001 (frente A)** | 630,4 | 453,3 | **1.083,7** | **1.083,7** |
+| dil_obs_0001 (frente A, DDL pré-D2) | 630,4 | 453,3 | 1.083,7 | 1.083,7 |
+| **dil_obs_0001 pós-D2** (sem `chave_base`, com `ix_obs_asof`; medido só em 1e5 — disco livre ~6 GiB) | 570,0 | 473,3 | **1.043,4** | **1.043,4** |
 
-No DDL da frente A, os três índices sobre texto hex de 64 caracteres (`uq_obs_chave_idempotencia`,
-`ix_obs_chave_base`, `uq_obs_versao`) somam 370 MB em 1e6 linhas (370 B/linha); `ix_obs_chave_base` duplica
-`uq_obs_chave_idempotencia` em todas as linhas de tipo `leitura` (as duas chaves são iguais por CHECK).
+No DDL da frente A, os índices sobre texto hex de 64 caracteres dominam: antes de D2,
+`uq_obs_chave_idempotencia`, `ix_obs_chave_base` (que duplicava a anterior em toda linha `leitura`) e
+`uq_obs_versao` somavam 370 B/linha; depois de D2 saiu `ix_obs_chave_base` e entrou `ix_obs_asof
+(chave_natural, observed_at desc, available_at desc)`: `uq_obs_chave_idempotencia` + `uq_obs_versao` +
+`ix_obs_asof` = 125 + 138 + 149 B/linha (1e5). `uq_obs_versao` e `ix_obs_asof` começam pela mesma chave
+de 64 caracteres; um índice único `(chave_natural, observed_at, available_at)` talvez sirva aos dois papéis
+— a medir pela frente A.
 
 Payload bruto (20.000 linhas GAQL sintéticas): campanha 448 B de JSON → 718 B por linha jsonb ×
 75 B/linha em lote de 200 (pglz); termo 782 → 1.109 × 172 B (lz4 130 B). O sintético repete strings mais
@@ -219,8 +224,9 @@ cláusula `SET` não são inlinadas pelo planejador: o conjunto inteiro (linha c
 materializado antes do `count`/filtro de quem chama. Resultado medido: **48–55× mais lenta** que a mesma
 consulta inline em 1e6 linhas (8,5 s × 0,18 s; 17,5 s × 0,32 s), e a view `observacao_latest` herda o
 custo (19 s). Opções para a frente A, a medir: view `security_invoker` com o `DISTINCT ON` direto
-(inlinável), ou função `SECURITY INVOKER` sem `SET` com nomes totalmente qualificados. Também: o formato
-longo do DDL custa **1.084 B por valor**, 30× o largo tipado e ~7,6× a linha real da v21 por valor.
+(inlinável), ou função `SECURITY INVOKER` sem `SET` com nomes totalmente qualificados. Após D2 continua igual: em 1e5, função 0,65 s × inline 0,045 s (14×; o fator cresce com o
+volume). Também: o formato longo do DDL custa **1.043 B por valor** pós-D2, 29× o largo tipado e ~7,3× a
+linha real da v21 por valor.
 
 ### 5.5 DuckDB / Polars (só leitura analítica de snapshot)
 
@@ -232,15 +238,23 @@ DuckDB sobre Parquet reconstrói um snapshot inteiro ~10× mais rápido que o Po
 
 1. **Gravar só o que mudou** (−94% das observações na vertical completa ×100 horária: 1,46 M → 83 mil
    linhas/dia, com p de revisão de termos 0,005), mantendo no recibo do run "li N, igual M" para provar
-   cobertura. O coletor seguro já faz isso pelo `Registro` da frente A (05 §3.2).
+   cobertura. **Atenção — conflito com a regra D2 da frente A** (`HANDOFF-A.md` §7.1): com `observed_at` na
+   chave da leitura, toda releitura vira versão, e o `Registro`/`dil_obs` deixam de deduplicar observação.
+   Custo medido no modelo (política `registro_d2`, payload ainda deduplicado): hoje, 1 conta, **71 MB/dia**
+   com o DDL longo pós-D2 da frente A (v21 real: 17,5 MB/dia; recomendada: 0,43 MB/dia); ×100, vertical horária:
+   **7,25 GB/dia → 2,9 TB em 13 meses e 7,9 TB em 3 anos** (4,1× a v21 real); com D2 sobre o largo tipado,
+   450 GB em 3 anos. D2 resolve um problema real (ordem do `as_of` e passagem de `partial` a fechada), então
+   a proposta é separar as duas coisas: versão só quando o conteúdo muda (ou o status/cobertura muda) e a
+   prova de releitura numa tabela estreita de "leituras" (chave natural, `observed_at`, `available_at`,
+   sha do payload) ou só no recibo do run. Decisão da frente A/integrador; não aplicada aqui.
 2. **Payload bruto: hash por linha, linhas novas gravadas juntas num lote jsonb** ("linha em lote"):
    dedup por lote inteiro quase nunca acontece em janela grande (100% dos lotes de termos continuam
    "novos"); dedup linha a linha sem lote paga 718–1.109 B/linha. Na vertical ×100 horária o payload cai
    de ~0,23 para ~0,02 GB/dia.
 3. **Colunas tipadas, não JSONB nem formato longo, para as métricas**: largo tipado 36 B/valor; JSONB 64;
-   réplica v21 106; v21 real ~143; longo tipado 258; DDL longo da frente A 1.084. Se o contrato exigir
+   réplica v21 106; v21 real ~143; longo tipado 258; DDL longo da frente A 1.043 (pós-D2). Se o contrato exigir
    estado por métrica, `NULL` + bitmask de estado cabe no largo. Decisão a alinhar com a frente A: com o
-   DDL longo atual, a política recomendada a ×100 vai de 30 GB para 217 GB em 3 anos.
+   DDL longo atual, a política recomendada a ×100 vai de 30 GB para 210 GB em 3 anos.
 4. **Índices**: em produção, os GIN de `metrics` e `dimensions` e o `campaign_ix` têm **0 scans** e a pkey
    também (recibo :33) — remover os GIN é candidato direto (proposta, não aplicada). Para `as_of` basta um
    btree único `(chave lógica, disponivel_em desc)`.

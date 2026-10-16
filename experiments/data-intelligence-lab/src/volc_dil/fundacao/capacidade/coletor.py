@@ -18,10 +18,14 @@ Revisado após a revisão adversarial R1 (F10, F11, F12):
 - **A→B→A e equivalência serial × paralela (F10)**: o executor não tem regra própria de dedup. Cada
   linha devolvida vira um payload endereçado por conteúdo; o normalizador da frente A
   (`volc_dil.fundacao.observacao.normalizar`) produz `Observacao` canônicas e o `Registro` da frente A
-  decide INSERIDO / NOOP (a volta A→B→A é uma leitura nova, pela regra D2 da frente A). `available_at` é o relógio do sink ("relógio do banco",
-  monotônico) no instante da gravação — o coletor não declara quando o VOLC soube (cf. F1). Em lote, as
-  leituras podem correr em paralelo, mas a GRAVAÇÃO é serial e ordenada por (slot, conta, coletor):
-  a história gravada, e portanto o `as_of` em qualquer corte, é a mesma do modo serial.
+  decide INSERIDO / NOOP. Regras da frente A após D1/D2: `observed_at` entra na chave da leitura (reler
+  o mesmo valor em outra hora é versão nova; retry da mesma leitura é NOOP) e a versão vigente no `as_of`
+  é a de maior `observed_at` (empate → maior `available_at`). `observed_at` = instante REAL da leitura
+  (carimbo do transporte, ou fim da leitura) — nunca o slot (ver `_observado_em`). `available_at` = relógio
+  monotônico do sink na gravação ("relógio do banco"; o coletor não declara quando o VOLC soube, cf. F1).
+  Em lote, a leitura pode ser paralela e a gravação é serial por (slot, conta, coletor) — sob D1 a ordem
+  de gravação não muda o estado final (vence a medição mais recente); ela só fixa o `available_at`, o que
+  deixa o `as_of` por instante de conhecimento determinístico entre serial e paralelo.
 
 Semântica preservada: chave de execução determinística = sha256(coletor, conta, janela, slot); slot
 repetido = `ja_concluido`; erro transitório → retry com backoff exponencial e *full jitter*
@@ -152,6 +156,9 @@ class ContextoFonte:
 class RespostaLeitura:
     linhas: tuple[Mapping[str, Any], ...]
     contexto: ContextoFonte
+    # instante em que a fonte foi lida, carimbado pelo transporte (ex.: início da requisição). Se None, o
+    # executor usa o instante em que a leitura terminou. NUNCA o slot agendado: ver `_observado_em`.
+    observado_em: Optional[datetime] = None
 
 
 class Adaptador(Protocol):
@@ -369,7 +376,7 @@ def _ler(pedido, adaptador, transporte, sink, modo, politica, relogio, dormir) -
 def _normalizar(leitura: _Leitura, instante: datetime) -> tuple[list, dict[str, bytes], list[str]]:
     resp, ped, rec = leitura.resposta, leitura.pedido, leitura.recibo
     ctx_f = resp.contexto
-    observed = min(rec.lido_em or instante, instante)
+    observed = _observado_em(resp, rec, instante)
     obs: list = []
     payloads: dict[str, bytes] = {}
     rejeicoes: list[str] = []
@@ -391,6 +398,26 @@ def _normalizar(leitura: _Leitura, instante: datetime) -> tuple[list, dict[str, 
     return obs, payloads, rejeicoes
 
 
+class _ObservadoInvalido(Exception):
+    pass
+
+
+def _observado_em(resp: RespostaLeitura, rec: ReciboRun, instante: datetime) -> datetime:
+    """`observed_at` = instante REAL da leitura (regra D1 da frente A: a medição mais recente vence).
+
+    Não se usa o slot agendado: uma execução atrasada (fila, retry, backfill) lê o estado da fonte no
+    instante em que roda; carimbá-la com o slot antigo diria que o estado das 09h era o das 06h e, sob
+    D1, poderia perder para uma leitura que de fato é mais velha. O contrato exige observed ≤ available
+    (o instante da gravação); violação é erro do transporte, não algo a corrigir em silêncio.
+    """
+    obs = resp.observado_em if resp.observado_em is not None else (rec.lido_em or instante)
+    if obs.tzinfo is None:
+        raise _ObservadoInvalido("observado_em sem timezone")
+    if obs > instante:
+        raise _ObservadoInvalido("observado_em posterior à gravação (available_at)")
+    return obs
+
+
 def _concluir(leitura: _Leitura, sink, modo: str, relogio: Callable[[], datetime]) -> ReciboRun:
     rec, ped = leitura.recibo, leitura.pedido
     if rec.status == "ja_concluido":
@@ -406,7 +433,12 @@ def _concluir(leitura: _Leitura, sink, modo: str, relogio: Callable[[], datetime
             sink.heartbeat(ped.coletor, "dead_letter")
         return rec
     instante = sink.agora() if modo == "gravar" else relogio()
-    obs, payloads, rejeicoes = _normalizar(leitura, instante)
+    try:
+        obs, payloads, rejeicoes = _normalizar(leitura, instante)
+    except _ObservadoInvalido as e:
+        rec.erros.append(f"contrato: {e}")
+        leitura.resposta, leitura.motivo_falha = None, "observado_em_invalido"
+        return _concluir(leitura, sink, modo, relogio)
     rec.linhas_lidas = len(leitura.resposta.linhas)
     rec.observacoes = len(obs)
     rec.payloads_distintos = len(payloads)

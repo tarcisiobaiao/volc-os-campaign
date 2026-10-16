@@ -1,0 +1,246 @@
+{
+ "manifesto": {
+  "catalogo_sha256": "d449d43f12ee20fdff245663329e8779aaa96faa39a4e71617cf746ec8601600",
+  "natureza": "simulacao_com_seed_sem_dado_real",
+  "parametros": {
+   "C": 50,
+   "D": 60,
+   "alpha": 0.1,
+   "atraso": 3,
+   "calibracao_dias": [
+    10,
+    25
+   ],
+   "gamma": 0.005,
+   "janela_previsao": 7,
+   "piso_escala_brl": 1.0,
+   "teste_desde": 28
+  },
+  "pre_registro": "results/fundacao/modelos/PRE-REGISTRO.md",
+  "script": "fundacao_modelos_conformal.py",
+  "seeds": [
+   20261901,
+   20261902,
+   20261903,
+   20261904,
+   20261905,
+   20261906,
+   20261907,
+   20261908,
+   20261909,
+   20261910,
+   20261911,
+   20261912
+  ],
+  "sha256_codigo": "3cfcaaa35e6a4eb7b674c189de88ca1e0342df0bdd9e3a86632419804fc58080",
+  "teto_de_estado": "testado com sintético",
+  "versoes": {
+   "catalogo": "1.0.0",
+   "implementacao": "CPython",
+   "modelos": "0.1.0",
+   "numpy": "2.5.3",
+   "python": "3.13.0",
+   "scipy": "1.18.1",
+   "simulador": "1.0.0",
+   "sklearn": "1.9.1",
+   "statlab": "0.1.0",
+   "statsmodels": "0.15.0"
+  }
+ },
+ "resultados": {
+  "H8a_suportada": true,
+  "H8b_suportada": false,
+  "estavel": {
+   "aci": {
+    "cobertura_nao_quebradas": {
+     "estimativa": 0.898538,
+     "ic95": [
+      0.895361,
+      0.902051
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "cobertura_quebradas_pos": {
+     "estimativa": null,
+     "ic95": [
+      null,
+      null
+     ],
+     "n": 0,
+     "n_excluidos": 12
+    },
+    "cobertura_teste": {
+     "estimativa": 0.898538,
+     "ic95": [
+      0.895361,
+      0.902051
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "frac_intervalo_infinito": {
+     "estimativa": 0.0071414,
+     "ic95": [
+      0.0,
+      0.0174305
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "largura_mediana": {
+     "estimativa": 15.1773,
+     "ic95": [
+      13.8253,
+      16.5155
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    }
+   },
+   "split": {
+    "cobertura_nao_quebradas": {
+     "estimativa": 0.895073,
+     "ic95": [
+      0.886165,
+      0.903488
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "cobertura_quebradas_pos": {
+     "estimativa": null,
+     "ic95": [
+      null,
+      null
+     ],
+     "n": 0,
+     "n_excluidos": 12
+    },
+    "cobertura_teste": {
+     "estimativa": 0.895073,
+     "ic95": [
+      0.886165,
+      0.903488
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "frac_intervalo_infinito": {
+     "estimativa": 0.0,
+     "ic95": [
+      0.0,
+      0.0
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "largura_mediana": {
+     "estimativa": 14.615,
+     "ic95": [
+      13.3951,
+      16.0073
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    }
+   }
+  },
+  "quebra_regime_rpm": {
+   "aci": {
+    "cobertura_nao_quebradas": {
+     "estimativa": 0.929534,
+     "ic95": [
+      0.92282,
+      0.93564
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "cobertura_quebradas_pos": {
+     "estimativa": 0.892267,
+     "ic95": [
+      0.887972,
+      0.896643
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "cobertura_teste": {
+     "estimativa": 0.901035,
+     "ic95": [
+      0.898718,
+      0.903666
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "frac_intervalo_infinito": {
+     "estimativa": 0.253975,
+     "ic95": [
+      0.219738,
+      0.288888
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "largura_mediana": {
+     "estimativa": 14.451,
+     "ic95": [
+      13.3033,
+      15.654
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    }
+   },
+   "split": {
+    "cobertura_nao_quebradas": {
+     "estimativa": 0.904766,
+     "ic95": [
+      0.893309,
+      0.914734
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "cobertura_quebradas_pos": {
+     "estimativa": 0.865572,
+     "ic95": [
+      0.854402,
+      0.87682
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "cobertura_teste": {
+     "estimativa": 0.876701,
+     "ic95": [
+      0.866342,
+      0.886505
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "frac_intervalo_infinito": {
+     "estimativa": 0.00126323,
+     "ic95": [
+      0.000473554,
+      0.00210479
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    },
+    "largura_mediana": {
+     "estimativa": 14.1689,
+     "ic95": [
+      12.9199,
+      15.5553
+     ],
+     "n": 12,
+     "n_excluidos": 0
+    }
+   }
+  }
+ }
+}

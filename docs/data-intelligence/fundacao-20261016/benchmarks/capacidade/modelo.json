@@ -2107,13 +2107,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1.3671993354425966,
-    "30d": 0.10357570723049975,
-    "3a": 3.7839658374875906
+    "13m": 1.3184995707579181,
+    "30d": 0.0998863311180241,
+    "3a": 3.6491806301784804
    },
    "bytes_dia": {
-    "indices": 1483873.0536714492,
-    "observacao": 2063300.6220865105,
+    "indices": 1549252.0702769898,
+    "observacao": 1865873.690933249,
     "payload": 159945.2843676001,
     "rollup": 0.0
    },
@@ -2124,7 +2124,7 @@
     "joinads": 145.0
    },
    "crescimento": 1,
-   "gb_dia": 0.0034525235743499915,
+   "gb_dia": 0.0033295443706008033,
    "jobs": "atual",
    "linhas_payload_dia": 600.3560908517712,
    "lotes_dia": 177.0,
@@ -2150,13 +2150,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1.4551196488402278,
-    "30d": 0.11023356270806649,
-    "3a": 1.5289953393267568
+    "13m": 27.35114956924891,
+    "30d": 2.07205678554916,
+    "3a": 75.69914123206264
    },
    "bytes_dia": {
-    "indices": 1536143.386211839,
-    "observacao": 2135981.6438089623,
+    "indices": 33570514.326349206,
+    "observacao": 40431341.46752092,
+    "payload": 159945.2843676001,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 263.0,
+   "chamadas_por_fonte": {
+    "google_ads": 118.0,
+    "joinads": 145.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.06906855951830533,
+   "jobs": "atual",
+   "linhas_payload_dia": 600.3560908517712,
+   "lotes_dia": 177.0,
+   "observacoes_dia": 70926.28571428571,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 118.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.007866666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.04097222222222222
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1.5409909384461695,
+    "30d": 0.11674173776107344,
+    "3a": 4.264964819537883
+   },
+   "bytes_dia": {
+    "indices": 1143796.934427157,
+    "observacao": 2874607.3292220654,
+    "payload": 159945.2843676001,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 263.0,
+   "chamadas_por_fonte": {
+    "google_ads": 118.0,
+    "joinads": 145.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.003891391258702448,
+   "jobs": "atual",
+   "linhas_payload_dia": 600.3560908517712,
+   "lotes_dia": 177.0,
+   "observacoes_dia": 14029.714285714286,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 118.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.007866666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.04097222222222222
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1.4047044052684514,
+    "30d": 0.106414226073841,
+    "3a": 1.4785800957549804
+   },
+   "bytes_dia": {
+    "indices": 1603825.418517193,
+    "observacao": 1931600.2287001652,
     "payload": 159945.2843676001,
     "rollup": 111704.17521752176
    },
@@ -2167,7 +2253,7 @@
     "joinads": 145.0
    },
    "crescimento": 1,
-   "gb_dia": 0.003672926211362633,
+   "gb_dia": 0.003545614990221784,
    "jobs": "atual",
    "linhas_payload_dia": 600.3560908517712,
    "lotes_dia": 177.0,
@@ -2623,13 +2709,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 13.671993354425966,
-    "30d": 1.0357570723049974,
-    "3a": 37.83965837487591
+    "13m": 13.184995707579183,
+    "30d": 0.9988633111802412,
+    "3a": 36.49180630178481
    },
    "bytes_dia": {
-    "indices": 14838730.53671449,
-    "observacao": 20633006.220865104,
+    "indices": 15492520.702769898,
+    "observacao": 18658736.909332488,
     "payload": 1599452.8436760008,
     "rollup": 0.0
    },
@@ -2640,7 +2726,7 @@
     "joinads": 1450.0
    },
    "crescimento": 10,
-   "gb_dia": 0.034525235743499916,
+   "gb_dia": 0.03329544370600804,
    "jobs": "atual",
    "linhas_payload_dia": 6003.560908517713,
    "lotes_dia": 1770.0,
@@ -2666,13 +2752,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 14.54542866613665,
-    "30d": 1.1019236397759773,
-    "3a": 15.27470986299413
+    "13m": 273.5114956924891,
+    "30d": 20.7205678554916,
+    "3a": 756.9914123206264
    },
    "bytes_dia": {
-    "indices": 15361433.86211839,
-    "observacao": 21359816.43808962,
+    "indices": 335705143.26349205,
+    "observacao": 404313414.6752092,
+    "payload": 1599452.8436760008,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 2396.0,
+   "chamadas_por_fonte": {
+    "google_ads": 946.0,
+    "joinads": 1450.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.6906855951830533,
+   "jobs": "atual",
+   "linhas_payload_dia": 6003.560908517713,
+   "lotes_dia": 1770.0,
+   "observacoes_dia": 709262.8571428572,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 946.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.06306666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.3284722222222222
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 15.409909384461697,
+    "30d": 1.1674173776107346,
+    "3a": 42.64964819537884
+   },
+   "bytes_dia": {
+    "indices": 11437969.344271572,
+    "observacao": 28746073.292220656,
+    "payload": 1599452.8436760008,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 2396.0,
+   "chamadas_por_fonte": {
+    "google_ads": 946.0,
+    "joinads": 1450.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.038913912587024486,
+   "jobs": "atual",
+   "linhas_payload_dia": 6003.560908517713,
+   "lotes_dia": 1770.0,
+   "observacoes_dia": 140297.14285714287,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 946.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.06306666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.3284722222222222
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 14.041276230418886,
+    "30d": 1.0637302734337226,
+    "3a": 14.770557427276366
+   },
+   "bytes_dia": {
+    "indices": 16038254.18517193,
+    "observacao": 19316002.28700165,
     "payload": 1599452.8436760008,
     "rollup": 1117041.7521752175
    },
@@ -2683,7 +2855,7 @@
     "joinads": 1450.0
    },
    "crescimento": 10,
-   "gb_dia": 0.03672926211362633,
+   "gb_dia": 0.035456149902217834,
    "jobs": "atual",
    "linhas_payload_dia": 6003.560908517713,
    "lotes_dia": 1770.0,
@@ -3139,13 +3311,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 136.71993354425967,
-    "30d": 10.357570723049976,
-    "3a": 378.39658374875916
+    "13m": 131.84995707579182,
+    "30d": 9.988633111802411,
+    "3a": 364.9180630178481
    },
    "bytes_dia": {
-    "indices": 148387305.3671449,
-    "observacao": 206330062.20865107,
+    "indices": 154925207.027699,
+    "observacao": 186587369.0933249,
     "payload": 15994528.43676001,
     "rollup": 0.0
    },
@@ -3156,7 +3328,7 @@
     "joinads": 14500.0
    },
    "crescimento": 100,
-   "gb_dia": 0.3452523574349992,
+   "gb_dia": 0.3329544370600804,
    "jobs": "atual",
    "linhas_payload_dia": 60035.60908517713,
    "lotes_dia": 17700.0,
@@ -3182,13 +3354,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 145.4485188391009,
-    "30d": 11.018824410455087,
-    "3a": 152.73185509966788
+    "13m": 2735.114956924891,
+    "30d": 207.20567855491598,
+    "3a": 7569.914123206264
    },
    "bytes_dia": {
-    "indices": 153614338.6211839,
-    "observacao": 213598164.38089624,
+    "indices": 3357051432.6349206,
+    "observacao": 4043134146.7520924,
+    "payload": 15994528.43676001,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 23726.0,
+   "chamadas_por_fonte": {
+    "google_ads": 9226.0,
+    "joinads": 14500.0
+   },
+   "crescimento": 100,
+   "gb_dia": 6.906855951830533,
+   "jobs": "atual",
+   "linhas_payload_dia": 60035.60908517713,
+   "lotes_dia": 17700.0,
+   "observacoes_dia": 7092628.571428572,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 9226.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.6150666666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 3.203472222222222
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 154.09909384461693,
+    "30d": 11.674173776107343,
+    "3a": 426.4964819537883
+   },
+   "bytes_dia": {
+    "indices": 114379693.44271572,
+    "observacao": 287460732.9222065,
+    "payload": 15994528.43676001,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 23726.0,
+   "chamadas_por_fonte": {
+    "google_ads": 9226.0,
+    "joinads": 14500.0
+   },
+   "crescimento": 100,
+   "gb_dia": 0.3891391258702448,
+   "jobs": "atual",
+   "linhas_payload_dia": 60035.60908517713,
+   "lotes_dia": 17700.0,
+   "observacoes_dia": 1402971.4285714286,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 9226.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.6150666666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 3.203472222222222
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 140.40699448192325,
+    "30d": 10.636890747032538,
+    "3a": 147.69033074249023
+   },
+   "bytes_dia": {
+    "indices": 160382541.85171932,
+    "observacao": 193160022.87001652,
     "payload": 15994528.43676001,
     "rollup": 11170417.521752175
    },
@@ -3199,7 +3457,7 @@
     "joinads": 14500.0
    },
    "crescimento": 100,
-   "gb_dia": 0.3672926211362633,
+   "gb_dia": 0.3545614990221784,
    "jobs": "atual",
    "linhas_payload_dia": 60035.60908517713,
    "lotes_dia": 17700.0,
@@ -3655,13 +3913,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1367.1993354425965,
-    "30d": 103.57570723049975,
-    "3a": 3783.9658374875903
+    "13m": 1318.499570757918,
+    "30d": 99.8863311180241,
+    "3a": 3649.1806301784804
    },
    "bytes_dia": {
-    "indices": 1483873053.671449,
-    "observacao": 2063300622.0865104,
+    "indices": 1549252070.2769897,
+    "observacao": 1865873690.9332488,
     "payload": 159945284.36760008,
     "rollup": 0.0
    },
@@ -3672,7 +3930,7 @@
     "joinads": 145000.0
    },
    "crescimento": 1000,
-   "gb_dia": 3.4525235743499914,
+   "gb_dia": 3.329544370600803,
    "jobs": "atual",
    "linhas_payload_dia": 600356.0908517712,
    "lotes_dia": 177000.0,
@@ -3698,13 +3956,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1454.4794205687433,
-    "30d": 110.18783211724617,
-    "3a": 1527.3033074664052
+    "13m": 27351.14956924891,
+    "30d": 2072.05678554916,
+    "3a": 75699.14123206264
    },
    "bytes_dia": {
-    "indices": 1536143386.211839,
-    "observacao": 2135981643.808962,
+    "indices": 33570514326.349205,
+    "observacao": 40431341467.52093,
+    "payload": 159945284.36760008,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 237026.0,
+   "chamadas_por_fonte": {
+    "google_ads": 92026.0,
+    "joinads": 145000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 69.06855951830534,
+   "jobs": "atual",
+   "linhas_payload_dia": 600356.0908517712,
+   "lotes_dia": 177000.0,
+   "observacoes_dia": 70926285.71428572,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 92026.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 6.135066666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 31.95347222222222
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1540.9909384461694,
+    "30d": 116.74173776107344,
+    "3a": 4264.964819537883
+   },
+   "bytes_dia": {
+    "indices": 1143796934.4271572,
+    "observacao": 2874607329.222065,
+    "payload": 159945284.36760008,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 237026.0,
+   "chamadas_por_fonte": {
+    "google_ads": 92026.0,
+    "joinads": 145000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 3.891391258702448,
+   "jobs": "atual",
+   "linhas_payload_dia": 600356.0908517712,
+   "lotes_dia": 177000.0,
+   "observacoes_dia": 14029714.285714285,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 92026.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 6.135066666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 31.95347222222222
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1404.0641769969668,
+    "30d": 106.36849548302067,
+    "3a": 1476.8880638946287
+   },
+   "bytes_dia": {
+    "indices": 1603825418.5171928,
+    "observacao": 1931600228.7001648,
     "payload": 159945284.36760008,
     "rollup": 111704175.21752176
    },
@@ -3715,7 +4059,7 @@
     "joinads": 145000.0
    },
    "crescimento": 1000,
-   "gb_dia": 3.6729262113626326,
+   "gb_dia": 3.545614990221783,
    "jobs": "atual",
    "linhas_payload_dia": 600356.0908517712,
    "lotes_dia": 177000.0,
@@ -4171,13 +4515,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1.8374829263791792,
-    "30d": 0.13920325199842265,
-    "3a": 5.085558806342375
+    "13m": 1.772093084071638,
+    "30d": 0.13424947606603319,
+    "3a": 4.904580858945746
    },
    "bytes_dia": {
-    "indices": 1992416.7110916667,
-    "observacao": 2770422.0581939486,
+    "indices": 2080202.0138285279,
+    "observacao": 2505334.208612715,
     "payload": 219439.68763165083,
     "rollup": 0.0
    },
@@ -4188,7 +4532,7 @@
     "joinads": 280.0
    },
    "crescimento": 1,
-   "gb_dia": 0.004640108399947422,
+   "gb_dia": 0.0044749825355344395,
    "jobs": "atual",
    "linhas_payload_dia": 785.4889229311343,
    "lotes_dia": 318.0,
@@ -4214,13 +4558,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1.9411963540328852,
-    "30d": 0.14705755552569208,
-    "3a": 2.0150720445194144
+    "13m": 28.499444607858532,
+    "30d": 2.1590488339286766,
+    "3a": 78.87725073286099
    },
    "bytes_dia": {
-    "indices": 2062600.803854935,
-    "observacao": 2868011.8634004877,
+    "indices": 34955976.57396825,
+    "observacao": 42099951.50665512,
+    "payload": 219439.68763165083,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 428.0,
+   "chamadas_por_fonte": {
+    "google_ads": 148.0,
+    "joinads": 280.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.07196829446428922,
+   "jobs": "atual",
+   "linhas_payload_dia": 785.4889229311343,
+   "lotes_dia": 318.0,
+   "observacoes_dia": 73853.42857142857,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 148.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.009866666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.05138888888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1.613410238677165,
+    "30d": 0.1222280483846337,
+    "3a": 4.465398034318619
+   },
+   "bytes_dia": {
+    "indices": 1182755.071703742,
+    "observacao": 2972517.494547169,
+    "payload": 219439.68763165083,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 428.0,
+   "chamadas_por_fonte": {
+    "google_ads": 148.0,
+    "joinads": 280.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.00407426827948779,
+   "jobs": "atual",
+   "linhas_payload_dia": 785.4889229311343,
+   "lotes_dia": 318.0,
+   "observacoes_dia": 14507.57142857143,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 148.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.009866666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.05138888888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1.873503114683581,
+    "30d": 0.14192927981741144,
+    "3a": 1.94737880517011
+   },
+   "bytes_dia": {
+    "indices": 2153478.3973742602,
+    "observacao": 2593586.132781692,
     "payload": 219439.68763165083,
     "rollup": 111704.17521752176
    },
@@ -4231,7 +4661,7 @@
     "joinads": 280.0
    },
    "crescimento": 1,
-   "gb_dia": 0.004900392638616818,
+   "gb_dia": 0.004729450115007464,
    "jobs": "atual",
    "linhas_payload_dia": 785.4889229311343,
    "lotes_dia": 318.0,
@@ -4687,13 +5117,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 18.374829263791785,
-    "30d": 1.3920325199842263,
-    "3a": 50.85558806342373
+    "13m": 17.72093084071638,
+    "30d": 1.3424947606603317,
+    "3a": 49.04580858945746
    },
    "bytes_dia": {
-    "indices": 19924167.110916663,
-    "observacao": 27704220.581939477,
+    "indices": 20802020.138285276,
+    "observacao": 25053342.086127147,
     "payload": 2194396.8763165083,
     "rollup": 0.0
    },
@@ -4704,7 +5134,7 @@
     "joinads": 2800.0
    },
    "crescimento": 10,
-   "gb_dia": 0.04640108399947421,
+   "gb_dia": 0.04474982535534439,
    "jobs": "atual",
    "linhas_payload_dia": 7854.889229311342,
    "lotes_dia": 3180.0,
@@ -4730,13 +5160,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 19.406195718063223,
-    "30d": 1.470163567952233,
-    "3a": 20.1354769149207
+    "13m": 284.9944460785853,
+    "30d": 21.590488339286768,
+    "3a": 788.7725073286099
    },
    "bytes_dia": {
-    "indices": 20626008.03854935,
-    "observacao": 28680118.63400487,
+    "indices": 349559765.7396825,
+    "observacao": 420999515.0665512,
+    "payload": 2194396.8763165083,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 3992.0,
+   "chamadas_por_fonte": {
+    "google_ads": 1192.0,
+    "joinads": 2800.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.7196829446428923,
+   "jobs": "atual",
+   "linhas_payload_dia": 7854.889229311342,
+   "lotes_dia": 3180.0,
+   "observacoes_dia": 738534.2857142857,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 1192.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.07946666666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.41388888888888886
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 16.13410238677165,
+    "30d": 1.2222804838463373,
+    "3a": 44.65398034318619
+   },
+   "bytes_dia": {
+    "indices": 11827550.717037419,
+    "observacao": 29725174.945471693,
+    "payload": 2194396.8763165083,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 3992.0,
+   "chamadas_por_fonte": {
+    "google_ads": 1192.0,
+    "joinads": 2800.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.04074268279487791,
+   "jobs": "atual",
+   "linhas_payload_dia": 7854.889229311342,
+   "lotes_dia": 3180.0,
+   "observacoes_dia": 145075.7142857143,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 1192.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.07946666666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.41388888888888886
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 18.729263324570184,
+    "30d": 1.4188808108694269,
+    "3a": 19.458544521427662
+   },
+   "bytes_dia": {
+    "indices": 21534783.973742597,
+    "observacao": 25935861.32781692,
     "payload": 2194396.8763165083,
     "rollup": 1117041.7521752175
    },
@@ -4747,7 +5263,7 @@
     "joinads": 2800.0
    },
    "crescimento": 10,
-   "gb_dia": 0.04900392638616818,
+   "gb_dia": 0.04729450115007464,
    "jobs": "atual",
    "linhas_payload_dia": 7854.889229311342,
    "lotes_dia": 3180.0,
@@ -5203,13 +5719,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 183.74829263791787,
-    "30d": 13.920325199842264,
-    "3a": 508.5558806342374
+    "13m": 177.2093084071638,
+    "30d": 13.424947606603318,
+    "3a": 490.45808589457454
    },
    "bytes_dia": {
-    "indices": 199241671.10916668,
-    "observacao": 277042205.8193948,
+    "indices": 208020201.3828528,
+    "observacao": 250533420.8612715,
     "payload": 21943968.763165083,
     "rollup": 0.0
    },
@@ -5220,7 +5736,7 @@
     "joinads": 28000.0
    },
    "crescimento": 100,
-   "gb_dia": 0.46401083999474213,
+   "gb_dia": 0.4474982535534439,
    "jobs": "atual",
    "linhas_payload_dia": 78548.89229311341,
    "lotes_dia": 31800.0,
@@ -5246,13 +5762,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 194.05618935836662,
-    "30d": 14.70122369221764,
-    "3a": 201.3395256189336
+    "13m": 2849.944460785854,
+    "30d": 215.90488339286773,
+    "3a": 7887.725073286101
    },
    "bytes_dia": {
-    "indices": 206260080.38549352,
-    "observacao": 286801186.34004873,
+    "indices": 3495597657.3968253,
+    "observacao": 4209995150.665512,
+    "payload": 21943968.763165083,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 39632.0,
+   "chamadas_por_fonte": {
+    "google_ads": 11632.0,
+    "joinads": 28000.0
+   },
+   "crescimento": 100,
+   "gb_dia": 7.196829446428924,
+   "jobs": "atual",
+   "linhas_payload_dia": 78548.89229311341,
+   "lotes_dia": 31800.0,
+   "observacoes_dia": 7385342.857142857,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 11632.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.7754666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 4.038888888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 161.3410238677165,
+    "30d": 12.222804838463372,
+    "3a": 446.53980343186186
+   },
+   "bytes_dia": {
+    "indices": 118275507.1703742,
+    "observacao": 297251749.4547169,
+    "payload": 21943968.763165083,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 39632.0,
+   "chamadas_por_fonte": {
+    "google_ads": 11632.0,
+    "joinads": 28000.0
+   },
+   "crescimento": 100,
+   "gb_dia": 0.40742682794877905,
+   "jobs": "atual",
+   "linhas_payload_dia": 78548.89229311341,
+   "lotes_dia": 31800.0,
+   "observacoes_dia": 1450757.142857143,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 11632.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.7754666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 4.038888888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 187.2868654234362,
+    "30d": 14.18839612138958,
+    "3a": 194.5702016840032
+   },
+   "bytes_dia": {
+    "indices": 215347839.737426,
+    "observacao": 259358613.2781692,
     "payload": 21943968.763165083,
     "rollup": 11170417.521752175
    },
@@ -5263,7 +5865,7 @@
     "joinads": 28000.0
    },
    "crescimento": 100,
-   "gb_dia": 0.4900392638616818,
+   "gb_dia": 0.4729450115007464,
    "jobs": "atual",
    "linhas_payload_dia": 78548.89229311341,
    "lotes_dia": 31800.0,
@@ -5719,13 +6321,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1837.482926379179,
-    "30d": 139.20325199842264,
-    "3a": 5085.558806342374
+    "13m": 1772.0930840716378,
+    "30d": 134.24947606603317,
+    "3a": 4904.580858945745
    },
    "bytes_dia": {
-    "indices": 1992416711.0916665,
-    "observacao": 2770422058.1939483,
+    "indices": 2080202013.8285277,
+    "observacao": 2505334208.612715,
     "payload": 219439687.6316508,
     "rollup": 0.0
    },
@@ -5736,7 +6338,7 @@
     "joinads": 280000.0
    },
    "crescimento": 1000,
-   "gb_dia": 4.6401083999474215,
+   "gb_dia": 4.474982535534439,
    "jobs": "atual",
    "linhas_payload_dia": 785488.9229311342,
    "lotes_dia": 318000.0,
@@ -5762,13 +6364,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1940.5561257614006,
-    "30d": 147.01182493487175,
-    "3a": 2013.3800126590625
+    "13m": 28499.44460785854,
+    "30d": 2159.048833928677,
+    "3a": 78877.25073286101
    },
    "bytes_dia": {
-    "indices": 2062600803.854935,
-    "observacao": 2868011863.4004874,
+    "indices": 34955976573.968254,
+    "observacao": 42099951506.65512,
+    "payload": 219439687.6316508,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 396032.0,
+   "chamadas_por_fonte": {
+    "google_ads": 116032.0,
+    "joinads": 280000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 71.96829446428924,
+   "jobs": "atual",
+   "linhas_payload_dia": 785488.9229311342,
+   "lotes_dia": 318000.0,
+   "observacoes_dia": 73853428.57142857,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 116032.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 7.7354666666666665
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 40.28888888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1613.410238677165,
+    "30d": 122.22804838463371,
+    "3a": 4465.398034318619
+   },
+   "bytes_dia": {
+    "indices": 1182755071.703742,
+    "observacao": 2972517494.547169,
+    "payload": 219439687.6316508,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 396032.0,
+   "chamadas_por_fonte": {
+    "google_ads": 116032.0,
+    "joinads": 280000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 4.07426827948779,
+   "jobs": "atual",
+   "linhas_payload_dia": 785488.9229311342,
+   "lotes_dia": 318000.0,
+   "observacoes_dia": 14507571.42857143,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 116032.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 7.7354666666666665
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 40.28888888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1872.8628864120967,
+    "30d": 141.88354922659116,
+    "3a": 1945.6867733097586
+   },
+   "bytes_dia": {
+    "indices": 2153478397.37426,
+    "observacao": 2593586132.781692,
     "payload": 219439687.6316508,
     "rollup": 111704175.21752176
    },
@@ -5779,7 +6467,7 @@
     "joinads": 280000.0
    },
    "crescimento": 1000,
-   "gb_dia": 4.900392638616818,
+   "gb_dia": 4.729450115007465,
    "jobs": "atual",
    "linhas_payload_dia": 785488.9229311342,
    "lotes_dia": 318000.0,
@@ -6235,13 +6923,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 2.73401149760025,
-    "30d": 0.2071220831515341,
-    "3a": 7.566860104469379
+    "13m": 2.6382940061449593,
+    "30d": 0.1998707580412848,
+    "3a": 7.301945027108271
    },
    "bytes_dia": {
-    "indices": 2916494.7152243224,
-    "observacao": 4055337.0420369864,
+    "indices": 3044994.6269552093,
+    "observacao": 3667302.09529623,
     "payload": 441356.3545322876,
     "rollup": 0.0
    },
@@ -6252,7 +6940,7 @@
     "joinads": 928.0
    },
    "crescimento": 1,
-   "gb_dia": 0.00690406943838447,
+   "gb_dia": 0.00666235860137616,
    "jobs": "atual",
    "linhas_payload_dia": 1105.569032559934,
    "lotes_dia": 1038.0,
@@ -6278,13 +6966,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 2.8664226964046704,
-    "30d": 0.21715046025082735,
-    "3a": 2.9402983868912
+    "13m": 34.65271178383214,
+    "30d": 2.6252054381691017,
+    "3a": 95.90750534111118
    },
    "bytes_dia": {
-    "indices": 3019230.018786765,
-    "observacao": 4198188.7605355205,
+    "indices": 42424084.64253968,
+    "observacao": 51094321.52140837,
+    "payload": 441356.3545322876,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 1436.0,
+   "chamadas_por_fonte": {
+    "google_ads": 508.0,
+    "joinads": 928.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.08750684793897005,
+   "jobs": "atual",
+   "linhas_payload_dia": 1105.569032559934,
+   "lotes_dia": 1038.0,
+   "observacoes_dia": 89631.71428571429,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 508.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.03386666666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.1763888888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1.9603628903900254,
+    "30d": 0.14851234018106252,
+    "3a": 5.425650827948151
+   },
+   "bytes_dia": {
+    "indices": 1387363.9074810338,
+    "observacao": 3486743.4390707645,
+    "payload": 441356.3545322876,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 1436.0,
+   "chamadas_por_fonte": {
+    "google_ads": 508.0,
+    "joinads": 928.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.004950411339368751,
+   "jobs": "atual",
+   "linhas_payload_dia": 1105.569032559934,
+   "lotes_dia": 1038.0,
+   "observacoes_dia": 17017.285714285714,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 508.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.03386666666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.1763888888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 2.767333497985687,
+    "30d": 0.20964370279484376,
+    "3a": 2.8412091884722166
+   },
+   "bytes_dia": {
+    "indices": 3152256.4182121116,
+    "observacao": 3796485.046339727,
     "payload": 441356.3545322876,
     "rollup": 111704.17521752176
    },
@@ -6295,7 +7069,7 @@
     "joinads": 928.0
    },
    "crescimento": 1,
-   "gb_dia": 0.007236822796121327,
+   "gb_dia": 0.006986597547588541,
    "jobs": "atual",
    "linhas_payload_dia": 1105.569032559934,
    "lotes_dia": 1038.0,
@@ -6751,13 +7525,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 27.340114976002504,
-    "30d": 2.0712208315153413,
-    "3a": 75.6686010446938
+    "13m": 26.382940061449595,
+    "30d": 1.998707580412848,
+    "3a": 73.01945027108272
    },
    "bytes_dia": {
-    "indices": 29164947.152243223,
-    "observacao": 40553370.42036986,
+    "indices": 30449946.269552093,
+    "observacao": 36673020.9529623,
     "payload": 4413563.545322876,
     "rollup": 0.0
    },
@@ -6768,7 +7542,7 @@
     "joinads": 9280.0
    },
    "crescimento": 10,
-   "gb_dia": 0.0690406943838447,
+   "gb_dia": 0.0666235860137616,
    "jobs": "atual",
    "linhas_payload_dia": 11055.69032559934,
    "lotes_dia": 10380.0,
@@ -6794,13 +7568,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 28.658459141781087,
-    "30d": 2.171092615203586,
-    "3a": 29.387740338638565
+    "13m": 346.5271178383214,
+    "30d": 26.252054381691014,
+    "3a": 959.0750534111116
    },
    "bytes_dia": {
-    "indices": 30192300.18786765,
-    "observacao": 41981887.60535521,
+    "indices": 424240846.4253968,
+    "observacao": 510943215.2140837,
+    "payload": 4413563.545322876,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 13424.0,
+   "chamadas_por_fonte": {
+    "google_ads": 4144.0,
+    "joinads": 9280.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.8750684793897004,
+   "jobs": "atual",
+   "linhas_payload_dia": 11055.69032559934,
+   "lotes_dia": 10380.0,
+   "observacoes_dia": 896317.1428571428,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 4144.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.27626666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 1.4388888888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 19.603628903900255,
+    "30d": 1.4851234018106254,
+    "3a": 54.256508279481515
+   },
+   "bytes_dia": {
+    "indices": 13873639.074810337,
+    "observacao": 34867434.39070764,
+    "payload": 4413563.545322876,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 13424.0,
+   "chamadas_por_fonte": {
+    "google_ads": 4144.0,
+    "joinads": 9280.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.049504113393687516,
+   "jobs": "atual",
+   "linhas_payload_dia": 11055.69032559934,
+   "lotes_dia": 10380.0,
+   "observacoes_dia": 170172.85714285713,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 4144.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.27626666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 1.4388888888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 27.667567157591254,
+    "30d": 2.0960250406437506,
+    "3a": 28.396848354448732
+   },
+   "bytes_dia": {
+    "indices": 31522564.182121117,
+    "observacao": 37964850.46339727,
     "payload": 4413563.545322876,
     "rollup": 1117041.7521752175
    },
@@ -6811,7 +7671,7 @@
     "joinads": 9280.0
    },
    "crescimento": 10,
-   "gb_dia": 0.07236822796121328,
+   "gb_dia": 0.06986597547588543,
    "jobs": "atual",
    "linhas_payload_dia": 11055.69032559934,
    "lotes_dia": 10380.0,
@@ -7267,13 +8127,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 273.401149760025,
-    "30d": 20.71220831515341,
-    "3a": 756.686010446938
+    "13m": 263.829400614496,
+    "30d": 19.987075804128484,
+    "3a": 730.1945027108274
    },
    "bytes_dia": {
-    "indices": 291649471.52243227,
-    "observacao": 405533704.2036987,
+    "indices": 304499462.695521,
+    "observacao": 366730209.5296231,
     "payload": 44135635.45322876,
     "rollup": 0.0
    },
@@ -7284,7 +8144,7 @@
     "joinads": 92800.0
    },
    "crescimento": 100,
-   "gb_dia": 0.690406943838447,
+   "gb_dia": 0.6662358601376162,
    "jobs": "atual",
    "linhas_payload_dia": 110556.9032559934,
    "lotes_dia": 103800.0,
@@ -7310,13 +8170,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 286.57882359554526,
-    "30d": 21.710514164731173,
-    "3a": 293.8621598561122
+    "13m": 3465.2711783832137,
+    "30d": 262.52054381691016,
+    "3a": 9590.750534111117
    },
    "bytes_dia": {
-    "indices": 301923001.87867653,
-    "observacao": 419818876.05355215,
+    "indices": 4242408464.2539682,
+    "observacao": 5109432152.140837,
+    "payload": 44135635.45322876,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 133304.0,
+   "chamadas_por_fonte": {
+    "google_ads": 40504.0,
+    "joinads": 92800.0
+   },
+   "crescimento": 100,
+   "gb_dia": 8.750684793897005,
+   "jobs": "atual",
+   "linhas_payload_dia": 110556.9032559934,
+   "lotes_dia": 103800.0,
+   "observacoes_dia": 8963171.42857143,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 40504.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 2.700266666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 14.063888888888888
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 196.03628903900253,
+    "30d": 14.851234018106252,
+    "3a": 542.5650827948151
+   },
+   "bytes_dia": {
+    "indices": 138736390.74810338,
+    "observacao": 348674343.9070764,
+    "payload": 44135635.45322876,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 133304.0,
+   "chamadas_por_fonte": {
+    "google_ads": 40504.0,
+    "joinads": 92800.0
+   },
+   "crescimento": 100,
+   "gb_dia": 0.4950411339368751,
+   "jobs": "atual",
+   "linhas_payload_dia": 110556.9032559934,
+   "lotes_dia": 103800.0,
+   "observacoes_dia": 1701728.5714285714,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 40504.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 2.700266666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 14.063888888888888
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 276.66990375364696,
+    "30d": 20.959838419132815,
+    "3a": 283.9532400142139
+   },
+   "bytes_dia": {
+    "indices": 315225641.8212112,
+    "observacao": 379648504.63397276,
     "payload": 44135635.45322876,
     "rollup": 11170417.521752175
    },
@@ -7327,7 +8273,7 @@
     "joinads": 92800.0
    },
    "crescimento": 100,
-   "gb_dia": 0.7236822796121328,
+   "gb_dia": 0.6986597547588542,
    "jobs": "atual",
    "linhas_payload_dia": 110556.9032559934,
    "lotes_dia": 103800.0,
@@ -7783,13 +8729,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 2734.01149760025,
-    "30d": 207.1220831515341,
-    "3a": 7566.860104469379
+    "13m": 2638.2940061449594,
+    "30d": 199.87075804128483,
+    "3a": 7301.945027108272
    },
    "bytes_dia": {
-    "indices": 2916494715.2243223,
-    "observacao": 4055337042.0369864,
+    "indices": 3044994626.9552093,
+    "observacao": 3667302095.2962303,
     "payload": 441356354.5322876,
     "rollup": 0.0
    },
@@ -7800,7 +8746,7 @@
     "joinads": 928000.0
    },
    "crescimento": 1000,
-   "gb_dia": 6.90406943838447,
+   "gb_dia": 6.662358601376161,
    "jobs": "atual",
    "linhas_payload_dia": 1105569.0325599338,
    "lotes_dia": 1038000.0,
@@ -7826,13 +8772,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 2865.782468133187,
-    "30d": 217.10472966000708,
-    "3a": 2938.606355030849
+    "13m": 34652.711783832136,
+    "30d": 2625.2054381691014,
+    "3a": 95907.50534111116
    },
    "bytes_dia": {
-    "indices": 3019230018.786765,
-    "observacao": 4198188760.535521,
+    "indices": 42424084642.53968,
+    "observacao": 51094321521.40836,
+    "payload": 441356354.5322876,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 1332104.0,
+   "chamadas_por_fonte": {
+    "google_ads": 404104.0,
+    "joinads": 928000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 87.50684793897004,
+   "jobs": "atual",
+   "linhas_payload_dia": 1105569.0325599338,
+   "lotes_dia": 1038000.0,
+   "observacoes_dia": 89631714.28571428,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 404104.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 26.940266666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 140.3138888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1960.3628903900258,
+    "30d": 148.51234018106254,
+    "3a": 5425.650827948152
+   },
+   "bytes_dia": {
+    "indices": 1387363907.481034,
+    "observacao": 3486743439.070765,
+    "payload": 441356354.5322876,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 1332104.0,
+   "chamadas_por_fonte": {
+    "google_ads": 404104.0,
+    "joinads": 928000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 4.950411339368752,
+   "jobs": "atual",
+   "linhas_payload_dia": 1105569.0325599338,
+   "lotes_dia": 1038000.0,
+   "observacoes_dia": 17017285.714285716,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 404104.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 26.940266666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 140.3138888888889
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 2766.693269714203,
+    "30d": 209.59797220402345,
+    "3a": 2839.5171566118647
+   },
+   "bytes_dia": {
+    "indices": 3152256418.2121115,
+    "observacao": 3796485046.339727,
     "payload": 441356354.5322876,
     "rollup": 111704175.21752176
    },
@@ -7843,7 +8875,7 @@
     "joinads": 928000.0
    },
    "crescimento": 1000,
-   "gb_dia": 7.236822796121329,
+   "gb_dia": 6.986597547588541,
    "jobs": "atual",
    "linhas_payload_dia": 1105569.0325599338,
    "lotes_dia": 1038000.0,
@@ -8299,13 +9331,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 3.000324743389046,
-    "30d": 0.22729732904462469,
-    "3a": 8.303929087763622
+    "13m": 2.896484785503,
+    "30d": 0.21943066556840912,
+    "3a": 8.01653364876588
    },
    "bytes_dia": {
-    "indices": 3163984.80360539,
-    "observacao": 4399467.863776382,
+    "indices": 3303389.0568889035,
+    "observacao": 3978504.7575013386,
     "payload": 571835.6219083443,
     "rollup": 0.0
    },
@@ -8316,7 +9348,7 @@
     "joinads": 1360.0
    },
    "crescimento": 1,
-   "gb_dia": 0.007576577634820823,
+   "gb_dia": 0.00731435551894697,
    "jobs": "atual",
    "linhas_payload_dia": 1185.5898285480512,
    "lotes_dia": 1518.0,
@@ -8342,13 +9374,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 3.1404218884952577,
-    "30d": 0.23790797480314455,
-    "3a": 3.214297578981787
+    "13m": 38.74844867847565,
+    "30d": 2.9354885362481555,
+    "3a": 107.2431811909326
    },
    "bytes_dia": {
-    "indices": 3275438.0963436053,
-    "observacao": 4554441.800173011,
+    "indices": 47402823.354920626,
+    "observacao": 57090568.197910525,
+    "payload": 571835.6219083443,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 2108.0,
+   "chamadas_por_fonte": {
+    "google_ads": 748.0,
+    "joinads": 1360.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.09784961787493851,
+   "jobs": "atual",
+   "linhas_payload_dia": 1185.5898285480512,
+   "lotes_dia": 1518.0,
+   "observacoes_dia": 100150.57142857142,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 748.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.04986666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.25972222222222224
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 2.1852234355263884,
+    "30d": 0.16554722996412036,
+    "3a": 6.0479921346891965
+   },
+   "bytes_dia": {
+    "indices": 1523769.7979992286,
+    "observacao": 3829560.735419828,
+    "payload": 571835.6219083443,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 2108.0,
+   "chamadas_por_fonte": {
+    "google_ads": 748.0,
+    "joinads": 1360.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.0055182409988040115,
+   "jobs": "atual",
+   "linhas_payload_dia": 1185.5898285480512,
+   "lotes_dia": 1518.0,
+   "observacoes_dia": 18690.428571428572,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 748.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.04986666666666666
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.25972222222222224
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 3.0329241048159252,
+    "30d": 0.229764203312286,
+    "3a": 3.1067997953024546
+   },
+   "bytes_dia": {
+    "indices": 3419752.9493975276,
+    "observacao": 4118650.0119579663,
     "payload": 571835.6219083443,
     "rollup": 111704.17521752176
    },
@@ -8359,7 +9477,7 @@
     "joinads": 1360.0
    },
    "crescimento": 1,
-   "gb_dia": 0.007928739947865235,
+   "gb_dia": 0.00765728089816995,
    "jobs": "atual",
    "linhas_payload_dia": 1185.5898285480512,
    "lotes_dia": 1518.0,
@@ -8815,13 +9933,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 30.003247433890454,
-    "30d": 2.2729732904462465,
-    "3a": 83.0392908776362
+    "13m": 28.964847855029998,
+    "30d": 2.1943066556840907,
+    "3a": 80.16533648765878
    },
    "bytes_dia": {
-    "indices": 31639848.036053892,
-    "observacao": 43994678.63776381,
+    "indices": 33033890.568889026,
+    "observacao": 39785047.57501338,
     "payload": 5718356.219083443,
     "rollup": 0.0
    },
@@ -8832,7 +9950,7 @@
     "joinads": 13600.0
    },
    "crescimento": 10,
-   "gb_dia": 0.07576577634820822,
+   "gb_dia": 0.07314355518946969,
    "jobs": "atual",
    "linhas_payload_dia": 11855.89828548051,
    "lotes_dia": 15180.0,
@@ -8858,13 +9976,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 31.398451062686952,
-    "30d": 2.3786677607267577,
-    "3a": 32.12773225954443
+    "13m": 387.48448678475665,
+    "30d": 29.354885362481564,
+    "3a": 1072.4318119093264
    },
    "bytes_dia": {
-    "indices": 32754380.96343605,
-    "observacao": 45544418.0017301,
+    "indices": 474028233.5492063,
+    "observacao": 570905681.9791054,
+    "payload": 5718356.219083443,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 19712.0,
+   "chamadas_por_fonte": {
+    "google_ads": 6112.0,
+    "joinads": 13600.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.9784961787493854,
+   "jobs": "atual",
+   "linhas_payload_dia": 11855.89828548051,
+   "lotes_dia": 15180.0,
+   "observacoes_dia": 1001505.7142857143,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 6112.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.40746666666666664
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 2.1222222222222222
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 21.852234355263885,
+    "30d": 1.6554722996412032,
+    "3a": 60.47992134689196
+   },
+   "bytes_dia": {
+    "indices": 15237697.979992285,
+    "observacao": 38295607.35419828,
+    "payload": 5718356.219083443,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 19712.0,
+   "chamadas_por_fonte": {
+    "google_ads": 6112.0,
+    "joinads": 13600.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.05518240998804011,
+   "jobs": "atual",
+   "linhas_payload_dia": 11855.89828548051,
+   "lotes_dia": 15180.0,
+   "observacoes_dia": 186904.2857142857,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 6112.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.40746666666666664
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 2.1222222222222222
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 30.32347322589362,
+    "30d": 2.2972300458181723,
+    "3a": 31.052754422751097
+   },
+   "bytes_dia": {
+    "indices": 34197529.49397527,
+    "observacao": 41186500.11957965,
     "payload": 5718356.219083443,
     "rollup": 1117041.7521752175
    },
@@ -8875,7 +10079,7 @@
     "joinads": 13600.0
    },
    "crescimento": 10,
-   "gb_dia": 0.07928739947865233,
+   "gb_dia": 0.07657280898169948,
    "jobs": "atual",
    "linhas_payload_dia": 11855.89828548051,
    "lotes_dia": 15180.0,
@@ -9331,13 +10535,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 300.03247433890454,
-    "30d": 22.729732904462463,
-    "3a": 830.392908776362
+    "13m": 289.64847855029996,
+    "30d": 21.943066556840908,
+    "3a": 801.6533648765878
    },
    "bytes_dia": {
-    "indices": 316398480.36053896,
-    "observacao": 439946786.37763816,
+    "indices": 330338905.6888903,
+    "observacao": 397850475.7501338,
     "payload": 57183562.19083443,
     "rollup": 0.0
    },
@@ -9348,7 +10552,7 @@
     "joinads": 136000.0
    },
    "crescimento": 100,
-   "gb_dia": 0.7576577634820821,
+   "gb_dia": 0.7314355518946969,
    "jobs": "atual",
    "linhas_payload_dia": 118558.98285480512,
    "lotes_dia": 151800.0,
@@ -9374,13 +10578,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 313.97874280460394,
-    "30d": 23.78626561996289,
-    "3a": 321.2620790651709
+    "13m": 3874.8448678475656,
+    "30d": 293.5488536248156,
+    "3a": 10724.318119093263
    },
    "bytes_dia": {
-    "indices": 327543809.63436055,
-    "observacao": 455444180.017301,
+    "indices": 4740282335.492063,
+    "observacao": 5709056819.791053,
+    "payload": 57183562.19083443,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 195752.0,
+   "chamadas_por_fonte": {
+    "google_ads": 59752.0,
+    "joinads": 136000.0
+   },
+   "crescimento": 100,
+   "gb_dia": 9.784961787493852,
+   "jobs": "atual",
+   "linhas_payload_dia": 118558.98285480512,
+   "lotes_dia": 151800.0,
+   "observacoes_dia": 10015057.142857142,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 59752.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 3.9834666666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 20.747222222222224
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 218.52234355263886,
+    "30d": 16.554722996412035,
+    "3a": 604.7992134689197
+   },
+   "bytes_dia": {
+    "indices": 152376979.79992288,
+    "observacao": 382956073.5419828,
+    "payload": 57183562.19083443,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 195752.0,
+   "chamadas_por_fonte": {
+    "google_ads": 59752.0,
+    "joinads": 136000.0
+   },
+   "crescimento": 100,
+   "gb_dia": 0.5518240998804012,
+   "jobs": "atual",
+   "linhas_payload_dia": 118558.98285480512,
+   "lotes_dia": 151800.0,
+   "observacoes_dia": 1869042.8571428573,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 59752.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 3.9834666666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 20.747222222222224
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 303.2289644366706,
+    "30d": 22.971888470877033,
+    "3a": 310.51230069723755
+   },
+   "bytes_dia": {
+    "indices": 341975294.9397527,
+    "observacao": 411865001.1957966,
     "payload": 57183562.19083443,
     "rollup": 11170417.521752175
    },
@@ -9391,7 +10681,7 @@
     "joinads": 136000.0
    },
    "crescimento": 100,
-   "gb_dia": 0.7928739947865234,
+   "gb_dia": 0.7657280898169948,
    "jobs": "atual",
    "linhas_payload_dia": 118558.98285480512,
    "lotes_dia": 151800.0,
@@ -9847,13 +11137,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 3000.3247433890456,
-    "30d": 227.29732904462466,
-    "3a": 8303.929087763621
+    "13m": 2896.4847855029993,
+    "30d": 219.43066556840904,
+    "3a": 8016.533648765877
    },
    "bytes_dia": {
-    "indices": 3163984803.605389,
-    "observacao": 4399467863.7763815,
+    "indices": 3303389056.8889027,
+    "observacao": 3978504757.5013375,
     "payload": 571835621.9083443,
     "rollup": 0.0
    },
@@ -9864,7 +11154,7 @@
     "joinads": 1360000.0
    },
    "crescimento": 1000,
-   "gb_dia": 7.576577634820822,
+   "gb_dia": 7.314355518946968,
    "jobs": "atual",
    "linhas_payload_dia": 1185589.8285480512,
    "lotes_dia": 1518000.0,
@@ -9890,13 +11180,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 3139.781660223773,
-    "30d": 237.8622442123242,
-    "3a": 3212.605547121435
+    "13m": 38748.44867847567,
+    "30d": 2935.4885362481564,
+    "3a": 107243.18119093265
    },
    "bytes_dia": {
-    "indices": 3275438096.3436046,
-    "observacao": 4554441800.17301,
+    "indices": 47402823354.92063,
+    "observacao": 57090568197.91054,
+    "payload": 571835621.9083443,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 1956152.0,
+   "chamadas_por_fonte": {
+    "google_ads": 596152.0,
+    "joinads": 1360000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 97.84961787493855,
+   "jobs": "atual",
+   "linhas_payload_dia": 1185589.8285480512,
+   "lotes_dia": 1518000.0,
+   "observacoes_dia": 100150571.42857143,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 596152.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 39.74346666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 206.99722222222223
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 2185.223435526388,
+    "30d": 165.54722996412033,
+    "3a": 6047.992134689196
+   },
+   "bytes_dia": {
+    "indices": 1523769797.9992285,
+    "observacao": 3829560735.419828,
+    "payload": 571835621.9083443,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 1956152.0,
+   "chamadas_por_fonte": {
+    "google_ads": 596152.0,
+    "joinads": 1360000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 5.518240998804011,
+   "jobs": "atual",
+   "linhas_payload_dia": 1185589.8285480512,
+   "lotes_dia": 1518000.0,
+   "observacoes_dia": 18690428.57142857,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 596152.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 39.74346666666667
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 206.99722222222223
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 3032.28387654444,
+    "30d": 229.71847272146562,
+    "3a": 3105.1077634421017
+   },
+   "bytes_dia": {
+    "indices": 3419752949.3975267,
+    "observacao": 4118650011.9579654,
     "payload": 571835621.9083443,
     "rollup": 111704175.21752176
    },
@@ -9907,7 +11283,7 @@
     "joinads": 1360000.0
    },
    "crescimento": 1000,
-   "gb_dia": 7.928739947865234,
+   "gb_dia": 7.657280898169947,
    "jobs": "atual",
    "linhas_payload_dia": 1185589.8285480512,
    "lotes_dia": 1518000.0,
@@ -10363,13 +11739,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1.5067966853193175,
-    "30d": 0.11415126403934224,
-    "3a": 4.170326179570637
+    "13m": 1.453062096569865,
+    "30d": 0.11008046186135341,
+    "3a": 4.021606206668111
    },
    "bytes_dia": {
-    "indices": 1637283.2355905601,
-    "observacao": 2276614.909993373,
+    "indices": 1709421.460341523,
+    "observacao": 2058777.0000511804,
     "payload": 171734.73646636517,
     "rollup": 0.0
    },
@@ -10380,7 +11756,7 @@
     "joinads": 145.0
    },
    "crescimento": 1,
-   "gb_dia": 0.0038050421346447413,
+   "gb_dia": 0.0036693487287117804,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 642.6559339967249,
    "lotes_dia": 202.0,
@@ -10406,13 +11782,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1.603495298326018,
-    "30d": 0.12147414221456576,
-    "3a": 1.6844665470011784
+    "13m": 27.534042973426406,
+    "30d": 2.0859123464716975,
+    "3a": 76.205331057766
    },
    "bytes_dia": {
-    "indices": 1694957.5352723126,
-    "observacao": 2356810.057494253,
+    "indices": 33790132.74412698,
+    "observacao": 40695843.43956132,
+    "payload": 171734.73646636517,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 288.0,
+   "chamadas_por_fonte": {
+    "google_ads": 143.0,
+    "joinads": 145.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.06953041154905658,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 642.6559339967249,
+   "lotes_dia": 202.0,
+   "observacoes_dia": 71390.28571428571,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 143.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.009533333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.049652777777777775
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1.5514656535379572,
+    "30d": 0.11753527678317859,
+    "3a": 4.293955445145458
+   },
+   "bytes_dia": {
+    "indices": 1148525.4856182763,
+    "observacao": 2886491.1938325264,
+    "payload": 171734.73646636517,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 288.0,
+   "chamadas_por_fonte": {
+    "google_ads": 143.0,
+    "joinads": 145.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.003917842559439286,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 642.6559339967249,
+   "lotes_dia": 202.0,
+   "observacoes_dia": 14087.714285714286,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 143.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.009533333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.049652777777777775
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1.5478678759437252,
+    "30d": 0.11725994354924055,
+    "3a": 1.6288391246188856
+   },
+   "bytes_dia": {
+    "indices": 1769636.8729488566,
+    "observacao": 2131298.6744308867,
     "payload": 171734.73646636517,
     "rollup": 122588.17177717772
    },
@@ -10423,7 +11885,7 @@
     "joinads": 145.0
    },
    "crescimento": 1,
-   "gb_dia": 0.0040476121949126085,
+   "gb_dia": 0.003907138906068435,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 642.6559339967249,
    "lotes_dia": 202.0,
@@ -10879,13 +12341,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 15.067966853193175,
-    "30d": 1.1415126403934224,
-    "3a": 41.70326179570637
+    "13m": 14.530620965698654,
+    "30d": 1.1008046186135343,
+    "3a": 40.216062066681125
    },
    "bytes_dia": {
-    "indices": 16372832.355905602,
-    "observacao": 22766149.09993373,
+    "indices": 17094214.603415232,
+    "observacao": 20587770.000511806,
     "payload": 1717347.3646636517,
     "rollup": 0.0
    },
@@ -10896,7 +12358,7 @@
     "joinads": 1450.0
    },
    "crescimento": 10,
-   "gb_dia": 0.03805042134644741,
+   "gb_dia": 0.03669348728711781,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 6426.55933996725,
    "lotes_dia": 2020.0,
@@ -10922,13 +12384,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 16.029185160994558,
-    "30d": 1.2143294348409703,
-    "3a": 16.829421939738353
+    "13m": 275.34042973426403,
+    "30d": 20.859123464716973,
+    "3a": 762.05331057766
    },
    "bytes_dia": {
-    "indices": 16949575.352723125,
-    "observacao": 23568100.574942533,
+    "indices": 337901327.4412698,
+    "observacao": 406958434.39561325,
+    "payload": 1717347.3646636517,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 2646.0,
+   "chamadas_por_fonte": {
+    "google_ads": 1196.0,
+    "joinads": 1450.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.6953041154905657,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 6426.55933996725,
+   "lotes_dia": 2020.0,
+   "observacoes_dia": 713902.8571428572,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 1196.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.07973333333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.4152777777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 15.514656535379574,
+    "30d": 1.1753527678317859,
+    "3a": 42.939554451454576
+   },
+   "bytes_dia": {
+    "indices": 11485254.856182763,
+    "observacao": 28864911.938325264,
+    "payload": 1717347.3646636517,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 2646.0,
+   "chamadas_por_fonte": {
+    "google_ads": 1196.0,
+    "joinads": 1450.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.039178425594392864,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 6426.55933996725,
+   "lotes_dia": 2020.0,
+   "observacoes_dia": 140877.14285714287,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 1196.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.07973333333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.4152777777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 15.472910937171632,
+    "30d": 1.1721874481877184,
+    "3a": 16.273147715915425
+   },
+   "bytes_dia": {
+    "indices": 17696368.729488567,
+    "observacao": 21312986.74430887,
     "payload": 1717347.3646636517,
     "rollup": 1225881.7177717772
    },
@@ -10939,7 +12487,7 @@
     "joinads": 1450.0
    },
    "crescimento": 10,
-   "gb_dia": 0.040476121949126094,
+   "gb_dia": 0.03907138906068436,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 6426.55933996725,
    "lotes_dia": 2020.0,
@@ -11395,13 +12943,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 150.67966853193172,
-    "30d": 11.415126403934222,
-    "3a": 417.03261795706356
+    "13m": 145.30620965698654,
+    "30d": 11.008046186135342,
+    "3a": 402.1606206668112
    },
    "bytes_dia": {
-    "indices": 163728323.55905598,
-    "observacao": 227661490.99933726,
+    "indices": 170942146.0341523,
+    "observacao": 205877700.00511804,
     "payload": 17173473.646636516,
     "rollup": 0.0
    },
@@ -11412,7 +12960,7 @@
     "joinads": 14500.0
    },
    "crescimento": 100,
-   "gb_dia": 0.38050421346447405,
+   "gb_dia": 0.3669348728711781,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 64265.5933996725,
    "lotes_dia": 20200.0,
@@ -11438,13 +12986,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 160.28608378767993,
-    "30d": 12.142882361105013,
-    "3a": 168.27897586711003
+    "13m": 2753.404297342641,
+    "30d": 208.59123464716976,
+    "3a": 7620.533105776602
    },
    "bytes_dia": {
-    "indices": 169495753.52723122,
-    "observacao": 235681005.7494253,
+    "indices": 3379013274.4126983,
+    "observacao": 4069584343.956133,
+    "payload": 17173473.646636516,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 26226.0,
+   "chamadas_por_fonte": {
+    "google_ads": 11726.0,
+    "joinads": 14500.0
+   },
+   "crescimento": 100,
+   "gb_dia": 6.953041154905659,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 64265.5933996725,
+   "lotes_dia": 20200.0,
+   "observacoes_dia": 7139028.571428572,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 11726.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.7817333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 4.071527777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 155.14656535379572,
+    "30d": 11.753527678317859,
+    "3a": 429.3955445145458
+   },
+   "bytes_dia": {
+    "indices": 114852548.56182763,
+    "observacao": 288649119.3832526,
+    "payload": 17173473.646636516,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 26226.0,
+   "chamadas_por_fonte": {
+    "google_ads": 11726.0,
+    "joinads": 14500.0
+   },
+   "crescimento": 100,
+   "gb_dia": 0.3917842559439286,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 64265.5933996725,
+   "lotes_dia": 20200.0,
+   "observacoes_dia": 1408771.4285714286,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 11726.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.7817333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 4.071527777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 154.72334154945068,
+    "30d": 11.721462494572494,
+    "3a": 162.7162336288808
+   },
+   "bytes_dia": {
+    "indices": 176963687.29488567,
+    "observacao": 213129867.44308868,
     "payload": 17173473.646636516,
     "rollup": 12258817.177717771
    },
@@ -11455,7 +13089,7 @@
     "joinads": 14500.0
    },
    "crescimento": 100,
-   "gb_dia": 0.4047612194912608,
+   "gb_dia": 0.39071389060684353,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 64265.5933996725,
    "lotes_dia": 20200.0,
@@ -11911,13 +13545,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1506.7966853193172,
-    "30d": 114.15126403934221,
-    "3a": 4170.326179570636
+    "13m": 1453.0620965698652,
+    "30d": 110.08046186135341,
+    "3a": 4021.6062066681116
    },
    "bytes_dia": {
-    "indices": 1637283235.5905597,
-    "observacao": 2276614909.9933724,
+    "indices": 1709421460.3415227,
+    "observacao": 2058777000.0511801,
     "payload": 171734736.46636516,
     "rollup": 0.0
    },
@@ -11928,7 +13562,7 @@
     "joinads": 145000.0
    },
    "crescimento": 1000,
-   "gb_dia": 3.8050421346447405,
+   "gb_dia": 3.6693487287117805,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 642655.9339967249,
    "lotes_dia": 202000.0,
@@ -11954,13 +13588,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1602.8550700545336,
-    "30d": 121.42841162374545,
-    "3a": 1682.774515140827
+    "13m": 27534.042973426407,
+    "30d": 2085.912346471697,
+    "3a": 76205.33105776602
    },
    "bytes_dia": {
-    "indices": 1694957535.2723122,
-    "observacao": 2356810057.4942527,
+    "indices": 33790132744.126984,
+    "observacao": 40695843439.561325,
+    "payload": 171734736.46636516,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 262026.0,
+   "chamadas_por_fonte": {
+    "google_ads": 117026.0,
+    "joinads": 145000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 69.53041154905658,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 642655.9339967249,
+   "lotes_dia": 202000.0,
+   "observacoes_dia": 71390285.71428572,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 117026.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 7.801733333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 40.634027777777774
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1551.4656535379575,
+    "30d": 117.53527678317859,
+    "3a": 4293.955445145458
+   },
+   "bytes_dia": {
+    "indices": 1148525485.6182761,
+    "observacao": 2886491193.832526,
+    "payload": 171734736.46636516,
+    "rollup": 0.0
+   },
+   "cadencia": "atual",
+   "chamadas_dia": 262026.0,
+   "chamadas_por_fonte": {
+    "google_ads": 117026.0,
+    "joinads": 145000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 3.9178425594392863,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 642655.9339967249,
+   "lotes_dia": 202000.0,
+   "observacoes_dia": 14087714.285714285,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 117026.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 7.801733333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 40.634027777777774
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1547.227647672241,
+    "30d": 117.21421295842023,
+    "3a": 1627.1470927585342
+   },
+   "bytes_dia": {
+    "indices": 1769636872.9488564,
+    "observacao": 2131298674.4308865,
     "payload": 171734736.46636516,
     "rollup": 122588171.77717772
    },
@@ -11971,7 +13691,7 @@
     "joinads": 145000.0
    },
    "crescimento": 1000,
-   "gb_dia": 4.047612194912609,
+   "gb_dia": 3.9071389060684347,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 642655.9339967249,
    "lotes_dia": 202000.0,
@@ -12427,13 +14147,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1.9811941285469863,
-    "30d": 0.1500904642838626,
-    "3a": 5.4833049618371135
+    "13m": 1.9106388851056104,
+    "30d": 0.14474537008375837,
+    "3a": 5.288030853726639
    },
    "bytes_dia": {
-    "indices": 2149805.5527735366,
-    "observacao": 2989268.6058471953,
+    "indices": 2244525.362251649,
+    "observacao": 2703240.4231733587,
     "payload": 232872.8042179837,
     "rollup": 0.0
    },
@@ -12444,7 +14164,7 @@
     "joinads": 280.0
    },
    "crescimento": 1,
-   "gb_dia": 0.005003015476128753,
+   "gb_dia": 0.004824845669458612,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 828.8858033247668,
    "lotes_dia": 349.0,
@@ -12470,13 +14190,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 2.093809415365176,
-    "30d": 0.15861915108116864,
-    "3a": 2.1747806640403367
+    "13m": 28.701414416489357,
+    "30d": 2.1743495770067693,
+    "3a": 79.43623787998064
    },
    "bytes_dia": {
-    "indices": 2225533.763392779,
-    "observacao": 3094567.4140529116,
+    "indices": 35198314.13841269,
+    "observacao": 42391815.75166522,
+    "payload": 232872.8042179837,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 459.0,
+   "chamadas_por_fonte": {
+    "google_ads": 179.0,
+    "joinads": 280.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.07247831923355898,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 828.8858033247668,
+   "lotes_dia": 349.0,
+   "observacoes_dia": 74365.42857142857,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 179.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.011933333333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.06215277777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1.6251249421099654,
+    "30d": 0.12311552591742161,
+    "3a": 4.497820546849804
+   },
+   "bytes_dia": {
+    "indices": 1187972.7833629078,
+    "observacao": 2985630.724462161,
+    "payload": 232872.8042179837,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 459.0,
+   "chamadas_por_fonte": {
+    "google_ads": 179.0,
+    "joinads": 280.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.004103850863914054,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 828.8858033247668,
+   "lotes_dia": 349.0,
+   "observacoes_dia": 14571.57142857143,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 179.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.011933333333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.06215277777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 2.0207688204794674,
+    "30d": 0.15308577268073617,
+    "3a": 2.1017400691546277
+   },
+   "bytes_dia": {
+    "indices": 2323590.1358789825,
+    "observacao": 2798463.7143479562,
     "payload": 232872.8042179837,
     "rollup": 122588.17177717772
    },
@@ -12487,7 +14293,7 @@
     "joinads": 280.0
    },
    "crescimento": 1,
-   "gb_dia": 0.005285779157132704,
+   "gb_dia": 0.005101333210451622,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 828.8858033247668,
    "lotes_dia": 349.0,
@@ -12943,13 +14749,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 19.81194128546986,
-    "30d": 1.5009046428386257,
-    "3a": 54.83304961837113
+    "13m": 19.106388851056103,
+    "30d": 1.4474537008375836,
+    "3a": 52.88030853726639
    },
    "bytes_dia": {
-    "indices": 21498055.527735364,
-    "observacao": 29892686.05847195,
+    "indices": 22445253.62251649,
+    "observacao": 27032404.231733587,
     "payload": 2328728.042179837,
     "rollup": 0.0
    },
@@ -12960,7 +14766,7 @@
     "joinads": 2800.0
    },
    "crescimento": 10,
-   "gb_dia": 0.050030154761287526,
+   "gb_dia": 0.04824845669458612,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 8288.858033247667,
    "lotes_dia": 3490.0,
@@ -12986,13 +14792,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 20.932326331386133,
-    "30d": 1.5857795235069985,
-    "3a": 21.732563110129924
+    "13m": 287.0141441648936,
+    "30d": 21.743495770067696,
+    "3a": 794.3623787998065
    },
    "bytes_dia": {
-    "indices": 22255337.633927785,
-    "observacao": 30945674.140529115,
+    "indices": 351983141.38412696,
+    "observacao": 423918157.5166522,
+    "payload": 2328728.042179837,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 4302.0,
+   "chamadas_por_fonte": {
+    "google_ads": 1502.0,
+    "joinads": 2800.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.7247831923355899,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 8288.858033247667,
+   "lotes_dia": 3490.0,
+   "observacoes_dia": 743654.2857142857,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 1502.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.10013333333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.5215277777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 16.251249421099658,
+    "30d": 1.2311552591742165,
+    "3a": 44.97820546849804
+   },
+   "bytes_dia": {
+    "indices": 11879727.83362908,
+    "observacao": 29856307.24462161,
+    "payload": 2328728.042179837,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 4302.0,
+   "chamadas_por_fonte": {
+    "google_ads": 1502.0,
+    "joinads": 2800.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.04103850863914055,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 8288.858033247667,
+   "lotes_dia": 3490.0,
+   "observacoes_dia": 145715.7142857143,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 1502.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.10013333333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.5215277777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 20.20192038252905,
+    "30d": 1.530445739502674,
+    "3a": 21.00215716127284
+   },
+   "bytes_dia": {
+    "indices": 23235901.358789824,
+    "observacao": 27984637.143479563,
     "payload": 2328728.042179837,
     "rollup": 1225881.7177717772
    },
@@ -13003,7 +14895,7 @@
     "joinads": 2800.0
    },
    "crescimento": 10,
-   "gb_dia": 0.052857791571327035,
+   "gb_dia": 0.05101333210451622,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 8288.858033247667,
    "lotes_dia": 3490.0,
@@ -13459,13 +15351,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 198.1194128546986,
-    "30d": 15.009046428386258,
-    "3a": 548.3304961837113
+    "13m": 191.06388851056107,
+    "30d": 14.474537008375838,
+    "3a": 528.803085372664
    },
    "bytes_dia": {
-    "indices": 214980555.27735367,
-    "observacao": 298926860.58471954,
+    "indices": 224452536.22516495,
+    "observacao": 270324042.3173359,
     "payload": 23287280.421798367,
     "rollup": 0.0
    },
@@ -13476,7 +15368,7 @@
     "joinads": 28000.0
    },
    "crescimento": 100,
-   "gb_dia": 0.5003015476128753,
+   "gb_dia": 0.4824845669458613,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 82888.58033247667,
    "lotes_dia": 34900.0,
@@ -13502,13 +15394,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 209.3174954915957,
-    "30d": 15.857383247765299,
-    "3a": 217.3103875710258
+    "13m": 2870.141441648936,
+    "30d": 217.43495770067696,
+    "3a": 7943.623787998065
    },
    "bytes_dia": {
-    "indices": 222553376.3392779,
-    "observacao": 309456741.4052912,
+    "indices": 3519831413.84127,
+    "observacao": 4239181575.1665225,
+    "payload": 23287280.421798367,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 42732.0,
+   "chamadas_por_fonte": {
+    "google_ads": 14732.0,
+    "joinads": 28000.0
+   },
+   "crescimento": 100,
+   "gb_dia": 7.247831923355899,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 82888.58033247667,
+   "lotes_dia": 34900.0,
+   "observacoes_dia": 7436542.857142857,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 14732.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.9821333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 5.115277777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 162.51249421099655,
+    "30d": 12.311552591742162,
+    "3a": 449.7820546849803
+   },
+   "bytes_dia": {
+    "indices": 118797278.33629079,
+    "observacao": 298563072.4462161,
+    "payload": 23287280.421798367,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 42732.0,
+   "chamadas_por_fonte": {
+    "google_ads": 14732.0,
+    "joinads": 28000.0
+   },
+   "crescimento": 100,
+   "gb_dia": 0.4103850863914054,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 82888.58033247667,
+   "lotes_dia": 34900.0,
+   "observacoes_dia": 1457157.142857143,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 14732.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.9821333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 5.115277777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 202.0134360030249,
+    "30d": 15.304045407722056,
+    "3a": 210.006328082455
+   },
+   "bytes_dia": {
+    "indices": 232359013.58789828,
+    "observacao": 279846371.4347957,
     "payload": 23287280.421798367,
     "rollup": 12258817.177717771
    },
@@ -13519,7 +15497,7 @@
     "joinads": 28000.0
    },
    "crescimento": 100,
-   "gb_dia": 0.5285779157132704,
+   "gb_dia": 0.5101333210451623,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 82888.58033247667,
    "lotes_dia": 34900.0,
@@ -13975,13 +15953,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 1981.1941285469857,
-    "30d": 150.09046428386256,
-    "3a": 5483.304961837112
+    "13m": 1910.6388851056106,
+    "30d": 144.7453700837584,
+    "3a": 5288.03085372664
    },
    "bytes_dia": {
-    "indices": 2149805552.7735367,
-    "observacao": 2989268605.847195,
+    "indices": 2244525362.2516494,
+    "observacao": 2703240423.173359,
     "payload": 232872804.2179837,
     "rollup": 0.0
    },
@@ -13992,7 +15970,7 @@
     "joinads": 280000.0
    },
    "crescimento": 1000,
-   "gb_dia": 5.003015476128752,
+   "gb_dia": 4.824845669458613,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 828885.8033247668,
    "lotes_dia": 349000.0,
@@ -14018,13 +15996,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 2093.169187093691,
-    "30d": 158.5734204903483,
-    "3a": 2173.0886321799844
+    "13m": 28701.414416489355,
+    "30d": 2174.3495770067693,
+    "3a": 79436.23787998065
    },
    "bytes_dia": {
-    "indices": 2225533763.392779,
-    "observacao": 3094567414.0529118,
+    "indices": 35198314138.4127,
+    "observacao": 42391815751.66522,
+    "payload": 232872804.2179837,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 427032.0,
+   "chamadas_por_fonte": {
+    "google_ads": 147032.0,
+    "joinads": 280000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 72.47831923355898,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 828885.8033247668,
+   "lotes_dia": 349000.0,
+   "observacoes_dia": 74365428.57142857,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 147032.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 9.802133333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 51.05277777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1625.1249421099653,
+    "30d": 123.1155259174216,
+    "3a": 4497.820546849803
+   },
+   "bytes_dia": {
+    "indices": 1187972783.362908,
+    "observacao": 2985630724.4621606,
+    "payload": 232872804.2179837,
+    "rollup": 0.0
+   },
+   "cadencia": "horaria_24h",
+   "chamadas_dia": 427032.0,
+   "chamadas_por_fonte": {
+    "google_ads": 147032.0,
+    "joinads": 280000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 4.103850863914054,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 828885.8033247668,
+   "lotes_dia": 349000.0,
+   "observacoes_dia": 14571571.42857143,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 147032.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 9.802133333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 51.05277777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 2020.1285922079828,
+    "30d": 153.04004208991586,
+    "3a": 2100.048037294276
+   },
+   "bytes_dia": {
+    "indices": 2323590135.8789825,
+    "observacao": 2798463714.3479567,
     "payload": 232872804.2179837,
     "rollup": 122588171.77717772
    },
@@ -14035,7 +16099,7 @@
     "joinads": 280000.0
    },
    "crescimento": 1000,
-   "gb_dia": 5.285779157132703,
+   "gb_dia": 5.101333210451622,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 828885.8033247668,
    "lotes_dia": 349000.0,
@@ -14491,13 +16555,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 2.9226246978386268,
-    "30d": 0.22141096195747173,
-    "3a": 8.0888804768463
+    "13m": 2.8203385939384833,
+    "30d": 0.21366201469230933,
+    "3a": 7.805785603425701
    },
    "bytes_dia": {
-    "indices": 3116639.152677722,
-    "observacao": 4333634.529334164,
+    "indices": 3253957.3703057314,
+    "observacao": 3918970.686020312,
     "payload": 474333.3228484583,
     "rollup": 0.0
    },
@@ -14508,7 +16572,7 @@
     "joinads": 928.0
    },
    "crescimento": 1,
-   "gb_dia": 0.007380365398582391,
+   "gb_dia": 0.007122067156410311,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 1160.754928337554,
    "lotes_dia": 1141.0,
@@ -14534,13 +16598,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 3.0652655552978088,
-    "30d": 0.2322143131972772,
-    "3a": 3.1462368039729696
+    "13m": 35.083532016191086,
+    "30d": 2.6578433345599306,
+    "3a": 97.09987648925613
    },
    "bytes_dia": {
-    "indices": 3226424.666011084,
-    "observacao": 4486289.446408336,
+    "indices": 42939051.96698413,
+    "observacao": 51714533.04205483,
+    "payload": 474333.3228484583,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 1539.0,
+   "chamadas_por_fonte": {
+    "google_ads": 611.0,
+    "joinads": 928.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.08859477781866436,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 1160.754928337554,
+   "lotes_dia": 1141.0,
+   "observacoes_dia": 90719.71428571429,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 611.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.04073333333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.21215277777777777
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1.9868910242031845,
+    "30d": 0.15052204728812002,
+    "3a": 5.499072127592652
+   },
+   "bytes_dia": {
+    "indices": 1398451.5447567615,
+    "observacao": 3514609.0526401214,
+    "payload": 474333.3228484583,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 1539.0,
+   "chamadas_por_fonte": {
+    "google_ads": 611.0,
+    "joinads": 928.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.005017401576270668,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 1160.754928337554,
+   "lotes_dia": 1141.0,
+   "observacoes_dia": 17153.285714285714,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 611.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.04073333333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.21215277777777777
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 2.9593763610579,
+    "30d": 0.22419240454273862,
+    "3a": 3.0403476097330606
+   },
+   "bytes_dia": {
+    "indices": 3368580.001532373,
+    "observacao": 4057018.81653086,
     "payload": 474333.3228484583,
     "rollup": 122588.17177717772
    },
@@ -14551,7 +16701,7 @@
     "joinads": 928.0
    },
    "crescimento": 1,
-   "gb_dia": 0.0077389512276696566,
+   "gb_dia": 0.007471554272518371,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 1160.754928337554,
    "lotes_dia": 1141.0,
@@ -15007,13 +17157,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 29.226246978386268,
-    "30d": 2.214109619574717,
-    "3a": 80.888804768463
+    "13m": 28.203385939384837,
+    "30d": 2.136620146923094,
+    "3a": 78.05785603425703
    },
    "bytes_dia": {
-    "indices": 31166391.526777215,
-    "observacao": 43336345.29334164,
+    "indices": 32539573.70305731,
+    "observacao": 39189706.86020312,
     "payload": 4743333.228484582,
     "rollup": 0.0
    },
@@ -15024,7 +17174,7 @@
     "joinads": 9280.0
    },
    "crescimento": 10,
-   "gb_dia": 0.0738036539858239,
+   "gb_dia": 0.07122067156410312,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 11607.549283375542,
    "lotes_dia": 11410.0,
@@ -15050,13 +17200,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 30.646887730712464,
-    "30d": 2.3217311446680844,
-    "3a": 31.447124509456255
+    "13m": 350.8353201619109,
+    "30d": 26.578433345599308,
+    "3a": 970.9987648925614
    },
    "bytes_dia": {
-    "indices": 32264246.660110835,
-    "observacao": 44862894.46408335,
+    "indices": 429390519.66984123,
+    "observacao": 517145330.4205483,
+    "payload": 4743333.228484582,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 14454.0,
+   "chamadas_por_fonte": {
+    "google_ads": 5174.0,
+    "joinads": 9280.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.8859477781866436,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 11607.549283375542,
+   "lotes_dia": 11410.0,
+   "observacoes_dia": 907197.1428571428,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 5174.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.3449333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 1.7965277777777777
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 19.868910242031838,
+    "30d": 1.5052204728812,
+    "3a": 54.990721275926504
+   },
+   "bytes_dia": {
+    "indices": 13984515.447567614,
+    "observacao": 35146090.526401214,
+    "payload": 4743333.228484582,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 14454.0,
+   "chamadas_por_fonte": {
+    "google_ads": 5174.0,
+    "joinads": 9280.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.050174015762706664,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 11607.549283375542,
+   "lotes_dia": 11410.0,
+   "observacoes_dia": 171532.85714285713,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 5174.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.3449333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 1.7965277777777777
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 29.587995788313375,
+    "30d": 2.241512058122699,
+    "3a": 30.388232567057166
+   },
+   "bytes_dia": {
+    "indices": 33685800.01532373,
+    "observacao": 40570188.165308595,
     "payload": 4743333.228484582,
     "rollup": 1225881.7177717772
    },
@@ -15067,7 +17303,7 @@
     "joinads": 9280.0
    },
    "crescimento": 10,
-   "gb_dia": 0.07738951227669656,
+   "gb_dia": 0.07471554272518371,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 11607.549283375542,
    "lotes_dia": 11410.0,
@@ -15523,13 +17759,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 292.26246978386274,
-    "30d": 22.141096195747178,
-    "3a": 808.8880476846302
+    "13m": 282.0338593938484,
+    "30d": 21.36620146923094,
+    "3a": 780.5785603425703
    },
    "bytes_dia": {
-    "indices": 311663915.26777226,
-    "observacao": 433363452.9334164,
+    "indices": 325395737.0305732,
+    "observacao": 391897068.6020313,
     "payload": 47433332.28484583,
     "rollup": 0.0
    },
@@ -15540,7 +17776,7 @@
     "joinads": 92800.0
    },
    "crescimento": 100,
-   "gb_dia": 0.7380365398582392,
+   "gb_dia": 0.7122067156410313,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 116075.49283375542,
    "lotes_dia": 114100.0,
@@ -15566,13 +17802,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 306.46310948485905,
-    "30d": 23.216899459376158,
-    "3a": 314.4560015642892
+    "13m": 3508.353201619109,
+    "30d": 265.7843334559931,
+    "3a": 9709.987648925615
    },
    "bytes_dia": {
-    "indices": 322642466.6011085,
-    "observacao": 448628944.6408336,
+    "indices": 4293905196.698413,
+    "observacao": 5171453304.205483,
+    "payload": 47433332.28484583,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 143604.0,
+   "chamadas_por_fonte": {
+    "google_ads": 50804.0,
+    "joinads": 92800.0
+   },
+   "crescimento": 100,
+   "gb_dia": 8.859477781866437,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 116075.49283375542,
+   "lotes_dia": 114100.0,
+   "observacoes_dia": 9071971.42857143,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 50804.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 3.3869333333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 17.64027777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 198.68910242031842,
+    "30d": 15.052204728812,
+    "3a": 549.9072127592651
+   },
+   "bytes_dia": {
+    "indices": 139845154.47567615,
+    "observacao": 351460905.2640121,
+    "payload": 47433332.28484583,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 143604.0,
+   "chamadas_por_fonte": {
+    "google_ads": 50804.0,
+    "joinads": 92800.0
+   },
+   "crescimento": 100,
+   "gb_dia": 0.5017401576270667,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 116075.49283375542,
+   "lotes_dia": 114100.0,
+   "observacoes_dia": 1715328.5714285714,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 50804.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 3.3869333333333334
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 17.64027777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 295.8741900608682,
+    "30d": 22.414708593922306,
+    "3a": 303.86708214029835
+   },
+   "bytes_dia": {
+    "indices": 336858000.15323734,
+    "observacao": 405701881.6530861,
     "payload": 47433332.28484583,
     "rollup": 12258817.177717771
    },
@@ -15583,7 +17905,7 @@
     "joinads": 92800.0
    },
    "crescimento": 100,
-   "gb_dia": 0.7738951227669658,
+   "gb_dia": 0.7471554272518374,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 116075.49283375542,
    "lotes_dia": 114100.0,
@@ -16039,13 +18361,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 2922.624697838627,
-    "30d": 221.41096195747173,
-    "3a": 8088.880476846301
+    "13m": 2820.338593938484,
+    "30d": 213.66201469230938,
+    "3a": 7805.785603425703
    },
    "bytes_dia": {
-    "indices": 3116639152.677722,
-    "observacao": 4333634529.334164,
+    "indices": 3253957370.305732,
+    "observacao": 3918970686.0203123,
     "payload": 474333322.8484583,
     "rollup": 0.0
    },
@@ -16056,7 +18378,7 @@
     "joinads": 928000.0
    },
    "crescimento": 1000,
-   "gb_dia": 7.380365398582391,
+   "gb_dia": 7.122067156410313,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 1160754.928337554,
    "lotes_dia": 1141000.0,
@@ -16082,13 +18404,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 3064.6253270263246,
-    "30d": 232.16858260645688,
-    "3a": 3144.544772112618
+    "13m": 35083.53201619109,
+    "30d": 2657.843334559931,
+    "3a": 97099.87648925614
    },
    "bytes_dia": {
-    "indices": 3226424666.011084,
-    "observacao": 4486289446.408336,
+    "indices": 42939051966.98412,
+    "observacao": 51714533042.05483,
+    "payload": 474333322.8484583,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 1435104.0,
+   "chamadas_por_fonte": {
+    "google_ads": 507104.0,
+    "joinads": 928000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 88.59477781866437,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 1160754.928337554,
+   "lotes_dia": 1141000.0,
+   "observacoes_dia": 90719714.28571428,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 507104.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 33.80693333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 176.07777777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 1986.8910242031843,
+    "30d": 150.52204728812,
+    "3a": 5499.072127592652
+   },
+   "bytes_dia": {
+    "indices": 1398451544.7567616,
+    "observacao": 3514609052.640122,
+    "payload": 474333322.8484583,
+    "rollup": 0.0
+   },
+   "cadencia": "15min",
+   "chamadas_dia": 1435104.0,
+   "chamadas_por_fonte": {
+    "google_ads": 507104.0,
+    "joinads": 928000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 5.017401576270667,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 1160754.928337554,
+   "lotes_dia": 1141000.0,
+   "observacoes_dia": 17153285.714285716,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 507104.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 33.80693333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 176.07777777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 2958.736132786416,
+    "30d": 224.14667395191836,
+    "3a": 3038.6555778727093
+   },
+   "bytes_dia": {
+    "indices": 3368580001.5323734,
+    "observacao": 4057018816.5308604,
     "payload": 474333322.8484583,
     "rollup": 122588171.77717772
    },
@@ -16099,7 +18507,7 @@
     "joinads": 928000.0
    },
    "crescimento": 1000,
-   "gb_dia": 7.738951227669657,
+   "gb_dia": 7.471554272518373,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 1160754.928337554,
    "lotes_dia": 1141000.0,
@@ -16555,13 +18963,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 3.21472007443506,
-    "30d": 0.24353939957841364,
-    "3a": 8.897306064598045
+    "13m": 3.103528312850489,
+    "30d": 0.2351157812765522,
+    "3a": 8.589563209303373
    },
    "bytes_dia": {
-    "indices": 3387992.937417929,
-    "observacao": 4710947.421076967,
+    "indices": 3537266.9241426354,
+    "observacao": 4260180.391681576,
     "payload": 617674.2788114605,
     "rollup": 0.0
    },
@@ -16572,7 +18980,7 @@
     "joinads": 1360.0
    },
    "crescimento": 1,
-   "gb_dia": 0.008117979985947122,
+   "gb_dia": 0.007837192709218406,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 1247.3556696736448,
    "lotes_dia": 1669.0,
@@ -16598,13 +19006,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 3.365787978940626,
-    "30d": 0.2549811634732482,
-    "3a": 3.446759227615787
+    "13m": 39.331774068432374,
+    "30d": 2.9796798536691194,
+    "3a": 108.85763732071183
    },
    "bytes_dia": {
-    "indices": 3507337.053173089,
-    "observacao": 4876893.414685196,
+    "indices": 48099543.852698416,
+    "observacao": 57929677.90231457,
+    "payload": 617674.2788114605,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 2259.0,
+   "chamadas_por_fonte": {
+    "google_ads": 899.0,
+    "joinads": 1360.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.09932266178897065,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 1247.3556696736448,
+   "lotes_dia": 1669.0,
+   "observacoes_dia": 101622.57142857143,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 899.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.05993333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.3121527777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 2.221565398038796,
+    "30d": 0.16830040894233303,
+    "3a": 6.148574940026567
+   },
+   "bytes_dia": {
+    "indices": 1538770.7190193306,
+    "observacao": 3867261.271425429,
+    "payload": 617674.2788114605,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 2259.0,
+   "chamadas_por_fonte": {
+    "google_ads": 899.0,
+    "joinads": 1360.0
+   },
+   "crescimento": 1,
+   "gb_dia": 0.005610013631411101,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 1247.3556696736448,
+   "lotes_dia": 1669.0,
+   "observacoes_dia": 18874.428571428572,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 899.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.05993333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 0.3121527777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 3.250679419797532,
+    "30d": 0.24626081808361988,
+    "3a": 3.331650668472693
+   },
+   "bytes_dia": {
+    "indices": 3661869.3070429694,
+    "observacao": 4410247.841996332,
     "payload": 617674.2788114605,
     "rollup": 122588.17177717772
    },
@@ -16615,7 +19109,7 @@
     "joinads": 1360.0
    },
    "crescimento": 1,
-   "gb_dia": 0.00849784623686869,
+   "gb_dia": 0.008207168057214413,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 1247.3556696736448,
    "lotes_dia": 1669.0,
@@ -17071,13 +19565,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 32.1472007443506,
-    "30d": 2.4353939957841364,
-    "3a": 88.97306064598045
+    "13m": 31.035283128504883,
+    "30d": 2.3511578127655213,
+    "3a": 85.89563209303371
    },
    "bytes_dia": {
-    "indices": 33879929.37417929,
-    "observacao": 47109474.21076967,
+    "indices": 35372669.241426356,
+    "observacao": 42601803.91681576,
     "payload": 6176742.788114605,
     "rollup": 0.0
    },
@@ -17088,7 +19582,7 @@
     "joinads": 13600.0
    },
    "crescimento": 10,
-   "gb_dia": 0.08117979985947121,
+   "gb_dia": 0.07837192709218405,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 12473.556696736447,
    "lotes_dia": 16690.0,
@@ -17114,13 +19608,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 33.65211196714064,
-    "30d": 2.5493996474277947,
-    "3a": 34.452348745884436
+    "13m": 393.3177406843238,
+    "30d": 29.796798536691192,
+    "3a": 1088.5763732071182
    },
    "bytes_dia": {
-    "indices": 35073370.53173088,
-    "observacao": 48768934.14685196,
+    "indices": 480995438.5269841,
+    "observacao": 579296779.0231458,
+    "payload": 6176742.788114605,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 21222.0,
+   "chamadas_por_fonte": {
+    "google_ads": 7622.0,
+    "joinads": 13600.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.9932266178897065,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 12473.556696736447,
+   "lotes_dia": 16690.0,
+   "observacoes_dia": 1016225.7142857143,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 7622.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.5081333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 2.6465277777777776
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 22.21565398038796,
+    "30d": 1.6830040894233302,
+    "3a": 61.48574940026567
+   },
+   "bytes_dia": {
+    "indices": 15387707.190193305,
+    "observacao": 38672612.71425428,
+    "payload": 6176742.788114605,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 21222.0,
+   "chamadas_por_fonte": {
+    "google_ads": 7622.0,
+    "joinads": 13600.0
+   },
+   "crescimento": 10,
+   "gb_dia": 0.05610013631411101,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 12473.556696736447,
+   "lotes_dia": 16690.0,
+   "observacoes_dia": 188744.2857142857,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 7622.0,
+    "operacoes_dia_token_basic": {
+     "cabe": true,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 0.5081333333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 2.6465277777777776
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 32.5010263757097,
+    "30d": 2.4621961935315113,
+    "3a": 33.301263154453494
+   },
+   "bytes_dia": {
+    "indices": 36618693.0704297,
+    "observacao": 44102478.419963315,
     "payload": 6176742.788114605,
     "rollup": 1225881.7177717772
    },
@@ -17131,7 +19711,7 @@
     "joinads": 13600.0
    },
    "crescimento": 10,
-   "gb_dia": 0.0849784623686869,
+   "gb_dia": 0.08207168057214413,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 12473.556696736447,
    "lotes_dia": 16690.0,
@@ -17587,13 +20167,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 321.4720074435061,
-    "30d": 24.353939957841366,
-    "3a": 889.7306064598047
+    "13m": 310.35283128504886,
+    "30d": 23.511578127655216,
+    "3a": 858.9563209303373
    },
    "bytes_dia": {
-    "indices": 338799293.7417929,
-    "observacao": 471094742.1076967,
+    "indices": 353726692.41426355,
+    "observacao": 426018039.16815764,
     "payload": 61767427.88114604,
     "rollup": 0.0
    },
@@ -17604,7 +20184,7 @@
     "joinads": 136000.0
    },
    "crescimento": 100,
-   "gb_dia": 0.8117979985947122,
+   "gb_dia": 0.7837192709218406,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 124735.56696736449,
    "lotes_dia": 166900.0,
@@ -17630,13 +20210,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 336.51535184914076,
-    "30d": 25.49358448697326,
-    "3a": 344.5082439285709
+    "13m": 3933.177406843237,
+    "30d": 297.9679853669119,
+    "3a": 10885.76373207118
    },
    "bytes_dia": {
-    "indices": 350733705.3173089,
-    "observacao": 487689341.4685196,
+    "indices": 4809954385.26984,
+    "observacao": 5792967790.231457,
+    "payload": 61767427.88114604,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 210852.0,
+   "chamadas_por_fonte": {
+    "google_ads": 74852.0,
+    "joinads": 136000.0
+   },
+   "crescimento": 100,
+   "gb_dia": 9.932266178897063,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 124735.56696736449,
+   "lotes_dia": 166900.0,
+   "observacoes_dia": 10162257.142857142,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 74852.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 4.9901333333333335
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 25.990277777777777
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 222.15653980387967,
+    "30d": 16.830040894233306,
+    "3a": 614.8574940026568
+   },
+   "bytes_dia": {
+    "indices": 153877071.90193307,
+    "observacao": 386726127.1425429,
+    "payload": 61767427.88114604,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 210852.0,
+   "chamadas_por_fonte": {
+    "google_ads": 74852.0,
+    "joinads": 136000.0
+   },
+   "crescimento": 100,
+   "gb_dia": 0.5610013631411103,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 124735.56696736449,
+   "lotes_dia": 166900.0,
+   "observacoes_dia": 1887442.8571428573,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 74852.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 4.9901333333333335
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 25.990277777777777
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 325.00449593483137,
+    "30d": 24.621549948010426,
+    "3a": 332.9973880142615
+   },
+   "bytes_dia": {
+    "indices": 366186930.70429695,
+    "observacao": 441024784.1996332,
     "payload": 61767427.88114604,
     "rollup": 12258817.177717771
    },
@@ -17647,7 +20313,7 @@
     "joinads": 136000.0
    },
    "crescimento": 100,
-   "gb_dia": 0.8497846236868691,
+   "gb_dia": 0.8207168057214413,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 124735.56696736449,
    "lotes_dia": 166900.0,
@@ -18103,13 +20769,13 @@
   },
   {
    "acumulado_gb": {
-    "13m": 3214.7200744350603,
-    "30d": 243.53939957841365,
-    "3a": 8897.306064598046
+    "13m": 3103.5283128504884,
+    "30d": 235.11578127655216,
+    "3a": 8589.563209303371
    },
    "bytes_dia": {
-    "indices": 3387992937.4179287,
-    "observacao": 4710947421.076967,
+    "indices": 3537266924.1426353,
+    "observacao": 4260180391.6815763,
     "payload": 617674278.8114605,
     "rollup": 0.0
    },
@@ -18120,7 +20786,7 @@
     "joinads": 1360000.0
    },
    "crescimento": 1000,
-   "gb_dia": 8.117979985947121,
+   "gb_dia": 7.837192709218405,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 1247355.669673645,
    "lotes_dia": 1669000.0,
@@ -18146,13 +20812,99 @@
   },
   {
    "acumulado_gb": {
-    "13m": 3365.1477506691413,
-    "30d": 254.93543288242788,
-    "3a": 3445.0671957554346
+    "13m": 39331.77406843238,
+    "30d": 2979.6798536691194,
+    "3a": 108857.63732071183
    },
    "bytes_dia": {
-    "indices": 3507337053.1730886,
-    "observacao": 4876893414.685196,
+    "indices": 48099543852.69841,
+    "observacao": 57929677902.314575,
+    "payload": 617674278.8114605,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 2107152.0,
+   "chamadas_por_fonte": {
+    "google_ads": 747152.0,
+    "joinads": 1360000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 99.32266178897065,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 1247355.669673645,
+   "lotes_dia": 1669000.0,
+   "observacoes_dia": 101622571.42857143,
+   "perfil": "dil_obs_real",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 747152.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 49.81013333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 259.4277777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 2221.565398038796,
+    "30d": 168.30040894233304,
+    "3a": 6148.574940026568
+   },
+   "bytes_dia": {
+    "indices": 1538770719.0193305,
+    "observacao": 3867261271.4254284,
+    "payload": 617674278.8114605,
+    "rollup": 0.0
+   },
+   "cadencia": "10min",
+   "chamadas_dia": 2107152.0,
+   "chamadas_por_fonte": {
+    "google_ads": 747152.0,
+    "joinads": 1360000.0
+   },
+   "crescimento": 1000,
+   "gb_dia": 5.6100136314111015,
+   "jobs": "vertical_completa",
+   "linhas_payload_dia": 1247355.669673645,
+   "lotes_dia": 1669000.0,
+   "observacoes_dia": 18874428.57142857,
+   "perfil": "largo_tipado",
+   "politica": "registro_d2",
+   "quota_google_ads": {
+    "nota": "piso: sem retries, sem consultas ad hoc nem MCP/scripts paralelos",
+    "operacoes_dia": 747152.0,
+    "operacoes_dia_token_basic": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 15000,
+     "uso": 49.81013333333333
+    },
+    "operacoes_dia_token_explorer_producao": {
+     "cabe": false,
+     "estado": "documentado no repo com fonte oficial citada",
+     "limite": 2880,
+     "uso": 259.4277777777778
+    }
+   }
+  },
+  {
+   "acumulado_gb": {
+    "13m": 3250.0391915260475,
+    "30d": 246.21508749279954,
+    "3a": 3329.958636612341
+   },
+   "bytes_dia": {
+    "indices": 3661869307.042969,
+    "observacao": 4410247841.996332,
     "payload": 617674278.8114605,
     "rollup": 122588171.77717772
    },
@@ -18163,7 +20915,7 @@
     "joinads": 1360000.0
    },
    "crescimento": 1000,
-   "gb_dia": 8.49784623686869,
+   "gb_dia": 8.207168057214412,
    "jobs": "vertical_completa",
    "linhas_payload_dia": 1247355.669673645,
    "lotes_dia": 1669000.0,
@@ -18407,13 +21159,14 @@
   }
  ],
  "manifesto": {
-  "codigo_sha256": "c69ccdb098941020cb525915bf99aec9a2e5a6a4c58bf8ac12aaad559e2c7569",
+  "codigo_sha256": "4d2fa68084640ad9ea3c0a3838ca088fa337ea0c2f4b7dc7e4c1ce4aecc148da",
   "entradas_sha256": {
    "horas_campanha_d30.json": "c9f9d1054204ea5c5916fa801d3e2bf5ed41342bb94948f1c1a32be4e8351819",
    "pg_medicoes.json": "26486db6e4dd4d4247aded8d491a62264e57ea5abb7c8e709c9af4561f1d0bf9",
-   "pg_medicoes_dil_obs.json": "f1373638e53c525dd4ec89d67719932dde5ceb690df403159a1829e158a57c77"
+   "pg_medicoes_dil_obs.json": "f1373638e53c525dd4ec89d67719932dde5ceb690df403159a1829e158a57c77",
+   "pg_medicoes_dil_obs_d2.json": "30814a01e7e8b0203afefd0faf7505cd28691e3f4e79eca25849d54de19c64e5"
   },
-  "fingerprint": "d816c41deca4e811dfb3a22fee20d71336c350ca38a160dfef86ea8c812c4cef",
+  "fingerprint": "6655c88181b111b4b10a4ac57a98e146ecca9b8fe412153848d4253df664bb52",
   "nome": "fundacao_capacidade_modelo",
   "parametros": {
    "cadencias": [
@@ -18429,7 +21182,7 @@
     1000
    ]
   },
-  "resultado_sha256": "f38e1bbf106d713176467f8c2a18613996b54f37da7ec82f6ec4b49e0892824f",
+  "resultado_sha256": "b7f3bcd70b7b00adff2abdfcd54765bd5147d89c3747f7a77ba0f90f1069e67e",
   "seed": 20261016,
   "versoes": {
    "duckdb": "1.5.6",
@@ -18448,10 +21201,10 @@
    "fator_particao": 1.0352256093680392,
    "formato": "longo",
    "hash_por_linha": 56.0,
-   "heap_por_observacao": 630.3637083708371,
-   "indices_por_observacao": 453.3414621462146,
+   "heap_por_observacao": 570.0473535353535,
+   "indices_por_observacao": 473.31555555555553,
    "manifesto_por_lote": 250.0,
-   "origem": "pg_medicoes.json: dil_obs_0001 1e6 (sem partição)",
+   "origem": "pg_medicoes: dil_obs_0001_d2 (sem partição)",
    "payload_linha_em_lote": {
     "campanha": 74.9568,
     "termo": 171.6224
@@ -18470,7 +21223,7 @@
    "heap_por_observacao": 431.3109710971097,
    "indices_por_observacao": 81.53493749374938,
    "manifesto_por_lote": 250.0,
-   "origem": "pg_medicoes.json: jsonb 1e6 (sem partição)",
+   "origem": "pg_medicoes: jsonb (sem partição)",
    "payload_linha_em_lote": {
     "campanha": 74.9568,
     "termo": 171.6224
@@ -18489,7 +21242,7 @@
    "heap_por_observacao": 204.89421742174218,
    "indices_por_observacao": 81.52674467446745,
    "manifesto_por_lote": 250.0,
-   "origem": "pg_medicoes.json: largo 1e6 (sem partição)",
+   "origem": "pg_medicoes: largo (sem partição)",
    "payload_linha_em_lote": {
     "campanha": 74.9568,
     "termo": 171.6224
@@ -18508,7 +21261,7 @@
    "heap_por_observacao": 167.27279127912792,
    "indices_por_observacao": 90.30125412541254,
    "manifesto_por_lote": 250.0,
-   "origem": "pg_medicoes.json: longo 1e6 (sem partição)",
+   "origem": "pg_medicoes: longo (sem partição)",
    "payload_linha_em_lote": {
     "campanha": 74.9568,
     "termo": 171.6224
@@ -18546,7 +21299,7 @@
    "heap_por_observacao": 630.3637083708371,
    "indices_por_observacao": 220.34587458745875,
    "manifesto_por_lote": 250.0,
-   "origem": "pg_medicoes.json: v21 1e6 (sem partição)",
+   "origem": "pg_medicoes: v21 (sem partição)",
    "payload_linha_em_lote": {
     "campanha": 74.9568,
     "termo": 171.6224
@@ -18613,6 +21366,15 @@
    "retencao_bruto_dias": 396,
    "rollup_diario": true,
    "rotulo": "tipado largo, dedup obs + linha em lote, partição mensal, bruto 13 m + rollup"
+  },
+  "registro_d2": {
+   "com_indices": true,
+   "dedup_observacao": false,
+   "dedup_payload": "linha_em_lote",
+   "particao_mensal": false,
+   "retencao_bruto_dias": null,
+   "rollup_diario": false,
+   "rotulo": "regra D2 da frente A: toda releitura é versão; payload por linha em lote"
   },
   "v21_atual": {
    "com_indices": true,

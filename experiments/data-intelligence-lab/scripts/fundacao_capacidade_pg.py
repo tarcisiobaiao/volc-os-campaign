@@ -340,7 +340,7 @@ begin
     t0 := clock_timestamp();
     -- EXECUTE (planeja a cada chamada), igual às outras variantes, para comparar o mesmo custo
     execute 'select o.valor from dil_obs.observacao o where o.chave_natural = $1 and o.available_at <= $2 '
-            'order by o.available_at desc limit 1' into r using k, asof;
+            'order by o.observed_at desc, o.available_at desc limit 1' into r using k, asof;
     insert into bench_tempos values (rotulo, extract(epoch from clock_timestamp() - t0) * 1000);
   end loop;
 end $$;
@@ -492,11 +492,12 @@ def medir_dil_obs(cl: Cluster, n_alvo: int) -> dict:
     nat = "encode(sha256(convert_to(c || ':' || e || ':' || d || ':' || m, 'UTF8')), 'hex')"
     base = "encode(sha256(convert_to(c || ':' || e || ':' || d || ':' || m || ':' || v, 'UTF8')), 'hex')"
     t0 = time.perf_counter()
-    cl.sql(f"""insert into dil_obs.observacao (chave_idempotencia, chave_base, chave_natural, tipo_registro, fonte, conta,
+    # DDL pós-D2 da frente A: sem chave_base/tipo_registro; observed_at entra na chave de idempotência
+    cl.sql(f"""insert into dil_obs.observacao (chave_idempotencia, chave_natural, fonte, conta,
         entidade_tipo, entidade_id, grao, dimensoes, metrica, value_kind, valor, unidade, moeda, janela_inicio,
         janela_fim, timezone, observed_at, available_at, ingested_at, run_id, lote_id, payload_sha256, payload_ref,
         schema_version, coletor_nome, coletor_versao, status)
-      select {base}, {base}, {nat}, 'leitura', 'google_ads', 'conta-' || c, 'campaign', (20000000000 + c*100000 + e)::text,
+      select {base}, {nat}, 'google_ads', 'conta-' || c, 'campaign', (20000000000 + c*100000 + e)::text,
         '{{campaign,day}}', '[]', (array['cost','clicks','impressions','conversions','sessions'])[m], null,
         1 + ((c*31 + e*17 + d*13 + m*7 + v) * 2654435761::bigint) % 50000000,
         case when m = 1 then 'micros' else 'contagem' end, case when m = 1 then 'BRL' end,
@@ -518,11 +519,11 @@ def medir_dil_obs(cl: Cluster, n_alvo: int) -> dict:
         for forma, q in (("funcao", f"select count(*) from dil_obs.observacao_as_of('{t}')"),
                          ("consulta", f"select count(*) from (select distinct on (chave_natural) chave_natural "
                                       f"from dil_obs.observacao where available_at <= '{t}' "
-                                      f"order by chave_natural, available_at desc) s"),
+                                      f"order by chave_natural, observed_at desc, available_at desc) s"),
                          # mesma consulta da função, linha inteira (o.*), mas inline: separa o custo de não-inlining
                          ("consulta_linha_inteira", f"select count(*) from (select distinct on (o.chave_natural) o.* "
                                                     f"from dil_obs.observacao o where o.available_at <= '{t}' "
-                                                    f"order by o.chave_natural, o.available_at desc) s")):
+                                                    f"order by o.chave_natural, o.observed_at desc, o.available_at desc) s")):
             tempos, linhas = [], None
             for _ in range(N_GLOBAL + 1):
                 t1 = time.perf_counter()
@@ -542,7 +543,7 @@ def medir_dil_obs(cl: Cluster, n_alvo: int) -> dict:
     res["as_of_ponto"] = _tempos(cl, rot)
     res["explain_as_of_global"] = cl.sql(
         "explain (costs off) select distinct on (chave_natural) chave_natural from dil_obs.observacao "
-        "where available_at <= '2026-08-15 12:00+00' order by chave_natural, available_at desc")
+        "where available_at <= '2026-08-15 12:00+00' order by chave_natural, observed_at desc, available_at desc")
     cl.sql("checkpoint")
     return res
 
@@ -692,8 +693,11 @@ def main() -> int:
     ap.add_argument("--raiz-tmp", default=None, help="diretório do cluster (padrão: artifacts/ do lab, gitignored)")
     ap.add_argument("--payload-linhas", type=int, default=20000)
     ap.add_argument("--apenas-dil-obs", action="store_true", help="só o DDL real da frente A (escalas <= 1e6)")
+    ap.add_argument("--margem-livre-gib", type=float, default=6.0, help="disco livre mínimo a preservar")
     a = ap.parse_args()
     escalas = [int(float(x)) for x in a.escalas.split(",")]
+    global MARGEM_LIVRE
+    MARGEM_LIVRE = int(a.margem_livre_gib * GIB)
     lab = Path(__file__).resolve().parents[1]
     raiz = Path(a.raiz_tmp) if a.raiz_tmp else lab / "artifacts" / "fundacao_capacidade_pg"
     if raiz.exists():
