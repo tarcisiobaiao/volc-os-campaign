@@ -347,9 +347,10 @@ class _Gerador:
 
     def joinads(self) -> None:
         c = self.c
-        self._dup_marca = _iso(_local(self.hoje, 8, 15, 30))
-        self._esquema_marca = _iso(_local(self.hoje, 6, 15, 30))
-        sub_marca = _local(self.hoje, 10, 15, 30)
+        # marcas em runs que existem em todos os cenários (o intraday "parado" para após 15/10 18:15)
+        self._dup_marca = _iso(_local(self.ontem, 8, 15, 30))
+        self._esquema_marca = _iso(_local(self.ontem, 10, 15, 30))
+        sub_marca = _local(self.ontem, 12, 15, 30)
         for dia in (self.ontem, self.hoje):
             for h in range(6, 23, 2):
                 slot = _local(dia, h, 15)
