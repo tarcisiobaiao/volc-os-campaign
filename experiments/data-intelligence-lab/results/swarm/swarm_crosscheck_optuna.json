@@ -1,0 +1,1 @@
+{"optuna": "5.0.0", "sequencias": 60, "identicas": 60, "completos_por_sequencia_media": 3.533333333333333, "nota": "Optuna SuccessiveHalvingPruner = ASHA na variante de PARADA na chegada ao rung (sem retomar pausados); 1os eta-1 trials passam se forem o melhor ate entao"}
