@@ -335,7 +335,7 @@ def juntar_campanha_dia(
     # custo — um estado por conta × campanha × dia
     custo_por: dict[tuple, CustoCampanhaDia] = {}
     for c in custos:
-        _exigir_disponivel(c.disponivel_em, as_of, "custo", obrigatorio=False)
+        _exigir_disponivel(c.disponivel_em, as_of, "custo", obrigatorio=True)
         k = (c.customer_id, c.campaign_id, c.dia)
         if k in custo_por:
             raise LinhaDuplicada(f"custo repetido para {k}")
@@ -477,7 +477,7 @@ def _cobertura_receita(receitas, receita_por, nao_atribuida, receitas_dominio, d
 
     earnings: dict[tuple, ReceitaDominioDia] = {}
     for e in receitas_dominio:
-        _exigir_disponivel(e.disponivel_em, as_of, "earnings", obrigatorio=False)
+        _exigir_disponivel(e.disponivel_em, as_of, "earnings", obrigatorio=True)
         k = chave_dd(e.dia, e.dominio)
         if k in earnings:
             raise LinhaDuplicada(f"earnings repetido para {k}")

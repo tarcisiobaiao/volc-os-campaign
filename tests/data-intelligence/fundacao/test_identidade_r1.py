@@ -52,7 +52,7 @@ def kv(micros, *, value=CAMP, key="utm_campaign", endpoint="key_value_campaign_a
 
 
 def custo(cliques=5, estado=EstadoMedida.MEDIDO, camp=CAMP, valor=3_000_000):
-    return CustoCampanhaDia(CONTA, camp, D, Dinheiro(valor, "BRL"), cliques, estado)
+    return CustoCampanhaDia(CONTA, camp, D, Dinheiro(valor, "BRL"), cliques, estado, disponivel_em=AS_OF)
 
 
 # ---------------------------------------------------------------- F5: identidade de linha da receita
@@ -86,7 +86,7 @@ def test_f5_custo_duplicado_recusado():
 
 
 def test_f5_earnings_duplicado_recusado():
-    rd = [ReceitaDominioDia(D, SITE_A, usd(1)), ReceitaDominioDia(D, "www." + SITE_A, usd(1))]
+    rd = [ReceitaDominioDia(D, SITE_A, usd(1), disponivel_em=AS_OF), ReceitaDominioDia(D, "www." + SITE_A, usd(1), disponivel_em=AS_OF)]
     with pytest.raises(LinhaDuplicada):
         juntar_campanha_dia([], [], [kv(1)], REG, as_of=AS_OF, receitas_dominio=rd)
 
@@ -165,7 +165,7 @@ def test_f18_surrogate_cortado_no_limite_nao_derruba():
 # ---------------------------------------------------------------- F19: universos do denominador
 
 def test_f19_dominio_sem_kv_coletado_nao_conta_como_sem_chave():
-    rd = [ReceitaDominioDia(D, SITE_A, usd(10_000_000)), ReceitaDominioDia(D, SITE_B, usd(90_000_000))]
+    rd = [ReceitaDominioDia(D, SITE_A, usd(10_000_000), disponivel_em=AS_OF), ReceitaDominioDia(D, SITE_B, usd(90_000_000), disponivel_em=AS_OF)]
     r = juntar_campanha_dia([], [], [kv(10_000_000)], REG, as_of=AS_OF, receitas_dominio=rd)
     c = r.cobertura
     assert c.fracao_receita_com_chave == Fraction(1)
@@ -175,7 +175,7 @@ def test_f19_dominio_sem_kv_coletado_nao_conta_como_sem_chave():
 
 
 def test_f19_kv_sem_earnings_fica_fora_e_avisa():
-    rd = [ReceitaDominioDia(D, SITE_A, usd(10_000_000))]
+    rd = [ReceitaDominioDia(D, SITE_A, usd(10_000_000), disponivel_em=AS_OF)]
     r = juntar_campanha_dia([], [], [kv(8_000_000), kv(5_000_000, dominio=SITE_B)], REG, as_of=AS_OF,
                             receitas_dominio=rd)
     c = r.cobertura
@@ -186,7 +186,7 @@ def test_f19_kv_sem_earnings_fica_fora_e_avisa():
 
 def test_f19_universo_kv_explicito_inclui_dominio_coletado_e_vazio():
     # site-b teve /key-value coletado e voltou vazio: aí sim a receita dele é "sem chave"
-    rd = [ReceitaDominioDia(D, SITE_A, usd(10_000_000)), ReceitaDominioDia(D, SITE_B, usd(90_000_000))]
+    rd = [ReceitaDominioDia(D, SITE_A, usd(10_000_000), disponivel_em=AS_OF), ReceitaDominioDia(D, SITE_B, usd(90_000_000), disponivel_em=AS_OF)]
     r = juntar_campanha_dia([], [], [kv(10_000_000)], REG, as_of=AS_OF, receitas_dominio=rd,
                             dominios_dia_kv_coletados={(D, SITE_A), (D, SITE_B)})
     assert r.cobertura.fracao_receita_com_chave == Fraction(1, 10)
@@ -204,3 +204,19 @@ def test_m13_custom_key_com_espacos_nao_e_substituicao():
     assert detectar_custom_key_substituida([{"custom_key": " utm_campaign ", "custom_value": CAMP}]) == []
     assert detectar_custom_key_substituida([{"custom_key": "utm_campaign\t"}]) == []
     assert interpretar_chave_campanha(CAMP, OrigemValor.JOINADS, custom_key=" utm_campaign ").campaign_id == CAMP
+
+
+# ---------------------------------------------------------------- R2-G14: guarda de futuro obrigatória
+def test_g14_custo_e_earnings_sem_disponivel_em_sao_recusados():
+    sem_relogio = CustoCampanhaDia(CONTA, CAMP, D, Dinheiro(3_000_000, "BRL"), 5, EstadoMedida.MEDIDO)
+    with pytest.raises(ContratoDeEntrada):
+        juntar_campanha_dia([sem_relogio], [], [], REG, as_of=AS_OF)
+    with pytest.raises(ContratoDeEntrada):
+        juntar_campanha_dia([], [], [kv(1)], REG, as_of=AS_OF, receitas_dominio=[ReceitaDominioDia(D, SITE_A, usd(1))])
+
+
+def test_g14_custo_do_futuro_e_recusado():
+    futuro = CustoCampanhaDia(CONTA, CAMP, D, Dinheiro(3_000_000, "BRL"), 5, EstadoMedida.MEDIDO,
+                              disponivel_em=AS_OF + timedelta(seconds=1))
+    with pytest.raises(FuturoNaJuncao):
+        juntar_campanha_dia([futuro], [], [], REG, as_of=AS_OF)

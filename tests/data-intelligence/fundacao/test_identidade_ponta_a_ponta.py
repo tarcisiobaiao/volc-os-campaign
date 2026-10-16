@@ -92,7 +92,8 @@ def brl(x):
 
 
 def custo(dia=DIA, valor="42.90", cliques=51, camp=CAMP, estado=EstadoMedida.MEDIDO):
-    return CustoCampanhaDia(CONTA, camp, dia, brl(valor) if valor is not None else None, cliques, estado)
+    return CustoCampanhaDia(CONTA, camp, dia, brl(valor) if valor is not None else None, cliques, estado,
+                            disponivel_em=AS_OF)
 
 
 def receita_joinads(valor, dia=DIA, key="utm_campaign", value=CAMP, estado=EstadoMedida.MEDIDO,
@@ -118,7 +119,7 @@ def test_hoje_custo_e_receita_juntam_mas_trafego_e_nao_atribuivel():
     evs.append(visita("https://site.exemplo/r/guia-exemplo/", "org", ts(14))[0])  # orgânico
     res = juntar(
         [custo()], evs, [receita_joinads("3.40")], REG,
-        receitas_dominio=[ReceitaDominioDia(DIA, "site.exemplo", usd("3.50"))])
+        receitas_dominio=[ReceitaDominioDia(DIA, "site.exemplo", usd("3.50"), disponivel_em=AS_OF)])
     l = linha(res)
     assert l.custo.valor == brl("42.90") and l.custo.estado is EstadoMedida.MEDIDO
     assert l.receita.valor == usd("3.40") and l.metodo_receita is MetodoAtribuicao.AGGREGATE_CAMPAIGN_DATE
@@ -298,7 +299,7 @@ def test_pedir_receita_por_sessao_e_erro_tipado_nao_numero():
 def test_recibo_json_estavel_sem_float():
     ev, _ = visita(clique_ads(), "s", ts(13))
     out = para_json(juntar([custo()], [ev], [receita_joinads("3.40")], REG,
-                                        receitas_dominio=[ReceitaDominioDia(DIA, "site.exemplo", usd("3.50"))]))
+                                        receitas_dominio=[ReceitaDominioDia(DIA, "site.exemplo", usd("3.50"), disponivel_em=AS_OF)]))
     texto = json.dumps(out, sort_keys=True)
     assert "e-" not in texto and json.loads(texto) == out
     assert out["cobertura"]["fracao_receita_com_chave"] == "34/35"
