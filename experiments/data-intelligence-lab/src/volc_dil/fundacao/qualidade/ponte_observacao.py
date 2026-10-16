@@ -81,13 +81,22 @@ def _m(o: Any) -> str:
 
 
 def runs_de_run_coleta(linhas: Iterable[Mapping[str, Any]]) -> list[RunDQ]:
-    """`dil_obs.run_coleta` -> `RunDQ` (`succeeded` vira `completed`; `n_inseridas` = linhas escritas)."""
-    return [RunDQ.de_dict({
-        "run_id": r["run_id"], "fonte": r["fonte"], "coletor": r["coletor_nome"],
-        "status": STATUS_RUN_DIL[r["status"]], "started_at": r["iniciado_em"],
-        "finished_at": r.get("finalizado_em"), "linhas_escritas": r.get("n_inseridas"),
-        "versao_coletor": r.get("coletor_versao"), "ultimo_sinal": r.get("ultimo_sinal"),
-    }) for r in linhas]
+    """`dil_obs.run_coleta` -> `RunDQ` (`succeeded` vira `completed`).
+
+    Linhas escritas = `n_inseridas + n_confirmadas` (R2-G23): no D2' da thread A uma releitura do mesmo
+    estado vira CONFIRMAÇÃO, não versão; um run só de confirmações leu e gravou dado — não é "0 linhas".
+    `n_confirmadas` ausente (schema anterior ao D2') conta 0; `n_inseridas` nulo continua desconhecido."""
+    saida = []
+    for r in linhas:
+        ins = r.get("n_inseridas")
+        escritas = None if ins is None else ins + (r.get("n_confirmadas") or 0)
+        saida.append(RunDQ.de_dict({
+            "run_id": r["run_id"], "fonte": r["fonte"], "coletor": r["coletor_nome"],
+            "status": STATUS_RUN_DIL[r["status"]], "started_at": r["iniciado_em"],
+            "finished_at": r.get("finalizado_em"), "linhas_escritas": escritas,
+            "versao_coletor": r.get("coletor_versao"), "ultimo_sinal": r.get("ultimo_sinal"),
+        }))
+    return saida
 
 
 def _quantil(valores: list[float], q: float) -> float:
@@ -131,19 +140,32 @@ def checar_dead_letter(
     runs_coleta: Iterable[Mapping[str, Any]],
     limiar: float = LIMIAR_DEAD_LETTER,
 ) -> list[Achado]:
-    """Taxa `n_dead_letter / n_lidas` por run finalizado. `n_lidas` nulo/0 não gera razão."""
+    """Por run finalizado (R2-G6), mesma regra de `dq_obs_dead_letter`:
+    - dead letters registrados (`dead_letter_registrados`, contagem real da tabela) > `n_dead_letter` do
+      fechamento -> `dead_letter_apos_fechamento` (alto);
+    - dead letters com `n_lidas` 0 ou nulo -> `dead_letter_sem_linhas_lidas` (alto: taxa indefinida não é ok);
+    - `dl / n_lidas > limiar` -> `dead_letter_taxa` (alto)."""
     achados = []
     for r in sorted(runs_coleta, key=lambda x: x["run_id"]):
-        lidas, dl = r.get("n_lidas"), r.get("n_dead_letter")
-        if r.get("status") == "running" or lidas in (None, 0) or dl is None:
+        if r.get("status") == "running":
             continue
-        taxa = dl / lidas
-        if taxa > limiar:
-            achados.append(Achado(
-                regra="dead_letter_taxa", severidade=Severidade.ALTO, fonte=r["fonte"], grao="run",
-                janela=(iso(para_datetime(r["iniciado_em"])), iso(para_datetime(r.get("finalizado_em")))),
-                chave=r["run_id"], evidencia={"n_lidas": lidas, "n_dead_letter": dl, "taxa": round(taxa, 4),
-                                              "limiar": limiar, "coletor": r.get("coletor_nome")},
-                mensagem=f"run {r['run_id']}: {dl}/{lidas} linhas em dead letter ({taxa:.1%})",
-            ))
+        lidas, decl, reg = r.get("n_lidas"), r.get("n_dead_letter"), r.get("dead_letter_registrados")
+        dl = max(decl or 0, reg or 0)
+        taxa = dl / lidas if lidas else None
+        if reg is not None and reg > (decl or 0):
+            regra = "dead_letter_apos_fechamento"
+        elif dl > 0 and not lidas:
+            regra = "dead_letter_sem_linhas_lidas"
+        elif taxa is not None and taxa > limiar:
+            regra = "dead_letter_taxa"
+        else:
+            continue
+        achados.append(Achado(
+            regra=regra, severidade=Severidade.ALTO, fonte=r["fonte"], grao="run",
+            janela=(iso(para_datetime(r["iniciado_em"])), iso(para_datetime(r.get("finalizado_em")))),
+            chave=r["run_id"], evidencia={"n_lidas": lidas, "n_dead_letter": decl, "dead_letter_registrados": reg,
+                                          "taxa": None if taxa is None else round(taxa, 4), "limiar": limiar,
+                                          "coletor": r.get("coletor_nome")},
+            mensagem=f"run {r['run_id']}: {regra} ({dl} dead letter(s), {lidas} lida(s))",
+        ))
     return achados

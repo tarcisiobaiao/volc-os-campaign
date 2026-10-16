@@ -12,7 +12,8 @@ BEGIN;
 DO $$
 BEGIN
   IF to_regclass('dil_obs.observacao') IS NULL OR to_regclass('dil_obs.run_coleta') IS NULL
-     OR to_regclass('dil_obs.dead_letter') IS NULL OR to_regclass('dil_obs.lote') IS NULL THEN
+     OR to_regclass('dil_obs.dead_letter') IS NULL OR to_regclass('dil_obs.lote') IS NULL
+     OR to_regprocedure('dil_obs.observacao_as_of(timestamptz)') IS NULL THEN
     RAISE EXCEPTION USING ERRCODE = '42P01', MESSAGE = 'dq_02: schema dil_obs (dil_obs_0001) é pré-requisito';
   END IF;
 END $$;
@@ -45,25 +46,42 @@ GROUP BY o.fonte, o.coletor_nome;
 -- dq:fim
 
 -- dq:view dq_obs_dead_letter
--- Taxa de dead letter por run finalizado; motivos contados na tabela dead_letter.
+-- Por run finalizado (R2-G6): conta os dead letters REGISTRADOS na tabela, não só o contador do fechamento.
+-- Run com dead letters e n_lidas = 0 (taxa indefinida) é alto — NULL não é ok; dead letter registrado depois
+-- do fechamento (registrados > n_dead_letter) também é alto.
 CREATE VIEW dil_qualidade.dq_obs_dead_letter WITH (security_invoker = true) AS
 WITH dl_ag AS (SELECT dil_qualidade.agora() AS agora),
 dl_mot AS (
-  SELECT run_id, jsonb_object_agg(motivo, n) AS motivos
+  SELECT run_id, sum(n)::bigint AS n, jsonb_object_agg(motivo, n) AS motivos
   FROM (SELECT run_id, motivo, count(*) AS n FROM dil_obs.dead_letter GROUP BY 1, 2) z GROUP BY run_id
+),
+dl_run AS (
+  SELECT r.run_id, r.fonte, r.coletor_nome, r.status, r.iniciado_em, r.n_lidas, r.n_dead_letter,
+         coalesce(m.n, 0) AS dead_letter_registrados, coalesce(m.motivos, '{}'::jsonb) AS motivos,
+         GREATEST(coalesce(r.n_dead_letter, 0), coalesce(m.n, 0)) AS dl
+  FROM dil_obs.run_coleta r
+  CROSS JOIN dl_ag
+  LEFT JOIN dl_mot m ON m.run_id = r.run_id
+  WHERE r.status <> 'running' AND r.iniciado_em > dl_ag.agora - interval '14 days' AND r.iniciado_em <= dl_ag.agora
+),
+dl_cls AS (
+  SELECT d.*,
+         CASE WHEN d.n_lidas > 0 THEN round(d.dl::numeric / d.n_lidas, 4) END AS taxa,
+         CASE WHEN d.dead_letter_registrados > coalesce(d.n_dead_letter, 0) THEN 'dead_letter_apos_fechamento'
+              WHEN d.dl > 0 AND coalesce(d.n_lidas, 0) = 0 THEN 'so_dead_letter'
+              WHEN d.n_lidas > 0 AND d.dl::numeric / d.n_lidas > 0.05 THEN 'taxa_alta'
+              ELSE 'ok' END AS classe
+  FROM dl_run d
 )
-SELECT r.run_id, r.fonte, r.coletor_nome, r.status, r.iniciado_em, r.n_lidas, r.n_dead_letter,
-       CASE WHEN r.n_lidas > 0 THEN round(r.n_dead_letter::numeric / r.n_lidas, 4) END AS taxa,
-       coalesce(m.motivos, '{}'::jsonb) AS motivos,
-       CASE WHEN r.n_lidas > 0 AND r.n_dead_letter::numeric / r.n_lidas > 0.05 THEN 'alto' ELSE 'ok' END AS severidade
-FROM dil_obs.run_coleta r
-CROSS JOIN dl_ag
-LEFT JOIN dl_mot m ON m.run_id = r.run_id
-WHERE r.status <> 'running' AND r.iniciado_em > dl_ag.agora - interval '14 days' AND r.iniciado_em <= dl_ag.agora;
+SELECT c.run_id, c.fonte, c.coletor_nome, c.status, c.iniciado_em, c.n_lidas, c.n_dead_letter,
+       c.dead_letter_registrados, c.taxa, c.motivos, c.classe,
+       CASE WHEN c.classe = 'ok' THEN 'ok' ELSE 'alto' END AS severidade
+FROM dl_cls c;
 -- dq:fim
 
 -- dq:view dq_obs_status
--- Distribuição de status/motivo por fonte × métrica × dia local da janela (latest = as_of agora).
+-- Distribuição do estado VIGENTE (R2-G7): dil_obs.observacao_as_of(agora) — uma linha por fato, a versão
+-- conhecida em `agora`; versões superadas (ex.: partial seguido do fechamento) não contam.
 CREATE VIEW dil_qualidade.dq_obs_status WITH (security_invoker = true) AS
 WITH st_ag AS (SELECT dil_qualidade.agora() AS agora)
 SELECT o.fonte, o.metrica, (o.janela_inicio AT TIME ZONE o.timezone)::date AS dia_local, o.status,
@@ -71,8 +89,8 @@ SELECT o.fonte, o.metrica, (o.janela_inicio AT TIME ZONE o.timezone)::date AS di
        CASE WHEN o.status IN ('invalid') THEN 'alto'
             WHEN o.status IN ('unavailable', 'missing', 'late') THEN 'aviso'
             WHEN o.status = 'partial' THEN 'info' ELSE 'ok' END AS severidade
-FROM dil_obs.observacao o CROSS JOIN st_ag
-WHERE o.available_at <= st_ag.agora AND o.janela_inicio > st_ag.agora - interval '14 days'
+FROM st_ag CROSS JOIN LATERAL dil_obs.observacao_as_of(st_ag.agora) o
+WHERE o.janela_inicio > st_ag.agora - interval '14 days'
 GROUP BY 1, 2, 3, 4, 5;
 -- dq:fim
 

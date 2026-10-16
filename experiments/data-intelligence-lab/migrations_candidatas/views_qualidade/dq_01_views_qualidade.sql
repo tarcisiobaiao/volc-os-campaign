@@ -324,8 +324,11 @@ FROM z_agg a CROSS JOIN z_lim;
 -- dq:fim
 
 -- dq:view dq_reconciliacao_joinads
--- Soma kv por campanha (campaign_id numérico) / earnings de domínio, por dia, sobre a view real
--- joinads_observation_latest. Referência real (L5): 97–100% em 08–16/10.
+-- Por DOMÍNIO × DIA (R2-G8; mesma regra da junção da thread C, R1-F19): cobertura = soma kv por campanha /
+-- earnings, só onde há earnings válido (status com valor e receita não nula) E kv no mesmo domínio × dia.
+-- Fora desse universo o domínio × dia ganha estado próprio e não entra na razão de nenhum outro: um domínio
+-- a 60% não é mascarado pelo kv de um domínio sem earnings. Fonte: a view real joinads_observation_latest.
+-- Referência real (L5, agregado do dia): 97–100% em 08–16/10.
 CREATE VIEW dil_qualidade.dq_reconciliacao_joinads WITH (security_invoker = true) AS
 WITH r_ag AS (SELECT dil_qualidade.agora() AS agora),
 r_lim AS (SELECT
@@ -333,36 +336,50 @@ r_lim AS (SELECT
   (SELECT valor FROM dil_qualidade.dq_parametros_limiares WHERE nome = 'receita_cobertura_min') AS lo,
   (SELECT valor FROM dil_qualidade.dq_parametros_limiares WHERE nome = 'receita_cobertura_max') AS hi,
   (SELECT valor FROM dil_qualidade.dq_parametros_limiares WHERE nome = 'receita_cobertura_critica') AS crit),
-r_dia AS (
-  SELECT o.metric_date,
-         sum(o.revenue_client) FILTER (WHERE o.endpoint = 'earnings') AS earnings,
+r_dd AS (
+  SELECT o.metric_date, o.domain AS dominio,
+         sum(o.revenue_client) FILTER (WHERE o.endpoint = 'earnings'
+                                         AND o.data_status IN ('observed', 'zero_confirmed')) AS earnings,
          sum(o.revenue_client) FILTER (WHERE o.endpoint = 'key_value_campaign_adunit' AND o.campaign_id IS NOT NULL)
            AS receita_kv_campanha,
          sum(o.revenue_client) FILTER (WHERE o.endpoint = 'key_value_campaign_adunit' AND o.campaign_id IS NULL)
            AS receita_kv_sem_campanha,
          count(DISTINCT o.campaign_id) FILTER (WHERE o.endpoint = 'key_value_campaign_adunit') AS n_campanhas,
-         count(DISTINCT o.currency_code) AS n_moedas
+         count(DISTINCT o.currency_code) AS n_moedas,
+         bool_or(o.endpoint = 'earnings') AS tem_earnings,
+         coalesce(bool_and(o.data_status IN ('observed', 'zero_confirmed') AND o.revenue_client IS NOT NULL)
+                    FILTER (WHERE o.endpoint = 'earnings'), true) AS earnings_valido,
+         bool_or(o.endpoint = 'key_value_campaign_adunit') AS tem_kv
   FROM public.joinads_observation_latest o, r_ag, r_lim
   WHERE o.metric_date > (r_ag.agora AT TIME ZONE 'America/Sao_Paulo')::date - r_lim.dias::int
-  GROUP BY o.metric_date
+    AND o.endpoint IN ('earnings', 'key_value_campaign_adunit')
+  GROUP BY o.metric_date, o.domain
+),
+r_cob AS (
+  SELECT d.*,
+         CASE WHEN d.tem_earnings AND d.earnings_valido AND d.earnings > 0 AND d.tem_kv
+              THEN round(coalesce(d.receita_kv_campanha, 0) / d.earnings, 4) END AS cobertura
+  FROM r_dd d
 )
-SELECT d.*,
-       CASE WHEN d.earnings > 0 AND d.receita_kv_campanha IS NOT NULL
-            THEN round(d.receita_kv_campanha / d.earnings, 4) END AS cobertura,
-       CASE WHEN d.n_moedas > 1 THEN 'moeda_mista'
-            WHEN d.earnings IS NULL OR d.earnings <= 0 THEN 'sem_base'
-            WHEN d.receita_kv_campanha IS NULL THEN 'sem_receita_campanha'
-            WHEN round(d.receita_kv_campanha / d.earnings, 4) < l.lo THEN 'cobertura_baixa'
-            WHEN round(d.receita_kv_campanha / d.earnings, 4) > l.hi THEN 'excesso'
+SELECT c.*,
+       CASE WHEN c.n_moedas > 1 THEN 'moeda_mista'
+            WHEN c.tem_earnings AND NOT c.earnings_valido THEN 'earnings_indisponivel'
+            WHEN NOT c.tem_earnings AND c.tem_kv THEN 'kv_sem_earnings'
+            WHEN NOT c.tem_earnings OR c.earnings IS NULL OR c.earnings <= 0 THEN 'sem_base'
+            WHEN NOT c.tem_kv THEN 'earnings_sem_kv'
+            WHEN c.cobertura < l.lo THEN 'cobertura_baixa'
+            WHEN c.cobertura > l.hi THEN 'excesso'
             ELSE 'ok' END AS estado,
-       CASE WHEN d.n_moedas > 1 THEN 'alto'
-            WHEN d.earnings IS NULL OR d.earnings <= 0 THEN 'info'
-            WHEN d.receita_kv_campanha IS NULL THEN 'alto'
-            WHEN round(d.receita_kv_campanha / d.earnings, 4) < l.crit THEN 'alto'
-            WHEN round(d.receita_kv_campanha / d.earnings, 4) < l.lo THEN 'aviso'
-            WHEN round(d.receita_kv_campanha / d.earnings, 4) > l.hi THEN 'alto'
+       CASE WHEN c.n_moedas > 1 THEN 'alto'
+            WHEN c.tem_earnings AND NOT c.earnings_valido THEN 'aviso'
+            WHEN NOT c.tem_earnings AND c.tem_kv THEN 'aviso'
+            WHEN NOT c.tem_earnings OR c.earnings IS NULL OR c.earnings <= 0 THEN 'info'
+            WHEN NOT c.tem_kv THEN 'alto'
+            WHEN c.cobertura < l.crit THEN 'alto'
+            WHEN c.cobertura < l.lo THEN 'aviso'
+            WHEN c.cobertura > l.hi THEN 'alto'
             ELSE 'ok' END AS severidade
-FROM r_dia d CROSS JOIN r_lim l;
+FROM r_cob c CROSS JOIN r_lim l;
 -- dq:fim
 
 -- dq:view dq_reconciliacao_custo_d0_d1

@@ -260,7 +260,7 @@ def test_dq_reconciliacao_joinads(cluster_pg, bancos):
 
 def test_dq_reconciliacao_custo(cluster_pg, bancos):
     est = _q(cluster_pg, bancos, "estressado", "SELECT * FROM dil_qualidade.dq_reconciliacao_custo_d0_d1 WHERE estado = 'divergente'")
-    assert len(est) == 1 and est[0]["campaign_id"] == "21000000001"
+    assert len(est) == 1 and est[0]["campaign_id"] == "90000000001"
     limpo = {r["estado"] for r in _q(cluster_pg, bancos, "limpo", "SELECT estado FROM dil_qualidade.dq_reconciliacao_custo_d0_d1")}
     assert "divergente" not in limpo and "ok" in limpo
 
@@ -329,9 +329,10 @@ def test_equivalencia_python_sql(cluster_pg, bancos, cenario):
     assert py and py == sq
 
     # reconciliação de receita
-    py = {(e.metric_date.isoformat(), e.estado, e.severidade, e.cobertura)
+    py = {(e.metric_date.isoformat(), e.linha.dominio, e.estado, e.severidade, e.cobertura)
           for e in avaliar_reconciliacao_receita(agregar_receita_joinads(obs, runs, agora))}
-    sq = {(r["metric_date"], r["estado"], r["severidade"], None if r["cobertura"] is None else float(r["cobertura"]))
+    sq = {(r["metric_date"], r["dominio"], r["estado"], r["severidade"],
+           None if r["cobertura"] is None else float(r["cobertura"]))
           for r in q("SELECT * FROM dil_qualidade.dq_reconciliacao_joinads")}
     assert py and py == sq
 

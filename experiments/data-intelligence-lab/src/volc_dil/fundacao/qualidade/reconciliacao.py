@@ -1,6 +1,7 @@
 """Reconciliação: receita JoinAds (soma kv por campanha × earnings de domínio) e custo D0 × D-1.
 
-Equivalentes SQL: `dq_reconciliacao_joinads` (sobre a view real `joinads_observation_latest`) e
+Receita por domínio × dia, só no universo com earnings válido E kv (R2-G8, mesma regra da junção da
+thread C, R1-F19). Equivalentes SQL: `dq_reconciliacao_joinads` (sobre a view real `joinads_observation_latest`) e
 `dq_reconciliacao_custo_d0_d1`. Referência de produção (recibo L5, 16/10): a soma kv por campanha
 com `custom_value` numérico foi 97–100% do earnings de domínio em 08–16/10.
 """
@@ -37,20 +38,52 @@ def _soma(valores: list) -> float | None:
 
 @dataclass(frozen=True)
 class LinhaReceitaDia:
+    """Um domínio × dia (R2-G8: a reconciliação compara universos iguais, como a junção da thread C).
+
+    `tem_earnings`/`tem_kv` dizem se o endpoint tem linha no domínio × dia; `earnings_valido` é falso se
+    alguma linha de earnings não tem valor (status sem valor ou receita nula). `None` em `tem_*` = inferir
+    do valor (compatibilidade com linhas montadas à mão)."""
+
     metric_date: date
     earnings: float | None
     receita_kv_campanha: float | None
     receita_kv_sem_campanha: float | None = None
     n_campanhas: int = 0
     n_moedas: int = 1
+    dominio: str | None = None
+    tem_earnings: bool | None = None
+    earnings_valido: bool = True
+    tem_kv: bool | None = None
+
+    @property
+    def com_earnings(self) -> bool:
+        return self.earnings is not None if self.tem_earnings is None else self.tem_earnings
+
+    @property
+    def com_kv(self) -> bool:
+        if self.tem_kv is not None:
+            return self.tem_kv
+        return self.receita_kv_campanha is not None or self.receita_kv_sem_campanha is not None
 
     @classmethod
     def de_dict(cls, d: Mapping) -> "LinhaReceitaDia":
         from .modelo import para_date
 
         f = lambda k: None if d.get(k) in (None, "") else float(d[k])  # noqa: E731
+        b = lambda k: None if d.get(k) is None else bool(d[k])  # noqa: E731
         return cls(para_date(d["metric_date"]), f("earnings"), f("receita_kv_campanha"),
-                   f("receita_kv_sem_campanha"), int(d.get("n_campanhas") or 0), int(d.get("n_moedas") or 1))
+                   f("receita_kv_sem_campanha"), int(d.get("n_campanhas") or 0), int(d.get("n_moedas") or 1),
+                   d.get("dominio"), b("tem_earnings"), bool(d.get("earnings_valido", True)), b("tem_kv"))
+
+    def como_dict(self) -> dict:
+        return {"metric_date": self.metric_date.isoformat(), "dominio": self.dominio, "earnings": self.earnings,
+                "receita_kv_campanha": self.receita_kv_campanha,
+                "receita_kv_sem_campanha": self.receita_kv_sem_campanha, "n_campanhas": self.n_campanhas,
+                "n_moedas": self.n_moedas, "tem_earnings": self.tem_earnings,
+                "earnings_valido": self.earnings_valido, "tem_kv": self.tem_kv}
+
+
+_COM_VALOR = frozenset({"observed", "zero_confirmed"})
 
 
 def joinads_latest(observacoes: Iterable[ObservacaoDQ], runs: Iterable[RunDQ]) -> list[ObservacaoDQ]:
@@ -83,24 +116,32 @@ def agregar_receita_joinads(
     agora: datetime,
     limiares: Mapping[str, float] = LIMIARES_PADRAO,
 ) -> list[LinhaReceitaDia]:
+    """Por domínio × dia (domínio = `ObservacaoDQ.conta`, como no adaptador JoinAds), só earnings e kv."""
     inicio = _hoje_local(agora) - timedelta(days=int(limiares["janela_reconciliacao_dias"]))
-    por_dia: dict[date, list[ObservacaoDQ]] = defaultdict(list)
+    grupos: dict[tuple[date, str | None], list[ObservacaoDQ]] = defaultdict(list)
     for o in joinads_latest(observacoes, runs):
-        if o.metric_date is not None and o.metric_date > inicio:
-            por_dia[o.metric_date].append(o)
+        if o.metric_date is None or not o.metric_date > inicio:
+            continue
+        if o.atributos.get("endpoint") in (ENDPOINT_EARNINGS, ENDPOINT_KV_CAMPANHA):
+            grupos[(o.metric_date, o.conta)].append(o)
     linhas = []
-    for dia, obs in sorted(por_dia.items()):
+    for (dia, dominio), obs in sorted(grupos.items(), key=lambda kv: (kv[0][0], kv[0][1] or "")):
         ep = lambda o: o.atributos.get("endpoint")  # noqa: E731
-        earnings = [o.metricas.get("revenue_client") for o in obs if ep(o) == ENDPOINT_EARNINGS]
+        earn = [o for o in obs if ep(o) == ENDPOINT_EARNINGS]
+        valido = lambda o: o.status.value in _COM_VALOR and numero(o.metricas.get("revenue_client")) is not None  # noqa: E731
         kv = [o for o in obs if ep(o) == ENDPOINT_KV_CAMPANHA]
         linhas.append(
             LinhaReceitaDia(
                 metric_date=dia,
-                earnings=_soma(earnings),
+                dominio=dominio,
+                earnings=_soma([o.metricas.get("revenue_client") for o in earn if valido(o)]),
                 receita_kv_campanha=_soma([o.metricas.get("revenue_client") for o in kv if o.entidade]),
                 receita_kv_sem_campanha=_soma([o.metricas.get("revenue_client") for o in kv if not o.entidade]),
                 n_campanhas=len({o.entidade for o in kv if o.entidade}),
                 n_moedas=len({o.moeda for o in obs if o.moeda}),
+                tem_earnings=bool(earn),
+                earnings_valido=all(valido(o) for o in earn),
+                tem_kv=bool(kv),
             )
         )
     return linhas
@@ -110,7 +151,8 @@ def agregar_receita_joinads(
 class EstadoReceita:
     metric_date: date
     cobertura: float | None
-    estado: str  # ok | sem_base | sem_receita_campanha | cobertura_baixa | excesso | moeda_mista
+    # ok | sem_base | earnings_indisponivel | kv_sem_earnings | earnings_sem_kv | cobertura_baixa | excesso | moeda_mista
+    estado: str
     severidade: str
     linha: LinhaReceitaDia
 
@@ -119,19 +161,27 @@ def avaliar_reconciliacao_receita(
     linhas: Iterable[LinhaReceitaDia],
     limiares: Mapping[str, float] = LIMIARES_PADRAO,
 ) -> list[EstadoReceita]:
+    """Cobertura = kv por campanha / earnings, SÓ no domínio × dia com earnings válido E kv (R2-G8).
+    Domínio × dia fora desse universo vira estado próprio, nunca entra no numerador nem no denominador de
+    outro domínio — assim um domínio a 60% não é mascarado pelo kv de um domínio sem earnings."""
     lo, hi, crit = (float(limiares[k]) for k in
                     ("receita_cobertura_min", "receita_cobertura_max", "receita_cobertura_critica"))
     saida = []
-    for ln in sorted(linhas, key=lambda x: x.metric_date):
+    for ln in sorted(linhas, key=lambda x: (x.metric_date, x.dominio or "")):
         cob = None
-        if ln.earnings is not None and ln.earnings > 0 and ln.receita_kv_campanha is not None:
-            cob = round(ln.receita_kv_campanha / ln.earnings, 4)
+        comparavel = ln.com_earnings and ln.earnings_valido and ln.earnings is not None and ln.earnings > 0 and ln.com_kv
+        if comparavel:
+            cob = round((ln.receita_kv_campanha or 0.0) / ln.earnings, 4)
         if ln.n_moedas > 1:
             estado, sev = "moeda_mista", "alto"
-        elif ln.earnings is None or ln.earnings <= 0:
+        elif ln.com_earnings and not ln.earnings_valido:
+            estado, sev = "earnings_indisponivel", "aviso"
+        elif not ln.com_earnings and ln.com_kv:
+            estado, sev = "kv_sem_earnings", "aviso"
+        elif not ln.com_earnings or ln.earnings is None or ln.earnings <= 0:
             estado, sev = "sem_base", "info"
-        elif ln.receita_kv_campanha is None:
-            estado, sev = "sem_receita_campanha", "alto"
+        elif not ln.com_kv:
+            estado, sev = "earnings_sem_kv", "alto"
         elif cob < crit:
             estado, sev = "cobertura_baixa", "alto"
         elif cob < lo:
@@ -160,11 +210,11 @@ def checar_reconciliacao_receita(
                 fonte="joinads",
                 grao="domain_day×campaign_adunit_day",
                 janela=(dia, dia),
+                chave=e.linha.dominio,
                 evidencia={"cobertura": e.cobertura, "n_campanhas": e.linha.n_campanhas,
-                           "n_moedas": e.linha.n_moedas,
-                           "tem_earnings": e.linha.earnings is not None,
-                           "tem_kv_campanha": e.linha.receita_kv_campanha is not None},
-                mensagem=f"receita {dia}: {e.estado} (cobertura kv/earnings = {e.cobertura})",
+                           "n_moedas": e.linha.n_moedas, "tem_earnings": e.linha.com_earnings,
+                           "earnings_valido": e.linha.earnings_valido, "tem_kv": e.linha.com_kv},
+                mensagem=f"receita {e.linha.dominio} {dia}: {e.estado} (cobertura kv/earnings = {e.cobertura})",
             )
         )
     return achados
