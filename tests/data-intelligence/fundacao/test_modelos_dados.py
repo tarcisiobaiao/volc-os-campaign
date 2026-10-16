@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from volc_dil.fundacao import modelos as M
+from volc_dil.fundacao.modelos.dados import MATURIDADES
 from volc_dil.fundacao.simulador import iso, simular, visao_as_of
 
 
@@ -74,3 +75,49 @@ def test_determinismo_e_multiversao_d0():
     assert np.array_equal(ta.final(), tb.final(), equal_nan=True)
     nv = ta.n_versoes_distintas()
     assert nv.max() >= 10  # 16 runs D0/dia => muitas versões distintas por campanha-dia
+
+
+def _versao(base, *, valor, observed, available, obs_id, maturidade):
+    from dataclasses import replace
+
+    return replace(base, valor=valor, status="observed", observed_at=observed, available_at=available,
+                   ingested_at=available, obs_id=obs_id, maturidade=maturidade, tipo_leitura="releitura")
+
+
+def test_preliminar_atrasada_nao_substitui_a_final_r2_g13_f4():
+    """Mata o mutante F4 (R2/G13): versão vigente = medição mais recente (observed_at), NÃO a última a
+    chegar. Uma preliminar medida antes e entregue depois da final não pode vencer."""
+    s = simular("estavel", 7, n_campanhas=2, n_dias=3)
+    base = next(r for r in s.leituras.registros if r.fonte == "joinads" and r.metrica == "revenue"
+                and r.entidade_tipo == "campaign" and not r.dimensoes)
+    final = _versao(base, valor=1_000_000, observed="2026-08-06T10:00:00+00:00",
+                    available="2026-08-06T10:05:00+00:00", obs_id="obs-final", maturidade="final")
+    prelim = _versao(base, valor=700_000, observed="2026-08-05T10:00:00+00:00",
+                     available="2026-08-07T10:00:00+00:00", obs_id="obs-prelim", maturidade="preliminar")
+    regs = [final, prelim]
+    tab = M.TabelaVersoes.de_registros(regs, fonte="joinads", metrica="revenue")
+    depois = M.epoch("2026-08-08T00:00:00+00:00")
+    assert tab.painel(depois)[0, 0] == 1_000_000
+    assert tab.painel_maturidade(depois)[0, 0] == MATURIDADES.index("final")
+    entre = M.epoch("2026-08-06T12:00:00+00:00")  # só a final chegou
+    assert tab.painel(entre)[0, 0] == 1_000_000
+    antes = M.epoch("2026-08-06T10:01:00+00:00")  # nada disponível ainda
+    assert np.isnan(tab.painel(antes)[0, 0])
+    # e coincide com o consumidor de referência
+    ref = visao_as_of(regs, "2026-08-08T00:00:00+00:00")
+    assert [r.valor for r in ref.values()] == [1_000_000]
+
+
+def test_equivalencia_com_coletas_atrasadas_e_recuperacao_tardia():
+    """Cenário com 10% de coletas atrasadas (recuperação tardia): painel = visao_as_of em todos os cortes."""
+    s = simular("atraso_receita_longo", 3, n_campanhas=6, n_dias=10)
+    m = s.mundo
+    tab = M.TabelaVersoes.de_registros(s.leituras.registros, fonte="joinads", metrica="revenue",
+                                       entidades=M.ids_campanhas(m), dias=M.dias_iso(m))
+    atrasadas = [r for r in s.leituras.registros if r.status == "late" and r.fonte == "joinads"]
+    assert atrasadas, "o cenário precisa ter coletas atrasadas para o teste ter poder"
+    for k in range(1, 18):
+        ao = M.instante_local(m, k, 11.0)
+        P = tab.painel(ao)
+        Q = _painel_referencia(s.leituras.registros, "joinads", "revenue", tab, ao, "available_at")
+        assert np.array_equal(np.isnan(P), np.isnan(Q)) and np.array_equal(np.nan_to_num(P), np.nan_to_num(Q)), k

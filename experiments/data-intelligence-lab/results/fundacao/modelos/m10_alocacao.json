@@ -46,7 +46,7 @@
    20262215,
    20262216
   ],
-  "sha256_codigo": "1de6fa52e584f9adafa8ab53e9725d6d7ce2876d5908ff58c1ffe6d29c56b178",
+  "sha256_codigo": "521a498ca880218d050dd775a941b9e3a016e69115e6a3e15386f40d1da52af9",
   "teto_de_estado": "testado com sintético",
   "versoes": {
    "catalogo": "1.0.0",
@@ -66,46 +66,46 @@
   "H10b_suportada_nao_supera_equal_sem_variacao": false,
   "estavel": {
    "b_mediano": {
-    "estimativa": 0.919275,
+    "estimativa": 0.914419,
     "ic95": [
-     0.906973,
-     0.930979
+     0.900934,
+     0.927807
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "concava_menos_equal": {
-    "estimativa": -2048.47,
+    "estimativa": -2048.85,
     "ic95": [
-     -2374.13,
-     -1737.2
+     -2373.72,
+     -1736.69
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "concava_menos_greedy": {
-    "estimativa": -236.752,
+    "estimativa": -217.891,
     "ic95": [
-     -350.471,
-     -136.118
+     -335.668,
+     -114.326
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "concava_menos_proporcional_herdado": {
-    "estimativa": -1564.33,
+    "estimativa": -1563.72,
     "ic95": [
-     -1870.84,
-     -1288.49
+     -1881.71,
+     -1275.86
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "concava_menos_status_quo": {
-    "estimativa": -2197.95,
+    "estimativa": -2198.34,
     "ic95": [
-     -2512.37,
-     -1887.86
+     -2515.15,
+     -1886.24
     ],
     "n": 16,
     "n_excluidos": 0
@@ -115,28 +115,37 @@
    "concava_supera_proporcional_herdado": true,
    "concava_supera_status_quo": true,
    "desvio_log_gasto_mediano": {
-    "estimativa": 0.175798,
+    "estimativa": 0.175826,
     "ic95": [
-     0.170358,
-     0.18078
+     0.169688,
+     0.181904
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "frac_b_no_teto": {
-    "estimativa": 0.401562,
+    "estimativa": 0.398438,
     "ic95": [
-     0.3625,
-     0.440625
+     0.357812,
+     0.435937
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "frac_celulas_maduras_hist": {
+    "estimativa": 0.924271,
+    "ic95": [
+     0.922759,
+     0.925781
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "frac_curvas_identificaveis": {
-    "estimativa": 0.89375,
+    "estimativa": 0.895312,
     "ic95": [
      0.878125,
-     0.909375
+     0.914062
     ],
     "n": 16,
     "n_excluidos": 0
@@ -152,19 +161,19 @@
    },
    "regret": {
     "concava": {
-     "estimativa": 92.6721,
+     "estimativa": 92.2849,
      "ic95": [
-      66.0195,
-      119.011
+      66.3999,
+      117.628
      ],
      "n": 16,
      "n_excluidos": 0
     },
     "concava_sem_aversao": {
-     "estimativa": 90.7199,
+     "estimativa": 86.4651,
      "ic95": [
-      66.1438,
-      114.423
+      65.3084,
+      108.318
      ],
      "n": 16,
      "n_excluidos": 0
@@ -179,19 +188,19 @@
      "n_excluidos": 0
     },
     "greedy": {
-     "estimativa": 329.424,
+     "estimativa": 310.176,
      "ic95": [
-      232.275,
-      433.756
+      211.242,
+      423.06
      ],
      "n": 16,
      "n_excluidos": 0
     },
     "proporcional_herdado": {
-     "estimativa": 1657.0,
+     "estimativa": 1656.0,
      "ic95": [
-      1385.59,
-      1956.45
+      1376.85,
+      1961.66
      ],
      "n": 16,
      "n_excluidos": 0
@@ -206,50 +215,51 @@
      "n_excluidos": 0
     }
    },
+   "ultimo_dia_maduro_mediano": 27.0,
    "violacoes_de_restricao": 0
   },
   "mudanca_orcamento": {
    "b_mediano": {
-    "estimativa": 0.858979,
+    "estimativa": 0.855546,
     "ic95": [
-     0.841686,
-     0.878387
+     0.834742,
+     0.877453
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "concava_menos_equal": {
-    "estimativa": -1745.16,
+    "estimativa": -1749.09,
     "ic95": [
-     -1971.13,
-     -1520.74
+     -1967.59,
+     -1528.95
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "concava_menos_greedy": {
-    "estimativa": -214.863,
+    "estimativa": -254.506,
     "ic95": [
-     -312.495,
-     -113.631
+     -379.585,
+     -136.001
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "concava_menos_proporcional_herdado": {
-    "estimativa": -1259.64,
+    "estimativa": -1269.6,
     "ic95": [
-     -1532.81,
-     -999.651
+     -1547.18,
+     -1005.26
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "concava_menos_status_quo": {
-    "estimativa": -1944.3,
+    "estimativa": -1948.24,
     "ic95": [
-     -2304.68,
-     -1613.69
+     -2303.93,
+     -1631.17
     ],
     "n": 16,
     "n_excluidos": 0
@@ -259,28 +269,37 @@
    "concava_supera_proporcional_herdado": true,
    "concava_supera_status_quo": true,
    "desvio_log_gasto_mediano": {
-    "estimativa": 0.170289,
+    "estimativa": 0.168038,
     "ic95": [
-     0.162165,
-     0.180831
+     0.161178,
+     0.176806
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "frac_b_no_teto": {
-    "estimativa": 0.321875,
+    "estimativa": 0.295312,
     "ic95": [
-     0.281211,
-     0.365625
+     0.251563,
+     0.34375
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "frac_celulas_maduras_hist": {
+    "estimativa": 0.863385,
+    "ic95": [
+     0.851615,
+     0.874694
     ],
     "n": 16,
     "n_excluidos": 0
    },
    "frac_curvas_identificaveis": {
-    "estimativa": 0.85,
+    "estimativa": 0.859375,
     "ic95": [
-     0.8125,
-     0.882812
+     0.828125,
+     0.890625
     ],
     "n": 16,
     "n_excluidos": 0
@@ -296,19 +315,19 @@
    },
    "regret": {
     "concava": {
-     "estimativa": 119.52,
+     "estimativa": 115.583,
      "ic95": [
-      83.855,
-      157.899
+      83.7703,
+      150.922
      ],
      "n": 16,
      "n_excluidos": 0
     },
     "concava_sem_aversao": {
-     "estimativa": 83.6874,
+     "estimativa": 84.8588,
      "ic95": [
-      60.8979,
-      106.461
+      62.2174,
+      109.536
      ],
      "n": 16,
      "n_excluidos": 0
@@ -323,19 +342,19 @@
      "n_excluidos": 0
     },
     "greedy": {
-     "estimativa": 334.382,
+     "estimativa": 370.09,
      "ic95": [
-      230.812,
-      443.349
+      260.844,
+      488.346
      ],
      "n": 16,
      "n_excluidos": 0
     },
     "proporcional_herdado": {
-     "estimativa": 1379.16,
+     "estimativa": 1385.18,
      "ic95": [
-      1108.75,
-      1651.56
+      1103.37,
+      1670.21
      ],
      "n": 16,
      "n_excluidos": 0
@@ -350,6 +369,7 @@
      "n_excluidos": 0
     }
    },
+   "ultimo_dia_maduro_mediano": 27.0,
    "violacoes_de_restricao": 0
   }
  }

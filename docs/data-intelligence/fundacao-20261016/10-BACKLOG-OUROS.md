@@ -293,7 +293,7 @@ Convenções:
 - **Dado mínimo:** ≥ 10 tratados e ≥ 10 controles, ≥ 10 dias pré e pós.
 - **Prova possível agora:** feita em sintético.
 - **Gatilho de promoção:** mudanças com regra de seleção registrada (CAU-02).
-- **Estado honesto:** testado com sintético (H5a refutada por pouco no lucro; H5b suportada).
+- **Estado honesto:** testado com sintético (H5a refutada por pouco no lucro; H5b refutada após errata R2/G9: o DiD fica enviesado sob seleção, mas o antes/depois do lucro errou menos — nenhum dos dois é confiável sob seleção).
 - **Riscos:** seleção pelo resultado; interferência entre campanhas (não simulada).
 - **Evidência:** `R/fundacao/modelos/m5_causal.json`, `modelos/causal.py`.
 - **Relação:** CAU-02, CAU-03, ALO-02.
@@ -527,7 +527,7 @@ Convenções:
 - **Dado mínimo:** ≥ 4 dias maduros por campanha.
 - **Prova possível agora:** replay offline real (DAT-01).
 - **Gatilho de promoção:** regret menor que o guloso com IC em replay real → shadow T1 (P09-T13).
-- **Estado honesto:** testado com sintético (H10a suportada; H10b refutada — supera sem variação).
+- **Estado honesto:** testado com sintético, parcial (H10a suportada; H10b refutada — supera sem variação). Após a errata R2/G10 o histórico de decisão é o painel `as_of` maduro (regret côncava 116 vs equal 1865; vereditos inalterados).
 - **Riscos:** campanhas sem consumo de orçamento violam a premissa (P09-T11); interferência de leilão.
 - **Evidência:** `R/fundacao/modelos/m10_alocacao.json`, `modelos/alocacao.py`.
 - **Relação:** ALO-02, BAN-02, MAT-02.
