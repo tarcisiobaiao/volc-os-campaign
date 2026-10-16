@@ -1,0 +1,356 @@
+{
+ "manifesto": {
+  "catalogo_sha256": "d449d43f12ee20fdff245663329e8779aaa96faa39a4e71617cf746ec8601600",
+  "natureza": "simulacao_com_seed_sem_dado_real",
+  "parametros": {
+   "C": 40,
+   "aversao": 1.0,
+   "b_prior": 0.7,
+   "dias_hist": 30,
+   "dias_total": 45,
+   "grade": [
+    0.5,
+    0.625,
+    0.75,
+    0.875,
+    1.0,
+    1.125,
+    1.25,
+    1.375,
+    1.5
+   ],
+   "janela_recente": 7,
+   "maximo_frac": 3.0,
+   "min_desvio_log": 0.1,
+   "minimo_frac": 0.2,
+   "passo_max": 0.5,
+   "sd_prior_b": 0.25
+  },
+  "pre_registro": "results/fundacao/modelos/PRE-REGISTRO.md",
+  "script": "fundacao_modelos_alocacao.py",
+  "seeds": [
+   20262201,
+   20262202,
+   20262203,
+   20262204,
+   20262205,
+   20262206,
+   20262207,
+   20262208,
+   20262209,
+   20262210,
+   20262211,
+   20262212,
+   20262213,
+   20262214,
+   20262215,
+   20262216
+  ],
+  "sha256_codigo": "1de6fa52e584f9adafa8ab53e9725d6d7ce2876d5908ff58c1ffe6d29c56b178",
+  "teto_de_estado": "testado com sintético",
+  "versoes": {
+   "catalogo": "1.0.0",
+   "implementacao": "CPython",
+   "modelos": "0.1.0",
+   "numpy": "2.5.3",
+   "python": "3.13.0",
+   "scipy": "1.18.1",
+   "simulador": "1.0.0",
+   "sklearn": "1.9.1",
+   "statlab": "0.1.0",
+   "statsmodels": "0.15.0"
+  }
+ },
+ "resultados": {
+  "H10a_suportada": true,
+  "H10b_suportada_nao_supera_equal_sem_variacao": false,
+  "estavel": {
+   "b_mediano": {
+    "estimativa": 0.919275,
+    "ic95": [
+     0.906973,
+     0.930979
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "concava_menos_equal": {
+    "estimativa": -2048.47,
+    "ic95": [
+     -2374.13,
+     -1737.2
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "concava_menos_greedy": {
+    "estimativa": -236.752,
+    "ic95": [
+     -350.471,
+     -136.118
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "concava_menos_proporcional_herdado": {
+    "estimativa": -1564.33,
+    "ic95": [
+     -1870.84,
+     -1288.49
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "concava_menos_status_quo": {
+    "estimativa": -2197.95,
+    "ic95": [
+     -2512.37,
+     -1887.86
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "concava_supera_equal": true,
+   "concava_supera_greedy": true,
+   "concava_supera_proporcional_herdado": true,
+   "concava_supera_status_quo": true,
+   "desvio_log_gasto_mediano": {
+    "estimativa": 0.175798,
+    "ic95": [
+     0.170358,
+     0.18078
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "frac_b_no_teto": {
+    "estimativa": 0.401562,
+    "ic95": [
+     0.3625,
+     0.440625
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "frac_curvas_identificaveis": {
+    "estimativa": 0.89375,
+    "ic95": [
+     0.878125,
+     0.909375
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "oraculo_grade": {
+    "estimativa": 2342.69,
+    "ic95": [
+     1404.53,
+     3749.63
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "regret": {
+    "concava": {
+     "estimativa": 92.6721,
+     "ic95": [
+      66.0195,
+      119.011
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "concava_sem_aversao": {
+     "estimativa": 90.7199,
+     "ic95": [
+      66.1438,
+      114.423
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "equal": {
+     "estimativa": 2141.14,
+     "ic95": [
+      1828.61,
+      2472.09
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "greedy": {
+     "estimativa": 329.424,
+     "ic95": [
+      232.275,
+      433.756
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "proporcional_herdado": {
+     "estimativa": 1657.0,
+     "ic95": [
+      1385.59,
+      1956.45
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "status_quo": {
+     "estimativa": 2290.62,
+     "ic95": [
+      1978.33,
+      2604.73
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    }
+   },
+   "violacoes_de_restricao": 0
+  },
+  "mudanca_orcamento": {
+   "b_mediano": {
+    "estimativa": 0.858979,
+    "ic95": [
+     0.841686,
+     0.878387
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "concava_menos_equal": {
+    "estimativa": -1745.16,
+    "ic95": [
+     -1971.13,
+     -1520.74
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "concava_menos_greedy": {
+    "estimativa": -214.863,
+    "ic95": [
+     -312.495,
+     -113.631
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "concava_menos_proporcional_herdado": {
+    "estimativa": -1259.64,
+    "ic95": [
+     -1532.81,
+     -999.651
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "concava_menos_status_quo": {
+    "estimativa": -1944.3,
+    "ic95": [
+     -2304.68,
+     -1613.69
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "concava_supera_equal": true,
+   "concava_supera_greedy": true,
+   "concava_supera_proporcional_herdado": true,
+   "concava_supera_status_quo": true,
+   "desvio_log_gasto_mediano": {
+    "estimativa": 0.170289,
+    "ic95": [
+     0.162165,
+     0.180831
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "frac_b_no_teto": {
+    "estimativa": 0.321875,
+    "ic95": [
+     0.281211,
+     0.365625
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "frac_curvas_identificaveis": {
+    "estimativa": 0.85,
+    "ic95": [
+     0.8125,
+     0.882812
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "oraculo_grade": {
+    "estimativa": 2674.33,
+    "ic95": [
+     1806.85,
+     3984.35
+    ],
+    "n": 16,
+    "n_excluidos": 0
+   },
+   "regret": {
+    "concava": {
+     "estimativa": 119.52,
+     "ic95": [
+      83.855,
+      157.899
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "concava_sem_aversao": {
+     "estimativa": 83.6874,
+     "ic95": [
+      60.8979,
+      106.461
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "equal": {
+     "estimativa": 1864.68,
+     "ic95": [
+      1625.7,
+      2109.82
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "greedy": {
+     "estimativa": 334.382,
+     "ic95": [
+      230.812,
+      443.349
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "proporcional_herdado": {
+     "estimativa": 1379.16,
+     "ic95": [
+      1108.75,
+      1651.56
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "status_quo": {
+     "estimativa": 2063.82,
+     "ic95": [
+      1728.98,
+      2444.06
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    }
+   },
+   "violacoes_de_restricao": 0
+  }
+ }
+}
