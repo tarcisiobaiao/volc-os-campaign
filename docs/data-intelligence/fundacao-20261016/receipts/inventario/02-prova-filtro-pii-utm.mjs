@@ -16,7 +16,7 @@ const sensorSrc = sensor.slice(68, 79).join('\n') + '\n' + sensor.slice(106, 112
 const wrapperSrc = wrapper.slice(33, 39).join('\n') + '\n' + wrapper.slice(73, 80).join('\n');
 const s = {}; vm.createContext(s); vm.runInContext(sensorSrc + '\nthis.utmValue = utmValue;', s);
 const w = {}; vm.createContext(w); vm.runInContext(wrapperSrc + '\nthis.safeValue = safeValue;', w);
-const casos = ['24278665189', '1234567890', '123456789', 'senac-caruaru', 'google', 'cpc', '{campaignid}'];
+const casos = ['20000000011', '1234567890', '123456789', 'senac-caruaru', 'google', 'cpc', '{campaignid}'];
 for (const v of casos) {
   console.log(JSON.stringify(v).padEnd(18), 'sensor.utmValue ->', JSON.stringify(s.utmValue(v)).padEnd(18),
               'wrapper.safeValue ->', JSON.stringify(w.safeValue(v)));
