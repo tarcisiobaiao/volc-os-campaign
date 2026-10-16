@@ -83,5 +83,27 @@ def avaliar_google_ads(jobs: list[ResultadoJob]) -> dict:
     return out
 
 
+def operacoes_google_ads_linear(jobs, escala) -> tuple[float, float]:
+    """(por conta, fixas) — operações/dia = por_conta · contas + fixas (a listagem do MCC não escala)."""
+    from dataclasses import replace
+
+    from .volume import calcular_job
+
+    def ops(contas: int) -> float:
+        e = replace(escala, contas=contas)
+        return chamadas_por_fonte([calcular_job(j, e) for j in jobs]).get("google_ads", 0.0)
+
+    a = ops(2) - ops(1)
+    return a, ops(1) - a
+
+
+def contas_maximas(jobs, escala, limite_ops: float) -> int:
+    """Maior nº de contas cuja agenda cabe em `limite_ops` operações/dia (piso: sem retries nem ad hoc)."""
+    por_conta, fixas = operacoes_google_ads_linear(jobs, escala)
+    if por_conta <= 0:
+        raise ValueError("agenda sem operações por conta")
+    return int((limite_ops - fixas) // por_conta)
+
+
 def tabela_limites() -> list[dict]:
     return [asdict(x) for x in LIMITES]

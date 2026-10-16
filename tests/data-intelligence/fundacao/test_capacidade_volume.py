@@ -162,3 +162,28 @@ def test_linha_em_lote_deduplica_como_linha_e_comprime_como_lote():
     assert r["linha_em_lote"].linhas_payload_dia == r["linha"].linhas_payload_dia
     assert r["linha_em_lote"].bytes_payload_dia < r["linha"].bytes_payload_dia < r["nenhum"].bytes_payload_dia
     assert r["lote"].bytes_payload_dia == pytest.approx(r["nenhum"].bytes_payload_dia, rel=0.05)
+
+
+def test_consultas_fixas_nao_escalam_com_contas():
+    j = Job(nome="d0", fonte="google_ads", base="campanha", cron="7 6-23 * * *", janela=(0, 0), metricas_por_linha=8,
+            consultas_por_execucao=4, consultas_fixas_por_execucao=1, lotes_por_execucao=1)
+    r1, r10 = calcular_job(j, ESC), calcular_job(j, ESC.crescer(10))
+    assert r1.chamadas_dia == 18 * (2 * 4 + 1) and r10.chamadas_dia == 18 * (20 * 4 + 1)
+    assert r1.lotes_dia == 18 * 2  # lotes com linhas de fato: 1 por conta por execução
+
+
+def test_redundancia_de_coletor_jovem_reproduz_o_recibo_real_com_p_zero():
+    from volc_dil.fundacao.capacidade.volume import redundancia_observada
+
+    # Recibo (2ª e 4ª rodadas): 23.891 lidas e 2.525 distintas (observation_key, metrics); 13 runs entre
+    # 15/10 11:45 e 16/10 08:23 — 10 em 15/10 lendo 08–14/10 e 3 em 16/10 lendo 09–15/10 (alguns parciais);
+    # 2.228 termo-dia em 7 dias (≈318/dia).
+    jan = [(8, 14)] * 10 + [(9, 15)] * 3
+    p0 = redundancia_observada(jan, 2228 / 7, p_revisao=0.0)
+    assert p0["distintas"] == pytest.approx(2525, rel=0.02)  # distintas = termo-dias da união das janelas
+    p2 = redundancia_observada(jan, 2228 / 7, p_revisao=0.02)
+    assert p2["distintas"] > 2525 * 1.15  # p = 0,02 (premissa antiga) é refutado pelo recibo
+    # com as lidas REAIS (runs parciais leem menos), a redundância prevista com p = 0 bate com a medida
+    assert 1 - p0["distintas"] / 23891 == pytest.approx(1 - 2525 / 23891, abs=0.003)
+    estacionario = redundancia_observada([(d - 7, d - 1) for d in range(100, 107) for _ in range(6)], 318.0)
+    assert estacionario["leituras_por_dia_logico"][99] == 42  # regime estacionário: 41/42 = 97,6% com p = 0
