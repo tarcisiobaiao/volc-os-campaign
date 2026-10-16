@@ -154,6 +154,11 @@ class Registro:
                 )
             return ResultadoRegistro.NOOP
         for c in self._conf_por_natural.get(nat, ()):
+            if c.chave_idempotencia == base:  # R2-G4: a MESMA leitura já guardada como confirmação
+                if c.leitura.conteudo != obs.conteudo:
+                    raise ConflitoIdempotencia("mesma leitura (já confirmada) com conteúdo diferente")
+                return ResultadoRegistro.NOOP
+        for c in self._conf_por_natural.get(nat, ()):
             # já confirmado neste instante e conhecido no máximo agora (retry); reentrega que traz conhecimento
             # MAIS CEDO não é descartada: vira outra confirmação (a ordem de chegada não muda o estado)
             if (c.observed_at == obs.observed_at and c.available_at <= obs.available_at

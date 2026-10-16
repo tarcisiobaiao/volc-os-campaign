@@ -304,3 +304,41 @@ Limites: confirmações não entram no `as_of` (só frescor e reparo). Uma reent
 anterior ao de uma confirmação já registrada vira outra confirmação (não `noop`), para não descartar conhecimento
 mais cedo. Uma confirmação a materializar com o mesmo `available_at` de outra versão do fato levanta
 `versao_ambigua`.
+
+## 8. Resposta à R2 (revisão adversarial final)
+
+Base: merge local de `lab/data-foundation-20261016` em `2d403e19` (commit `9da66db5`). Todos os testes novos falham
+no código anterior (`9da66db5`, rodado numa cópia com os testes novos). Suíte: **882 passed, 1 skipped** (o skip é a
+medição grande, que roda com `DIL_BENCH_N`). Os clusters das medições foram apagados (pico 2,5 GiB).
+Os 2 diretórios `/tmp/dilpg*` que aparecem às 13:26 pertencem a outra sessão (processos iniciados depois do fim das
+minhas medições); não os toquei.
+
+| Achado | Correção | Teste |
+|---|---|---|
+| G1 (alta): aplicador NOSUPERUSER CREATEROLE ficava com ADMIN OPTION em `dil_obs_dono` (o PG16 concede ao criador) e, com um GRANT a si mesmo, desligava o trigger e fazia TRUNCATE | **só superusuário aplica ou desfaz** 0001/0002 (a checagem é a primeira coisa do arquivo; nada é criado se falhar; HINT: no Supabase self-hosted, `supabase_admin`). A membresia temporária da R1 saiu. Ao fim do up, membresias/ADMIN OPTION prévias de não-superusuários em `dil_obs_dono` viram WARNING com o `REVOKE` a rodar | `test_schema_pg_r1.py::test_r2_g1_nao_superusuario_nao_aplica_e_nao_fica_com_admin_option` (ataque do revisor: GRANT a si mesmo, SET ROLE, TRUNCATE e DISABLE TRIGGER negados; down por não-superusuário recusado), `test_r1_f22_reaplicacao_com_papeis_existentes_e_aviso_de_membresia_previa` |
+| G4: retry de leitura já CONFIRMADA com a mesma `chave_base` e outro conteúdo virava versão em silêncio; o bloco de conflito no SQL era inalcançável | Python: confirmação com a mesma chave → conteúdo igual `noop`, diferente `ConflitoIdempotencia`. SQL: a chave da confirmação é recalculada de lote, run e `observed_at` (a tabela não guarda a chave) e comparada com a da leitura; conteúdo diferente → `conflito_idempotencia`. A regra "outra leitura igual no mesmo instante, já conhecida → noop" ficou separada | `test_observacao_ordem_versao.py::test_r2_g4_*`, `test_schema_pg_r1.py::test_r2_g4_*` |
+| G5: bytes do D2' medidos com ids de 1 caractere | medição refeita com ids no formato real (run 64 hex, lote `<run>:<i>`, conta 10 dígitos, campanha 11 dígitos, coletor/esquema/payload_ref do v21). A confirmação deixou de guardar `run_id` (é o do lote, F3) | `test_schema_pg_desempenho.py` (carga real na suíte e na medição grande) |
+| G6: dead letter aceito depois do fechamento; run só com dead letters fechava `succeeded` com `n_lidas = 0` | `registrar_dead_letter` só em run em andamento (trava `FOR SHARE`); `finalizar_run` exige `n_lidas >= inseridas + noop + confirmadas + dead_letter` e recusa `succeeded` com dead letter (use `partial`/`failed`); o CHECK `ck_run_contagens` tem as duas regras | `test_schema_pg_r1.py::test_r2_g6_*` (cenário `q_core.py` + inserção direta barrada pelo CHECK) |
+| G20: retry de `registrar_lote` depois de 5 min com o `recebido_em` original falhava; `NULL` aceito sem decisão | o lote existente é conferido ANTES de `p_recebido_em`: retry igual = `noop`. `NULL` aceito por decisão (o banco carimba; documentado no 02 §10 e no corpo da função) | `test_schema_pg_r1.py::test_r2_g20_*` |
+
+**G5, números (1e6 linhas, ids reais; medição grande):**
+
+| | ids de 1 caractere (§7.2) | ids reais (R2) |
+|---|---:|---:|
+| observação: heap B/linha | 455 | **819** |
+| observação: índices B/linha | 332 | **339** |
+| observação: total B/valor | 787 | **1.158** |
+| confirmação: B/linha (heap + PK) | 211 | **276** (o revisor mediu 344 antes de tirar `run_id`) |
+| as_of ponto / meio / fim / latest (s) | 0,001 / 0,30–0,41 / 1,2–3,7 / 1,5–2,2 | 0,001–0,002 / 1,8–2,5 / 3,0–12,5 / 2,4–3,5 |
+
+Leitura: os textos de linhagem (run 65 B, lote ~70 B, `payload_ref` ~150 B, coletor/esquema) dominam o heap da
+observação. A confirmação ficou 4,2× menor que a observação. Estimativa proporcional sobre o modelo da B (~94% de
+releituras iguais): 0,06 × 1.158 + 0,94 × 276 ≈ 329 B por leitura, contra 1.043 B/valor do D2 → **~22 MB/dia e ~2,5 TB
+em 3 anos a ×100** (estimativa, não remedida pelo modelo da B; corrige os ~17 MB e ~1,9 TB da §7.2, medidos com ids
+curtos). O passo seguinte para cortar bytes seria trocar run/lote/`payload_ref` textuais por referências inteiras às
+tabelas `run_coleta`/`lote` — não feito aqui (mudança de forma das chaves de linhagem, fora do escopo da R2).
+
+Mudanças fora da A (marcadas `[thread A, R2-G6]`): `test_qualidade_pg_views.py::_carga_dil_obs` — o run com dead letter
+fecha `partial` e `n_lidas` conta o dead letter. A parte da G6 que é da G (`dq_obs_dead_letter` e
+`ponte_observacao.py` dizendo `ok` para run com dead letter) não foi tocada: agora o banco não aceita mais esse run
+como `succeeded`, mas a view/ponte continuam com a regra delas.

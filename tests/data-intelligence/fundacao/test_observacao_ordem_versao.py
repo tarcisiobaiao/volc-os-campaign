@@ -259,3 +259,19 @@ def test_d2_propriedade_estado_independe_da_ordem_de_chegada(obs):
             # outra leitura de mesmo estado no mesmo instante, já conhecida antes
             chaves = {v.chave_idempotencia for v in reg.versoes} | {c.chave_idempotencia for c in reg.confirmacoes}
             assert len(chaves) + res.count(ResultadoRegistro.NOOP) == n
+
+
+# ============================================================== R2-G4
+def test_r2_g4_retry_de_leitura_confirmada_com_conteudo_diferente_e_conflito(obs):
+    """Prova do revisor (p_conf.py): a mesma leitura (mesma chave_base) já CONFIRMADA, reenviada com outro valor,
+    virava versão em silêncio; a regra 1 promete conflito (como para leitura guardada como versão)."""
+    v1 = _leitura(obs, observed_h=28, available_h=28.1, payload=b"P", valor=5_000_000)
+    r2 = _leitura(obs, observed_h=29, available_h=29.1, payload=b"P", valor=5_000_000)
+    r2_retry = _leitura(obs, observed_h=29, available_h=29.2, payload=b"P", valor=5_000_000, run_id="outro", lote_id="outro")
+    r2_diferente = _leitura(obs, observed_h=29, available_h=29.3, payload=b"P", valor=6_000_000)
+    assert r2.chave_base == r2_diferente.chave_base  # mesma leitura (payload, coletor, esquema, observed_at)
+    r = Registro()
+    assert r.registrar_todas([v1, r2, r2_retry]) == [ResultadoRegistro.INSERIDO, ResultadoRegistro.CONFIRMADO, ResultadoRegistro.NOOP]
+    with pytest.raises(ConflitoIdempotencia, match="já confirmada"):
+        r.registrar(r2_diferente)
+    assert len(r) == 1

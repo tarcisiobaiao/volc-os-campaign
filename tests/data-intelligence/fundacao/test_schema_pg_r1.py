@@ -58,57 +58,58 @@ def banco(cluster_pg):
     cluster_pg.psql(cluster_pg.sql_relogio(None), db=db)
 
 
-# ============================================================== F2 / F22: quem aplica não fica dono
-def test_r1_f2_aplicador_nao_superusuario_nao_continua_dono(cluster_pg_dedicado, obs):
+# ============================================================== F2 / F22 / R2-G1: só superusuário aplica
+def _aplicar_bruto(c, db, usuario, arquivo=UP):
+    """psql direto, para ver WARNING/HINT no stderr mesmo quando dá certo."""
+    return subprocess.run(
+        [str(_bin("psql")), "-h", c.socket, "-p", str(c.porta), "-U", usuario, "-d", db, "-X", "-q", "-v", "ON_ERROR_STOP=1"],
+        input=_ler(arquivo), capture_output=True, text=True, env=c.env(), timeout=120)
+
+
+def test_r2_g1_nao_superusuario_nao_aplica_e_nao_fica_com_admin_option(cluster_pg_dedicado, obs):
+    """Prova do revisor (r2 probes/q_f2.py): o CREATEROLE que criava os papéis ficava com ADMIN OPTION em
+    dil_obs_dono e, com um GRANT a si mesmo, desligava o trigger e fazia TRUNCATE."""
     c = cluster_pg_dedicado
     c.psql("CREATE ROLE aplicador LOGIN CREATEROLE NOSUPERUSER;")
     db = c.novo_banco("dil_aplicador")
     c.psql(f"GRANT CREATE ON DATABASE {db} TO aplicador;")
-    c.aplicar(UP, db=db, usuario="aplicador")
-    assert c.psql("SELECT pg_has_role('aplicador', 'dil_obs_dono', 'SET')::text || pg_has_role('aplicador', 'dil_obs_dono', 'USAGE')::text;",
-                  db=db) == "falsefalse"
+    r = _aplicar_bruto(c, db, "aplicador")
+    assert r.returncode != 0 and "aplique como superusuário" in r.stderr and "supabase_admin" in r.stderr
+    assert c.psql(RESIDUO, db=db) == "0|0"  # nem papéis nem schema pela metade
+    c.aplicar(UP, db=db)  # superusuário
+    assert c.psql("SELECT count(*) FROM pg_auth_members a JOIN pg_roles r ON r.oid = a.roleid "
+                  "WHERE r.rolname = 'dil_obs_dono';", db=db) == "0"  # ninguém administra nem é membro do dono
     j = _obs_json(obs, conta="c", payload=b"abc", run_id="r", lote_id="l")
     c.psql(_preparo(c, run_id="r", payload=b"abc", lote_id="l", t=BASE + timedelta(hours=30)) + _reg(j), db=db, papel="dil_obs_escritor")
-    # ataque do revisor (pg/t_dono2.py), agora sem efeito
+    # o ataque do revisor, agora sem efeito
+    assert "permission denied" in c.falha("GRANT dil_obs_dono TO aplicador;", db=db, usuario="aplicador")
     assert "permission denied to set role" in c.falha("SET ROLE dil_obs_dono;", db=db, usuario="aplicador")
-    assert "permission denied" in c.falha("UPDATE dil_obs.observacao SET valor = 999999;", db=db, usuario="aplicador")
     assert "permission denied" in c.falha("TRUNCATE dil_obs.observacao;", db=db, usuario="aplicador")
     erro = c.falha("ALTER TABLE dil_obs.observacao DISABLE TRIGGER tg_obs_append_only;", db=db, usuario="aplicador")
     assert "permission denied" in erro or "must be owner" in erro
     assert c.psql("SELECT valor FROM dil_obs.observacao;", db=db) == "5000000"
-    # o mesmo aplicador desfaz (ele criou os papéis, tem ADMIN OPTION) e não sobra nada
+    # desfazer também exige superusuário
     c.psql(c.sql_relogio(None), db=db)
-    c.aplicar(DOWN, db=db, usuario="aplicador")
+    r = _aplicar_bruto(c, db, "aplicador", DOWN)
+    assert r.returncode != 0 and "aplique como superusuário" in r.stderr
+    c.aplicar(DOWN, db=db)
     assert c.psql(RESIDUO, db=db) == "0|0"
 
 
-def test_r1_f22_papeis_existentes_reaplicacao_por_nao_superusuario(cluster_pg_dedicado):
+def test_r1_f22_reaplicacao_com_papeis_existentes_e_aviso_de_membresia_previa(cluster_pg_dedicado):
     c = cluster_pg_dedicado
     outro = c.novo_banco("dil_outro")
-    c.aplicar(UP, db=outro)  # superusuário cria os papéis noutro banco
-    c.psql("CREATE ROLE aplicador2 LOGIN CREATEROLE NOSUPERUSER;")
+    c.aplicar(UP, db=outro)  # papéis já existem no cluster
+    c.psql("CREATE ROLE aplicador2 LOGIN CREATEROLE NOSUPERUSER; GRANT dil_obs_dono TO aplicador2 WITH ADMIN OPTION;")
     db = c.novo_banco("dil_aplicador2")
     c.psql(f"GRANT CREATE ON DATABASE {db} TO aplicador2;")
-    erro = c.falha(_ler(UP), db=db, usuario="aplicador2")
-    assert "não pode administrar o papel dil_obs_dono" in erro and "WITH ADMIN OPTION" in erro
-    assert c.psql("SELECT count(*) FROM pg_namespace WHERE nspname = 'dil_obs';", db=db) == "0"  # nada pela metade
-    c.psql("GRANT dil_obs_dono TO aplicador2 WITH ADMIN OPTION, INHERIT FALSE, SET FALSE;")
-    c.aplicar(UP, db=db, usuario="aplicador2")
+    r = _aplicar_bruto(c, db, "aplicador2")  # mesmo com ADMIN OPTION: recusado (administrar o dono = poder desligar o append-only)
+    assert r.returncode != 0 and "aplique como superusuário" in r.stderr
+    assert c.psql("SELECT count(*) FROM pg_namespace WHERE nspname = 'dil_obs';", db=db) == "0"
+    r = _aplicar_bruto(c, db, "postgres")  # superusuário reaplica com os papéis existentes...
+    assert r.returncode == 0, r.stderr
+    assert "aplicador2 (ADMIN OPTION)" in r.stderr and "REVOKE dil_obs_dono FROM" in r.stderr  # ...e avisa da membresia prévia
     assert c.psql("SELECT count(*) FROM pg_namespace WHERE nspname = 'dil_obs';", db=db) == "1"
-    assert "permission denied to set role" in c.falha("SET ROLE dil_obs_dono;", db=db, usuario="aplicador2")
-
-
-def test_r1_f2_membro_permanente_recebe_aviso(cluster_pg_dedicado):
-    c = cluster_pg_dedicado
-    c.psql("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dil_obs_dono') THEN "
-           "CREATE ROLE dil_obs_dono NOLOGIN NOINHERIT NOBYPASSRLS; END IF; END $$;"
-           "CREATE ROLE aplicador3 LOGIN CREATEROLE NOSUPERUSER; GRANT dil_obs_dono TO aplicador3 WITH ADMIN OPTION;")
-    db = c.novo_banco("dil_aplicador3")
-    c.psql(f"GRANT CREATE ON DATABASE {db} TO aplicador3;")
-    saida = subprocess.run(
-        [str(_bin("psql")), "-h", c.socket, "-p", str(c.porta), "-U", "aplicador3", "-d", db, "-X", "-q", "-v", "ON_ERROR_STOP=1"],
-        input=_ler(UP), capture_output=True, text=True, env=c.env(), timeout=120)
-    assert saida.returncode == 0 and "membresia" in saida.stderr  # WARNING explícito; a membresia era do admin, fica
 
 
 # ============================================================== F3: linhagem
@@ -243,7 +244,7 @@ def test_d2_releitura_d0_no_banco_igual_ao_registro(cluster_pg, banco, obs):
     # D2': releitura com o mesmo estado = confirmação; o fechamento da janela (partial → observed) = versão
     assert res == [reg.registrar(Observacao.de_json(j)).value for _, _, j in leituras] == \
         ["inserido", "confirmado", "inserido", "confirmado", "inserido"]
-    assert c.psql("SELECT count(*) FROM dil_obs.confirmacao WHERE run_id LIKE 'r-d2-%';", db=banco) == "2"
+    assert c.psql("SELECT count(*) FROM dil_obs.confirmacao WHERE lote_id LIKE 'l-d2-%';", db=banco) == "2"
     for h in (6, 8, 9, 31):
         t = BASE + timedelta(hours=h, minutes=30)
         py = [f"{o.valor}:{o.status.value}" for o in reg.as_of(t).values()]
@@ -289,6 +290,79 @@ def test_d2_linha_banco_igual_ao_registro_em_permutacoes_e_estado_independe_da_o
             assert _asof_banco(c, banco, t, conta) == bruto, (perm, h)
     assert {"inserido", "confirmado"} <= vistos  # D2': a amostra exercitou a confirmação (e materializações)
     assert int(c.psql("SELECT count(*) FROM dil_obs.confirmacao;", db=banco)) > 0
+
+
+# ============================================================== R2-G4 / G6 / G20
+def test_r2_g4_retry_de_leitura_confirmada_com_conteudo_diferente_e_conflito_no_banco(cluster_pg, banco, obs):
+    """Prova do revisor (p_conf.py / q_g.py): antes, a mesma leitura (mesma chave) já confirmada e reenviada com
+    outro valor virava versão em silêncio."""
+    c = cluster_pg
+    v1 = _obs_json(obs, conta="g4", payload=b"P", run_id="r-g4", lote_id="l-g4-1", h=30,
+                   observed_at=BASE + timedelta(hours=28))
+    r2 = _obs_json(obs, conta="g4", payload=b"P", run_id="r-g4", lote_id="l-g4-2", h=31,
+                   observed_at=BASE + timedelta(hours=29))  # releitura igual → confirmação
+    sql = (_preparo(c, run_id="r-g4", payload=b"P", lote_id="l-g4-1", t=BASE + timedelta(hours=30)) + _reg(v1)
+           + c.sql_relogio(BASE + timedelta(hours=31), "dil_obs_escritor")
+           + f"SELECT dil_obs.registrar_lote('l-g4-2', 'r-g4', {_lit(_sha(b'P'))}, 'google_ads.gaql.campaign_day.v1', '{{}}', NULL);\n"
+           + _reg(r2))
+    res = [ln[2:] for ln in c.psql(sql, db=banco, papel="dil_obs_escritor").splitlines() if ln.startswith("R:")]
+    assert res == ["inserido", "confirmado"]
+    retry_igual = c.psql(c.sql_relogio(BASE + timedelta(hours=32), "dil_obs_escritor") + _reg({**r2, "available_at": (BASE + timedelta(hours=32)).isoformat(), "ingested_at": (BASE + timedelta(hours=32)).isoformat()}),
+                         db=banco, papel="dil_obs_escritor")
+    assert retry_igual == "R:noop"
+    diferente = {**r2, "valor": 6_000_000, "available_at": (BASE + timedelta(hours=32)).isoformat(),
+                 "ingested_at": (BASE + timedelta(hours=32)).isoformat()}
+    erro = c.falha(c.sql_relogio(BASE + timedelta(hours=32), "dil_obs_escritor") + _reg(diferente), db=banco, papel="dil_obs_escritor")
+    assert "conflito_idempotencia" in erro and "já confirmada" in erro
+    assert c.psql("SELECT count(*) FROM dil_obs.observacao WHERE conta = 'g4';", db=banco) == "1"
+
+
+def test_r2_g6_dead_letter_so_em_run_aberto_e_fechamento_coerente(cluster_pg, banco, obs):
+    """Prova do revisor (q_core.py): dead letter era aceito depois do fechamento e um run só com dead letters
+    fechava 'succeeded' com n_lidas = 0."""
+    c = cluster_pg
+    c.psql(c.sql_relogio(BASE + timedelta(hours=30), "dil_obs_escritor")
+           + f"SELECT dil_obs.registrar_run('r-g6', 'google_ads', 'c', '1', {_lit(BASE.isoformat())});\n"
+           + "SELECT dil_obs.registrar_dead_letter('r-g6', NULL, NULL, 'esquema_desconhecido', '{}'::jsonb);\n"
+           + "SELECT dil_obs.registrar_dead_letter('r-g6', NULL, NULL, 'esquema_desconhecido', '{}'::jsonb);",
+           db=banco, papel="dil_obs_escritor")
+    fim = "SELECT dil_obs.finalizar_run('r-g6', '{}', {}, NULL, 0, NULL, {});"
+    assert "n_lidas (0) menor que inseridas+noop+confirmadas+dead_letter (2)" in c.falha(fim.format("partial", 0, "NULL"), db=banco, papel="dil_obs_escritor")
+    assert "não fecha succeeded" in c.falha(fim.format("succeeded", 2, "NULL"), db=banco, papel="dil_obs_escritor")
+    assert c.psql(fim.format("partial", 2, "NULL"), db=banco, papel="dil_obs_escritor") == "finalizado"
+    erro = c.falha("SELECT dil_obs.registrar_dead_letter('r-g6', NULL, NULL, 'linha_sem_identidade', '{}'::jsonb);", db=banco, papel="dil_obs_escritor")
+    assert "já finalizada (dead letter recusado)" in erro
+    assert "inexistente ou já finalizada" in c.falha("SELECT dil_obs.registrar_dead_letter('r-nao-existe', NULL, NULL, 'x', '{}'::jsonb);",
+                                                    db=banco, papel="dil_obs_escritor")
+    assert c.psql("SELECT n_dead_letter || '/' || status FROM dil_obs.run_coleta WHERE run_id = 'r-g6';", db=banco) == "2/partial"
+    # o CHECK também segura inserção direta (superusuário)
+    erro = c.falha("INSERT INTO dil_obs.run_coleta (run_id, fonte, coletor_nome, coletor_versao, iniciado_em, finalizado_em, status, "
+                   "n_lidas, n_inseridas, n_noop, n_dead_letter, n_confirmadas) VALUES ('g6x', 'google_ads', 'c', '1', now(), now(), "
+                   "'succeeded', 2, 0, 0, 2, 0);", db=banco)
+    assert "ck_run_contagens" in erro
+
+
+def test_r2_g20_retry_de_lote_e_noop_mesmo_com_recebido_em_original_antigo(cluster_pg, banco):
+    """Prova do revisor (q_core.py): o retry do MESMO lote, depois de 5 min, com o recebido_em original, falhava
+    como 'no passado'. recebido_em NULL é aceito (o banco carimba) — decisão documentada."""
+    c = cluster_pg
+    sha = _sha(b"g20")
+    t0 = BASE + timedelta(hours=30)
+    c.psql(c.sql_relogio(t0, "dil_obs_escritor")
+           + f"SELECT dil_obs.registrar_run('r-g20', 'google_ads', 'c', '1', {_lit(BASE.isoformat())});\n"
+           + f"SELECT dil_obs.registrar_payload({_lit(sha)}, decode({_lit(b'g20'.hex())}, 'hex'), 'x');\n"
+           + f"SELECT dil_obs.registrar_lote('l-g20', 'r-g20', {_lit(sha)}, 'v', '{{}}', {_lit(t0.isoformat())});",
+           db=banco, papel="dil_obs_escritor")
+    retry = (c.sql_relogio(t0 + timedelta(hours=2), "dil_obs_escritor")
+             + f"SELECT dil_obs.registrar_lote('l-g20', 'r-g20', {_lit(sha)}, 'v', '{{}}', {_lit(t0.isoformat())});")
+    assert c.psql(retry, db=banco, papel="dil_obs_escritor") == "noop"
+    assert c.psql(retry.replace(_lit(t0.isoformat()) + ");", "NULL);"), db=banco, papel="dil_obs_escritor") == "noop"
+    # lote NOVO com o mesmo recebido_em antigo continua recusado; com NULL, o banco carimba
+    novo = (c.sql_relogio(t0 + timedelta(hours=2), "dil_obs_escritor")
+            + f"SELECT dil_obs.registrar_lote('l-g20b', 'r-g20', {_lit(sha)}, 'v', '{{}}', __REC__);")
+    assert "no passado" in c.falha(novo.replace("__REC__", _lit(t0.isoformat())), db=banco, papel="dil_obs_escritor")
+    assert c.psql(novo.replace("__REC__", "NULL"), db=banco, papel="dil_obs_escritor") == "inserido"
+    assert c.psql("SELECT recebido_em = registrado_em FROM dil_obs.lote WHERE lote_id = 'l-g20b';", db=banco) == "t"
 
 
 # ============================================================== relógio do banco

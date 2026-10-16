@@ -69,7 +69,7 @@ observed/zero_confirmed  ⇒  observed_at >= janela_fim     (janela aberta é pa
   retroativo: backfill feito hoje sobre um dia antigo tem `available_at` de hoje. No banco isso é
   forçado pelo **relógio do próprio banco** (R1-F1): `payload_bruto.recebido_em` e `lote.recebido_em`
   são `dil_obs._agora()` no momento do registro (o `p_recebido_em` do coletor só é conferido: mais de
-  5 min no passado ou qualquer valor no futuro é recusado) e `available_at` precisa ser ≥ o primeiro
+  5 min no passado ou qualquer valor no futuro é recusado; NULL = o banco carimba) e `available_at` precisa ser ≥ o primeiro
   recebimento dos bytes e ≥ o recebimento do lote. Antes da R1 o escritor declarava `recebido_em` e
   conseguia fazer o `as_of` mostrar no passado o que o banco recebeu hoje.
 - `ingested_at`: quando a linha foi escrita. No banco é `dil_obs._agora()` (o escritor não declara);
@@ -137,6 +137,7 @@ coletor exige run e lote novos (o payload é compartilhado por conteúdo).
 | `chave_base` nova | `inserido` |
 | mesma `chave_base`, conteúdo (status, valor, unidade, moeda, cobertura) diferente | erro `conflito_idempotencia` (coletor não determinístico) |
 | mesma `chave_base`, mesmo conteúdo (já registrada como versão OU como confirmação) | `noop` (retry, reentrega, reentrega fora de ordem) |
+| mesma `chave_base` já CONFIRMADA, conteúdo diferente | erro `conflito_idempotencia` (R2-G4; no banco a chave da confirmação é recalculada de lote, run e `observed_at`) |
 | leitura nova com o mesmo `estado_negocio` da versão vigente no instante dela (e de toda versão que venceria antes dela nos cortes seguintes) | `confirmado`: linha estreita em `dil_obs.confirmacao`, não versão (D2') |
 | leitura nova com estado diferente | `inserido`, seguido do **reparo**: confirmação que passaria a vencer com outro estado depois dessa versão é materializada como versão (D2') |
 | outra leitura do mesmo fato com o mesmo `available_at` | erro `versao_ambigua` (UNIQUE `(chave_natural, available_at)`) |
@@ -340,9 +341,11 @@ consumidor. Os 3 runs v21 presos em `running` (recibo L9) não mudam o status da
   `ix_obs_asof`, `ix_obs_entidade`, `ix_obs_run` (finalizar_run conta por run). Sem índice em `lote_id` (nenhuma
   função consulta por lote e não há DELETE para a FK precisar dele). O índice duplicado sobre `chave_base`
   medido pela B já tinha saído com o D2 (a coluna deixou de existir).
-- `confirmacao` (D2'): releitura de mesmo estado — `chave_natural`, `observed_at`, `available_at`, run, lote e a
-  versão confirmada (PK `(chave_natural, observed_at, available_at)`, sem payload); append-only, RLS forçado,
-  leitor só SELECT. Medido: **211 B por confirmação** contra **787 B por observação** (1e6 linhas).
+- `confirmacao` (D2'): releitura de mesmo estado — `chave_natural`, `observed_at`, `available_at`, lote (o run é o
+  do lote) e a versão confirmada (PK `(chave_natural, observed_at, available_at)`, sem payload); append-only, RLS
+  forçado, leitor só SELECT. Medido com ids no formato real (R2-G5: run 64 hex, lote `<run>:<i>`, conta 10 dígitos,
+  campanha 11 dígitos, coletor/esquema/payload_ref do adaptador v21; 1e6 linhas): **276 B por confirmação** contra
+  **1.158 B por observação** (com ids de 1 caractere eram 211 e 787 — os textos de linhagem pesam ~370 B na observação).
 - Tabelas: `run_coleta` (única com UPDATE: `running` → final, uma vez; contagens nulas até fechar),
   `payload_bruto` (`sha256` = `encode(sha256(corpo_bruto),'hex')` por CHECK; corpo não-JSON guardado com
   `corpo` nulo), `lote` (pedido + payload + `recebido_em`), `observacao` (PK surrogate, UNIQUE na chave de
@@ -356,16 +359,19 @@ consumidor. Os 3 runs v21 presos em `running` (recibo L9) não mudam o status da
   instante sem offset ISO, identidade com controle/espaço de borda, timezone fora da base (caixa exata),
   dimensões fora de ordem, lote inexistente, linhagem divergente (run/fonte/coletor/schema/payload), run
   finalizado, `available_at` anterior ao recebimento dos bytes pelo banco, isolamento diferente de READ COMMITTED.
-- `finalizar_run` (R1-F8): inseridas e dead letters são contadas pelo banco; o chamador informa
-  `n_lidas` e `n_noop` (obrigatórios, `n_lidas >= inseridas + noop + confirmadas`; `n_confirmadas` também é
-  contada pelo banco — confirmações ainda não materializadas); valor informado que não
-  bate é erro; repetir o mesmo fechamento é `noop`. CHECK com `IS NOT NULL` explícito nas contagens de run fechado.
-- Quem aplica (R1-F2/F22): superusuário aplica sem virar membro de nada; não-superusuário com CREATEROLE se
-  concede `dil_obs_dono` só durante a transação e a revoga no fim (se já for membro permanente, WARNING).
-  Papéis já existentes criados por outro usuário: sem ADMIN OPTION em `dil_obs_dono` a migration para com erro
-  claro e nada pela metade; com `GRANT dil_obs_dono TO <aplicador> WITH ADMIN OPTION, INHERIT FALSE, SET FALSE`
-  ela reaplica e o aplicador continua sem poder `SET ROLE dil_obs_dono`. Limite: quem tem ADMIN OPTION (inclusive
-  o criador dos papéis no PG16) pode se reconceder a membresia — administrar o papel é poder agir como ele.
+- `finalizar_run` (R1-F8, R2-G6): inseridas, confirmadas (não materializadas) e dead letters são contadas pelo
+  banco; o chamador informa `n_lidas` e `n_noop` (obrigatórios); `n_lidas >= inseridas + noop + confirmadas +
+  dead_letter` (toda linha lida tem destino); run com dead letter não fecha `succeeded` (use `partial`/`failed`);
+  valor informado que não bate é erro; repetir o mesmo fechamento é `noop`. CHECK com `IS NOT NULL` explícito e
+  as mesmas duas regras. `registrar_dead_letter` só aceita run em andamento (trava `FOR SHARE`, como as observações).
+- `registrar_lote` (R2-G20): o retry do MESMO lote é `noop` antes de conferir `p_recebido_em` (o coletor reenvia o
+  valor original, que depois de 5 min pareceria "no passado"). `p_recebido_em` NULL é aceito por decisão — o coletor
+  não declara relógio e o banco carimba; declarado, só é conferido (±5 min, nunca futuro), nunca gravado.
+- Quem aplica (R2-G1, substitui a membresia temporária da R1): **só superusuário** aplica ou desfaz 0001/0002.
+  No PostgreSQL 16, o CREATEROLE que cria um papel recebe ADMIN OPTION nele, e quem administra `dil_obs_dono` pode
+  se conceder o papel a qualquer momento e desligar o append-only (provado pelo revisor). Não-superusuário recebe
+  erro com a instrução (no Supabase self-hosted: `supabase_admin`) e nada é criado. Ao fim do up, membresias ou ADMIN
+  OPTION de não-superusuários em `dil_obs_dono` que já existiam viram WARNING com o `REVOKE` a rodar.
 - RLS habilitado **e forçado** em todas as tabelas, policies explícitas só para SELECT (leitor, dono) e
   INSERT (dono); nenhuma policy de UPDATE/DELETE nas tabelas append-only.
 - Rollback `0001.down.sql`: antes de qualquer DROP, procura em `pg_depend` objetos **fora** de `dil_obs` que
