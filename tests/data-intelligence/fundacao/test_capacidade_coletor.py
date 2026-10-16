@@ -188,15 +188,36 @@ def test_backoff_exponencial_com_teto_e_deterministico():
 
 
 # ---------------------------------------------------------------- idempotência e A→B→A (F10)
-def test_mesmo_slot_e_no_op_e_releitura_igual_nao_cria_versao():
+def test_mesmo_slot_e_no_op_e_releitura_igual_em_outra_hora_e_versao_nova_d2():
     sink = SinkMemoria(relogio_sink())
     r1 = run_coleta(ped("06:00"), **gravar(sink))
     r2 = run_coleta(ped("06:00"), **gravar(sink))
     r3 = run_coleta(ped("07:00"), **gravar(sink))
     assert r1.status == "concluido" and r1.inseridas == 9
-    assert r2.status == "ja_concluido" and sink.chamadas_gravar == 2  # r2 nem leu
-    assert r3.status == "concluido" and r3.gravadas_novas == 0 and r3.noop == 9
-    assert len(sink.registro) == 9 and len(sink.payloads) == 3
+    assert r2.status == "ja_concluido" and sink.chamadas_gravar == 2  # mesmo slot: nem lê
+    # Regra D2 da frente A: observed_at entra na chave da leitura → reler o MESMO valor em outra hora é
+    # versão nova. Custo: as observações crescem com o nº de leituras, não com o nº de mudanças (04 §6).
+    assert r3.status == "concluido" and r3.inseridas == 9 and r3.noop == 0
+    assert len(sink.registro) == 18
+    assert len(sink.payloads) == 3  # o payload bruto continua deduplicado por conteúdo
+    # e o as_of continua mostrando os mesmos valores (a versão nova repete o conteúdo)
+    fim = sink.as_of(sink.instantes_de_gravacao()[-1])
+    assert sorted(v[3] for v in fim.values() if v[0] == "impressions") == [100, 101, 102]
+
+
+def test_retry_da_mesma_leitura_e_noop():
+    sink = SinkMemoria(relogio_sink())
+    leitura_fixa = datetime(2026, 10, 16, 8, 59, tzinfo=UTC)  # antes do relógio do sink
+
+    class Carimbado(Adaptador):
+        def ler(self, pedido, cliente):
+            r = super().ler(pedido, cliente)
+            return RespostaLeitura(r.linhas, r.contexto, observado_em=leitura_fixa)
+
+    r1 = run_coleta(ped("06:00"), **{**gravar(sink), "adaptador": Carimbado()})
+    # a mesma leitura (mesmo carimbo) reentregue por outro slot = mesma chave de leitura → NOOP
+    r2 = run_coleta(ped("06:01"), **{**gravar(sink), "adaptador": Carimbado()})
+    assert (r1.inseridas, r2.inseridas, r2.noop) == (9, 0, 9) and len(sink.registro) == 9
 
 
 def _custo_a_b_a(conta, slot):
@@ -228,27 +249,78 @@ def _historia(sink: SinkMemoria) -> list[dict]:
     return [sink.as_of(t) for t in sink.instantes_de_gravacao()]
 
 
-def test_equivalencia_serial_paralelo_compara_as_of_em_todos_os_cortes():
-    pedidos = [ped(s, f"acc-{k}") for k in range(6) for s in ("08:00", "06:00", "07:00")]  # fora de ordem de propósito
-    random.shuffle(pedidos)
+def _versoes(sink: SinkMemoria) -> set:
+    return {(v.observacao.chave_natural, v.observacao.status.value, v.observacao.valor, v.observacao.observed_at)
+            for v in sink.registro.versoes}
+
+
+INICIO_LEITURA = datetime(2026, 10, 16, 9, tzinfo=UTC)  # 06:00 em São Paulo
+SINK_DEPOIS = datetime(2026, 10, 16, 18, tzinfo=UTC)  # gravação sempre depois das leituras
+
+
+class AdaptadorCarimbado(Adaptador):
+    """Transporte que carimba o instante da leitura. No teste, o carimbo é determinístico por pedido
+    (como se cada leitura tivesse de fato acontecido no seu slot) — é isso que torna serial e paralelo
+    comparáveis: a semântica é "mesmas leituras ⇒ mesma história", não "mesma ordem de chegada"."""
+
+    def ler(self, pedido, cliente):
+        r = super().ler(pedido, cliente)
+        h, m = int(pedido.slot[11:13]), int(pedido.slot[14:16])
+        k = int(pedido.conta.split("-")[1])
+        carimbo = INICIO_LEITURA + timedelta(hours=h - 6, minutes=m, seconds=k)
+        return RespostaLeitura(r.linhas, r.contexto, observado_em=carimbo)
+
+
+def test_equivalencia_serial_paralelo_mesmas_leituras_mesma_historia():
+    pedidos = [ped(s, f"acc-{k}") for k in range(6) for s in ("08:00", "06:00", "07:00")]
+    random.shuffle(pedidos)  # ordem de submissão arbitrária
     pol = PoliticaRetry(max_tentativas=4, timeout_s=2)
-    s_serial = SinkMemoria(relogio_sink())
-    executar_lote(pedidos, paralelismo=1, adaptador=Adaptador(),
+    s_serial = SinkMemoria(relogio_sink(SINK_DEPOIS))
+    executar_lote(pedidos, paralelismo=1, adaptador=AdaptadorCarimbado(),
                   transporte=Transporte(_a_b_a_por_conta, roteiro=[ErroTransitorio("429"), None] * 3),
                   sink=s_serial, modo="gravar", politica=pol, **NADA)
-    ref = _historia(s_serial)
-    assert len(ref) == 18 and len(s_serial.registro) == 6 * 2 * 3 * 3  # 6 contas × 2 linhas × 3 métricas × (A, B, A')
+    ref, ref_versoes = _historia(s_serial), _versoes(s_serial)
+    assert len(ref) == 18 and len(s_serial.registro) == 6 * 2 * 3 * 3  # 6 contas × 2 linhas × 3 métricas × 3 leituras
     for rodada in range(8):
-        s_par = SinkMemoria(relogio_sink())
-        executar_lote(pedidos, paralelismo=6, adaptador=Adaptador(),
+        s_par = SinkMemoria(relogio_sink(SINK_DEPOIS))
+        executar_lote(pedidos, paralelismo=6, adaptador=AdaptadorCarimbado(),
                       transporte=Transporte(_a_b_a_por_conta, roteiro=[ErroTransitorio("500"), None] * 3,
                                             atraso_max_s=0.02),
                       sink=s_par, modo="gravar", politica=pol, **NADA)
+        assert _versoes(s_par) == ref_versoes, f"versões divergiram na rodada {rodada}"
         assert _historia(s_par) == ref, f"as_of divergiu na rodada {rodada}"
         assert s_par.instantes_de_gravacao() == s_serial.instantes_de_gravacao()
-    # o último corte mostra A de novo (A→B→A preservado), não B
+    # o último corte mostra A de novo (a leitura das 08h é a mais recente), não B
     custos = sorted(v[3] for v in ref[-1].values() if v[0] == "cost")
     assert custos == sorted([(10 + k) * 1_000_000 for k in range(6)] * 2)
+
+
+def test_d1_gravacao_fora_de_ordem_nao_desfaz_a_leitura_mais_recente():
+    """Sob D1 a ordem de gravação não decide o estado final: vence o maior observed_at."""
+    em_ordem, invertido = SinkMemoria(relogio_sink(SINK_DEPOIS)), SinkMemoria(relogio_sink(SINK_DEPOIS))
+    t = Transporte(_a_b_a_por_conta)
+    for s_, sink in ((("06:00", "07:00", "08:00"), em_ordem), (("08:00", "07:00", "06:00"), invertido)):
+        for slot in s_:
+            run_coleta(ped(slot, "acc-0"), adaptador=AdaptadorCarimbado(), transporte=t, sink=sink, modo="gravar", **NADA)
+    assert _versoes(em_ordem) == _versoes(invertido)
+    fim = lambda sk: sk.as_of(sk.instantes_de_gravacao()[-1])  # noqa: E731
+    assert fim(em_ordem) == fim(invertido)
+    assert sorted(v[3] for v in fim(invertido).values() if v[0] == "cost") == [10_000_000, 10_000_000]
+    # o conhecimento intermediário difere, e deve: gravada depois, a leitura das 07h (B) não desfaz a das 08h
+    custo = lambda h: sorted(v[3] for v in h.values() if v[0] == "cost")  # noqa: E731
+    assert [custo(h) for h in _historia(em_ordem)] == [[10_000_000] * 2, [20_000_000] * 2, [10_000_000] * 2]
+    assert [custo(h) for h in _historia(invertido)] == [[10_000_000] * 2] * 3
+
+
+def test_observado_em_posterior_a_gravacao_vai_para_dead_letter():
+    class Futuro(Adaptador):
+        def ler(self, pedido, cliente):
+            r = super().ler(pedido, cliente)
+            return RespostaLeitura(r.linhas, r.contexto, observado_em=datetime(2030, 1, 1, tzinfo=UTC))
+
+    sink = SinkMemoria(relogio_sink())
+    r = run_coleta(ped(), **{**gravar(sink), "adaptador": Futuro()})
+    assert r.status == "dead_letter" and r.motivo_dead_letter == "observado_em_invalido" and len(sink.registro) == 0
 
 
 # ---------------------------------------------------------------- trava por capacidade (F11)
