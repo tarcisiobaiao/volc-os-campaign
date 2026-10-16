@@ -104,7 +104,7 @@ def carregar(cluster, db, observacoes, *, papel: str = "dil_obs_escritor", **kw)
 
 
 def as_of_sql(cluster, db, t: datetime, conta: str) -> list[tuple]:
-    sql = (f"SELECT chave_natural, chave_idempotencia, status, coalesce(valor::text, 'NULL'), dil_obs._ts(available_at) "
+    sql = (f"SELECT encode(chave_natural, 'hex'), encode(chave_idempotencia, 'hex'), status, coalesce(valor::text, 'NULL'), dil_obs._ts(available_at) "
            f"FROM dil_obs.observacao_as_of({_lit(t.isoformat())}) WHERE conta = {_lit(conta)} ORDER BY chave_natural;")
     # _ts é interno (sem EXECUTE para o leitor): a formatação canônica roda como superusuário;
     # o caminho do papel leitor é provado em test_rls_e_grants_minimos e no latest
@@ -161,8 +161,8 @@ def test_chaves_python_iguais_as_do_postgres(cluster_pg, banco_obs, obs):
             "p->>'fonte', p->>'conta', p->>'entidade_tipo', p->>'entidade_id', "
             "ARRAY(SELECT jsonb_array_elements_text(p->'grao')), p->'dimensoes', p->>'metrica', p->>'value_kind', "
             "(p->>'janela_inicio')::timestamptz, (p->>'janela_fim')::timestamptz, p->>'timezone') AS nat, p FROM p) "
-            "SELECT nat || '|' || dil_obs._chave_base(nat, p->>'payload_sha256', p->>'schema_version', p->>'coletor_nome', "
-            "p->>'coletor_versao', (p->>'observed_at')::timestamptz) FROM n;"
+            "SELECT encode(nat, 'hex') || '|' || encode(dil_obs._chave_base(nat, p->>'payload_sha256', p->>'schema_version', "
+            "p->>'coletor_nome', p->>'coletor_versao', (p->>'observed_at')::timestamptz), 'hex') FROM n;"
         )
         nat, base = cluster_pg.psql(sql, db=banco_obs).split("|")
         assert (nat, base) == (o.chave_natural, o.chave_base)
@@ -236,7 +236,7 @@ def _insert_mutado(overrides: dict, conta: str) -> str:
             "janela_fim", "timezone", "observed_at", "source_updated_at", "available_at", "ingested_at", "run_id",
             "request_id", "lote_id", "payload_sha256", "payload_ref", "schema_version", "coletor_nome", "coletor_versao",
             "status", "motivo", "cobertura_ppm"]
-    novo = {"chave_idempotencia": "encode(sha256('mut'::bytea), 'hex')",
+    novo = {"chave_idempotencia": "sha256('mut'::bytea)",
             "available_at": "available_at + interval '1 hour'", "ingested_at": "now()"}
     novo.update(overrides)
     sel = ", ".join(novo.get(c, c) for c in cols)

@@ -11,7 +11,7 @@ DOWN2 = "dil_obs_0002_observacao_particionada.OPCIONAL.down.sql"
 BRT = timezone(timedelta(hours=-3))
 
 CATALOGO = """
-SELECT md5(string_agg(x, E'\\n' ORDER BY x)) FROM (
+SELECT string_agg(x, E'\\n' ORDER BY x) FROM (
   SELECT 'rel:' || relname || ':' || relkind::text || ':' || relrowsecurity || relforcerowsecurity || ':' ||
          coalesce(array_to_string(relacl, ','), '') FROM pg_class WHERE relnamespace = 'dil_obs'::regnamespace
   UNION ALL SELECT 'con:' || conrelid::regclass::text || ':' || conname || ':' || pg_get_constraintdef(oid)
@@ -19,6 +19,7 @@ SELECT md5(string_agg(x, E'\\n' ORDER BY x)) FROM (
   UNION ALL SELECT 'idx:' || indexrelid::regclass::text || ':' || pg_get_indexdef(indexrelid) FROM pg_index
    WHERE indrelid IN (SELECT oid FROM pg_class WHERE relnamespace = 'dil_obs'::regnamespace)
   UNION ALL SELECT 'fn:' || p.oid::regprocedure::text || ':' || prosecdef || ':' || coalesce(array_to_string(proacl, ','), '')
+         || ':' || md5(prosrc) || ':' || coalesce(array_to_string(proconfig, ','), '') || ':' || proisstrict
     FROM pg_proc p WHERE pronamespace = 'dil_obs'::regnamespace
   UNION ALL SELECT 'tg:' || tgname || ':' || pg_get_triggerdef(oid) FROM pg_trigger
    WHERE tgrelid IN (SELECT oid FROM pg_class WHERE relnamespace = 'dil_obs'::regnamespace) AND NOT tgisinternal
@@ -27,7 +28,7 @@ SELECT md5(string_agg(x, E'\\n' ORDER BY x)) FROM (
 ) s(x);
 """
 
-ASOF = ("SELECT string_agg(chave_natural || ':' || status || ':' || coalesce(valor::text, 'NULL'), ',' ORDER BY chave_natural) "
+ASOF = ("SELECT string_agg(encode(chave_natural, 'hex') || ':' || status || ':' || coalesce(valor::text, 'NULL'), ',' ORDER BY chave_natural) "
         "FROM dil_obs.observacao_as_of('{t}');")
 
 
@@ -36,11 +37,14 @@ def _carga(itens) -> str:
     relogio = ("RESET ROLE; CREATE OR REPLACE FUNCTION dil_obs._agora() RETURNS timestamptz LANGUAGE sql STABLE PARALLEL SAFE "
                "SET search_path = '' AS $$ SELECT {} $$; SET ROLE dil_obs_escritor;")
     sql = []
-    for conta, dia, h, payload, valor in itens:
+    for item in itens:
+        conta, dia, h, payload, valor = item[:5]
+        obs_h = item[5] if len(item) > 5 else None
         sha = hashlib.sha256(payload).hexdigest()
         ano, mes, d = dia if len(dia) == 3 else (2026, *dia)
         ini = datetime(ano, mes, d, tzinfo=BRT)
-        obs_at, disp = ini + timedelta(days=1), ini + timedelta(hours=h)
+        obs_at = ini + (timedelta(hours=obs_h) if obs_h is not None else timedelta(days=1))
+        disp = ini + timedelta(hours=h)
         lote = f"lote-{conta}-{sha[:10]}-{h}"
         run = f"run-{conta}-{ini.date().isoformat()}"
         sql.append(relogio.format(f"'{disp.isoformat()}'::timestamptz"))  # relógio do banco simulado (R1-F1)
@@ -61,9 +65,10 @@ def _carga(itens) -> str:
     return "\n".join(sql)
 
 
-DADOS = [  # dois meses, uma virada de mês em BRT, um restatement e uma ausência
+DADOS = [  # dois meses, virada de mês em BRT, restatement, leitura antiga atrasada (D1) e uma ausência
     ("p1", (6, 30), 30, b"jun-a", 1_000_000),
-    ("p1", (6, 30), 80, b"jun-b", 1_100_000),
+    ("p1", (6, 30), 80, b"jun-b", 1_100_000, 70),
+    ("p1", (6, 30), 90, b"jun-velha", 900_000, 50),  # medida antes de jun-b, entregue depois: não pode vencer
     ("p1", (7, 1), 30, b"jul-a", 2_000_000),
     ("p2", (7, 31), 30, b"jul-vazio", None),
 ]
@@ -78,11 +83,16 @@ def test_particionamento_preserva_semantica_append_only_e_rollback_exato(cluster
     db = c.novo_banco("dil_part")
     c.aplicar(UP1, db=db)
     assinatura_0001 = c.psql(CATALOGO, db=db)
-    assert _resultados(c.psql(_carga(DADOS[:3]), db=db, papel="dil_obs_escritor")) == ["inserido"] * 3
+    assert _resultados(c.psql(_carga(DADOS[:4]), db=db, papel="dil_obs_escritor")) == ["inserido"] * 4
     cortes = ["2026-07-02T12:00:00-03:00", "2026-07-04T12:00:00-03:00", "2026-09-01T00:00:00-03:00"]
     antes = [c.psql(ASOF.format(t=t), db=db) for t in cortes]
+    assert ":observed:1100000" in antes[1]  # jun-b (observed mais recente) vence a antiga atrasada
 
+    corpo_asof = "SELECT md5(prosrc) || proisstrict FROM pg_proc WHERE proname = 'observacao_as_of';"
+    asof_0001 = c.psql(corpo_asof, db=db)
     c.aplicar(UP2, db=db)
+    # 0002 recria a função de as_of: tem de ser o MESMO corpo de 0001 (a 1ª geração congelou o corpo pré-D1)
+    assert c.psql(corpo_asof, db=db) == asof_0001
     assert c.psql("SELECT relkind FROM pg_class WHERE oid = 'dil_obs.observacao'::regclass;", db=db) == "p"
     particoes = c.psql("SELECT string_agg(relname, ',' ORDER BY relname) FROM pg_inherits i JOIN pg_class k ON k.oid = i.inhrelid "
                        "WHERE inhparent = 'dil_obs.observacao'::regclass;", db=db).split(",")
@@ -90,7 +100,7 @@ def test_particionamento_preserva_semantica_append_only_e_rollback_exato(cluster
     assert [c.psql(ASOF.format(t=t), db=db) for t in cortes] == antes  # mesmo as_of depois de migrar
 
     # idempotência e escrita continuam pelas mesmas funções, agora roteadas para a partição
-    saida = c.psql(_carga(DADOS[:1] + DADOS[3:]), db=db, papel="dil_obs_escritor")
+    saida = c.psql(_carga(DADOS[:1] + DADOS[4:]), db=db, papel="dil_obs_escritor")
     assert _resultados(saida) == ["noop", "inserido"]
     assert c.psql("SELECT count(*) FROM dil_obs.observacao_p2026_07;", db=db) == "2"
 
@@ -109,7 +119,10 @@ def test_particionamento_preserva_semantica_append_only_e_rollback_exato(cluster
     depois_escrita = [c.psql(ASOF.format(t=t), db=db) for t in cortes]
 
     c.aplicar(DOWN2, db=db)
-    assert c.psql(CATALOGO, db=db) == assinatura_0001  # catálogo idêntico ao de 0001
+    c.psql(c.sql_relogio(None), db=db)  # a carga que falhou de propósito deixou o relógio simulado no passado
+    depois = c.psql(CATALOGO, db=db)
+    falta, sobra = set(assinatura_0001.splitlines()) - set(depois.splitlines()), set(depois.splitlines()) - set(assinatura_0001.splitlines())
+    assert not falta and not sobra, (sorted(falta), sorted(sobra))  # catálogo idêntico ao de 0001
     assert [c.psql(ASOF.format(t=t), db=db) for t in cortes] == depois_escrita  # dados preservados
-    assert _resultados(c.psql(_carga(DADOS[3:]), db=db, papel="dil_obs_escritor")) == ["noop"]
+    assert _resultados(c.psql(_carga(DADOS[4:]), db=db, papel="dil_obs_escritor")) == ["noop"]
     assert _resultados(c.psql(_carga([("p4", (7, 2), 30, b"pos-rollback", 7)]), db=db, papel="dil_obs_escritor")) == ["inserido"]

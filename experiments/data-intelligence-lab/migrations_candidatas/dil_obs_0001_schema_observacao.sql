@@ -114,9 +114,11 @@ AS $$ SELECT s IS NOT NULL AND s <> '' AND s = pg_catalog.btrim(s, ' ') AND s !~
 -- ---------------------------------------------------------------------------
 -- 1. Funções puras de chave (espelho de volc_dil/fundacao/observacao/chaves.py)
 -- ---------------------------------------------------------------------------
-CREATE FUNCTION dil_obs._sha256_texto(s text) RETURNS text
+-- Chaves guardadas como digest bytea de 32 bytes (B: hex em texto custava ~2× nos três índices de chave).
+-- O texto canônico que entra no hash é o mesmo do Python; a paridade é encode(chave, 'hex') = hex do Python.
+CREATE FUNCTION dil_obs._sha256_bytes(s text) RETURNS bytea
 LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE SET search_path = ''
-AS $$ SELECT pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(s, 'UTF8')), 'hex') $$;
+AS $$ SELECT pg_catalog.sha256(pg_catalog.convert_to(s, 'UTF8')) $$;
 
 CREATE FUNCTION dil_obs._ts(t timestamptz) RETURNS text
 LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE SET search_path = ''
@@ -125,10 +127,10 @@ AS $$ SELECT pg_catalog.to_char(t AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.U
 CREATE FUNCTION dil_obs._chave_natural(
   p_fonte text, p_conta text, p_entidade_tipo text, p_entidade_id text, p_grao text[], p_dimensoes jsonb,
   p_metrica text, p_value_kind text, p_janela_inicio timestamptz, p_janela_fim timestamptz, p_timezone text
-) RETURNS text
+) RETURNS bytea
 LANGUAGE sql IMMUTABLE PARALLEL SAFE SET search_path = ''
 AS $$
-  SELECT dil_obs._sha256_texto(
+  SELECT dil_obs._sha256_bytes(
     'dil_obs.chave_natural.v1'
     || chr(31) || p_fonte || chr(31) || p_conta || chr(31) || p_entidade_tipo || chr(31) || p_entidade_id
     || chr(31) || coalesce((SELECT string_agg(g, ',' ORDER BY g COLLATE "C")
@@ -142,12 +144,13 @@ $$;
 -- v2 (D1/D2): observed_at entra na chave da LEITURA. Retry/reentrega = mesma chave = no-op; o mesmo payload
 -- relido em outra hora (janela que fechou, cobertura que mudou, cron D0) = leitura nova = versão nova.
 CREATE FUNCTION dil_obs._chave_base(
-  p_chave_natural text, p_payload_sha256 text, p_schema_version text, p_coletor_nome text, p_coletor_versao text,
+  p_chave_natural bytea, p_payload_sha256 text, p_schema_version text, p_coletor_nome text, p_coletor_versao text,
   p_observed_at timestamptz
-) RETURNS text
+) RETURNS bytea
 LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE SET search_path = ''
 AS $$
-  SELECT dil_obs._sha256_texto('dil_obs.chave_idempotencia.v2' || chr(31) || p_chave_natural || chr(31) || p_payload_sha256
+  SELECT dil_obs._sha256_bytes('dil_obs.chave_idempotencia.v2' || chr(31) || encode(p_chave_natural, 'hex')
+                               || chr(31) || p_payload_sha256
                                || chr(31) || p_schema_version || chr(31) || p_coletor_nome || chr(31) || p_coletor_versao
                                || chr(31) || dil_obs._ts(p_observed_at))
 $$;
@@ -216,8 +219,8 @@ COMMENT ON TABLE dil_obs.lote IS 'Um pedido à fonte e o payload que voltou. rec
 
 CREATE TABLE dil_obs.observacao (
   observacao_id       bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  chave_idempotencia  text NOT NULL,
-  chave_natural       text NOT NULL,
+  chave_idempotencia  bytea NOT NULL,  -- sha256 (32 bytes); hex = Observacao.chave_base no Python
+  chave_natural       bytea NOT NULL,  -- sha256 (32 bytes); hex = Observacao.chave_natural no Python
   fonte               text NOT NULL,
   conta               text NOT NULL,
   entidade_tipo       text NOT NULL,
@@ -249,7 +252,7 @@ CREATE TABLE dil_obs.observacao (
   cobertura_ppm       integer,
 
   CONSTRAINT uq_obs_chave_idempotencia UNIQUE (chave_idempotencia),
-  CONSTRAINT ck_obs_chaves CHECK (chave_idempotencia ~ '^[0-9a-f]{64}$' AND chave_natural ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT ck_obs_chaves CHECK (octet_length(chave_idempotencia) = 32 AND octet_length(chave_natural) = 32),
   CONSTRAINT ck_obs_fonte CHECK (fonte ~ '^[a-z][a-z0-9_]*$'),
   CONSTRAINT ck_obs_identidade CHECK (
     dil_obs._texto_ok(conta) AND dil_obs._texto_ok(entidade_tipo) AND dil_obs._texto_ok(entidade_id)
@@ -318,7 +321,8 @@ CREATE UNIQUE INDEX uq_obs_versao ON dil_obs.observacao (chave_natural, availabl
 -- serve o DISTINCT ON do as_of na ordem de versão (D1)
 CREATE INDEX ix_obs_asof ON dil_obs.observacao (chave_natural, observed_at DESC, available_at DESC);
 CREATE INDEX ix_obs_entidade ON dil_obs.observacao (fonte, conta, entidade_tipo, entidade_id, janela_inicio);
-CREATE INDEX ix_obs_lote ON dil_obs.observacao (lote_id);
+-- (sem índice em lote_id: nenhuma função consulta por lote e as FKs nunca precisam dele — não há DELETE;
+--  run_id fica indexado porque finalizar_run conta por run)
 CREATE INDEX ix_obs_run ON dil_obs.observacao (run_id);
 
 CREATE TABLE dil_obs.dead_letter (
@@ -570,8 +574,8 @@ DECLARE
   v_valor bigint;
   v_cob integer;
   v_avail timestamptz;
-  v_nat text;
-  v_base text;
+  v_nat bytea;
+  v_base bytea;
   v_exist dil_obs.observacao%ROWTYPE;
   v_lote dil_obs.lote%ROWTYPE;
   v_run dil_obs.run_coleta%ROWTYPE;
@@ -713,7 +717,7 @@ BEGIN
   END IF;
 
   -- serializa escritores concorrentes do mesmo fato
-  PERFORM pg_advisory_xact_lock(hashtextextended(v_nat, 0));
+  PERFORM pg_advisory_xact_lock(hashtextextended(encode(v_nat, 'hex'), 0));
 
   SELECT * INTO v_exist FROM dil_obs.observacao WHERE chave_idempotencia = v_base;
   IF FOUND THEN
@@ -748,17 +752,25 @@ END $$;
 -- ---------------------------------------------------------------------------
 -- 5. Leitura as_of (SECURITY INVOKER: grants e RLS de quem chama valem)
 -- ---------------------------------------------------------------------------
+-- INLINÁVEL de propósito (medição da frente B: sem inline, 8,5–17,5 s em 1e6 linhas contra 0,2–0,3 s):
+-- o planejador só expande no lugar uma função SQL de conjunto que NÃO tenha SET (search_path), NÃO seja
+-- STRICT nem SECURITY DEFINER. Por isso: sem SET, nomes e o operador totalmente qualificados (o search_path
+-- de quem chama não muda nada), SECURITY INVOKER (grants e RLS de quem chama valem) e t nulo → conjunto vazio
+-- (available_at <= NULL nunca é verdade), o mesmo efeito que o STRICT tinha.
+-- Ordem de versão (D1): maior observed_at, depois maior available_at. O UNIQUE (chave_natural, available_at)
+-- torna esse par único por fato, então a ordem é total sem desempate extra e o índice ix_obs_asof a cobre.
 CREATE FUNCTION dil_obs.observacao_as_of(t timestamptz) RETURNS SETOF dil_obs.observacao
-LANGUAGE sql STABLE STRICT SECURITY INVOKER SET search_path = ''
+LANGUAGE sql STABLE PARALLEL SAFE SECURITY INVOKER
 AS $$
   SELECT DISTINCT ON (o.chave_natural) o.*
     FROM dil_obs.observacao AS o
-   WHERE o.available_at <= t
-   ORDER BY o.chave_natural, o.observed_at DESC, o.available_at DESC, o.chave_idempotencia DESC
+   WHERE o.available_at OPERATOR(pg_catalog.<=) t
+   ORDER BY o.chave_natural, o.observed_at DESC, o.available_at DESC
 $$;
 COMMENT ON FUNCTION dil_obs.observacao_as_of(timestamptz) IS
   'Estado conhecido em t: por chave_natural, entre as versões com available_at <= t, a de maior observed_at '
-  '(empate: maior available_at; depois chave_idempotencia, inalcançável pelo UNIQUE). Status preservado.';
+  '(empate: maior available_at; o UNIQUE (chave_natural, available_at) impede empate total). Status preservado. '
+  'Inlinável: sem SET, sem STRICT, nomes qualificados.';
 
 CREATE VIEW dil_obs.observacao_latest WITH (security_invoker = true) AS
   SELECT * FROM dil_obs.observacao_as_of(now());

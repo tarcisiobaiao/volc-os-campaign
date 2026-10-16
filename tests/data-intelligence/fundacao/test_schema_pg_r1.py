@@ -286,7 +286,7 @@ def test_r1_m6_chaves_e_ordem_iguais_em_cluster_utf8(cluster_pg_utf8, obs):
             available_at=BASE + timedelta(hours=30), ingested_at=BASE + timedelta(hours=30), run_id="r-u", lote_id="l-u")
     j = o.para_json()
     sql = (_preparo(c, run_id="r-u", payload=b"utf8", lote_id="l-u", t=o.available_at) + _reg(j)
-           + "RESET ROLE; SELECT 'K:' || chave_natural || '|' || chave_idempotencia FROM dil_obs.observacao WHERE conta = " + _lit(o.conta) + ";")
+           + "RESET ROLE; SELECT 'K:' || encode(chave_natural, 'hex') || '|' || encode(chave_idempotencia, 'hex') FROM dil_obs.observacao WHERE conta = " + _lit(o.conta) + ";")
     out = c.psql(sql, db=db, papel="dil_obs_escritor")
     assert "R:inserido" in out  # ordem por ponto de código aceita (sem COLLATE "C" seria recusada)
     chaves = [ln[2:] for ln in out.splitlines() if ln.startswith("K:")][0].split("|")

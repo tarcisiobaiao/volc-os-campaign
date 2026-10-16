@@ -170,9 +170,14 @@ coletor exige run e lote novos (o payload é compartilhado por conteúdo).
   `vigente_entre(itens, obs=, base=)` é a regra única; o `FluxoIndexado` da thread D delega a ela.
 - `latest(obs, agora)` = `as_of(obs, agora)`; não há relógio implícito.
 - SQL: `dil_obs.observacao_as_of(t)` (`DISTINCT ON (chave_natural) ... ORDER BY chave_natural, observed_at DESC,
-  available_at DESC, chave_idempotencia DESC`, SECURITY INVOKER) e `dil_obs.observacao_latest` =
-  `observacao_as_of(now())`. A view é derivada do histórico; o histórico não é tocado. Índice
-  `ix_obs_asof (chave_natural, observed_at DESC, available_at DESC)` serve o as_of.
+  available_at DESC`, SECURITY INVOKER) e `dil_obs.observacao_latest` = `observacao_as_of(now())`. A view é
+  derivada do histórico; o histórico não é tocado. Índice `ix_obs_asof (chave_natural, observed_at DESC,
+  available_at DESC)` serve o as_of; o UNIQUE `(chave_natural, available_at)` torna a ordem total sem desempate extra.
+- **A função é inlinável** (medição da frente B): o planejador só expande no lugar uma função SQL de conjunto
+  sem `SET`, sem `STRICT` e sem `SECURITY DEFINER`. A versão anterior tinha `SET search_path = ''` e `STRICT` e
+  rodava como caixa-preta (8,5–17,5 s em 1e6 linhas, 19 s na view). Agora: sem `SET`, nomes e o operador
+  qualificados (`OPERATOR(pg_catalog.<=)`), `t` nulo → conjunto vazio. Números antes/depois no HANDOFF-A §7.2;
+  plano provado por `test_schema_pg_desempenho.py` (nenhum "Function Scan").
 - Equivalência: `test_equivalencia_as_of_sql_python` gera 8 sequências aleatórias (seed 1610, 8–30 leituras
   com retries, A→B→A, ausências e `observed_at` fora da ordem de chegada), compara o resultado de cada
   registro e o as_of em 9 cortes; e exige que os dois caminhos (`inserido`, `noop`) tenham sido exercitados.
@@ -317,6 +322,14 @@ consumidor. Os 3 runs v21 presos em `running` (recibo L9) não mudam o status da
   `registrar_dead_letter`, `registrar_observacao`), `dil_obs_leitor` (só SELECT nas tabelas/view e EXECUTE em
   `observacao_as_of`). `anon`/`authenticated` sem nada, explicitamente, mesmo com o default ACL aberto do
   Supabase (simulado no cluster de teste). PUBLIC sem EXECUTE em função nenhuma.
+- Chaves no banco: `chave_natural` e `chave_idempotencia` são **digest `bytea` de 32 bytes** (não hex em texto,
+  65 bytes + cabeçalho): o texto canônico que entra no hash é o mesmo do Python e a paridade é
+  `encode(chave, 'hex')` = hex do Python (provada em `test_chaves_python_iguais_as_do_postgres`). bytea ordena
+  byte a byte, então a ordem das chaves independe de collation.
+- Índices em `observacao`: PK, `uq_obs_chave_idempotencia`, `uq_obs_versao (chave_natural, available_at DESC)`,
+  `ix_obs_asof`, `ix_obs_entidade`, `ix_obs_run` (finalizar_run conta por run). Sem índice em `lote_id` (nenhuma
+  função consulta por lote e não há DELETE para a FK precisar dele). O índice duplicado sobre `chave_base`
+  medido pela B já tinha saído com o D2 (a coluna deixou de existir).
 - Tabelas: `run_coleta` (única com UPDATE: `running` → final, uma vez; contagens nulas até fechar),
   `payload_bruto` (`sha256` = `encode(sha256(corpo_bruto),'hex')` por CHECK; corpo não-JSON guardado com
   `corpo` nulo), `lote` (pedido + payload + `recebido_em`), `observacao` (PK surrogate, UNIQUE na chave de
@@ -388,6 +401,8 @@ observed/zero_confirmed. Maturidade e método de atribuição **não** vêm da f
 | cobertura desconhecida (nula + marcador) | cobertura linear pelo relógio | fabricava precisão; a mutação "cobertura constante" sobrevivia (R1-F17) |
 | membresia temporária em `dil_obs_dono` | `GRANT dil_obs_dono TO CURRENT_USER` permanente | o aplicador não-superusuário podia desligar o append-only (R1-F2) |
 | down recusa dependente externo | `DROP SCHEMA ... CASCADE` cego | apagava views de outros schemas (R1-F21) |
+| `observacao_as_of` SQL inlinável (sem `SET`/`STRICT`, nomes qualificados) | manter `SET search_path` por higiene | sem inline a consulta global ficava ~50× mais lenta (B) e a função é SECURITY INVOKER: o `search_path` de quem chama não muda o que ela lê |
+| chaves `bytea` (digest) | hex em texto | metade do tamanho nos índices de chave; ordenação sem collation |
 
 ## 13. O que está provado e o que não
 
