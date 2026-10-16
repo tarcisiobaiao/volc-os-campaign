@@ -54,11 +54,11 @@ function campaignCom(href, armazenado) {
 
 const longo = (n, c = 'a') => c.repeat(n);
 const entradas = [
-  null, '', '   ', 'Google', '  CPC  ', 'Cursos Senac', 'Educação Técnica', 'ÁÉÍÓÚ ãõ ç',
-  'black friday 2026', 'cursos-senac-2026', 'senac_sp', 'Promoção "Relâmpago"!', "o'reilly",
+  null, '', '   ', 'Google', '  CPC  ', 'Cursos Tecno', 'Educação Técnica', 'ÁÉÍÓÚ ãõ ç',
+  'black friday 2026', 'cursos-tecno-2026', 'tecno_sp', 'Promoção "Relâmpago"!', "o'reilly",
   'a=b', 'x+y', 'tag#1', 'a*b~c;d^e(f)g<h>i[j]k,l', 'multi   space\t\ttab', 'linha\nnova',
-  '24278665189', '2427866518', '242786651', '123456789', '12345678901234567890',
-  'c24278665189', 'gads_24278_665189', '2427-866-5189', '(11) 98765-4321', '+55 11 987654321',
+  '20000000011', '2000000001', '200000001', '123456789', '12345678901234567890',
+  'c20000000011', 'gads_20000_000011', '2000-000-0011', '(11) 98765-4321', '+55 11 987654321',
   '123.456.789-01', '12.345.678/0001-90', '12345678901', 'fulano@example.com', 'contato@x.co',
   'curso 2025 - 2026', '2026-10-15', 'campanha 2026/10', '{campaignid}', '{{campaign.id}}',
   longo(40), longo(41), longo(60, 'b'), 'Ç'.repeat(45), longo(199), longo(200), longo(201),
@@ -95,17 +95,17 @@ for (let i = 0; i < 3000; i++) {
 }
 
 const cenarios_campaign = [
-  ['https://creditoup.com.br/r/guia-cursos-senac/?utm_source=google&utm_medium=cpc&utm_campaign=24278665189&utm_term=cursos%20senac&utm_content=165432109876&utm_device=m&gclid=TESTE_SINTETICO', null],
-  ['https://creditoup.com.br/r/guia-cursos-senac/?utm_source=google&utm_medium=cpc&utm_campaign=Cursos+Senac&utm_term=bolsa+de+estudo&gbraid=X', null],
-  ['https://creditoup.com.br/rec/por-onde-comecar-senac-pr/', JSON.stringify({ source: 'google', medium: 'cpc', term: 'cursos_senac', paid: 1 })],
-  ['https://creditoup.com.br/rec/por-onde-comecar-senac-pr/', null],
-  ['https://creditoup.com.br/r/x/?gclid=', null],
-  ['https://creditoup.com.br/r/x/?utm_campaign=24278665189', JSON.stringify({ source: 'google', medium: 'cpc', term: 'antigo', paid: 1 })],
-  ['https://creditoup.com.br/r/x/?utm_campaign=24278665189&gclid=Y', JSON.stringify({ source: 'google', medium: 'cpc', term: 'antigo', paid: 1 })],
-  ['https://creditoup.com.br/r/x/?utm_source=Facebook&utm_medium=paid_social&utm_campaign=Meta+Cursos', null],
-  ['https://creditoup.com.br/r/x/?utm_campaign=a&utm_campaign=b', null],
-  ['https://creditoup.com.br/r/x/?utm_campaign=Promo%C3%A7%C3%A3o%20Rel%C3%A2mpago', null],
-  ['https://creditoup.com.br/r/x/?utm_campaign=%E0%A4%A', null],
+  ['https://site.exemplo/r/guia-exemplo/?utm_source=google&utm_medium=cpc&utm_campaign=20000000011&utm_term=cursos%20tecnicos&utm_content=165432109876&utm_device=m&gclid=TESTE_SINTETICO', null],
+  ['https://site.exemplo/r/guia-exemplo/?utm_source=google&utm_medium=cpc&utm_campaign=Cursos+Tecno&utm_term=bolsa+de+estudo&gbraid=X', null],
+  ['https://site.exemplo/rec/passo-exemplo-pr/', JSON.stringify({ source: 'google', medium: 'cpc', term: 'cursos_tecnicos', paid: 1 })],
+  ['https://site.exemplo/rec/passo-exemplo-pr/', null],
+  ['https://site.exemplo/r/x/?gclid=', null],
+  ['https://site.exemplo/r/x/?utm_campaign=20000000011', JSON.stringify({ source: 'google', medium: 'cpc', term: 'antigo', paid: 1 })],
+  ['https://site.exemplo/r/x/?utm_campaign=20000000011&gclid=Y', JSON.stringify({ source: 'google', medium: 'cpc', term: 'antigo', paid: 1 })],
+  ['https://site.exemplo/r/x/?utm_source=Facebook&utm_medium=paid_social&utm_campaign=Meta+Cursos', null],
+  ['https://site.exemplo/r/x/?utm_campaign=a&utm_campaign=b', null],
+  ['https://site.exemplo/r/x/?utm_campaign=Promo%C3%A7%C3%A3o%20Rel%C3%A2mpago', null],
+  ['https://site.exemplo/r/x/?utm_campaign=%E0%A4%A', null],
 ].map(([href, armazenado]) => ({ href, armazenado, ...campaignCom(href, armazenado) }));
 
 process.stdout.write(JSON.stringify({

@@ -105,7 +105,7 @@ MATRIZ: tuple[Capacidade, ...] = (
     # Google Ads × Sensor (tráfego).
     _c(G, S, Grao.CAMPANHA, DIA, N, D, "campaign.id = payload.utm.campaign",
        requer="sensor parar de descartar id numérico (regex de telefone, sensor:73,107-112)",
-       prova="vetor-ouro: utmValue('24278665189') == ''"),
+       prova="vetor-ouro: utmValue('<campanha-ativa>') == ''"),
     _c(G, S, Grao.GRUPO_ANUNCIO, DIA, N, D, "{adgroupid} = payload.utm.content",
        requer="mesma correção do sensor (ad_group.id também tem >= 10 dígitos)"),
     _c(G, S, Grao.KEYWORD, DIA, P, P, "keyword_texto ↔ payload.utm.term (texto normalizado ≤40)",
@@ -123,7 +123,7 @@ MATRIZ: tuple[Capacidade, ...] = (
     _c(S, J, Grao.SESSAO, DIA, N, N, "nenhuma", requer="chave compartilhada impressão↔sessão"),
     # Funil.
     _c(G, F, Grao.CAMPANHA, DIA, N, D, "vínculo declarado datado (trafego_vinculo)",
-       requer="vínculo da campanha atual (campaign_funnel_urls 0/17 para 24278665189)"),
+       requer="vínculo da campanha atual (campaign_funnel_urls 0/17 para <campanha-ativa>)"),
     _c(S, F, Grao.LANDING, DIA, D, D, "path ∈ páginas declaradas do funil"),
     _c(S, F, Grao.POST_WP, DIA, P, D, "path → post_id declarado", requer="tabela funil→url→post"),
     _c(J, F, Grao.POST_WP, DIA, D, D, "id_post_wp = paginas_publicadas[].id",

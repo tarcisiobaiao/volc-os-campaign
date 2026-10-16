@@ -17,6 +17,11 @@ from .graos import Confianca
 from .normalizacao import normalizar_utm_sensor_v3
 
 
+def normalizar_host(host: Optional[str]) -> str:
+    """Host em minúsculas, sem `www.` e sem ponto final — a regra do `volc-ingest` (`sameHost`)."""
+    return (host or "").strip().lower().rstrip(".").removeprefix("www.")
+
+
 class TemplateCampanha(str, enum.Enum):
     ID = "id"  # utm_campaign={campaignid}
     NOME = "nome"  # utm_campaign=<nome/slug> (Meta, campanhas manuais antigas)
@@ -30,9 +35,15 @@ class CampanhaRegistrada:
     valido_de: date
     valido_ate: Optional[date] = None  # inclusive; None = vigente
     template: TemplateCampanha = TemplateCampanha.ID
+    #: hosts onde a campanha aterrissa (landing). Sem host declarado, "zero sessões" não é comprovável.
+    hosts: tuple[str, ...] = ()
 
     def vale_em(self, dia: date) -> bool:
         return self.valido_de <= dia and (self.valido_ate is None or dia <= self.valido_ate)
+
+    @property
+    def hosts_normalizados(self) -> frozenset:
+        return frozenset(normalizar_host(h) for h in self.hosts if normalizar_host(h))
 
     @property
     def chave_textual(self) -> str:

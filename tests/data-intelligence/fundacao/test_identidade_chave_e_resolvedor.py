@@ -29,16 +29,16 @@ D1 = date(2026, 10, 10)
 
 
 @pytest.mark.parametrize("valor,origem,kw,esperado", [
-    ("24278665189", OrigemValor.JOINADS, {}, "24278665189"),
-    (" 24278665189 ", OrigemValor.URL_CRUA, {}, "24278665189"),
+    ("20000000011", OrigemValor.JOINADS, {}, "20000000011"),
+    (" 20000000011 ", OrigemValor.URL_CRUA, {}, "20000000011"),
     ("/", OrigemValor.JOINADS, {"custom_key": "land_uri"}, MotivoRecusa.CHAVE_TROCADA),
-    ("24278665189", OrigemValor.JOINADS, {"custom_key": "land_uri"}, MotivoRecusa.CHAVE_TROCADA),
+    ("20000000011", OrigemValor.JOINADS, {"custom_key": "land_uri"}, MotivoRecusa.CHAVE_TROCADA),
     ("/r/guia/", OrigemValor.JOINADS, {}, MotivoRecusa.CHAVE_TROCADA),
     (None, OrigemValor.JOINADS, {}, MotivoRecusa.AUSENTE),
     ("null", OrigemValor.JOINADS, {}, MotivoRecusa.AUSENTE),
     ("{campaignid}", OrigemValor.URL_CRUA, {}, MotivoRecusa.MACRO_NAO_EXPANDIDA),
     ("{{campaign.id}}", OrigemValor.GAM, {}, MotivoRecusa.MACRO_NAO_EXPANDIDA),
-    ("Cursos Senac", OrigemValor.URL_CRUA, {}, MotivoRecusa.TEXTUAL_AMBIGUO),
+    ("Cursos Tecno", OrigemValor.URL_CRUA, {}, MotivoRecusa.TEXTUAL_AMBIGUO),
     ("x" * 45, OrigemValor.URL_CRUA, {}, MotivoRecusa.POSSIVELMENTE_TRUNCADO),
     ("0123", OrigemValor.JOINADS, {}, MotivoRecusa.ID_INVALIDO),
     ("1" * 21, OrigemValor.JOINADS, {}, MotivoRecusa.ID_INVALIDO),
@@ -53,8 +53,8 @@ def test_parser_chave(valor, origem, kw, esperado):
 
 
 def test_sobrevive_ao_sensor():
-    assert sobrevive_ao_sensor("24278665189")[0] is False
-    assert sobrevive_ao_sensor("cursos senac")[0] is True
+    assert sobrevive_ao_sensor("20000000011")[0] is False
+    assert sobrevive_ao_sensor("cursos tecnicos")[0] is True
 
 
 def test_sessao_paga_sem_campanha_e_perda_nao_organico():
@@ -71,10 +71,10 @@ def _reg(*cs):
 
 
 def test_resolucao_deterministica_por_id_e_validade():
-    reg = _reg(CampanhaRegistrada("5478096539", "24278665189", "VOLC-SENAC", date(2026, 9, 21)))
-    ch = interpretar_chave_campanha("24278665189", OrigemValor.JOINADS)
+    reg = _reg(CampanhaRegistrada("1000000001", "20000000011", "VOLC-TECNO", date(2026, 9, 21)))
+    ch = interpretar_chave_campanha("20000000011", OrigemValor.JOINADS)
     r = reg.resolver(ch, D1)
-    assert (r.confianca, r.customer_id, r.campaign_id) == (Confianca.DETERMINISTICA, "5478096539", "24278665189")
+    assert (r.confianca, r.customer_id, r.campaign_id) == (Confianca.DETERMINISTICA, "1000000001", "20000000011")
     antes = reg.resolver(ch, date(2026, 9, 1))
     assert antes.confianca is Confianca.NAO_ATRIBUIVEL and antes.motivo == "id_nao_registrado_no_dia"
 
@@ -87,9 +87,9 @@ def test_id_em_duas_contas_nao_atribui():
 
 
 def test_nome_textual_so_probabilistico_e_so_com_template_nome():
-    reg = _reg(CampanhaRegistrada("1", "10", "Cursos Senac Técnico", date(2026, 1, 1), template=TemplateCampanha.NOME),
+    reg = _reg(CampanhaRegistrada("1", "10", "Cursos Tecno Técnico", date(2026, 1, 1), template=TemplateCampanha.NOME),
                CampanhaRegistrada("1", "11", "Outra", date(2026, 1, 1)))  # template id: não casa por nome
-    r = reg.resolver(interpretar_chave_campanha("cursos  SENAC tecnico", OrigemValor.URL_CRUA), D1)
+    r = reg.resolver(interpretar_chave_campanha("cursos  TECNO tecnico", OrigemValor.URL_CRUA), D1)
     assert (r.confianca, r.campaign_id) == (Confianca.PROBABILISTICA, "10")
     r2 = reg.resolver(interpretar_chave_campanha("Outra", OrigemValor.URL_CRUA), D1)
     assert r2.confianca is Confianca.NAO_ATRIBUIVEL and r2.motivo == "texto_sem_mapa_declarado"
