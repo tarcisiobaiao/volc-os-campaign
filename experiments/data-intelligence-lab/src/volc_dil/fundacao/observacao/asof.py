@@ -1,0 +1,157 @@
+"""Leitura `as_of`, ponte para o contrato econômico herdado e agregação que não inventa zero.
+
+- `as_of(obs, t)`: por chave natural, a versão com MAIOR `available_at <= t`. O status é
+  preservado (um `missing` vigente continua `missing`; não vira 0 nem some).
+- `latest(obs, agora)`: é só `as_of(obs, agora)`. Não há relógio implícito: quem chama diz
+  que horas são, e o histórico fica intacto.
+- `para_contrato_economico(obs)`: adapta para `volc_dil.contracts.Observacao` (composição,
+  não cópia). Assim `Snapshot`, `agregar`, `contribuicao` e `rotulo_economico` herdados
+  continuam sendo a única regra econômica.
+- `agregar_observacoes(obs)`: usa `volc_dil.contracts.agregar` e acrescenta a contagem por
+  status fino, para que `missing`, `late` e `unavailable` não se fundam num só "sem valor".
+"""
+from __future__ import annotations
+
+from collections import Counter
+from dataclasses import dataclass
+from datetime import datetime
+from types import MappingProxyType
+from typing import Iterable, Mapping, Optional, Sequence
+
+from ...contracts.aggregate import Agregado, agregar
+from ...contracts.money import Dinheiro
+from ...contracts.observation import ChaveUnidade, ContratoViolado
+from ...contracts.observation import Observacao as ObservacaoEconomica
+from ...contracts.snapshot import VersaoAmbigua
+from ...contracts.vocab import Cobertura, EstadoMedida, Maturidade, MetodoAtribuicao
+from .modelo import Observacao
+from .registro import ConflitoIdempotencia
+from .vocab import MAPA_ESTADO_HERDADO, StatusObservacao, Unidade
+
+
+def _exigir_tz(t: datetime) -> None:
+    if not isinstance(t, datetime) or t.tzinfo is None or t.utcoffset() is None:
+        raise ContratoViolado("as_of precisa ser datetime com timezone")
+
+
+def as_of(observacoes: Iterable[Observacao], t: datetime) -> Mapping[str, Observacao]:
+    """Estado conhecido em `t`: {chave_natural: versão vigente}. Puro, independente da ordem de entrada.
+
+    Duas versões do mesmo fato com o mesmo `available_at`:
+    - mesma leitura e mesmo conteúdo (reentrega) → uma só;
+    - leituras diferentes → `VersaoAmbigua`; mesma leitura com conteúdo diferente → `ConflitoIdempotencia`.
+    """
+    _exigir_tz(t)
+    vigentes: dict[str, Observacao] = {}
+    for o in observacoes:
+        if not isinstance(o, Observacao):
+            raise ContratoViolado("as_of recebe Observacao")
+        if o.available_at > t:
+            continue
+        nat = o.chave_natural
+        atual = vigentes.get(nat)
+        if atual is None or o.available_at > atual.available_at:
+            vigentes[nat] = o
+        elif o.available_at == atual.available_at:
+            if o.chave_base != atual.chave_base:
+                raise VersaoAmbigua("duas leituras diferentes do mesmo fato no mesmo available_at")
+            if o.conteudo != atual.conteudo:
+                raise ConflitoIdempotencia("mesma leitura com conteúdo diferente no mesmo available_at")
+    return MappingProxyType(dict(sorted(vigentes.items())))
+
+
+def latest(observacoes: Iterable[Observacao], agora: datetime) -> Mapping[str, Observacao]:
+    """`latest` = `as_of(agora)`. Existe só para nomear a intenção; não descarta histórico."""
+    return as_of(observacoes, agora)
+
+
+# --------------------------------------------------------------------------- ponte herdada
+def para_contrato_economico(
+    o: Observacao,
+    *,
+    maturidade: Maturidade = Maturidade.PRELIMINAR,
+    metodo: MetodoAtribuicao = MetodoAtribuicao.NAO_APLICAVEL,
+) -> ObservacaoEconomica:
+    """Converte para o contrato econômico herdado (`volc_dil.contracts.Observacao`).
+
+    Mapeamento: status → `EstadoMedida` (`MAPA_ESTADO_HERDADO`); `partial` sem valor vira
+    `NAO_COLETADO`; cobertura `complete` só para observed/zero_confirmed (janela fechada),
+    `partial` para partial e `unknown` para os demais; `disponivel_em = available_at`;
+    `coleta_id = run_id`; linhagem = (lote, payload_ref). Maturidade e método não vêm da fonte
+    bruta: o chamador declara (padrão: preliminar, não aplicável).
+    """
+    st = o.status
+    estado = MAPA_ESTADO_HERDADO[st]
+    if st is StatusObservacao.PARTIAL and o.valor is None:
+        estado = EstadoMedida.NAO_COLETADO
+    if st in (StatusObservacao.OBSERVED, StatusObservacao.ZERO_CONFIRMED):
+        cobertura = Cobertura.COMPLETA
+    elif st is StatusObservacao.PARTIAL:
+        cobertura = Cobertura.PARCIAL
+    else:
+        cobertura = Cobertura.DESCONHECIDA
+    valor: object
+    if o.valor is None:
+        valor = None
+    elif o.unidade is Unidade.MICROS:
+        valor = Dinheiro(o.valor, o.moeda)  # type: ignore[arg-type]
+    else:
+        valor = o.valor
+    motivo = None if estado in (EstadoMedida.MEDIDO, EstadoMedida.ZERO_CONFIRMADO) else f"{st.value}: {o.motivo}"
+    return ObservacaoEconomica(
+        unidade=ChaveUnidade(
+            conta=o.conta,
+            tipo_entidade=o.entidade.tipo,
+            entidade_id=o.entidade.id,
+            grao=o.grao,
+            dimensoes=o.dimensoes,
+        ),
+        metrica=o.metrica,
+        valor=valor,  # type: ignore[arg-type]
+        estado=estado,
+        janela_inicio=o.janela_inicio,
+        janela_fim=o.janela_fim,
+        timezone=o.timezone,
+        observado_em=o.observed_at,
+        disponivel_em=o.available_at,
+        fonte=o.fonte,
+        versao_fonte=f"{o.schema_version};{o.coletor.nome}@{o.coletor.versao}",
+        coleta_id=o.run_id,
+        cobertura=cobertura,
+        maturidade=maturidade,
+        metodo=metodo,
+        value_kind=o.value_kind,
+        motivo=motivo,
+        linhagem=(f"lote:{o.lote_id}", o.payload_ref),
+    )
+
+
+@dataclass(frozen=True)
+class AgregadoObservacao:
+    """Agregado herdado + o que ele não sabe contar: quantos de cada status fino."""
+
+    agregado: Agregado
+    por_status: Mapping[str, int]
+
+    @property
+    def valor(self) -> Optional[object]:
+        return self.agregado.valor
+
+    @property
+    def tem_valor(self) -> bool:
+        return self.agregado.tem_valor
+
+
+def agregar_observacoes(
+    observacoes: Sequence[Observacao],
+    *,
+    aceitar_parcial: bool = False,
+    maturidade: Maturidade = Maturidade.PRELIMINAR,
+    metodo: MetodoAtribuicao = MetodoAtribuicao.NAO_APLICAVEL,
+) -> AgregadoObservacao:
+    """Soma por composição com `contracts.agregar`: vazio → ausente; qualquer membro sem valor →
+    total sem valor (salvo `aceitar_parcial`, que marca cobertura parcial). Nunca devolve 0 inventado."""
+    economicas = [para_contrato_economico(o, maturidade=maturidade, metodo=metodo) for o in observacoes]
+    ag = agregar(economicas, aceitar_parcial=aceitar_parcial)
+    contagem = Counter(o.status.value for o in observacoes)
+    return AgregadoObservacao(ag, MappingProxyType(dict(sorted(contagem.items()))))
