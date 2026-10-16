@@ -103,7 +103,7 @@ def linha_joinads_earnings(*, run_key: str, batch_key: str, domain: str, dia: da
 
 def fixture_padroes_reais(dia: date = date(2026, 10, 15)) -> dict:
     """Linhas v21 + JoinAds v2 com os padrões do recibo. Devolve linhas e o que se espera delas."""
-    ids = [f"2427866518{k}" for k in range(5)]
+    ids = [f"9000000010{k}" for k in range(5)]  # ids sintéticos (R2-G17: nada de prefixo de campanha real)
     base = [80_000_000, 40_000_000, 25_000_000, 0, 0]  # 2 campanhas sem tráfego → zero sintetizado (R3)
     v21: list[dict] = []
     presos = {"gads-d0-0900", "gads-d0-1300", "gads-d0-1700"}  # L9: 3 runs presos em running

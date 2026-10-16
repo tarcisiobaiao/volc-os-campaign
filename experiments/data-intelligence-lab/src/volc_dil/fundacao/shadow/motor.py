@@ -129,7 +129,7 @@ def executar_replay(fluxo: Iterable[Observacao] | FluxoIndexado, cortes: Sequenc
         lotes = [list(enumerate(cortes))[k::paralelismo] for k in range(paralelismo)]
         if executor == "processo":
             with ProcessPoolExecutor(max_workers=paralelismo, initializer=_iniciar_trabalhador,
-                                     initargs=(fi.observacoes + tuple(i.obs for i in fi.quarentena), fi.ambiguidade,
+                                     initargs=(fi.observacoes, fi.ambiguidade,
                                                tuple(politicas), config)) as ex:
                 for parte in ex.map(_lote_trabalhador, lotes):
                     resultados.extend(parte)
@@ -150,7 +150,7 @@ def executar_replay(fluxo: Iterable[Observacao] | FluxoIndexado, cortes: Sequenc
         for d in decisoes:
             ledger.registrar_decisao(as_of=d.as_of, fingerprint_corte=d.fingerprint_corte, versao_codigo=d.versao_codigo,
                                      politica=d.politica, versao_politica=d.versao_politica, seed=seed,
-                                     decisao=d.decisao.para_json())
+                                     decisao=d.decisao.para_json(), config_kernel=config.kernel.para_json())
     return ResultadoReplay(tuple(decisoes), tuple(meta), tuple(nomes), seed, time.perf_counter() - inicio, tuple(tempos))
 
 

@@ -153,10 +153,12 @@ class LedgerShadow:
         return entrada
 
     def registrar_decisao(self, *, as_of: str, fingerprint_corte: str, versao_codigo: str, politica: str,
-                          versao_politica: str, seed: Optional[int], decisao: dict) -> dict:
+                          versao_politica: str, seed: Optional[int], decisao: dict,
+                          config_kernel: Optional[dict] = None) -> dict:
         return self._anexar({"tipo": "decisao", "as_of": as_of, "fingerprint_corte": fingerprint_corte,
                              "versao_codigo": versao_codigo, "politica": politica, "versao_politica": versao_politica,
-                             "seed": seed, "propostas": decisao["propostas"], "diagnosticos": decisao["diagnosticos"]})
+                             "seed": seed, "config_kernel": config_kernel,
+                             "propostas": decisao["propostas"], "diagnosticos": decisao["diagnosticos"]})
 
     def registrar_resultado(self, *, ref_hash: str, as_of_maduro: str, k_dias: int, resultado: dict) -> dict:
         if ref_hash not in self._decisoes:

@@ -6,12 +6,11 @@ read-only em JSONL (números lidos com `parse_float=Decimal`). Caminho:
     linhas → adaptar_google_ads_v21 / adaptar_joinads_v2 (thread A) → deduplicar → FluxoIndexado
            → cortes → snapshot → políticas → kernel → ledger
 
-Deduplicação: por CHAVE NATURAL + CONTEÚDO, nunca por run. O v21 regrava a janela a cada execução
-(UNIQUE `(run_id, observation_key)`), então a re-execução do mesmo slot e as leituras D0 que repetem
-a anterior (~80% medido, recibo (a)) geram observações com o mesmo fato e o mesmo conteúdo; fica a
-PRIMEIRA (o conhecimento é datado da primeira leitura). Uma volta A→B→A é preservada (o conteúdo
-mudou entre as leituras). Duas leituras diferentes do mesmo fato no mesmo `available_at` vão para
-a quarentena (`versao_ambigua`) em vez de derrubar o replay.
+Deduplicação: pelo `Registro` D2' da thread A, nunca por run (`deduplicar`). O v21 regrava a janela a cada
+execução (UNIQUE `(run_id, observation_key)`); a re-execução do mesmo slot e as leituras D0 que repetem a
+anterior (~80%, recibo (a)) viram CONFIRMAÇÕES, não versões; A→B→A e o fechamento da janela viram versões;
+uma leitura antiga chegando atrasada não passa à frente de uma releitura mais nova (D1, R2-G2). Leituras
+diferentes empatadas no topo seguem para o fluxo e o fato sai do snapshot (quarentena, R2-G11).
 
 Runs presos em `running` (recibo L9) não mudam o status das observações (02 §9.3): as linhas
 existem e foram conhecidas. Viram diagnóstico.
@@ -26,7 +25,10 @@ from decimal import Decimal
 from typing import Iterable, Mapping, Optional, Sequence
 
 from ..observacao import AdaptacaoImpossivel, ObservacaoInvalida, adaptar_google_ads_v21, adaptar_joinads_v2
+from volc_dil.contracts.snapshot import VersaoAmbigua
+
 from ..observacao.modelo import Observacao
+from ..observacao.registro import ConflitoIdempotencia, Registro
 from .fluxo import FluxoIndexado, cortes_regulares
 from .ledger import LedgerShadow, SinkJsonl
 from .motor import ConfigShadow, ResultadoReplay, executar_replay
@@ -58,36 +60,30 @@ class ResultadoAdaptacao:
 
 
 def deduplicar(observacoes: Iterable[Observacao]) -> tuple[list[Observacao], int, list[tuple[str, str]]]:
-    """Por chave natural, em ordem de `available_at`, descarta a versão que repete a anterior mantida:
-    mesmo payload (`chave_base`: a mesma leitura relida por outro run; no D0 só a cobertura derivada de
-    `collected_at` muda) ou mesmo conteúdo (payload de lote diferente, valores iguais). A→B→A fica."""
-    por_nat: dict[str, list[Observacao]] = {}
-    for o in observacoes:
-        por_nat.setdefault(o.chave_natural, []).append(o)
-    mantidas: list[Observacao] = []
-    descartadas = 0
+    """Deduplicação = o `Registro` D2' da thread A (R2-G2). Nenhuma regra própria: a dedup "manter a primeira,
+    descartar quem repete a anterior" quebrava a ordem de versão D1 — descartava a releitura idêntica MAIS NOVA e
+    deixava uma leitura antiga, chegando atrasada, vencer. O `Registro` guarda versões; releitura redundante vira
+    confirmação e é materializada como versão quando uma leitura antiga atrasada tentaria passar à frente dela, de
+    modo que `as_of` sobre as versões = `as_of` da A sobre todas as leituras, em qualquer corte e ordem de chegada.
+
+    Devolve (versões, nº de leituras que não viraram versão, quarentena). Leituras diferentes empatadas no topo
+    (`VersaoAmbigua`) ficam AMBAS no fluxo: o `FluxoIndexado` em quarentena tira o fato do snapshot e bloqueia a
+    entidade (não escolhe). Mesma leitura com conteúdo diferente (`ConflitoIdempotencia`) vai só para a quarentena.
+    """
+    brutas = sorted(observacoes, key=lambda o: (o.available_at, o.chave_natural, o.chave_base))
+    reg = Registro()
+    ambiguas: list[Observacao] = []
     quarentena: list[tuple[str, str]] = []
-    for nat, vs in sorted(por_nat.items()):
-        vs.sort(key=lambda o: (o.available_at, o.chave_base))
-        ultima: Optional[Observacao] = None
-        i = 0
-        while i < len(vs):
-            grupo = [v for v in vs[i:] if v.available_at == vs[i].available_at]
-            i += len(grupo)
-            conteudos = {g.conteudo for g in grupo}
-            if len(conteudos) > 1:
-                quarentena.append((nat, f"versao_ambigua:{len(grupo)} leituras com conteúdos diferentes no mesmo available_at"))
-                descartadas += len(grupo)
-                continue
-            o = grupo[0]
-            descartadas += len(grupo) - 1
-            # repetição = mesmo payload (mesma leitura relida; só o relógio/cobertura mudou) OU mesmo conteúdo
-            if ultima is not None and (ultima.chave_base == o.chave_base or ultima.conteudo == o.conteudo):
-                descartadas += 1
-                continue
-            mantidas.append(o)
-            ultima = o
-    return mantidas, descartadas, quarentena
+    for o in brutas:
+        try:
+            reg.registrar(o)
+        except VersaoAmbigua as e:
+            ambiguas.append(o)
+            quarentena.append((o.chave_natural, f"versao_ambigua: {e}"))
+        except ConflitoIdempotencia as e:
+            quarentena.append((o.chave_natural, f"conflito_idempotencia: {e}"))
+    versoes = list(reg.observacoes) + ambiguas
+    return versoes, len(brutas) - len(versoes), quarentena
 
 
 def observacoes_de_linhas_reais(linhas_v21: Sequence[Mapping], linhas_joinads: Sequence[Mapping]) -> ResultadoAdaptacao:

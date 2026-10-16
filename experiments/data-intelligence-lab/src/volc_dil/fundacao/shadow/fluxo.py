@@ -51,9 +51,10 @@ class FluxoIndexado:
     """Índice imutável de um fluxo append-only. Não guarda relógio: quem consulta diz o T."""
 
     def __init__(self, observacoes: Iterable[Observacao], *, ambiguidade: str = "falhar") -> None:
-        """`ambiguidade="falhar"` (regra da A: `as_of` levanta `VersaoAmbigua`) ou `"quarentena"`: duas leituras
-        DIFERENTES do mesmo fato com o mesmo `available_at` saem do índice (todas) e ficam em `quarentena`,
-        para que o replay registre o defeito em vez de escolher uma versão ou parar."""
+        """`ambiguidade="falhar"` (regra da A: `as_of` levanta `VersaoAmbigua`) ou `"quarentena"`: quando o TOPO da
+        ordem de versão de um fato é ambíguo em T (duas leituras diferentes empatadas), o FATO INTEIRO sai do
+        `as_of` daquele corte e é devolvido em `ambiguos_em(t)` — nenhuma versão superada é ressuscitada (R2-G11).
+        Ambiguidade já superada por uma versão mais nova não afeta o corte (D3)."""
         if ambiguidade not in ("falhar", "quarentena"):
             raise ValueError(f"ambiguidade desconhecida: {ambiguidade!r}")
         vistos: dict[tuple[str, str], ItemFluxo] = {}
@@ -70,16 +71,6 @@ class FluxoIndexado:
                 continue  # reentrega idêntica
             vistos[chave] = ItemFluxo(o, nat, base, ts, _assinatura(o, nat, base))
         self.ambiguidade = ambiguidade
-        quarentena: list[ItemFluxo] = []
-        if ambiguidade == "quarentena":
-            grupos: dict[tuple[str, datetime], set[str]] = {}
-            for i in vistos.values():
-                grupos.setdefault((i.chave_natural, i.available_at), set()).add(i.chave_base)
-            ambiguos = {k for k, bases in grupos.items() if len(bases) > 1}
-            quarentena = [i for i in vistos.values() if (i.chave_natural, i.available_at) in ambiguos]
-            vistos = {k: i for k, i in vistos.items() if (i.chave_natural, i.available_at) not in ambiguos}
-        self._quarentena = tuple(sorted(quarentena, key=lambda i: (i.available_at, i.chave_natural, i.chave_base)))
-        self._ts_quarentena = [i.available_at for i in self._quarentena]
         self._itens: tuple[ItemFluxo, ...] = tuple(sorted(vistos.values(), key=lambda i: (i.available_at, i.chave_natural, i.chave_base)))
         self._ts = [i.available_at for i in self._itens]
         acumulado = []
@@ -97,10 +88,6 @@ class FluxoIndexado:
         return self._itens
 
     @property
-    def quarentena(self) -> tuple[ItemFluxo, ...]:
-        return self._quarentena
-
-    @property
     def observacoes(self) -> tuple[Observacao, ...]:
         return tuple(i.obs for i in self._itens)
 
@@ -114,11 +101,6 @@ class FluxoIndexado:
         _exigir_tz(t)
         return bisect_right(self._ts, t.astimezone(timezone.utc))
 
-    def quarentena_visivel(self, t: datetime) -> tuple[ItemFluxo, ...]:
-        """Leituras ambíguas já conhecidas em t (fora do as_of, registradas no snapshot)."""
-        _exigir_tz(t)
-        return self._quarentena[: bisect_right(self._ts_quarentena, t.astimezone(timezone.utc))]
-
     def visiveis(self, t: datetime) -> tuple[ItemFluxo, ...]:
         return self._itens[: self._n(t)]
 
@@ -129,16 +111,36 @@ class FluxoIndexado:
         n = self._n(t)
         return self._hashes[n - 1] if n else hashlib.sha256(b"volc-dil.shadow.fluxo.v1").hexdigest()
 
+    def _resolver(self, t: datetime) -> tuple[dict[str, ItemFluxo], dict[str, tuple[ItemFluxo, ...]]]:
+        grupos: dict[str, list[ItemFluxo]] = {}
+        for i in self.visiveis(t):
+            grupos.setdefault(i.chave_natural, []).append(i)
+        vigentes: dict[str, ItemFluxo] = {}
+        ambiguos: dict[str, tuple[ItemFluxo, ...]] = {}
+        for nat, itens in grupos.items():
+            try:
+                vigentes[nat] = vigente_entre(itens, obs=lambda x: x.obs, base=lambda x: x.chave_base)
+            except VersaoAmbigua:
+                if self.ambiguidade == "falhar":
+                    raise
+                topo = max((x.obs.observed_at, x.obs.available_at) for x in itens)
+                ambiguos[nat] = tuple(x for x in itens if (x.obs.observed_at, x.obs.available_at) == topo)
+        return vigentes, ambiguos
+
     def as_of(self, t: datetime) -> dict[str, ItemFluxo]:
         """{chave_natural: item vigente em t}. Mesma regra de `observacao.as_of`.
 
         [thread A, D1/D3] a seleção delega a `observacao.vigente_entre` (regra única: maior observed_at,
-        depois maior available_at; ambiguidade só no topo, independente da ordem)."""
-        grupos: dict[str, list[ItemFluxo]] = {}
-        for i in self.visiveis(t):
-            grupos.setdefault(i.chave_natural, []).append(i)
-        return {nat: vigente_entre(itens, obs=lambda x: x.obs, base=lambda x: x.chave_base)
-                for nat, itens in grupos.items()}
+        depois maior available_at; ambiguidade só no topo, independente da ordem). Em `quarentena`, fato com
+        topo ambíguo fica FORA (ver `ambiguos_em`)."""
+        return self._resolver(t)[0]
+
+    def ambiguos_em(self, t: datetime) -> dict[str, tuple[ItemFluxo, ...]]:
+        """Fatos cujo topo da ordem de versão é ambíguo em t: {chave_natural: leituras empatadas no topo}."""
+        return self._resolver(t)[1]
+
+    def as_of_com_ambiguos(self, t: datetime):
+        return self._resolver(t)
 
     def n_versoes(self, t: datetime) -> dict[str, int]:
         """Quantas versões (leituras distintas) de cada fato eram conhecidas em t."""
