@@ -1,0 +1,287 @@
+{
+ "rotulo": "SINTÉTICO — exemplo do contrato; não é dado real",
+ "observacoes": [
+  {
+   "unidade": {
+    "conta": "acc-sintetica-1",
+    "tipo_entidade": "campaign",
+    "entidade_id": "c-001",
+    "grao": [
+     "campaign",
+     "day"
+    ],
+    "dimensoes": []
+   },
+   "metrica": "cost",
+   "valor": {
+    "dinheiro": {
+     "micros": 12500000,
+     "moeda": "BRL"
+    }
+   },
+   "estado": "medido",
+   "janela_inicio": "2026-09-01T00:00:00-03:00",
+   "janela_fim": "2026-09-02T00:00:00-03:00",
+   "timezone": "America/Sao_Paulo",
+   "observado_em": "2026-09-02T01:00:00-03:00",
+   "disponivel_em": "2026-09-02T02:00:00-03:00",
+   "fonte": "google_ads",
+   "versao_fonte": "sintetico-v1",
+   "coleta_id": "gads-run-0001",
+   "cobertura": "complete",
+   "maturidade": "mature",
+   "metodo": "nao_aplicavel",
+   "value_kind": null,
+   "atraso_conhecido_s": null,
+   "motivo": null,
+   "linhagem": [
+    "fixture:contrato"
+   ]
+  },
+  {
+   "unidade": {
+    "conta": "acc-sintetica-1",
+    "tipo_entidade": "campaign",
+    "entidade_id": "c-001",
+    "grao": [
+     "campaign",
+     "day"
+    ],
+    "dimensoes": []
+   },
+   "metrica": "clicks",
+   "valor": {
+    "int": 250
+   },
+   "estado": "medido",
+   "janela_inicio": "2026-09-01T00:00:00-03:00",
+   "janela_fim": "2026-09-02T00:00:00-03:00",
+   "timezone": "America/Sao_Paulo",
+   "observado_em": "2026-09-02T01:00:00-03:00",
+   "disponivel_em": "2026-09-02T02:00:00-03:00",
+   "fonte": "google_ads",
+   "versao_fonte": "sintetico-v1",
+   "coleta_id": "gads-run-0001",
+   "cobertura": "complete",
+   "maturidade": "mature",
+   "metodo": "nao_aplicavel",
+   "value_kind": null,
+   "atraso_conhecido_s": null,
+   "motivo": null,
+   "linhagem": [
+    "fixture:contrato"
+   ]
+  },
+  {
+   "unidade": {
+    "conta": "acc-sintetica-1",
+    "tipo_entidade": "campaign",
+    "entidade_id": "c-001",
+    "grao": [
+     "campaign",
+     "day"
+    ],
+    "dimensoes": []
+   },
+   "metrica": "revenue",
+   "valor": {
+    "dinheiro": {
+     "micros": 9000000,
+     "moeda": "BRL"
+    }
+   },
+   "estado": "medido",
+   "janela_inicio": "2026-09-01T00:00:00-03:00",
+   "janela_fim": "2026-09-02T00:00:00-03:00",
+   "timezone": "America/Sao_Paulo",
+   "observado_em": "2026-09-02T01:00:00-03:00",
+   "disponivel_em": "2026-09-02T02:00:00-03:00",
+   "fonte": "publisher_report",
+   "versao_fonte": "sintetico-v1",
+   "coleta_id": "pub-run-0001",
+   "cobertura": "partial",
+   "maturidade": "preliminary",
+   "metodo": "declared_campaign_funnel",
+   "value_kind": "reported_revenue",
+   "atraso_conhecido_s": null,
+   "motivo": null,
+   "linhagem": [
+    "fixture:contrato"
+   ]
+  },
+  {
+   "unidade": {
+    "conta": "acc-sintetica-1",
+    "tipo_entidade": "campaign",
+    "entidade_id": "c-001",
+    "grao": [
+     "campaign",
+     "day"
+    ],
+    "dimensoes": []
+   },
+   "metrica": "revenue",
+   "valor": {
+    "dinheiro": {
+     "micros": 14200000,
+     "moeda": "BRL"
+    }
+   },
+   "estado": "medido",
+   "janela_inicio": "2026-09-01T00:00:00-03:00",
+   "janela_fim": "2026-09-02T00:00:00-03:00",
+   "timezone": "America/Sao_Paulo",
+   "observado_em": "2026-09-04T00:00:00-03:00",
+   "disponivel_em": "2026-09-04T01:00:00-03:00",
+   "fonte": "publisher_report",
+   "versao_fonte": "sintetico-v1",
+   "coleta_id": "pub-run-0002",
+   "cobertura": "complete",
+   "maturidade": "revised",
+   "metodo": "declared_campaign_funnel",
+   "value_kind": "reported_revenue",
+   "atraso_conhecido_s": null,
+   "motivo": null,
+   "linhagem": [
+    "fixture:contrato"
+   ]
+  },
+  {
+   "unidade": {
+    "conta": "acc-sintetica-1",
+    "tipo_entidade": "campaign",
+    "entidade_id": "c-002",
+    "grao": [
+     "campaign",
+     "day"
+    ],
+    "dimensoes": []
+   },
+   "metrica": "cost",
+   "valor": {
+    "dinheiro": {
+     "micros": 0,
+     "moeda": "BRL"
+    }
+   },
+   "estado": "zero_confirmado",
+   "janela_inicio": "2026-09-01T00:00:00-03:00",
+   "janela_fim": "2026-09-02T00:00:00-03:00",
+   "timezone": "America/Sao_Paulo",
+   "observado_em": "2026-09-02T01:00:00-03:00",
+   "disponivel_em": "2026-09-02T02:00:00-03:00",
+   "fonte": "google_ads",
+   "versao_fonte": "sintetico-v1",
+   "coleta_id": "gads-run-0001",
+   "cobertura": "complete",
+   "maturidade": "mature",
+   "metodo": "nao_aplicavel",
+   "value_kind": null,
+   "atraso_conhecido_s": null,
+   "motivo": null,
+   "linhagem": [
+    "fixture:contrato"
+   ]
+  },
+  {
+   "unidade": {
+    "conta": "acc-sintetica-1",
+    "tipo_entidade": "campaign",
+    "entidade_id": "c-002",
+    "grao": [
+     "campaign",
+     "day"
+    ],
+    "dimensoes": []
+   },
+   "metrica": "revenue",
+   "valor": null,
+   "estado": "nao_coletado",
+   "janela_inicio": "2026-09-01T00:00:00-03:00",
+   "janela_fim": "2026-09-02T00:00:00-03:00",
+   "timezone": "America/Sao_Paulo",
+   "observado_em": "2026-09-02T01:00:00-03:00",
+   "disponivel_em": "2026-09-02T02:00:00-03:00",
+   "fonte": "publisher_report",
+   "versao_fonte": "sintetico-v1",
+   "coleta_id": "pub-run-0001",
+   "cobertura": "complete",
+   "maturidade": "mature",
+   "metodo": "declared_campaign_funnel",
+   "value_kind": "reported_revenue",
+   "atraso_conhecido_s": null,
+   "motivo": "relatório do parceiro não chegou",
+   "linhagem": [
+    "fixture:contrato"
+   ]
+  },
+  {
+   "unidade": {
+    "conta": "acc-sintetica-1",
+    "tipo_entidade": "campaign",
+    "entidade_id": "c-003",
+    "grao": [
+     "campaign",
+     "day"
+    ],
+    "dimensoes": []
+   },
+   "metrica": "cost",
+   "valor": null,
+   "estado": "falha",
+   "janela_inicio": "2026-09-01T00:00:00-03:00",
+   "janela_fim": "2026-09-02T00:00:00-03:00",
+   "timezone": "America/Sao_Paulo",
+   "observado_em": "2026-09-02T01:00:00-03:00",
+   "disponivel_em": "2026-09-02T02:00:00-03:00",
+   "fonte": "google_ads",
+   "versao_fonte": "sintetico-v1",
+   "coleta_id": "gads-run-0001",
+   "cobertura": "complete",
+   "maturidade": "mature",
+   "metodo": "nao_aplicavel",
+   "value_kind": null,
+   "atraso_conhecido_s": null,
+   "motivo": "timeout na coleta",
+   "linhagem": [
+    "fixture:contrato"
+   ]
+  },
+  {
+   "unidade": {
+    "conta": "acc-sintetica-1",
+    "tipo_entidade": "session",
+    "entidade_id": "s-9",
+    "grao": [
+     "session"
+    ],
+    "dimensoes": []
+   },
+   "metrica": "signal",
+   "valor": {
+    "dinheiro": {
+     "micros": 1850000,
+     "moeda": "USD"
+    }
+   },
+   "estado": "medido",
+   "janela_inicio": "2026-09-01T00:00:00-03:00",
+   "janela_fim": "2026-09-02T00:00:00-03:00",
+   "timezone": "America/Sao_Paulo",
+   "observado_em": "2026-09-02T01:00:00-03:00",
+   "disponivel_em": "2026-09-02T02:00:00-03:00",
+   "fonte": "browser_beacon",
+   "versao_fonte": "sintetico-v1",
+   "coleta_id": "beacon-0001",
+   "cobertura": "complete",
+   "maturidade": "mature",
+   "metodo": "deterministic_session",
+   "value_kind": "observed_auction_signal",
+   "atraso_conhecido_s": null,
+   "motivo": null,
+   "linhagem": [
+    "fixture:contrato"
+   ]
+  }
+ ]
+}

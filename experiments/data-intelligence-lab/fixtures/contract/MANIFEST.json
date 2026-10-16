@@ -1,0 +1,81 @@
+{
+ "arquivo": "observacoes_exemplo.json",
+ "n_observacoes": 8,
+ "natureza": "sintetico",
+ "sha256": "884f039feecc59b5af4c28ce6d014378e88a21eab46378a040c334a098c391d1",
+ "snapshots": {
+  "d+1_04h": {
+   "as_of": "2026-09-02T04:00:00-03:00",
+   "cobertura": {
+    "complete": 6,
+    "partial": 1
+   },
+   "esquema": "volc-dil.snapshot.v1",
+   "estados": {
+    "falha": 1,
+    "medido": 4,
+    "nao_coletado": 1,
+    "zero_confirmado": 1
+   },
+   "fingerprint": "cc111748761f3757cb2d539ff4d18e26650ea51d5f38bf471bb86b7bf5daf721",
+   "fontes": [
+    "browser_beacon",
+    "google_ads",
+    "publisher_report"
+   ],
+   "maturidade": {
+    "mature": 6,
+    "preliminary": 1
+   },
+   "moedas": {
+    "BRL": 3,
+    "USD": 1
+   },
+   "n_entrada": 8,
+   "n_futuras_excluidas": 1,
+   "n_incluidas": 7,
+   "n_versoes_substituidas": 0,
+   "rotulo": "d+1_04h",
+   "value_kinds": {
+    "observed_auction_signal": 1,
+    "reported_revenue": 2
+   }
+  },
+  "d+4": {
+   "as_of": "2026-09-05T00:00:00-03:00",
+   "cobertura": {
+    "complete": 7
+   },
+   "esquema": "volc-dil.snapshot.v1",
+   "estados": {
+    "falha": 1,
+    "medido": 4,
+    "nao_coletado": 1,
+    "zero_confirmado": 1
+   },
+   "fingerprint": "90021c6c8f5029097984c571ec35e470b5cf65c6b4b13e7dd905aeac623cd4b0",
+   "fontes": [
+    "browser_beacon",
+    "google_ads",
+    "publisher_report"
+   ],
+   "maturidade": {
+    "mature": 6,
+    "revised": 1
+   },
+   "moedas": {
+    "BRL": 3,
+    "USD": 1
+   },
+   "n_entrada": 8,
+   "n_futuras_excluidas": 0,
+   "n_incluidas": 7,
+   "n_versoes_substituidas": 1,
+   "rotulo": "d+4",
+   "value_kinds": {
+    "observed_auction_signal": 1,
+    "reported_revenue": 2
+   }
+  }
+ }
+}
