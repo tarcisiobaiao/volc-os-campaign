@@ -18,7 +18,7 @@ Revisado após a revisão adversarial R1 (F10, F11, F12):
 - **A→B→A e equivalência serial × paralela (F10)**: o executor não tem regra própria de dedup. Cada
   linha devolvida vira um payload endereçado por conteúdo; o normalizador da frente A
   (`volc_dil.fundacao.observacao.normalizar`) produz `Observacao` canônicas e o `Registro` da frente A
-  decide INSERIDO / NOOP / REAFIRMADO. `available_at` é o relógio do sink ("relógio do banco",
+  decide INSERIDO / NOOP (a volta A→B→A é uma leitura nova, pela regra D2 da frente A). `available_at` é o relógio do sink ("relógio do banco",
   monotônico) no instante da gravação — o coletor não declara quando o VOLC soube (cf. F1). Em lote, as
   leituras podem correr em paralelo, mas a GRAVAÇÃO é serial e ordenada por (slot, conta, coletor):
   a história gravada, e portanto o `as_of` em qualquer corte, é a mesma do modo serial.
@@ -180,7 +180,6 @@ class ReciboRun:
     linhas_lidas: int = 0
     observacoes: int = 0
     inseridas: int = 0
-    reafirmadas: int = 0
     noop: int = 0
     rejeicoes: int = 0
     payloads_distintos: int = 0
@@ -191,7 +190,7 @@ class ReciboRun:
 
     @property
     def gravadas_novas(self) -> int:
-        return self.inseridas + self.reafirmadas
+        return self.inseridas
 
 
 @dataclass(frozen=True)
@@ -416,7 +415,7 @@ def _concluir(leitura: _Leitura, sink, modo: str, relogio: Callable[[], datetime
         rec.status = "dry_run"
         return rec
     cont = sink.gravar(obs, payloads)
-    rec.inseridas, rec.reafirmadas, rec.noop = cont["inserido"], cont["reafirmado"], cont["noop"]
+    rec.inseridas, rec.noop = cont["inserido"], cont["noop"]
     rec.gravado_em = instante
     for motivo in rejeicoes:
         sink.dead_letter(ItemDeadLetter(ped, rec.chave_execucao, f"linha_rejeitada:{motivo}", motivo, rec.tentativas,
