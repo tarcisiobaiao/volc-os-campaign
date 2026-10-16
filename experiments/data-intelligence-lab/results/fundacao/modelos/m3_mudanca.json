@@ -1,0 +1,478 @@
+{
+ "manifesto": {
+  "catalogo_sha256": "d449d43f12ee20fdff245663329e8779aaa96faa39a4e71617cf746ec8601600",
+  "natureza": "simulacao_com_seed_sem_dado_real",
+  "parametros": {
+   "C": 50,
+   "D": 60,
+   "alvo_fa": 0.02,
+   "atraso": 3,
+   "janela_poder": 14,
+   "metodos": {
+    "bocpd": {
+     "hazard": 0.0166667,
+     "n_ref": 14,
+     "w": 5
+    },
+    "cusum": {
+     "k": 0.5,
+     "n_ref": 14
+    },
+    "media_movel": {
+     "janela": 5,
+     "n_ref": 14
+    }
+   },
+   "n_ref": 14
+  },
+  "pre_registro": "results/fundacao/modelos/PRE-REGISTRO.md",
+  "script": "fundacao_modelos_mudanca.py",
+  "seeds": [
+   20261301,
+   20261302,
+   20261303,
+   20261304,
+   20261305,
+   20261306,
+   20261307,
+   20261308,
+   20261309,
+   20261310,
+   20261401,
+   20261402,
+   20261403,
+   20261404,
+   20261405,
+   20261406,
+   20261407,
+   20261408,
+   20261409,
+   20261410,
+   20261411,
+   20261412,
+   20261413,
+   20261414,
+   20261415,
+   20261416
+  ],
+  "sha256_codigo": "c0e36fc836b7ed8494ba7fb0cbee8a257c1facbbf91fa58ed9fe59807f0ebaec",
+  "teto_de_estado": "testado com sintético",
+  "versoes": {
+   "catalogo": "1.0.0",
+   "implementacao": "CPython",
+   "modelos": "0.1.0",
+   "numpy": "2.5.3",
+   "python": "3.13.0",
+   "scipy": "1.18.1",
+   "simulador": "1.0.0",
+   "sklearn": "1.9.1",
+   "statlab": "0.1.0",
+   "statsmodels": "0.15.0"
+  }
+ },
+ "resultados": {
+  "H3_bocpd_supera": false,
+  "H3_cusum_supera": true,
+  "H3_poder_bocpd_menos_media_movel": {
+   "estimativa": -0.100278,
+   "ic95": [
+    -0.142177,
+    -0.0596149
+   ],
+   "n": 16,
+   "n_excluidos": 0
+  },
+  "H3_poder_cusum_menos_media_movel": {
+   "estimativa": 0.0233141,
+   "ic95": [
+    0.00493131,
+    0.0397379
+   ],
+   "n": 16,
+   "n_excluidos": 0
+  },
+  "H3_suportada": false,
+  "calibracao": {
+   "bocpd": {
+    "curva": [
+     {
+      "alarmes": 255,
+      "limiar": 0.2,
+      "taxa_fa": 0.112187,
+      "tempo": 2273.0
+     },
+     {
+      "alarmes": 136,
+      "limiar": 0.3,
+      "taxa_fa": 0.0500947,
+      "tempo": 2714.86
+     },
+     {
+      "alarmes": 80,
+      "limiar": 0.4,
+      "taxa_fa": 0.0274214,
+      "tempo": 2917.43
+     },
+     {
+      "alarmes": 40,
+      "limiar": 0.5,
+      "taxa_fa": 0.0131129,
+      "tempo": 3050.43
+     },
+     {
+      "alarmes": 22,
+      "limiar": 0.6,
+      "taxa_fa": 0.00703004,
+      "tempo": 3129.43
+     },
+     {
+      "alarmes": 13,
+      "limiar": 0.7,
+      "taxa_fa": 0.00410539,
+      "tempo": 3166.57
+     },
+     {
+      "alarmes": 5,
+      "limiar": 0.8,
+      "taxa_fa": 0.00156565,
+      "tempo": 3193.57
+     },
+     {
+      "alarmes": 2,
+      "limiar": 0.9,
+      "taxa_fa": 0.000625726,
+      "tempo": 3196.29
+     },
+     {
+      "alarmes": 1,
+      "limiar": 0.95,
+      "taxa_fa": 0.000312305,
+      "tempo": 3202.0
+     },
+     {
+      "alarmes": 0,
+      "limiar": 0.98,
+      "taxa_fa": 0.0,
+      "tempo": 3204.43
+     },
+     {
+      "alarmes": 0,
+      "limiar": 0.99,
+      "taxa_fa": 0.0,
+      "tempo": 3204.43
+     },
+     {
+      "alarmes": 0,
+      "limiar": 0.995,
+      "taxa_fa": 0.0,
+      "tempo": 3204.43
+     },
+     {
+      "alarmes": 0,
+      "limiar": 0.999,
+      "taxa_fa": 0.0,
+      "tempo": 3204.43
+     }
+    ],
+    "limiar": 0.5
+   },
+   "cusum": {
+    "curva": [
+     {
+      "alarmes": 440,
+      "limiar": 2.0,
+      "taxa_fa": 0.447349,
+      "tempo": 983.571
+     },
+     {
+      "alarmes": 357,
+      "limiar": 3.0,
+      "taxa_fa": 0.226379,
+      "tempo": 1577.0
+     },
+     {
+      "alarmes": 285,
+      "limiar": 4.0,
+      "taxa_fa": 0.139471,
+      "tempo": 2043.43
+     },
+     {
+      "alarmes": 224,
+      "limiar": 5.0,
+      "taxa_fa": 0.0967364,
+      "tempo": 2315.57
+     },
+     {
+      "alarmes": 172,
+      "limiar": 6.0,
+      "taxa_fa": 0.0684324,
+      "tempo": 2513.43
+     },
+     {
+      "alarmes": 144,
+      "limiar": 7.0,
+      "taxa_fa": 0.0544188,
+      "tempo": 2646.14
+     },
+     {
+      "alarmes": 114,
+      "limiar": 8.0,
+      "taxa_fa": 0.0410917,
+      "tempo": 2774.29
+     },
+     {
+      "alarmes": 94,
+      "limiar": 10.0,
+      "taxa_fa": 0.0325952,
+      "tempo": 2883.86
+     },
+     {
+      "alarmes": 65,
+      "limiar": 12.0,
+      "taxa_fa": 0.0217443,
+      "tempo": 2989.29
+     },
+     {
+      "alarmes": 51,
+      "limiar": 15.0,
+      "taxa_fa": 0.0166893,
+      "tempo": 3055.86
+     },
+     {
+      "alarmes": 35,
+      "limiar": 20.0,
+      "taxa_fa": 0.0111806,
+      "tempo": 3130.43
+     },
+     {
+      "alarmes": 18,
+      "limiar": 25.0,
+      "taxa_fa": 0.00569054,
+      "tempo": 3163.14
+     },
+     {
+      "alarmes": 14,
+      "limiar": 30.0,
+      "taxa_fa": 0.00441263,
+      "tempo": 3172.71
+     }
+    ],
+    "limiar": 15.0
+   },
+   "media_movel": {
+    "curva": [
+     {
+      "alarmes": 487,
+      "limiar": 0.5,
+      "taxa_fa": 0.750385,
+      "tempo": 649.0
+     },
+     {
+      "alarmes": 443,
+      "limiar": 0.75,
+      "taxa_fa": 0.39278,
+      "tempo": 1127.86
+     },
+     {
+      "alarmes": 343,
+      "limiar": 1.0,
+      "taxa_fa": 0.192065,
+      "tempo": 1785.86
+     },
+     {
+      "alarmes": 220,
+      "limiar": 1.25,
+      "taxa_fa": 0.0950793,
+      "tempo": 2313.86
+     },
+     {
+      "alarmes": 140,
+      "limiar": 1.5,
+      "taxa_fa": 0.0530533,
+      "tempo": 2638.86
+     },
+     {
+      "alarmes": 93,
+      "limiar": 1.75,
+      "taxa_fa": 0.0328804,
+      "tempo": 2828.43
+     },
+     {
+      "alarmes": 67,
+      "limiar": 2.0,
+      "taxa_fa": 0.0227295,
+      "tempo": 2947.71
+     },
+     {
+      "alarmes": 47,
+      "limiar": 2.25,
+      "taxa_fa": 0.0154999,
+      "tempo": 3032.29
+     },
+     {
+      "alarmes": 33,
+      "limiar": 2.5,
+      "taxa_fa": 0.0107014,
+      "tempo": 3083.71
+     },
+     {
+      "alarmes": 20,
+      "limiar": 2.75,
+      "taxa_fa": 0.00637146,
+      "tempo": 3139.0
+     },
+     {
+      "alarmes": 12,
+      "limiar": 3.0,
+      "taxa_fa": 0.00378549,
+      "tempo": 3170.0
+     },
+     {
+      "alarmes": 6,
+      "limiar": 3.25,
+      "taxa_fa": 0.00188349,
+      "tempo": 3185.57
+     },
+     {
+      "alarmes": 5,
+      "limiar": 3.5,
+      "taxa_fa": 0.00156817,
+      "tempo": 3188.43
+     },
+     {
+      "alarmes": 3,
+      "limiar": 3.75,
+      "taxa_fa": 0.000938589,
+      "tempo": 3196.29
+     },
+     {
+      "alarmes": 1,
+      "limiar": 4.0,
+      "taxa_fa": 0.000312235,
+      "tempo": 3202.71
+     },
+     {
+      "alarmes": 0,
+      "limiar": 4.25,
+      "taxa_fa": 0.0,
+      "tempo": 3204.43
+     },
+     {
+      "alarmes": 0,
+      "limiar": 4.5,
+      "taxa_fa": 0.0,
+      "tempo": 3204.43
+     },
+     {
+      "alarmes": 0,
+      "limiar": 4.75,
+      "taxa_fa": 0.0,
+      "tempo": 3204.43
+     },
+     {
+      "alarmes": 0,
+      "limiar": 5.0,
+      "taxa_fa": 0.0,
+      "tempo": 3204.43
+     }
+    ],
+    "limiar": 2.25
+   }
+  },
+  "dia_quebra": 30,
+  "limiares_calibrados": {
+   "bocpd": 0.5,
+   "cusum": 15.0,
+   "media_movel": 2.25
+  },
+  "por_metodo": {
+   "bocpd": {
+    "atraso": {
+     "estimativa": 4.15625,
+     "ic95": [
+      4.0,
+      4.34375
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "fa_semana": {
+     "estimativa": 0.0170887,
+     "ic95": [
+      0.0120236,
+      0.0224976
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "poder": {
+     "estimativa": 0.811061,
+     "ic95": [
+      0.770682,
+      0.849998
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    }
+   },
+   "cusum": {
+    "atraso": {
+     "estimativa": 6.59375,
+     "ic95": [
+      6.3125,
+      6.90625
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "fa_semana": {
+     "estimativa": 0.0154203,
+     "ic95": [
+      0.010548,
+      0.0206093
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "poder": {
+     "estimativa": 0.934653,
+     "ic95": [
+      0.910974,
+      0.957711
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    }
+   },
+   "media_movel": {
+    "atraso": {
+     "estimativa": 5.71875,
+     "ic95": [
+      5.5,
+      5.90625
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "fa_semana": {
+     "estimativa": 0.0160907,
+     "ic95": [
+      0.0104015,
+      0.0215354
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    },
+    "poder": {
+     "estimativa": 0.911339,
+     "ic95": [
+      0.883755,
+      0.938474
+     ],
+     "n": 16,
+     "n_excluidos": 0
+    }
+   }
+  }
+ }
+}

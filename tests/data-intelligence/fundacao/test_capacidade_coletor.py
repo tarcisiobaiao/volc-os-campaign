@@ -195,10 +195,10 @@ def test_mesmo_slot_e_no_op_e_releitura_igual_em_outra_hora_e_versao_nova_d2():
     r3 = run_coleta(ped("07:00"), **gravar(sink))
     assert r1.status == "concluido" and r1.inseridas == 9
     assert r2.status == "ja_concluido" and sink.chamadas_gravar == 2  # mesmo slot: nem lê
-    # Regra D2 da frente A: observed_at entra na chave da leitura → reler o MESMO valor em outra hora é
-    # versão nova. Custo: as observações crescem com o nº de leituras, não com o nº de mudanças (04 §6).
-    assert r3.status == "concluido" and r3.inseridas == 9 and r3.noop == 0
-    assert len(sink.registro) == 18
+    # [thread A, D2'] reler o MESMO valor em outra hora é leitura nova (observed_at na chave), mas o estado
+    # não mudou: vira CONFIRMAÇÃO estreita, não versão — as versões crescem com as mudanças, não com as leituras.
+    assert r3.status == "concluido" and r3.inseridas == 0 and r3.noop == 0 and r3.confirmadas == 9
+    assert len(sink.registro) == 9 and len(sink.registro.confirmacoes) == 9
     assert len(sink.payloads) == 3  # o payload bruto continua deduplicado por conteúdo
     # e o as_of continua mostrando os mesmos valores (a versão nova repete o conteúdo)
     fim = sink.as_of(sink.instantes_de_gravacao()[-1])
@@ -229,8 +229,8 @@ def test_a_b_a_e_preservado_como_leitura_nova():
     sink = SinkMemoria(relogio_sink())
     t = Transporte(valores=_custo_a_b_a)
     rs = [run_coleta(ped(s), **gravar(sink, transporte=t)) for s in ("06:00", "07:00", "08:00")]
-    # regra D2 da frente A: observed_at entra na idempotência → cada leitura em outra hora é versão nova
-    assert [(r.inseridas, r.noop) for r in rs] == [(3, 0), (3, 0), (3, 0)]
+    # [thread A, D2'] só o custo muda (A→B→A): 1 versão por leitura; impressões/conversões iguais → confirmação
+    assert [(r.inseridas, r.noop, r.confirmadas) for r in rs] == [(3, 0, 0), (1, 0, 2), (1, 0, 2)]
     custo = [o for o in sink.registro.observacoes if o.metrica is Metrica.CUSTO]
     hist = sink.registro.historico(custo[0].chave_natural)
     assert [v.observacao.valor for v in hist] == [10_000_000, 20_000_000, 10_000_000]
@@ -280,7 +280,8 @@ def test_equivalencia_serial_paralelo_mesmas_leituras_mesma_historia():
                   transporte=Transporte(_a_b_a_por_conta, roteiro=[ErroTransitorio("429"), None] * 3),
                   sink=s_serial, modo="gravar", politica=pol, **NADA)
     ref, ref_versoes = _historia(s_serial), _versoes(s_serial)
-    assert len(ref) == 18 and len(s_serial.registro) == 6 * 2 * 3 * 3  # 6 contas × 2 linhas × 3 métricas × 3 leituras
+    # 6 contas × 2 linhas × 3 métricas × 3 leituras = versões + confirmações [thread A, D2']
+    assert len(ref) == 18 and len(s_serial.registro) + len(s_serial.registro.confirmacoes) == 6 * 2 * 3 * 3
     for rodada in range(8):
         s_par = SinkMemoria(relogio_sink(SINK_DEPOIS))
         executar_lote(pedidos, paralelismo=6, adaptador=AdaptadorCarimbado(),
@@ -302,7 +303,11 @@ def test_d1_gravacao_fora_de_ordem_nao_desfaz_a_leitura_mais_recente():
     for s_, sink in ((("06:00", "07:00", "08:00"), em_ordem), (("08:00", "07:00", "06:00"), invertido)):
         for slot in s_:
             run_coleta(ped(slot, "acc-0"), adaptador=AdaptadorCarimbado(), transporte=t, sink=sink, modo="gravar", **NADA)
-    assert _versoes(em_ordem) == _versoes(invertido)
+    # [thread A, D2'] as LINHAS dependem da ordem de chegada (em ordem, as releituras iguais viram confirmação;
+    # invertido, não há versão anterior com que comparar), mas os ESTADOS registrados e o as_of não
+    estados = lambda sk: {(v.observacao.chave_natural, v.observacao.status.value, v.observacao.valor)  # noqa: E731
+                          for v in sk.registro.versoes}
+    assert estados(em_ordem) == estados(invertido)
     fim = lambda sk: sk.as_of(sk.instantes_de_gravacao()[-1])  # noqa: E731
     assert fim(em_ordem) == fim(invertido)
     assert sorted(v[3] for v in fim(invertido).values() if v[0] == "cost") == [10_000_000, 10_000_000]

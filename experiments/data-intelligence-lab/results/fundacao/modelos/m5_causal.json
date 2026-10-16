@@ -1,0 +1,428 @@
+{
+ "manifesto": {
+  "catalogo_sha256": "d449d43f12ee20fdff245663329e8779aaa96faa39a4e71617cf746ec8601600",
+  "natureza": "simulacao_com_seed_sem_dado_real",
+  "parametros": {
+   "C": 50,
+   "D": 30,
+   "selecao_b": "top 30% ROAS 7d",
+   "unidade": "BRL por campanha-dia"
+  },
+  "pre_registro": "results/fundacao/modelos/PRE-REGISTRO.md",
+  "script": "fundacao_modelos_causal.py",
+  "seeds": [
+   20261601,
+   20261602,
+   20261603,
+   20261604,
+   20261605,
+   20261606,
+   20261607,
+   20261608,
+   20261609,
+   20261610,
+   20261611,
+   20261612,
+   20261613,
+   20261614,
+   20261615,
+   20261616,
+   20261617,
+   20261618,
+   20261619,
+   20261620
+  ],
+  "sha256_codigo": "6872168463e89e4bf180ec1fe0c165099a2cdf035e8b0c40fe021cb60c1dbe38",
+  "teto_de_estado": "testado com sintético",
+  "versoes": {
+   "catalogo": "1.0.0",
+   "implementacao": "CPython",
+   "modelos": "0.1.0",
+   "numpy": "2.5.3",
+   "python": "3.13.0",
+   "scipy": "1.18.1",
+   "simulador": "1.0.0",
+   "sklearn": "1.9.1",
+   "statlab": "0.1.0",
+   "statsmodels": "0.15.0"
+  }
+ },
+ "resultados": {
+  "H5a_suportada": false,
+  "H5b_suportada": true,
+  "a": {
+   "custo": {
+    "abs_vies_antes_depois_menos_did": {
+     "estimativa": 0.00308357,
+     "ic95": [
+      -1.29429,
+      1.35378
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "frac_did_ic_cobre_verdade": 1.0,
+    "frac_placebo_temporal_passou": 0.7,
+    "frac_tendencias_paralelas_passou": 0.75,
+    "verdade_att": {
+     "estimativa": 8.91069,
+     "ic95": [
+      7.36149,
+      10.5605
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "vies": {
+     "antes_depois": {
+      "estimativa": 3.80422,
+      "ic95": [
+       2.5556,
+       5.10287
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "controle_sintetico": {
+      "estimativa": 2.31034,
+      "ic95": [
+       0.717958,
+       3.847
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "corte_transversal": {
+      "estimativa": -3.11252,
+      "ic95": [
+       -9.07531,
+       3.34418
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "did": {
+      "estimativa": -0.125065,
+      "ic95": [
+       -2.09914,
+       1.8009
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     }
+    }
+   },
+   "lucro": {
+    "abs_vies_antes_depois_menos_did": {
+     "estimativa": -0.129009,
+     "ic95": [
+      -0.608866,
+      0.22923
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "frac_did_ic_cobre_verdade": 0.95,
+    "frac_placebo_temporal_passou": 0.9,
+    "frac_tendencias_paralelas_passou": 1.0,
+    "verdade_att": {
+     "estimativa": -1.90531,
+     "ic95": [
+      -2.66416,
+      -1.20869
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "vies": {
+     "antes_depois": {
+      "estimativa": -0.7229,
+      "ic95": [
+       -1.29174,
+       -0.178697
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "controle_sintetico": {
+      "estimativa": -0.719612,
+      "ic95": [
+       -1.34863,
+       -0.099417
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "corte_transversal": {
+      "estimativa": 0.346951,
+      "ic95": [
+       -2.03117,
+       2.67694
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "did": {
+      "estimativa": -0.670764,
+      "ic95": [
+       -1.36555,
+       -0.0210478
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     }
+    }
+   },
+   "receita": {
+    "abs_vies_antes_depois_menos_did": {
+     "estimativa": -0.62462,
+     "ic95": [
+      -2.41703,
+      1.0233
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "frac_did_ic_cobre_verdade": 0.9,
+    "frac_placebo_temporal_passou": 0.9,
+    "frac_tendencias_paralelas_passou": 0.9,
+    "verdade_att": {
+     "estimativa": 7.00538,
+     "ic95": [
+      5.86447,
+      8.21891
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "vies": {
+     "antes_depois": {
+      "estimativa": 3.08132,
+      "ic95": [
+       1.99059,
+       4.19442
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "controle_sintetico": {
+      "estimativa": 1.34737,
+      "ic95": [
+       -0.0812867,
+       2.77395
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "corte_transversal": {
+      "estimativa": -2.76557,
+      "ic95": [
+       -8.90538,
+       3.86963
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "did": {
+      "estimativa": -0.795829,
+      "ic95": [
+       -2.88651,
+       1.09829
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     }
+    }
+   }
+  },
+  "b": {
+   "custo": {
+    "abs_vies_antes_depois_menos_did": {
+     "estimativa": -3.14778,
+     "ic95": [
+      -4.64571,
+      -1.64078
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "frac_did_ic_cobre_verdade": 0.85,
+    "frac_placebo_temporal_passou": 0.85,
+    "frac_tendencias_paralelas_passou": 0.7,
+    "verdade_att": {
+     "estimativa": 6.55156,
+     "ic95": [
+      5.34518,
+      7.7997
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "vies": {
+     "antes_depois": {
+      "estimativa": 0.875081,
+      "ic95": [
+       0.373434,
+       1.51536
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "controle_sintetico": {
+      "estimativa": -0.256083,
+      "ic95": [
+       -0.929994,
+       0.393219
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "corte_transversal": {
+      "estimativa": -14.2927,
+      "ic95": [
+       -18.725,
+       -10.1263
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "did": {
+      "estimativa": -3.99012,
+      "ic95": [
+       -5.26566,
+       -2.74954
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     }
+    }
+   },
+   "lucro": {
+    "abs_vies_antes_depois_menos_did": {
+     "estimativa": -0.38194,
+     "ic95": [
+      -0.711878,
+      -0.0895922
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "frac_did_ic_cobre_verdade": 1.0,
+    "frac_placebo_temporal_passou": 0.85,
+    "frac_tendencias_paralelas_passou": 0.8,
+    "verdade_att": {
+     "estimativa": 1.15412,
+     "ic95": [
+      0.655475,
+      1.75893
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "vies": {
+     "antes_depois": {
+      "estimativa": 0.420156,
+      "ic95": [
+       -0.198122,
+       1.34283
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "controle_sintetico": {
+      "estimativa": 0.485603,
+      "ic95": [
+       -0.429509,
+       1.57968
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "corte_transversal": {
+      "estimativa": 15.6539,
+      "ic95": [
+       12.9136,
+       18.8339
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "did": {
+      "estimativa": 0.780631,
+      "ic95": [
+       0.0103772,
+       1.6893
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     }
+    }
+   },
+   "receita": {
+    "abs_vies_antes_depois_menos_did": {
+     "estimativa": -2.26656,
+     "ic95": [
+      -3.75557,
+      -0.776799
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "frac_did_ic_cobre_verdade": 0.85,
+    "frac_placebo_temporal_passou": 0.95,
+    "frac_tendencias_paralelas_passou": 0.95,
+    "verdade_att": {
+     "estimativa": 7.70568,
+     "ic95": [
+      6.1968,
+      9.41709
+     ],
+     "n": 20,
+     "n_excluidos": 0
+    },
+    "vies": {
+     "antes_depois": {
+      "estimativa": 1.29524,
+      "ic95": [
+       0.248739,
+       2.76842
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "controle_sintetico": {
+      "estimativa": -0.722252,
+      "ic95": [
+       -1.73002,
+       0.408912
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "corte_transversal": {
+      "estimativa": 1.36127,
+      "ic95": [
+       -4.53356,
+       7.57082
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     },
+     "did": {
+      "estimativa": -3.20949,
+      "ic95": [
+       -4.71185,
+       -1.55269
+      ],
+      "n": 20,
+      "n_excluidos": 0
+     }
+    }
+   }
+  },
+  "n_tratados": {
+   "a": 15.0,
+   "b": 15.0
+  }
+ }
+}

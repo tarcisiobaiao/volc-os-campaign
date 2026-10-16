@@ -188,6 +188,7 @@ class ReciboRun:
     observacoes: int = 0
     inseridas: int = 0
     noop: int = 0
+    confirmadas: int = 0  # [thread A, D2'] releitura com o mesmo estado: confirmação estreita, não versão
     rejeicoes: int = 0
     payloads_distintos: int = 0
     lido_em: Optional[datetime] = None
@@ -448,6 +449,7 @@ def _concluir(leitura: _Leitura, sink, modo: str, relogio: Callable[[], datetime
         return rec
     cont = sink.gravar(obs, payloads)
     rec.inseridas, rec.noop = cont["inserido"], cont["noop"]
+    rec.confirmadas = cont.get("confirmado", 0)  # [thread A, D2']
     rec.gravado_em = instante
     for motivo in rejeicoes:
         sink.dead_letter(ItemDeadLetter(ped, rec.chave_execucao, f"linha_rejeitada:{motivo}", motivo, rec.tentativas,

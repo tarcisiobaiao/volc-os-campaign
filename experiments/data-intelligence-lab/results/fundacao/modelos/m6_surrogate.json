@@ -1,0 +1,245 @@
+{
+ "manifesto": {
+  "catalogo_sha256": "d449d43f12ee20fdff245663329e8779aaa96faa39a4e71617cf746ec8601600",
+  "natureza": "simulacao_com_seed_sem_dado_real",
+  "parametros": {
+   "grao": "campaign_day",
+   "rotulo": "joinads final"
+  },
+  "pre_registro": "results/fundacao/modelos/PRE-REGISTRO.md",
+  "script": "fundacao_modelos_surrogate.py",
+  "seeds": [
+   20261701,
+   20261702,
+   20261703,
+   20261704,
+   20261705,
+   20261706
+  ],
+  "sha256_codigo": "fceaa5a5827a2f78fd189d13b489191dd649103f8660edcec140690cf0261bbd",
+  "teto_de_estado": "testado com sintético",
+  "versoes": {
+   "catalogo": "1.0.0",
+   "implementacao": "CPython",
+   "modelos": "0.1.0",
+   "numpy": "2.5.3",
+   "python": "3.13.0",
+   "scipy": "1.18.1",
+   "simulador": "1.0.0",
+   "sklearn": "1.9.1",
+   "statlab": "0.1.0",
+   "statsmodels": "0.15.0"
+  }
+ },
+ "resultados": {
+  "leitura": {
+   "cobertura_sessao_r2": 0.0191667,
+   "r2_muda_veredito": false,
+   "vereditos": {
+    "estavel_50x100": "viavel_para_teste",
+    "estavel_50x30": "dados_insuficientes",
+    "estavel_50x90": "dados_insuficientes",
+    "estavel_60x100": "viavel_para_teste",
+    "sensor_sem_campanha_60x100": "viavel_para_teste"
+   }
+  },
+  "portao": {
+   "estavel_50x100": {
+    "cobertura_feature_sessoes_no_grao_campanha": 0.985,
+    "contagens": {
+     "grao_rotulo": "campaign_day",
+     "graos_do_rotulo": [
+      "campaign_day"
+     ],
+     "linhas": 5000,
+     "linhas_maduras": 4950,
+     "linhas_sem_rotulo_ou_imaturas": 50,
+     "periodos_com_rotulo": 100,
+     "periodos_teste_oot": 30,
+     "periodos_treino_oot": 70,
+     "unidades_com_profundidade": 50,
+     "unidades_com_rotulo": 50
+    },
+    "features_circulares": [
+     "pv_joinads"
+    ],
+    "features_validas": [
+     "cliques",
+     "destino",
+     "sessoes"
+    ],
+    "features_vazamento_ou_sem_as_of": [],
+    "motivos": [
+     "features circulares removidas (mesma família de fonte do rótulo): ['pv_joinads']"
+    ],
+    "veredito": "viavel_para_teste"
+   },
+   "estavel_50x30": {
+    "cobertura_feature_sessoes_no_grao_campanha": 0.975333,
+    "contagens": {
+     "grao_rotulo": "campaign_day",
+     "graos_do_rotulo": [
+      "campaign_day"
+     ],
+     "linhas": 1500,
+     "linhas_maduras": 1484,
+     "linhas_sem_rotulo_ou_imaturas": 16,
+     "periodos_com_rotulo": 30,
+     "periodos_teste_oot": 9,
+     "periodos_treino_oot": 21,
+     "unidades_com_profundidade": 0,
+     "unidades_com_rotulo": 50
+    },
+    "features_circulares": [
+     "pv_joinads"
+    ],
+    "features_validas": [
+     "cliques",
+     "destino",
+     "sessoes"
+    ],
+    "features_vazamento_ou_sem_as_of": [],
+    "motivos": [
+     "features circulares removidas (mesma família de fonte do rótulo): ['pv_joinads']",
+     "unidades com ≥63 períodos de treino e ≥27 de teste: 0 < 50",
+     "linhas maduras 1484 < 4500"
+    ],
+    "veredito": "dados_insuficientes"
+   },
+   "estavel_50x90": {
+    "cobertura_feature_sessoes_no_grao_campanha": 0.989111,
+    "contagens": {
+     "grao_rotulo": "campaign_day",
+     "graos_do_rotulo": [
+      "campaign_day"
+     ],
+     "linhas": 4500,
+     "linhas_maduras": 4455,
+     "linhas_sem_rotulo_ou_imaturas": 45,
+     "periodos_com_rotulo": 90,
+     "periodos_teste_oot": 27,
+     "periodos_treino_oot": 63,
+     "unidades_com_profundidade": 21,
+     "unidades_com_rotulo": 50
+    },
+    "features_circulares": [
+     "pv_joinads"
+    ],
+    "features_validas": [
+     "cliques",
+     "destino",
+     "sessoes"
+    ],
+    "features_vazamento_ou_sem_as_of": [],
+    "motivos": [
+     "features circulares removidas (mesma família de fonte do rótulo): ['pv_joinads']",
+     "unidades com ≥63 períodos de treino e ≥27 de teste: 21 < 50",
+     "linhas maduras 4455 < 4500"
+    ],
+    "veredito": "dados_insuficientes"
+   },
+   "estavel_60x100": {
+    "cobertura_feature_sessoes_no_grao_campanha": 0.985333,
+    "contagens": {
+     "grao_rotulo": "campaign_day",
+     "graos_do_rotulo": [
+      "campaign_day"
+     ],
+     "linhas": 6000,
+     "linhas_maduras": 5941,
+     "linhas_sem_rotulo_ou_imaturas": 59,
+     "periodos_com_rotulo": 100,
+     "periodos_teste_oot": 30,
+     "periodos_treino_oot": 70,
+     "unidades_com_profundidade": 60,
+     "unidades_com_rotulo": 60
+    },
+    "features_circulares": [
+     "pv_joinads"
+    ],
+    "features_validas": [
+     "cliques",
+     "destino",
+     "sessoes"
+    ],
+    "features_vazamento_ou_sem_as_of": [],
+    "motivos": [
+     "features circulares removidas (mesma família de fonte do rótulo): ['pv_joinads']"
+    ],
+    "veredito": "viavel_para_teste"
+   },
+   "sensor_sem_campanha_60x100": {
+    "cobertura_feature_sessoes_no_grao_campanha": 0.0191667,
+    "contagens": {
+     "grao_rotulo": "campaign_day",
+     "graos_do_rotulo": [
+      "campaign_day"
+     ],
+     "linhas": 6000,
+     "linhas_maduras": 5741,
+     "linhas_sem_rotulo_ou_imaturas": 259,
+     "periodos_com_rotulo": 100,
+     "periodos_teste_oot": 30,
+     "periodos_treino_oot": 70,
+     "unidades_com_profundidade": 52,
+     "unidades_com_rotulo": 60
+    },
+    "features_circulares": [
+     "pv_joinads"
+    ],
+    "features_validas": [
+     "cliques",
+     "destino",
+     "sessoes"
+    ],
+    "features_vazamento_ou_sem_as_of": [],
+    "motivos": [
+     "features circulares removidas (mesma família de fonte do rótulo): ['pv_joinads']"
+    ],
+    "veredito": "viavel_para_teste"
+   }
+  },
+  "skill": {
+   "estavel": {
+    "cobertura_feature_sessao": {
+     "estimativa": 0.989222,
+     "ic95": [
+      0.983814,
+      0.994074
+     ],
+     "n": 6,
+     "n_excluidos": 0
+    },
+    "skill": {
+     "estimativa": 0.300512,
+     "ic95": [
+      0.285187,
+      0.319065
+     ],
+     "n": 6,
+     "n_excluidos": 0
+    }
+   },
+   "sensor_sem_campanha": {
+    "cobertura_feature_sessao": {
+     "estimativa": 0.0177037,
+     "ic95": [
+      0.0162963,
+      0.0191481
+     ],
+     "n": 6,
+     "n_excluidos": 0
+    },
+    "skill": {
+     "estimativa": null,
+     "ic95": [
+      null,
+      null
+     ],
+     "n": 0,
+     "n_excluidos": 6
+    }
+   }
+  }
+ }
+}
