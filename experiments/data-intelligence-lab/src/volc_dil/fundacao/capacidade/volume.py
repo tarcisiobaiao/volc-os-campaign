@@ -105,7 +105,9 @@ class Job:
     fracao_ativa: float = 1.0
     fracao_mutavel: float = 1.0
     p_revisao_fechado: float = 0.05
-    consultas_por_execucao: int = 1  # requisições por conta por execução (GAQL searchStream/endpoint)
+    consultas_por_execucao: int = 1  # requisições POR CONTA por execução (GAQL searchStream/endpoint)
+    consultas_fixas_por_execucao: int = 0  # requisições por execução que não escalam com contas (ex.: customer_client do MCC)
+    lotes_por_execucao: int | None = None  # lotes com linhas de fato por conta por execução (None = consultas)
     tipo_payload: str = "campanha"
     perfil_horario: tuple[float, ...] | None = None  # 24 pesos, média 1
     confirmacao: str = "documentado na missão, não confirmado"
@@ -119,6 +121,8 @@ class Job:
                 raise ParametroInvalido(f"{nome} deve estar em [0,1]")
         if self.lambda_mudanca_h < 0 or self.metricas_por_linha < 1 or self.consultas_por_execucao < 1:
             raise ParametroInvalido("λ>=0, métricas>=1, consultas>=1")
+        if self.consultas_fixas_por_execucao < 0 or (self.lotes_por_execucao is not None and self.lotes_por_execucao < 1):
+            raise ParametroInvalido("consultas fixas >= 0, lotes >= 1")
         if self.perfil_horario is not None:
             if len(self.perfil_horario) != 24 or any(w < 0 for w in self.perfil_horario):
                 raise ParametroInvalido("perfil horário: 24 pesos >= 0")
@@ -137,6 +141,10 @@ class Job:
     @property
     def inclui_d0(self) -> bool:
         return self.janela[0] == 0
+
+    @property
+    def lotes(self) -> int:
+        return self.lotes_por_execucao if self.lotes_por_execucao is not None else self.consultas_por_execucao
 
     def com_cron(self, cron: str) -> "Job":
         return replace(self, cron=cron)
@@ -217,10 +225,11 @@ def calcular_job(job: Job, escala: Escala) -> ResultadoJob:
         versoes = 1.0 + (n * dias_fechados - 1) * job.p_revisao_fechado
         p_d0_media = None
     versoes = min(versoes, float(n * job.dias_janela))
-    lotes = escala.contas * job.consultas_por_execucao * n
-    # Lote = resposta de uma consulta, de uma conta, numa execução. Só repete o anterior se NENHUMA
-    # linha mudou: P = Π(1 − p_i). Por isso dedup por lote rende pouco em janela grande.
-    linhas_lote = linhas_por_exec / escala.contas / job.consultas_por_execucao
+    chamadas = n * (escala.contas * job.consultas_por_execucao + job.consultas_fixas_por_execucao)
+    lotes = escala.contas * job.lotes * n
+    # Lote = resposta de uma consulta de fato, de uma conta, numa execução. Só repete o anterior se
+    # NENHUMA linha mudou: P = Π(1 − p_i). Por isso dedup por lote rende pouco em janela grande.
+    linhas_lote = linhas_por_exec / escala.contas / job.lotes
     r_d0 = linhas_lote / job.dias_janela if job.inclui_d0 else 0.0
     r_f = linhas_lote - r_d0
     iguais = 0.0
@@ -228,7 +237,7 @@ def calcular_job(job: Job, escala: Escala) -> ResultadoJob:
         p0 = ps_d0[i - 1] if job.inclui_d0 else 0.0
         iguais += ((1.0 - p0) ** r_d0) * ((1.0 - job.p_revisao_fechado) ** r_f)
     return ResultadoJob(
-        nome=job.nome, fonte=job.fonte, execucoes_dia=n, chamadas_dia=float(lotes),
+        nome=job.nome, fonte=job.fonte, execucoes_dia=n, chamadas_dia=float(chamadas),
         linhas_logicas_novas_dia=e_ret, linhas_lidas_dia=linhas_por_exec * n, versoes_por_linha=versoes,
         lotes_dia=float(lotes), lotes_distintos_dia=lotes * (1.0 - iguais / n), p_mudanca_d0_media=p_d0_media,
         metricas_por_linha=job.metricas_por_linha, tipo_payload=job.tipo_payload,
@@ -354,3 +363,24 @@ def calcular_gtm(p: PerfilGTM, horizontes: dict[str, int] = HORIZONTES) -> dict:
         "eventos_por_requisicao": (e / req_sessao) if req_sessao else 0.0, "gb_dia": b / GB,
         "acumulado_gb": {k: b * d / GB for k, d in horizontes.items()}, "perfil": asdict(p),
     }
+
+
+def redundancia_observada(janelas_por_execucao: list[tuple[int, int]], linhas_por_dia: float,
+                          p_revisao: float = 0.0) -> dict:
+    """Redundância esperada de um coletor de janela rolante JOVEM (R1 H5), dada a lista de execuções.
+
+    Cada execução lê os dias absolutos [ini, fim] (inclusive). Uma linha lógica (termo-dia) lida k
+    vezes rende 1 + (k − 1)·p versões distintas. Em regime estacionário de `23 */4` com janela de 7
+    dias, k = 42; num coletor com um dia de vida, k ≈ número de execuções — e a redundância medida
+    fica bem abaixo da do regime estacionário, sem que nenhuma premissa esteja errada.
+    """
+    leituras: dict[int, int] = {}
+    for ini, fim in janelas_por_execucao:
+        if fim < ini:
+            raise ParametroInvalido("janela invertida")
+        for d in range(ini, fim + 1):
+            leituras[d] = leituras.get(d, 0) + 1
+    lidas = sum(k * linhas_por_dia for k in leituras.values())
+    distintas = sum((1 + (k - 1) * p_revisao) * linhas_por_dia for k in leituras.values())
+    return {"lidas": lidas, "distintas": distintas, "redundancia": 1 - distintas / lidas if lidas else 0.0,
+            "razao_distintas": distintas / lidas if lidas else 0.0, "leituras_por_dia_logico": dict(sorted(leituras.items()))}
