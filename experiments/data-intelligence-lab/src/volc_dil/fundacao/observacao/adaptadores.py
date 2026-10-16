@@ -15,7 +15,8 @@ Regras que as tabelas de origem não têm e o adaptador impõe:
    `observed_at = collected_at`; `available_at = ingested_at = max(collected_at, created_at)` — o
    VOLC só "sabe" quando a linha existe no banco, e um relógio adiantado do n8n não antecipa nada.
 2. **Janela.** `metric_date` (+ `metric_hour`) no `timezone` da execução (padrão `America/Sao_Paulo`);
-   janela ainda aberta em `collected_at` → `partial` com cobertura proporcional ao tempo decorrido.
+   janela ainda aberta em `collected_at` → `partial` com cobertura DESCONHECIDA (nula, motivo
+   `janela_aberta;cobertura_desconhecida`): a tabela não diz quanto da janela já foi contado (R1-F17).
 3. **Zero sem linha de métrica.** O coletor v21 de campanha-dia sintetiza 0 (`basic()` no Code node)
    quando a API não devolveu linha de métrica para a campanha. Por isso, no v21, 0 só vira
    `zero_confirmed` com PROVA: o payload bruto do lote (`raw_source.metrics`) tem uma linha de
@@ -23,7 +24,16 @@ Regras que as tabelas de origem não têm e o adaptador impõe:
    ou `zero_sem_prova_de_linha`, se o payload não veio na junção). Valor ≠ 0 não é sintetizável.
 4. **Chave substituída (JoinAds).** Se `request_meta.custom_key` (pedido) difere do `custom_key`
    devolvido, todas as métricas da linha viram `invalid` (`chave_substituida:<pedida>-><devolvida>`).
-5. **Hash ausente.** Lote JoinAds com `payload_sha256` = 64 zeros (default da coluna sem o trigger)
+5. **Moeda só com prova (R1-F4).** A coluna `currency_code` não prova nada (v21 campanha-dia grava 'BRL'
+   fixo; JoinAds v2 grava `cfg.CURRENCY || 'USD'` e a coluna tem DEFAULT 'USD'). Valor monetário só sai
+   com moeda se o payload bruto do lote (`batch_payload`) declarar a mesma moeda ou o chamador passar
+   `moeda_atestada`; senão `invalid` `moeda_nao_provada` (ou `moeda_divergente`).
+6. **Chave JoinAds sem prova (R1-F15).** `custom_key` ausente num endpoint que pede chave → `invalid`
+   `custom_key_ausente:<pedida>`; endpoints em que o normalizador a montante força `custom_key`
+   (`key_value_country_adunit`, `pageviews_campaign_batch`) → `invalid` `custom_key_forcado_upstream`.
+   Limite: linhas com chave substituída são DESCARTADAS a montante (`joinads_v2_normalize.js:169-173`,
+   só um warning no recibo da execução); ausência de linha em `joinads_observation` não prova nada.
+7. **Hash ausente.** Lote JoinAds com `payload_sha256` = 64 zeros (default da coluna sem o trigger)
    não prova conteúdo: as métricas viram `invalid` (`payload_sem_hash`).
 """
 from __future__ import annotations
@@ -35,8 +45,8 @@ from zoneinfo import ZoneInfo
 
 from ...contracts.money import MICROS
 from ...contracts.vocab import Metrica, ValueKind
-from .modelo import Coletor, EntidadeRef, Observacao, ObservacaoInvalida
-from .vocab import COBERTURA_PPM_MAX, COBERTURA_PPM_MIN, StatusObservacao, Unidade
+from .modelo import COBERTURA_DESCONHECIDA, Coletor, EntidadeRef, Observacao, ObservacaoInvalida
+from .vocab import StatusObservacao, Unidade
 
 TZ_PADRAO = "America/Sao_Paulo"
 HASH_ZERO = "0" * 64
@@ -89,10 +99,44 @@ def _relogios(linha: Mapping[str, Any]) -> tuple[datetime, datetime]:
     return coletado, max(coletado, criado)
 
 
-def _cobertura(ini: datetime, fim: datetime, obs: datetime) -> int:
-    total = (fim - ini).total_seconds()
-    ppm = int((obs - ini).total_seconds() * 1_000_000 // total)
-    return max(COBERTURA_PPM_MIN, min(COBERTURA_PPM_MAX, ppm))
+_CHAVES_MOEDA = frozenset({"currency_code", "currencyCode", "currency", "moeda"})
+
+
+def _moedas_no_payload(payload: Any, profundidade: int = 0) -> set[str]:
+    """Moedas que o payload BRUTO afirma (qualquer nível, até 8). Valor fixado pelo coletor não conta."""
+    achadas: set[str] = set()
+    if profundidade > 8:
+        return achadas
+    if isinstance(payload, Mapping):
+        for k, v in payload.items():
+            if k in _CHAVES_MOEDA and isinstance(v, str) and len(v.strip()) == 3 and v.strip().isalpha():
+                achadas.add(v.strip().upper())
+            else:
+                achadas |= _moedas_no_payload(v, profundidade + 1)
+    elif isinstance(payload, (list, tuple)):
+        for v in payload:
+            achadas |= _moedas_no_payload(v, profundidade + 1)
+    return achadas
+
+
+def _prova_de_moeda(moeda: Optional[str], payload: Any, atestada: Optional[str]) -> Optional[str]:
+    """None se a moeda está provada; senão o motivo de invalidez (R1-F4).
+
+    Prova: o payload bruto do lote declara exatamente essa moeda, ou o chamador passa `moeda_atestada`
+    (moeda da conta lida com prova própria, ex.: `customer.currency_code` de outro lote) igual à coluna.
+    A coluna sozinha não prova: o coletor v21 campanha-dia grava 'BRL' fixo e a JoinAds v2 grava
+    `cfg.CURRENCY || 'USD'` (e a coluna tem DEFAULT 'USD').
+    """
+    if moeda is None:
+        return "moeda_nao_declarada"
+    no_payload = _moedas_no_payload(payload) if payload is not None else set()
+    if no_payload and no_payload != {moeda}:
+        return "moeda_divergente"
+    if no_payload == {moeda} or (atestada is not None and atestada == moeda):
+        return None
+    if atestada is not None:
+        return "moeda_divergente"
+    return "moeda_nao_provada"
 
 
 def _decimal(bruto: Any) -> tuple[Optional[Decimal], Optional[str]]:
@@ -144,19 +188,23 @@ class _Montador:
 
     def emitir(self, metrica: Metrica, unidade: Unidade, valor: Optional[int], *, moeda: Optional[str],
                value_kind: Optional[ValueKind] = None, status: Optional[StatusObservacao] = None,
-               motivo: Optional[str] = None, dimensoes_extra: tuple = ()) -> Observacao:
+               motivo: Optional[str] = None, dimensoes_extra: tuple = (),
+               motivo_moeda: Optional[str] = None) -> Observacao:
         cobertura = None
         if status is None:  # derivar do valor e do relógio
             if self.obs_at < self.fim:
-                status, cobertura, motivo = StatusObservacao.PARTIAL, _cobertura(self.ini, self.fim, self.obs_at), motivo or "janela_aberta"
+                # a tabela de origem não diz quanto da janela já foi contado: não se fabrica cobertura (R1-F17)
+                status, motivo = StatusObservacao.PARTIAL, motivo or f"janela_aberta;{COBERTURA_DESCONHECIDA}"
             elif valor == 0:
                 status = StatusObservacao.ZERO_CONFIRMED
             else:
                 status = StatusObservacao.OBSERVED
         if status not in (StatusObservacao.OBSERVED, StatusObservacao.ZERO_CONFIRMED, StatusObservacao.PARTIAL):
             valor = None
-        if unidade is Unidade.MICROS and valor is not None and moeda is None:
-            status, valor, motivo, cobertura = StatusObservacao.INVALID, None, "moeda_nao_declarada", None
+        if unidade is Unidade.MICROS and motivo_moeda is not None:
+            moeda = None  # moeda sem prova não é gravada nem em linha sem valor
+            if valor is not None:
+                status, valor, motivo, cobertura = StatusObservacao.INVALID, None, motivo_moeda, None
         dims = tuple(sorted(self.comum["dimensoes"] + tuple(dimensoes_extra)))
         kw = {k: v for k, v in self.comum.items() if k != "dimensoes"}
         return Observacao(metrica=metrica, unidade=unidade, valor=valor, moeda=moeda if unidade is Unidade.MICROS else None,
@@ -203,7 +251,7 @@ def _prova_linha_metrica_v21(linha: Mapping[str, Any]) -> Optional[bool]:
     return isinstance(m, Mapping) and bool(m)
 
 
-def adaptar_google_ads_v21(linha: Mapping[str, Any]) -> tuple[Observacao, ...]:
+def adaptar_google_ads_v21(linha: Mapping[str, Any], *, moeda_atestada: Optional[str] = None) -> tuple[Observacao, ...]:
     """Linha de `google_ads_observation` ⋈ `google_ads_raw_batch` ⋈ `google_ads_collection_run` → observações.
 
     Campos esperados (nomes das colunas; os do lote/execução com prefixo explícito na junção):
@@ -249,29 +297,30 @@ def adaptar_google_ads_v21(linha: Mapping[str, Any]) -> tuple[Observacao, ...]:
     if not isinstance(metricas, Mapping):
         raise AdaptacaoImpossivel("metrics precisa ser objeto")
     moeda = _texto(linha.get("currency_code"))
+    motivo_moeda = _prova_de_moeda(moeda, linha.get("batch_payload"), moeda_atestada)
     prova = _prova_linha_metrica_v21(linha) if grain == "campaign_day" else True
     saida = []
     for chave, (metrica, unidade, em_micros) in METRICAS_V21.items():
         if chave not in metricas:
-            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, status=StatusObservacao.MISSING,
+            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, motivo_moeda=motivo_moeda, status=StatusObservacao.MISSING,
                                   motivo=f"metrica_ausente_no_registro:{chave}"))
             continue
         bruto = metricas[chave]
         if bruto is None:
-            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, status=StatusObservacao.MISSING,
+            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, motivo_moeda=motivo_moeda, status=StatusObservacao.MISSING,
                                   motivo=f"valor_nulo_na_fonte:{chave}"))
             continue
         valor, erro = _inteiro(bruto, chave, escala=1 if (em_micros or unidade is Unidade.CONTAGEM) else MICROS)
         if erro is None and unidade is Unidade.CONTAGEM and valor is not None and valor < 0:
             erro = f"contagem_negativa:{chave}"
         if erro:
-            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, status=StatusObservacao.INVALID, motivo=erro))
+            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, motivo_moeda=motivo_moeda, status=StatusObservacao.INVALID, motivo=erro))
             continue
         if valor == 0 and prova is not True:
             motivo = "zero_sem_linha_de_metrica" if prova is False else "zero_sem_prova_de_linha"
-            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, status=StatusObservacao.MISSING, motivo=motivo))
+            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, motivo_moeda=motivo_moeda, status=StatusObservacao.MISSING, motivo=motivo))
             continue
-        saida.append(m.emitir(metrica, unidade, valor, moeda=moeda))
+        saida.append(m.emitir(metrica, unidade, valor, moeda=moeda, motivo_moeda=motivo_moeda))
     return tuple(saida)
 
 
@@ -289,7 +338,20 @@ METRICAS_JOINADS_V2: dict[str, tuple[Metrica, Unidade, Optional[ValueKind], tupl
 _STATUS_JOINADS = {"unavailable": StatusObservacao.UNAVAILABLE, "unsupported": StatusObservacao.UNSUPPORTED}
 
 
-def adaptar_joinads_v2(linha: Mapping[str, Any]) -> tuple[Observacao, ...]:
+# chave de key-value que cada endpoint PEDE (joinads_v2_normalize.js:186-204). Nos endpoints de
+# FORCADOS o normalizador a montante sobrescreve custom_key='utm_campaign' antes de conferir: a chave
+# gravada não é evidência do que a API devolveu (R1-F15).
+CHAVE_PEDIDA_JOINADS = {
+    "key_value_campaign_adunit": "utm_campaign",
+    "key_value_post": "id_post_wp",
+    "key_value_land": "land_uri",
+    "key_value_country_adunit": "utm_campaign",
+    "pageviews_campaign_batch": "utm_campaign",
+}
+CHAVE_FORCADA_JOINADS = frozenset({"key_value_country_adunit", "pageviews_campaign_batch"})
+
+
+def adaptar_joinads_v2(linha: Mapping[str, Any], *, moeda_atestada: Optional[str] = None) -> tuple[Observacao, ...]:
     """Linha de `joinads_observation` ⋈ `joinads_raw_batch` ⋈ `joinads_collection_run` → observações.
 
     Campos esperados: observation_key, run_key, batch_key, endpoint, grain, metric_date, metric_hour, domain,
@@ -343,27 +405,34 @@ def adaptar_joinads_v2(linha: Mapping[str, Any]) -> tuple[Observacao, ...]:
     )
     moeda = _texto(linha.get("currency_code"))
     # motivos que invalidam a linha inteira
-    pedido = (linha.get("batch_request_meta") or {}).get("custom_key") if isinstance(linha.get("batch_request_meta"), Mapping) else None
+    meta = linha.get("batch_request_meta")
+    pedido = _texto(meta.get("custom_key")) if isinstance(meta, Mapping) else None
+    pedido = pedido or CHAVE_PEDIDA_JOINADS.get(endpoint)
     devolvida = _texto(linha.get("custom_key"))
     motivo_linha = None
     if sha == HASH_ZERO:
         motivo_linha = "payload_sem_hash"
-    elif pedido and devolvida and str(pedido) != devolvida:
+    elif endpoint in CHAVE_FORCADA_JOINADS:
+        motivo_linha = "custom_key_forcado_upstream"  # chave reescrita pelo normalizador: identidade sem prova
+    elif pedido and devolvida is None:
+        motivo_linha = f"custom_key_ausente:{pedido}"  # o normalizador deixa passar linha sem chave
+    elif pedido and devolvida != pedido:
         motivo_linha = f"chave_substituida:{pedido}->{devolvida}"
+    motivo_moeda = _prova_de_moeda(moeda, linha.get("batch_payload"), moeda_atestada)
     data_status = _texto(linha.get("data_status")) or "observed"
     saida = []
     for col, (metrica, unidade, vk, extra) in METRICAS_JOINADS_V2.items():
         if motivo_linha:
-            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, value_kind=vk, status=StatusObservacao.INVALID,
+            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, motivo_moeda=motivo_moeda, value_kind=vk, status=StatusObservacao.INVALID,
                                   motivo=motivo_linha, dimensoes_extra=extra))
             continue
         if data_status in _STATUS_JOINADS:
-            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, value_kind=vk, status=_STATUS_JOINADS[data_status],
+            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, motivo_moeda=motivo_moeda, value_kind=vk, status=_STATUS_JOINADS[data_status],
                                   motivo=f"joinads_data_status:{data_status}", dimensoes_extra=extra))
             continue
         bruto = linha.get(col)
         if bruto is None:
-            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, value_kind=vk, status=StatusObservacao.MISSING,
+            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, motivo_moeda=motivo_moeda, value_kind=vk, status=StatusObservacao.MISSING,
                                   motivo=f"valor_nulo_na_fonte:{col}", dimensoes_extra=extra))
             continue
         valor, erro = _inteiro(bruto, col, escala=MICROS if unidade is Unidade.MICROS else 1)
@@ -372,9 +441,10 @@ def adaptar_joinads_v2(linha: Mapping[str, Any]) -> tuple[Observacao, ...]:
         if erro is None and data_status == "zero_confirmed" and valor != 0:
             erro = f"zero_confirmed_com_valor:{col}"
         if erro:
-            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, value_kind=vk, status=StatusObservacao.INVALID,
+            saida.append(m.emitir(metrica, unidade, None, moeda=moeda, motivo_moeda=motivo_moeda, value_kind=vk, status=StatusObservacao.INVALID,
                                   motivo=erro, dimensoes_extra=extra))
             continue
         # JoinAds devolve linha explícita: 0 numa linha que existe é zero afirmado pela fonte
-        saida.append(m.emitir(metrica, unidade, valor, moeda=moeda, value_kind=vk, dimensoes_extra=extra))
+        saida.append(m.emitir(metrica, unidade, valor, moeda=moeda, value_kind=vk, dimensoes_extra=extra,
+                              motivo_moeda=motivo_moeda))
     return tuple(saida)

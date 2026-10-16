@@ -416,7 +416,9 @@ def test_zero_sintetizado_caminho_contrato_a_igual_ao_direto(cenario):
         linha = dict(o, batch_payload_sha256=b["payload_sha256"], batch_payload=b["payload"], batch_request_id=None,
                      run_collector=r["collector"], run_collector_version=r["collector_version"],
                      run_api_version=r["api_version"], run_timezone=r["timezone"])
-        obs_a.extend(adaptar_google_ads_v21(linha))
+        # [thread A, R1-F4] o v21 grava currency_code='BRL' fixo e o payload sintético não traz moeda: a moeda
+        # da conta é atestada fora do payload (no mundo sintético, BRL), senão custo vira `moeda_nao_provada`
+        obs_a.extend(adaptar_google_ads_v21(linha, moeda_atestada="BRL"))
     via_a = medir_zero_sintetizado(de_observacoes(obs_a), AGORA_PADRAO)
     direto = medir_zero_sintetizado([x for x in observacoes_de_tabelas(t) if x.fonte == "google_ads"], AGORA_PADRAO)
     chave = lambda z: (z.coletor, z.metric_date, z.total, z.sintetizados, z.zeros_com_linha, z.ambiguos, z.nulos)  # noqa: E731

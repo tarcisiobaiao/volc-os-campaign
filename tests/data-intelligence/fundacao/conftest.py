@@ -98,11 +98,12 @@ class ClusterPG:
         e.update(LC_ALL="C", LANG="C", PGCONNECT_TIMEOUT="5")
         return e
 
-    def psql(self, sql: str, *, db: str = "postgres", papel: Optional[str] = None, check: bool = True) -> str:
-        """Roda SQL (via stdin, ON_ERROR_STOP) como superusuário `postgres` ou, com `papel`, após SET ROLE."""
+    def psql(self, sql: str, *, db: str = "postgres", papel: Optional[str] = None, check: bool = True,
+             usuario: str = "postgres") -> str:
+        """Roda SQL (via stdin, ON_ERROR_STOP) como `usuario` (padrão: superusuário) ou, com `papel`, após SET ROLE."""
         corpo = (f"SET ROLE {papel};\n" if papel else "") + sql
         p = subprocess.run(
-            [str(BINARIOS_PG / "psql"), "-h", self.socket, "-p", str(self.porta), "-U", "postgres", "-d", db,
+            [str(BINARIOS_PG / "psql"), "-h", self.socket, "-p", str(self.porta), "-U", usuario, "-d", db,
              "-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1"],
             input=corpo, capture_output=True, text=True, env=self.env(), timeout=120,
         )
@@ -110,16 +111,29 @@ class ClusterPG:
             raise ErroPsql(p.returncode, p.stdout, p.stderr)
         return p.stdout.strip() if p.returncode == 0 else ""
 
-    def falha(self, sql: str, *, db: str = "postgres", papel: Optional[str] = None) -> str:
+    def falha(self, sql: str, *, db: str = "postgres", papel: Optional[str] = None, usuario: str = "postgres") -> str:
         """Roda SQL que DEVE falhar; devolve a mensagem de erro (falha o teste se passar)."""
         try:
-            self.psql(sql, db=db, papel=papel)
+            self.psql(sql, db=db, papel=papel, usuario=usuario)
         except ErroPsql as e:
             return e.erro
         raise AssertionError(f"SQL deveria falhar e passou: {sql[:200]}")
 
-    def aplicar(self, arquivo: str, *, db: str) -> None:
-        self.psql((MIGRACOES / arquivo).read_text(encoding="utf-8"), db=db)
+    def aplicar(self, arquivo: str, *, db: str, usuario: str = "postgres") -> str:
+        return self.psql((MIGRACOES / arquivo).read_text(encoding="utf-8"), db=db, usuario=usuario)
+
+    @staticmethod
+    def sql_relogio(t: Optional[datetime], papel: Optional[str] = None) -> str:
+        """SQL que troca o relógio do banco (`dil_obs._agora()`) — só no cluster descartável, como superusuário.
+
+        A migration define `_agora()` = `now()` e não tem desvio em runtime; o teste substitui a função
+        para simular datas passadas (o banco data recebimento e escrita pelo próprio relógio, R1-F1).
+        `t=None` restaura `now()`. Se `papel` for dado, volta a ele depois da troca.
+        """
+        corpo = "pg_catalog.now()" if t is None else f"'{t.isoformat()}'::timestamptz"
+        sql = ("RESET ROLE;\nCREATE OR REPLACE FUNCTION dil_obs._agora() RETURNS timestamptz LANGUAGE sql STABLE "
+               f"PARALLEL SAFE SET search_path = '' AS $$ SELECT {corpo} $$;\n")
+        return sql + (f"SET ROLE {papel};\n" if papel else "")
 
     def novo_banco(self, nome: str) -> str:
         self.psql(f"DROP DATABASE IF EXISTS {nome}; CREATE DATABASE {nome} TEMPLATE template0;")
@@ -131,16 +145,21 @@ class ClusterPG:
         shutil.rmtree(self.raiz, ignore_errors=True)
 
 
-def subir_cluster() -> ClusterPG:
-    """Sobe um cluster descartável ou levanta pytest.skip com o motivo exato."""
+def subir_cluster(locale: Optional[str] = None) -> ClusterPG:
+    """Sobe um cluster descartável ou levanta pytest.skip com o motivo exato.
+
+    `locale=None` → `--no-locale` (C). Com `locale` (ex.: en_US.UTF-8), a collation do banco deixa de ser
+    byte a byte — é o que prova que os `COLLATE "C"` das chaves são necessários (R1-F20/M6).
+    """
     for b in ("initdb", "pg_ctl", "psql", "postgres"):
         if not (BINARIOS_PG / b).exists():
             pytest.skip(f"PostgreSQL descartável indisponível: binário {BINARIOS_PG / b} não existe")
     # caminho curto: o socket unix do macOS tem limite de ~103 bytes
     raiz = Path(tempfile.mkdtemp(prefix="dilpg", dir="/tmp" if Path("/tmp").is_dir() else None))
     env = ClusterPG.env()
+    loc = ["--no-locale"] if locale is None else [f"--locale={locale}"]
     r = subprocess.run([str(BINARIOS_PG / "initdb"), "-D", str(raiz / "data"), "-U", "postgres", "-A", "trust",
-                        "--no-locale", "-E", "UTF8"], capture_output=True, text=True, env=env, timeout=120)
+                        *loc, "-E", "UTF8"], capture_output=True, text=True, env=env, timeout=120)
     if r.returncode != 0:
         shutil.rmtree(raiz, ignore_errors=True)
         pytest.skip(f"PostgreSQL descartável indisponível: initdb falhou: {r.stderr.strip()[:300]}")
@@ -183,6 +202,24 @@ def cluster_pg_dedicado():
         yield c
     finally:
         c.parar()
+
+
+@pytest.fixture(scope="session")
+def cluster_pg_utf8():
+    """Cluster com locale UTF-8 de sistema (en_US.UTF-8; senão C.UTF-8). Skip com motivo se nenhum existir."""
+    ultimo = None
+    for loc in ("en_US.UTF-8", "C.UTF-8"):
+        try:
+            c = subir_cluster(loc)
+        except pytest.skip.Exception as e:  # tenta o próximo locale
+            ultimo = e
+            continue
+        try:
+            yield c, loc
+        finally:
+            c.parar()
+        return
+    pytest.skip(f"nenhum locale UTF-8 disponível para o cluster: {ultimo}")
 
 
 @pytest.fixture(scope="session")

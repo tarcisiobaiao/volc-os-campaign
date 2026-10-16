@@ -42,7 +42,9 @@ def linha_v21(*, run_id: str, batch_id: str, customer_id: str, campaign_id: str,
     else:
         api = {}
         metrics = {"cost_micros": 0, "impressions": 0, "clicks": 0, "conversions": 0}
-    payload = {"campaign": {"id": campaign_id, "status": "ENABLED"}, "metrics": api}
+    # [thread A, R1-F4] moeda só vale com prova no payload bruto: a fixture assume o coletor endurecido que
+    # pede `customer.currency_code` no GAQL (o v21 de hoje grava 'BRL' fixo e não traz a moeda no payload)
+    payload = {"campaign": {"id": campaign_id, "status": "ENABLED"}, "metrics": api, "customer": {"currencyCode": currency}}
     return {
         "observation_id": f"{run_id}:{campaign_id}:{dia.isoformat()}", "run_id": run_id, "batch_id": batch_id,
         "observation_key": f"campaign_day:{customer_id}:{campaign_id}:{dia.isoformat()}", "customer_id": customer_id,
@@ -78,6 +80,7 @@ def linha_joinads_kv(*, run_key: str, batch_key: str, domain: str, dia: date, ca
         "revenue_gross": rg, "impressions": impressoes, "clicks": cliques, "data_status": data_status,
         "collected_at": collected_at.isoformat(), "created_at": created_at.isoformat(),
         "batch_payload_sha256": _sha(corpo), "batch_request_meta": {"custom_key": pedida},
+        "batch_payload": corpo,  # [thread A, R1-F4] o corpo bruto (com `currency`) prova a moeda
         "run_collector": "n8n_joinads_v2", "run_collector_version": "4", "run_timezone": FUSO,
     }
 
@@ -93,6 +96,7 @@ def linha_joinads_earnings(*, run_key: str, batch_key: str, domain: str, dia: da
         "revenue_client": _dec(receita_micros), "revenue_gross": _dec(receita_micros * 5 // 4), "impressions": 0,
         "clicks": 0, "data_status": "observed", "collected_at": collected_at.isoformat(),
         "created_at": created_at.isoformat(), "batch_payload_sha256": _sha(corpo), "batch_request_meta": {},
+        "batch_payload": corpo,  # [thread A, R1-F4] o corpo bruto (com `currency`) prova a moeda
         "run_collector": "n8n_joinads_v2", "run_collector_version": "4", "run_timezone": FUSO,
     }
 

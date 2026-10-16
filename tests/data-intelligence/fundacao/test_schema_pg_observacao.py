@@ -39,43 +39,72 @@ def o_pg(obs, h: float, *, payload: bytes, conta: str = "c1", entidade_id: str =
                janela_fim=BASE + timedelta(days=1), available_at=t, ingested_at=t, **kw)
 
 
+@pytest.fixture(autouse=True)
+def _relogio_real_depois(request):
+    """Um script que falha no meio deixaria o relógio do banco compartilhado no passado: restaura sempre."""
+    yield
+    if "banco_obs" in request.fixturenames:
+        request.getfixturevalue("cluster_pg").psql(sql_relogio(None, None), db=request.getfixturevalue("banco_obs"))
+
+
 def _lit(s: str) -> str:
     return "'" + s.replace("'", "''") + "'"
 
 
-def script_carga(observacoes, *, finalizar: bool = False, sem_observacoes: bool = False) -> str:
-    """SQL que registra runs, payloads, lotes e observações pelas funções públicas (como faria um coletor)."""
-    linhas, runs, lotes, payloads = [], {}, {}, set()
+def sql_relogio(t, papel):
+    """Mesma troca de relógio que `ClusterPG.sql_relogio` (conftest): `dil_obs._agora()` vira `t` (None = now())."""
+    corpo = "pg_catalog.now()" if t is None else f"'{t.isoformat()}'::timestamptz"
+    return ("RESET ROLE;\nCREATE OR REPLACE FUNCTION dil_obs._agora() RETURNS timestamptz LANGUAGE sql STABLE "
+            f"PARALLEL SAFE SET search_path = '' AS $$ SELECT {corpo} $$;\n" + (f"SET ROLE {papel};\n" if papel else ""))
+
+
+def script_carga(observacoes, *, papel: str = "dil_obs_escritor", relogio="available_at", finalizar: bool = False,
+                 sem_observacoes: bool = False, recebido_declarado: bool = False) -> str:
+    """SQL que registra runs, payloads, lotes e observações pelas funções públicas, na ordem de chegada.
+
+    O relógio do banco acompanha o `available_at` de cada observação (`relogio="available_at"`), fica fixo
+    (`relogio=<datetime>`) ou não é tocado (`relogio=None`). No fim volta a `now()`.
+    """
+    linhas, runs, lotes, payloads, atual = [], set(), set(), set(), object()
+    chamadas: dict[str, int] = {}
+    if relogio not in ("available_at", None):
+        linhas.append(sql_relogio(relogio, papel))
     for o in observacoes:
-        runs.setdefault(o.run_id, o)
-        lotes.setdefault(o.lote_id, []).append(o)
-    for run_id, o in runs.items():
-        linhas.append(f"SELECT dil_obs.registrar_run({_lit(run_id)}, {_lit(o.fonte)}, {_lit(o.coletor.nome)}, "
-                      f"{_lit(o.coletor.versao)}, {_lit(BASE.isoformat())});")
-    for lote_id, os_ in lotes.items():
-        o = os_[0]
+        if relogio == "available_at" and o.available_at != atual:
+            linhas.append(sql_relogio(o.available_at, papel))
+            atual = o.available_at
+        if o.run_id not in runs:
+            runs.add(o.run_id)
+            linhas.append(f"SELECT dil_obs.registrar_run({_lit(o.run_id)}, {_lit(o.fonte)}, {_lit(o.coletor.nome)}, "
+                          f"{_lit(o.coletor.versao)}, {_lit(BASE.isoformat())});")
         if o.payload_sha256 not in payloads:
             payloads.add(o.payload_sha256)
             linhas.append(f"SELECT dil_obs.registrar_payload({_lit(o.payload_sha256)}, "
                           f"decode({_lit(BYTES[o.payload_sha256].hex())}, 'hex'), 'application/json');")
-        recebido = min(x.observed_at for x in os_)
-        linhas.append(f"SELECT dil_obs.registrar_lote({_lit(lote_id)}, {_lit(o.run_id)}, {_lit(o.payload_sha256)}, "
-                      f"{_lit(o.schema_version)}, '{{}}'::jsonb, {_lit(recebido.isoformat())});")
-    for o in () if sem_observacoes else observacoes:
-        linhas.append(f"SELECT 'R:' || dil_obs.registrar_observacao({_lit(json.dumps(o.para_json()))}::jsonb);")
+        if o.lote_id not in lotes:
+            lotes.add(o.lote_id)
+            rec = _lit(o.available_at.isoformat()) if recebido_declarado else "NULL"
+            linhas.append(f"SELECT dil_obs.registrar_lote({_lit(o.lote_id)}, {_lit(o.run_id)}, {_lit(o.payload_sha256)}, "
+                          f"{_lit(o.schema_version)}, '{{}}'::jsonb, {rec});")
+        if not sem_observacoes:
+            chamadas[o.run_id] = chamadas.get(o.run_id, 0) + 1
+            linhas.append(f"SELECT 'R:' || dil_obs.registrar_observacao({_lit(json.dumps(o.para_json()))}::json);")
     if finalizar:
-        for run_id in runs:
-            linhas.append(f"SELECT dil_obs.finalizar_run({_lit(run_id)}, 'succeeded', 0, 0, 0, 0, 0, NULL);")
+        for run_id in sorted(runs):
+            # inseridas/dead letter: o banco conta; n_lidas = chamadas feitas, n_noop desconhecido = 0
+            linhas.append(f"SELECT dil_obs.finalizar_run({_lit(run_id)}, 'succeeded', {chamadas.get(run_id, 0)}, NULL, 0, NULL, NULL);")
+    if relogio is not None:
+        linhas.append(sql_relogio(None, papel))
     return "\n".join(linhas)
 
 
-def carregar(cluster, db, observacoes, *, papel: str = "dil_obs_escritor") -> list[str]:
-    saida = cluster.psql(script_carga(observacoes), db=db, papel=papel)
+def carregar(cluster, db, observacoes, *, papel: str = "dil_obs_escritor", **kw) -> list[str]:
+    saida = cluster.psql(script_carga(observacoes, papel=papel, **kw), db=db, papel=papel)
     return [ln[2:] for ln in saida.splitlines() if ln.startswith("R:")]
 
 
 def as_of_sql(cluster, db, t: datetime, conta: str) -> list[tuple]:
-    sql = (f"SELECT chave_natural, chave_base, status, coalesce(valor::text, 'NULL'), dil_obs._ts(available_at) "
+    sql = (f"SELECT chave_natural, chave_idempotencia, status, coalesce(valor::text, 'NULL'), dil_obs._ts(available_at) "
            f"FROM dil_obs.observacao_as_of({_lit(t.isoformat())}) WHERE conta = {_lit(conta)} ORDER BY chave_natural;")
     # _ts é interno (sem EXECUTE para o leitor): a formatação canônica roda como superusuário;
     # o caminho do papel leitor é provado em test_rls_e_grants_minimos e no latest
@@ -117,6 +146,13 @@ def test_chaves_python_iguais_as_do_postgres(cluster_pg, banco_obs, obs):
         obs(metrica="revenue", value_kind="reported_revenue", grao=("day", "campaign", "day")),
         obs(janela_inicio=datetime(2026, 3, 8, 1, 2, 3, 456789, tzinfo=timezone.utc),
             janela_fim=datetime(2026, 3, 9, tzinfo=timezone(timedelta(hours=5, minutes=30))), timezone="Asia/Kolkata"),
+        # D2: janela aberta e cobertura entram na chave da leitura
+        obs(status="partial", motivo="janela_aberta", cobertura_ppm=250_000, observed_at=BASE + timedelta(hours=6),
+            janela_inicio=BASE, janela_fim=BASE + timedelta(days=1), available_at=BASE + timedelta(hours=6),
+            ingested_at=BASE + timedelta(hours=6)),
+        obs(status="partial", motivo="janela_aberta;cobertura_desconhecida", observed_at=BASE + timedelta(hours=6),
+            janela_inicio=BASE, janela_fim=BASE + timedelta(days=1), available_at=BASE + timedelta(hours=6),
+            ingested_at=BASE + timedelta(hours=6)),
     ]
     for o in casos:
         j = o.para_json()
@@ -126,14 +162,10 @@ def test_chaves_python_iguais_as_do_postgres(cluster_pg, banco_obs, obs):
             "ARRAY(SELECT jsonb_array_elements_text(p->'grao')), p->'dimensoes', p->>'metrica', p->>'value_kind', "
             "(p->>'janela_inicio')::timestamptz, (p->>'janela_fim')::timestamptz, p->>'timezone') AS nat, p FROM p) "
             "SELECT nat || '|' || dil_obs._chave_base(nat, p->>'payload_sha256', p->>'schema_version', p->>'coletor_nome', "
-            "p->>'coletor_versao') || '|' || dil_obs._chave_reafirmacao(dil_obs._chave_base(nat, p->>'payload_sha256', "
-            "p->>'schema_version', p->>'coletor_nome', p->>'coletor_versao'), (p->>'available_at')::timestamptz) FROM n;"
+            "p->>'coletor_versao', (p->>'observed_at')::timestamptz) FROM n;"
         )
-        nat, base, reaf = cluster_pg.psql(sql, db=banco_obs).split("|")
-        from volc_dil.fundacao.observacao import chave_reafirmacao
-
+        nat, base = cluster_pg.psql(sql, db=banco_obs).split("|")
         assert (nat, base) == (o.chave_natural, o.chave_base)
-        assert reaf == chave_reafirmacao(chave_base_hex=o.chave_base, available_at=o.available_at)
 
 
 # ============================================================== idempotência e versões
@@ -160,18 +192,17 @@ def test_reprocessamento_tardio_aparece_depois_de_T_e_nao_antes(cluster_pg, banc
     assert latest == "5400000"
 
 
-def test_reafirmacao_conflito_e_versao_ambigua(cluster_pg, banco_obs, obs):
+def test_aba_conflito_e_versao_ambigua(cluster_pg, banco_obs, obs):
     falta = dict(status="missing", valor=None, moeda=None, motivo="linha_ausente_na_resposta")
-    a1 = o_pg(obs, 30, payload=b"aba-vazio", conta="aba", **falta)
-    b = o_pg(obs, 36, payload=b"aba-P1", conta="aba")
-    a2 = o_pg(obs, 40, payload=b"aba-vazio", conta="aba", run_id="run-aba-3", **falta)
-    assert carregar(cluster_pg, banco_obs, [a1, b, a2, a2]) == ["inserido", "inserido", "reafirmado", "noop"]
-    tipos = cluster_pg.psql("SELECT string_agg(tipo_registro, ',' ORDER BY available_at) FROM dil_obs.observacao WHERE conta='aba';",
-                            db=banco_obs)
-    assert tipos == "leitura,leitura,reafirmacao"
+    a1 = o_pg(obs, 30, payload=b"aba-vazio", conta="aba", observed_at=BASE + timedelta(hours=30), **falta)
+    b = o_pg(obs, 36, payload=b"aba-P1", conta="aba", observed_at=BASE + timedelta(hours=36))
+    a2 = o_pg(obs, 40, payload=b"aba-vazio", conta="aba", run_id="run-aba-3", observed_at=BASE + timedelta(hours=40), **falta)
+    assert carregar(cluster_pg, banco_obs, [a1, b, a2, a2]) == ["inserido", "inserido", "inserido", "noop"]
+    assert cluster_pg.psql("SELECT count(*) FROM dil_obs.observacao WHERE conta='aba';", db=banco_obs) == "3"
     assert [r[2] for r in as_of_sql(cluster_pg, banco_obs, BASE + timedelta(hours=41), "aba")] == ["missing"]
 
-    conflito = o_pg(obs, 30, payload=b"aba-vazio", conta="aba", status="unavailable", valor=None, moeda=None, motivo="x")
+    conflito = o_pg(obs, 30, payload=b"aba-vazio", conta="aba", status="unavailable", valor=None, moeda=None, motivo="x",
+                    observed_at=BASE + timedelta(hours=30))
     assert "conflito_idempotencia" in cluster_pg.falha(script_carga([conflito]), db=banco_obs, papel="dil_obs_escritor")
     ambigua = o_pg(obs, 36, payload=b"aba-P2", conta="aba", valor=9_000_000)
     assert "versao_ambigua" in cluster_pg.falha(script_carga([ambigua]), db=banco_obs, papel="dil_obs_escritor")
@@ -200,12 +231,12 @@ def test_append_only_papeis_sem_privilegio_e_run_finalizada(cluster_pg, banco_ob
 
 # ============================================================== null != 0 (CHECKs no próprio banco)
 def _insert_mutado(overrides: dict, conta: str) -> str:
-    cols = ["chave_idempotencia", "chave_base", "chave_natural", "tipo_registro", "fonte", "conta", "entidade_tipo",
+    cols = ["chave_idempotencia", "chave_natural", "fonte", "conta", "entidade_tipo",
             "entidade_id", "grao", "dimensoes", "metrica", "value_kind", "valor", "unidade", "moeda", "janela_inicio",
             "janela_fim", "timezone", "observed_at", "source_updated_at", "available_at", "ingested_at", "run_id",
             "request_id", "lote_id", "payload_sha256", "payload_ref", "schema_version", "coletor_nome", "coletor_versao",
             "status", "motivo", "cobertura_ppm"]
-    novo = {"chave_idempotencia": "encode(sha256('mut'::bytea), 'hex')", "chave_base": "encode(sha256('mut'::bytea), 'hex')",
+    novo = {"chave_idempotencia": "encode(sha256('mut'::bytea), 'hex')",
             "available_at": "available_at + interval '1 hour'", "ingested_at": "now()"}
     novo.update(overrides)
     sel = ", ".join(novo.get(c, c) for c in cols)
@@ -232,8 +263,15 @@ def _insert_mutado(overrides: dict, conta: str) -> str:
         ({"janela_fim": "janela_inicio"}, "ck_obs_janela"),
         ({"payload_ref": "'s3://bucket/ultimo.json'"}, "ck_obs_payload"),
         ({"metrica": "'revenue'"}, "ck_obs_value_kind_regra"),
-        ({"tipo_registro": "'reafirmacao'"}, "ck_obs_tipo_registro"),
+        ({"chave_natural": "'x'"}, "ck_obs_chaves"),
         ({"grao": "ARRAY['semana']"}, "ck_obs_grao"),
+        # R1-F20: mutações que sobreviviam
+        ({"observed_at": "janela_fim - interval '1 hour'"}, "ck_obs_janela_fechada"),  # M1
+        ({"source_updated_at": "available_at + interval '1 hour 1 second'"}, "ck_obs_relogios"),  # M2 (a nova available_at é +1h)
+        ({"status": "'partial'", "motivo": "'janela_aberta'", "cobertura_ppm": "NULL"}, "ck_obs_partial"),  # F17
+        ({"schema_version": "'v' || chr(31) || 'c'"}, "ck_obs_identidade"),  # F9
+        ({"request_id": "' r '"}, "ck_obs_identidade"),
+        ({"run_id": "'run-ck' || chr(7)"}, "ck_obs_identidade"),
     ],
 )
 def test_checks_do_banco_rejeitam_insercao_direta(cluster_pg, banco_obs, obs, overrides, constraint):
@@ -242,14 +280,31 @@ def test_checks_do_banco_rejeitam_insercao_direta(cluster_pg, banco_obs, obs, ov
     assert constraint in erro
 
 
+def test_checks_aceitam_partial_com_cobertura_desconhecida(cluster_pg, banco_obs, obs):
+    carregar(cluster_pg, banco_obs, [o_pg(obs, 30, payload=b"ckp-1", conta="ckp")])
+    cluster_pg.psql(_insert_mutado({"status": "'partial'", "motivo": "'janela_aberta;cobertura_desconhecida'",
+                                    "observed_at": "janela_inicio + interval '1 hour'"}, "ckp"), db=banco_obs)
+    assert cluster_pg.psql("SELECT count(*) FROM dil_obs.observacao WHERE conta = 'ckp' AND status = 'partial' "
+                           "AND cobertura_ppm IS NULL;", db=banco_obs) == "1"
+
+
+def _troca_valor(literal: str):
+    return lambda txt: txt.replace('"valor": 5000000', f'"valor": {literal}')
+
+
+# (nome, mutação do dict OU função sobre o texto JSON). Python lê o texto com `Observacao.de_json_texto`,
+# o banco com `registrar_observacao(json)`: os dois precisam concordar (R1-F9).
 MUTACOES = [
     ("valor float", {"valor": 1.5}),
     ("valor string", {"valor": "5000000"}),
     ("valor bool", {"valor": True}),
+    ("valor 5e6 (inteiro em notação científica)", _troca_valor("5e6")),
+    ("valor 5000000.0", _troca_valor("5000000.0")),
+    ("chave repetida", lambda txt: txt[:-1] + ', "valor": 1}'),
     ("missing com 0", {"status": "missing", "valor": 0, "motivo": "sem linha"}),
     ("observed nulo", {"status": "observed", "valor": None}),
     ("zero com 5", {"status": "zero_confirmed", "valor": 5}),
-    ("partial sem cobertura", {"status": "partial", "motivo": "janela_aberta"}),
+    ("partial sem cobertura nem marcador", {"status": "partial", "motivo": "janela_aberta"}),
     ("unavailable sem motivo", {"status": "unavailable", "valor": None, "motivo": None}),
     ("moeda minúscula", {"moeda": "brl"}),
     ("micros sem moeda", {"moeda": None}),
@@ -258,47 +313,92 @@ MUTACOES = [
     ("dimensões fora de ordem", {"dimensoes": [["b", "1"], ["a", "2"]]}),
     ("campo desconhecido", {"valor_bruto": "1,5"}),
     ("timezone inválido", {"timezone": "America/Sao_Paolo"}),
+    ("timezone minúsculo", {"timezone": "america/sao_paulo"}),
     ("payload_ref mutável", {"payload_ref": "s3://bucket/ultimo.json"}),
     ("fonte maiúscula", {"fonte": "Google_Ads"}),
-    ("conta com espaço", {"conta": " c1"}),
+    ("conta com espaço", {"conta": " mut"}),
+    ("conta número JSON", {"conta": 1234567890}),
     ("entidade com controle", {"entidade_id": "1\u001f2"}),
+    ("schema_version com US", {"schema_version": "v\u001fc"}),
+    ("schema_version com espaço final", {"schema_version": "google_ads.gaql.campaign_day.v1 "}),
+    ("request_id com espaço/controle", {"request_id": " r\u0007 "}),
+    ("janela sem offset", {"janela_inicio": "2026-08-01T00:00:00", "janela_fim": "2026-08-02T00:00:00"}),
+    ("instante como número", {"observed_at": 1785639600}),
+    ("ingested_at < available_at", {"ingested_at": "2026-08-02T05:59:00-03:00"}),
     ("available antes de observed", {"available_at": "2026-08-01T23:00:00-03:00"}),
     ("grão desconhecido", {"grao": ["semana"]}),
     ("contagem negativa", {"metrica": "clicks", "unidade": "contagem", "moeda": None, "valor": -1}),
     ("controle: válida", {}),
     ("controle: zero válido", {"status": "zero_confirmed", "valor": 0}),
     ("controle: partial válido", {"status": "partial", "motivo": "janela_aberta", "cobertura_ppm": 10}),
+    ("controle: offset Z", {"available_at": "2026-08-02T09:00:00Z", "ingested_at": "2026-08-02T09:00:00Z"}),
 ]
 
 
 def test_validacao_python_e_sql_concordam(cluster_pg, banco_obs, obs):
-    base = o_pg(obs, 30, payload=b"mut-1", conta="mut")
-    cluster_pg.psql(script_carga([base], sem_observacoes=True), db=banco_obs, papel="dil_obs_escritor")  # run/payload/lote
-    partes = ["\\set ON_ERROR_STOP off"]
+    base = o_pg(obs, 30, payload=b"mut-1", conta="mut")  # available_at = 2026-08-02T06:00-03:00
+    cluster_pg.psql(script_carga([base], sem_observacoes=True), db=banco_obs, papel="dil_obs_escritor")
+    partes = ["\\set ON_ERROR_STOP off", sql_relogio(base.available_at + timedelta(hours=4), "dil_obs_escritor")]
     esperado = {}
     for i, (nome, mut) in enumerate(MUTACOES):
-        j = {**base.para_json(), **mut}
+        if callable(mut):
+            txt = mut(json.dumps(base.para_json()))
+        else:
+            txt = json.dumps({**base.para_json(), **mut})
         try:
-            Observacao.de_json(j)
+            Observacao.de_json_texto(txt)
             esperado[i] = True
         except (ObservacaoInvalida, TypeError, ValueError):
             esperado[i] = False
-        partes.append(f"BEGIN; SELECT dil_obs.registrar_observacao({_lit(json.dumps(j))}::jsonb); SELECT 'OK:{i}'; ROLLBACK;")
+        partes.append(f"BEGIN; SELECT dil_obs.registrar_observacao({_lit(txt)}::json); SELECT 'OK:{i}'; ROLLBACK;")
     out = cluster_pg.psql("\n".join(partes), db=banco_obs, papel="dil_obs_escritor", check=False)
     aceitos_sql = {int(ln[3:]) for ln in out.splitlines() if ln.startswith("OK:")}
     divergencias = [MUTACOES[i][0] for i in esperado if esperado[i] != (i in aceitos_sql)]
     assert divergencias == []
-    assert sum(esperado.values()) == 3  # só os três controles passam
+    assert [MUTACOES[i][0] for i in esperado if esperado[i]] == [n for n, _ in MUTACOES if n.startswith("controle")]
 
 
-def test_retroativo_e_futuro_recusados(cluster_pg, banco_obs, obs):
-    o = o_pg(obs, 30, payload=b"retro-1", conta="retro")
-    sql = script_carga([o])
-    # lote recebido DEPOIS do available_at declarado: conhecimento retroativo (backfill fingindo passado)
-    retro = sql.replace(f"{_lit(o.observed_at.isoformat())});", f"{_lit((BASE + timedelta(hours=40)).isoformat())});")
-    assert "retroativo" in cluster_pg.falha(retro, db=banco_obs, papel="dil_obs_escritor")
-    futuro = o_pg(obs, 24 * 365 * 3, payload=b"futuro-1", conta="futuro")  # available_at > now() do banco
-    assert "ck_obs_relogios" in cluster_pg.falha(script_carga([futuro]), db=banco_obs, papel="dil_obs_escritor")
+@pytest.mark.parametrize("literal", ["1.5", "5e0", "5000000.0", "\"5\""])
+def test_r1_m18_guarda_de_inteiro_tem_mensagem_propria(cluster_pg, banco_obs, obs, literal):
+    """Sem a regex, o cast para bigint também falharia — a mensagem prova que é a guarda que recusa."""
+    base = o_pg(obs, 30, payload=b"m18-1", conta="m18")
+    cluster_pg.psql(script_carga([base], sem_observacoes=True), db=banco_obs, papel="dil_obs_escritor")
+    txt = json.dumps(base.para_json()).replace('"valor": 5000000', f'"valor": {literal}')
+    erro = cluster_pg.falha(sql_relogio(base.available_at, "dil_obs_escritor")
+                            + f"SELECT dil_obs.registrar_observacao({_lit(txt)}::json);", db=banco_obs, papel="dil_obs_escritor")
+    assert "valor precisa ser inteiro" in erro
+
+
+def test_r1_f1_nunca_retroativo_pelo_relogio_do_banco(cluster_pg, banco_obs, obs):
+    # (a) cenário do revisor (pg/t_retro.py): banco no relógio real, observação de janeiro → recusada
+    jan = obs(payload=b"retro-jan", conta="retro", janela_inicio=datetime(2026, 1, 10, tzinfo=BRT),
+              janela_fim=datetime(2026, 1, 11, tzinfo=BRT), observed_at=datetime(2026, 1, 11, 4, tzinfo=BRT),
+              available_at=datetime(2026, 1, 11, 4, 5, tzinfo=BRT), ingested_at=datetime(2026, 1, 11, 4, 6, tzinfo=BRT),
+              run_id="run-retro", lote_id="lote-retro")
+    BYTES[jan.payload_sha256] = b"retro-jan"
+    erro = cluster_pg.falha(script_carga([jan], relogio=None), db=banco_obs, papel="dil_obs_escritor")
+    assert "retroativo" in erro
+    assert cluster_pg.psql("SELECT count(*) FROM dil_obs.observacao WHERE conta = 'retro';", db=banco_obs) == "0"
+    # (b) lote declarado no passado é recusado mesmo que o resto bata
+    o = o_pg(obs, 30, payload=b"retro-1", conta="retro2")
+    erro = cluster_pg.falha(script_carga([o], relogio=o.available_at + timedelta(hours=1), recebido_declarado=True),
+                            db=banco_obs, papel="dil_obs_escritor")
+    assert "recebido_em no passado" in erro
+    # (c) M3: lote declarado no futuro
+    erro = cluster_pg.falha(sql_relogio(o.available_at, "dil_obs_escritor")
+                            + f"SELECT dil_obs.registrar_run('run-retro3', 'google_ads', 'coleta_canonica_google_ads', '1.0.0', {_lit(BASE.isoformat())});"
+                            + f"SELECT dil_obs.registrar_payload({_lit(o.payload_sha256)}, decode({_lit(b'retro-1'.hex())}, 'hex'), 'x');"
+                            + f"SELECT dil_obs.registrar_lote('lote-retro3', 'run-retro3', {_lit(o.payload_sha256)}, 'v', '{{}}', "
+                            + f"{_lit((o.available_at + timedelta(minutes=1)).isoformat())});", db=banco_obs, papel="dil_obs_escritor")
+    assert "recebido_em no futuro" in erro
+    # (d) bytes recebidos às 06:00 pelo banco; observação dizendo que o VOLC sabia às 05:00 → recusada
+    cedo = o_pg(obs, 29, payload=b"retro-1", conta="retro4", lote_id="lote-retro4")
+    erro = cluster_pg.falha(script_carga([cedo], relogio=o.available_at), db=banco_obs, papel="dil_obs_escritor")
+    assert "retroativo" in erro
+    # (e) futuro: available_at depois do relógio do banco → ingested_at < available_at
+    futuro = o_pg(obs, 50, payload=b"futuro-1", conta="futuro")
+    assert "ck_obs_relogios" in cluster_pg.falha(script_carga([futuro], relogio=futuro.available_at - timedelta(hours=1)),
+                                                 db=banco_obs, papel="dil_obs_escritor")
 
 
 def test_payload_hash_conferido_pelo_banco(cluster_pg, banco_obs):
@@ -355,7 +455,7 @@ def test_rls_e_grants_minimos(cluster_pg, banco_obs, obs):
     o = o_pg(obs, 31, payload=b"rls-2", conta="rls")
     # leitor não insere (nem direto, nem pela função)
     assert "permission denied" in cluster_pg.falha(_insert_mutado({}, "rls"), db=db, papel="dil_obs_leitor")
-    assert "permission denied" in cluster_pg.falha(script_carga([o]), db=db, papel="dil_obs_leitor")
+    assert "permission denied" in cluster_pg.falha(script_carga([o], papel="dil_obs_leitor"), db=db, papel="dil_obs_leitor")
     # escritor não lê nem escreve direto na tabela: só pelas funções
     assert "permission denied" in cluster_pg.falha("SELECT * FROM dil_obs.observacao;", db=db, papel="dil_obs_escritor")
     assert "permission denied" in cluster_pg.falha(_insert_mutado({}, "rls"), db=db, papel="dil_obs_escritor")
@@ -364,18 +464,18 @@ def test_rls_e_grants_minimos(cluster_pg, banco_obs, obs):
         assert "permission denied" in cluster_pg.falha("SELECT * FROM dil_obs.observacao;", db=db, papel=papel)
         assert "permission denied" in cluster_pg.falha("SELECT * FROM dil_obs.observacao_latest;", db=db, papel=papel)
         assert "permission denied" in cluster_pg.falha("SELECT dil_obs.observacao_as_of(now());", db=db, papel=papel)
-        assert "permission denied" in cluster_pg.falha(script_carga([o]), db=db, papel=papel)
+        assert "permission denied" in cluster_pg.falha(script_carga([o], papel=papel), db=db, papel=papel)
     # PUBLIC: um papel qualquer também não executa nada
     cluster_pg.psql("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='qualquer') THEN "
                     "CREATE ROLE qualquer NOLOGIN; END IF; END $$;", db=db)
-    assert "permission denied" in cluster_pg.falha(script_carga([o]), db=db, papel="qualquer")
+    assert "permission denied" in cluster_pg.falha(script_carga([o], papel="qualquer"), db=db, papel="qualquer")
     # privilégios efetivos, conferidos pelo catálogo
     priv = cluster_pg.psql(
         "SELECT has_table_privilege('dil_obs_leitor','dil_obs.observacao','INSERT')::text || "
         "has_table_privilege('dil_obs_leitor','dil_obs.observacao','UPDATE')::text || "
         "has_table_privilege('dil_obs_escritor','dil_obs.observacao','SELECT')::text || "
-        "has_function_privilege('anon','dil_obs.registrar_observacao(jsonb)','EXECUTE')::text || "
-        "has_function_privilege('dil_obs_escritor','dil_obs.registrar_observacao(jsonb)','EXECUTE')::text;", db=db)
+        "has_function_privilege('anon','dil_obs.registrar_observacao(json)','EXECUTE')::text || "
+        "has_function_privilege('dil_obs_escritor','dil_obs.registrar_observacao(json)','EXECUTE')::text;", db=db)
     assert priv == "falsefalsefalsefalsetrue"
 
 
@@ -395,7 +495,9 @@ def _sequencia(obs, rng: random.Random, conta: str, n: int):
             kw["valor"] = valor * 1_000_000
         else:
             kw["moeda"] = None
-        eventos.append(o_pg(obs, h, payload=p + ent.encode() + met.encode(), conta=conta, **kw))
+        # conta no payload: bytes são endereçados por conteúdo e o relógio simulado volta entre sequências
+        kw["observed_at"] = BASE + timedelta(hours=rng.randint(24, h))  # D1: chegada fora da ordem de medição
+        eventos.append(o_pg(obs, h, payload=p + ent.encode() + met.encode() + conta.encode(), conta=conta, **kw))
         if rng.random() < 0.3:
             eventos.append(eventos[-1])
     return eventos
@@ -403,7 +505,7 @@ def _sequencia(obs, rng: random.Random, conta: str, n: int):
 
 def test_equivalencia_as_of_sql_python(cluster_pg, banco_obs, obs):
     rng = random.Random(1610)
-    total = {"inserido": 0, "noop": 0, "reafirmado": 0}
+    total = {"inserido": 0, "noop": 0}
     for k in range(8):
         conta = f"eq{k}"
         seq = _sequencia(obs, rng, conta, rng.randint(8, 30))
