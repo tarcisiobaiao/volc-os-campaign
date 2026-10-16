@@ -1,6 +1,6 @@
 # 04 — Cadência e capacidade (frente B)
 
-Estado: modelo **construído e testado hermeticamente** (46 testes de capacidade + 26 do coletor);
+Estado: modelo **construído e testado hermeticamente** (47 testes de capacidade + 26 do coletor);
 bytes **medidos** num PostgreSQL 16 descartável com dados **sintéticos**, mais **três números reais**
 lidos read-only pelo integrador (1.140 B/linha da `google_ads_observation`, redundância real de termos,
 GIN sem uso — `receipts/leituras-externas/RECIBO-LEITURAS-20261016.md:30-33,69`). Contagens de linhas e
@@ -11,7 +11,7 @@ conta/campanha e valores monetários reais foram retirados (R1 F25): onde import
 
 Artefatos (gerados, não editar à mão):
 
-- `benchmarks/capacidade/pg_medicoes.json` (+ `pg_medicoes_dil_obs.json`, rodada do DDL da frente A) —
+- `benchmarks/capacidade/pg_medicoes.json` (+ `pg_medicoes_dil_obs.json`, rodada do DDL final da frente A) —
   script `fundacao_capacidade_pg.py`; **todas** as medições em `benchmarks/capacidade/MEDICOES.md`;
 - `benchmarks/capacidade/horas_campanha_d30.json` — perfil horário real, só fatias (script `fundacao_capacidade_horas.py`);
 - `benchmarks/capacidade/modelo.json` + `MODELO.md` — grade do modelo com manifesto
@@ -23,17 +23,17 @@ Artefatos (gerados, não editar à mão):
 |---|---|---|
 | 1 | Termos: **89,4%** de redundância **medida** (23.891 lidas → 2.525 distintas) com ~21 h de vida do coletor; em regime estacionário (42 leituras por termo-dia) o esperado é **97,1%** (p de revisão 0,005). O modelo com p = 0 e as 13 execuções reais prevê 2.546 distintas (real 2.525, −0,8%): a diferença 10,6% × 4,3% apontada na R1 é idade do coletor (H5), não premissa errada | recibo :31,:69; `MODELO.md` §4b; `test_redundancia_de_coletor_jovem…` |
 | 2 | Linha **real** da v21: **1.140 B** (recibo, 24.141 linhas); réplica sintética **851 B** (subestimava 25%); a mesma linha tipada em colunas: **286 B** (4,0× menor que a real) | recibo :32; `MEDICOES.md` |
-| 3 | Por valor de métrica: largo tipado **36 B**, largo JSONB 64 B, réplica v21 106 B, longo tipado 258 B, longo com texto 348 B e **DDL real da frente A (`dil_obs_0001`, longo) 1.043 B** após D2 (1.084 B antes) | `MEDICOES.md`, 1e6 linhas |
+| 3 | Por valor de métrica: largo tipado **36 B**, largo JSONB 64 B, réplica v21 106 B, longo tipado 258 B, longo com texto 348 B e **DDL final da frente A (`dil_obs_0001`, longo, chaves `bytea`) 823 B** (A mediu 787 B com outro gerador; versões anteriores 1.043–1.084 B); confirmação D2' **226 B** | `MEDICOES.md`, 1e6 linhas |
 | 4 | Payload GAQL de campanha (448 B de JSON): **718 B** gravado linha a linha (abaixo do limiar do TOAST) × **75 B/linha** em lote jsonb de 200 (termos: 1.109 × 172 B; lz4 130 B) — payload sintético, compressão real será pior | `MEDICOES.md` |
 | 5 | Hoje (1 conta, agenda documentada): v21 com bytes reais **≈17 MB/dia** → 6,8 GB em 13 meses, 18,8 GB em 3 anos; política recomendada **0,43 MB/dia** → 0,17 GB / 0,24 GB | `MODELO.md` §3 |
-| 6 | ×100, vertical completa, horária 24 h: v21 real **1,78 GB/dia → 704 GB em 13 m e 1,9 TB em 3 a**; recomendada (largo tipado) **0,06 GB/dia → 22 GB e 30 GB**; a mesma política sobre o DDL longo da frente A: 202 GB e 210 GB; com a regra D2 da frente A (toda releitura vira versão) sobre esse DDL: **2,9 TB e 7,9 TB** (§6) | `MODELO.md` §4 |
+| 6 | ×100, vertical completa, horária 24 h: v21 real **1,78 GB/dia → 704 GB em 13 m e 1,9 TB em 3 a**; recomendada (largo tipado) **0,06 GB/dia → 22 GB e 30 GB**; **D2' sobre o `dil_obs` final** (versão quando muda + confirmação estreita por releitura): **1,85 GB/dia → 734 GB e 2,0 TB** (§6; com termos 1×/dia: 259 GB e 717 GB) | `MODELO.md` §4 |
 | 7 | Quota Google Ads (R1 F7): a agenda atual faz **92 operações/dia por conta + 26 fixas** (D0/D-1: `customer_client` + 4 GAQL por conta) → cabem **162 contas** no Basic (15.000/dia), 31 no Explorer; com D0 a cada 10 min, **24 contas**; com termos 1×/dia, 182 | J:P/collector-inventory.json:111-117,136-142,161-168; comum.md:173-181 |
-| 8 | `as_of` por chave (EXECUTE, planejamento incluído, n = 5.000): p50 **0,058 ms** (1e6) e **0,216 ms** (1e7), p99 0,24 / 1,25 ms; ingestão de lote de 1.000 + commit: p50 **11–21 ms** (n = 60; ≈48–91 mil linhas/s nesta rodada, com a máquina disputada). `as_of` **global** na função real `dil_obs.observacao_as_of`: **10–27 s** em 1e6 linhas (consulta inline equivalente: 0,2–0,3 s) | `MEDICOES.md` |
+| 8 | `as_of` por chave (EXECUTE, planejamento incluído, n = 5.000): p50 **0,058 ms** (1e6) e **0,216 ms** (1e7), p99 0,24 / 1,25 ms; ingestão de lote de 1.000 + commit: p50 **11–21 ms** (n = 60; ≈48–91 mil linhas/s nesta rodada, com a máquina disputada). `as_of` **global** na função final `dil_obs.observacao_as_of` (agora inlinada): **0,16 / 0,36 s** em 1e6 (meio / fim; a versão não inlinada levava 8,5–17,5 s); ponto no DDL final p50 0,020 ms | `MEDICOES.md` |
 
 Leitura: **o problema de volume do VOLC não é a ingestão, é regravar o que não mudou** em linhas
 largas de texto+JSONB com índices que ninguém usa (GIN de `metrics` e `dimensions`: 0 scans em
-produção, recibo :33). E um achado novo para a frente A: a função `observacao_as_of` do DDL candidato
-não é inlinada (tem `SET search_path`) e materializa a linha inteira de cada chave — §5.4.
+produção, recibo :33). Com o DDL final da frente A (D2'), as releituras viram confirmações estreitas, que
+passam a ser ~79% dos bytes do `dil_obs` — §6.
 
 ## 2. Fórmula da cadência útil
 
@@ -161,7 +161,7 @@ Variantes da tabela de observação:
 | `largo` | 1 linha por entidade×leitura, 8 métricas `bigint` (2 nulas) | PK; único `as_of` sem métrica; BRIN |
 | `jsonb` | igual ao largo, métricas num `jsonb` | idem |
 | `v21` | réplica de `google_ads_observation` (J:supabase/migrations/v21_01_google_ads_coleta_canonica.sql:94-145) | PK uuid; `UNIQUE (run_id, observation_key)`; 2 btree; 2 GIN `jsonb_path_ops` |
-| `dil_obs_0001` | **DDL real candidato da frente A** (`migrations_candidatas/dil_obs_0001_schema_observacao.sql`), formato longo, chaves sha256 em hex, inserção direta como superusuário (sem a RPC); medido antes (1e5, 1e6) e depois de D2 (1e5) | PK; `uq_obs_chave_idempotencia`; `uq_obs_versao (chave_natural, available_at desc)`; pré-D2 `ix_obs_chave_base`, pós-D2 `ix_obs_asof`; `ix_obs_entidade`, `ix_obs_lote`, `ix_obs_run` |
+| `dil_obs_0001` | **DDL real candidato da frente A** (`migrations_candidatas/dil_obs_0001_schema_observacao.sql`), **versão final** (HEAD 962b868c): formato longo, chaves = digest sha256 `bytea` de 32 bytes, inserção direta como superusuário (sem a RPC); mais `dil_obs.confirmacao` (D2') medida com 1 confirmação por observação | PK; `uq_obs_chave_idempotencia`; `uq_obs_versao (chave_natural, available_at desc)`; `ix_obs_asof (chave_natural, observed_at desc, available_at desc)`; `ix_obs_entidade`; `ix_obs_run`; confirmação: PK `(chave_natural, observed_at, available_at)` |
 
 ### 5.1 Tamanho (1e6 linhas; 1e5 e 1e7 iguais a ±1% por linha)
 
@@ -174,16 +174,13 @@ Variantes da tabela de observação:
 | jsonb | 431,3 | 81,5 | 512,8 | 64,1 |
 | v21 (réplica) | 630,4 | 220,3 | 850,7 | 106,3 |
 | **v21 real (produção, recibo :32)** | – | – | **1.140** | ~143 (8 métricas) |
-| dil_obs_0001 (frente A, DDL pré-D2) | 630,4 | 453,3 | 1.083,7 | 1.083,7 |
-| **dil_obs_0001 pós-D2** (sem `chave_base`, com `ix_obs_asof`; medido só em 1e5 — disco livre ~6 GiB) | 570,0 | 473,3 | **1.043,4** | **1.043,4** |
+| **dil_obs_0001 final** (frente A) | 500,1 | 322,9 | **823,1** | **823,1** |
+| **dil_obs.confirmacao** (D2', por confirmação) | 126,1 | 100,3 | **226,4** | – |
+| *histórico*: dil_obs_0001 pré-D2 / pós-D2 (chaves hex) | 630 / 570 | 453 / 473 | 1.084 / 1.043 | – |
 
-No DDL da frente A, os índices sobre texto hex de 64 caracteres dominam: antes de D2,
-`uq_obs_chave_idempotencia`, `ix_obs_chave_base` (que duplicava a anterior em toda linha `leitura`) e
-`uq_obs_versao` somavam 370 B/linha; depois de D2 saiu `ix_obs_chave_base` e entrou `ix_obs_asof
-(chave_natural, observed_at desc, available_at desc)`: `uq_obs_chave_idempotencia` + `uq_obs_versao` +
-`ix_obs_asof` = 125 + 138 + 149 B/linha (1e5). `uq_obs_versao` e `ix_obs_asof` começam pela mesma chave
-de 64 caracteres; um índice único `(chave_natural, observed_at, available_at)` talvez sirva aos dois papéis
-— a medir pela frente A.
+No DDL final, com chaves `bytea` de 32 bytes, os três índices de chave somam 251 B/linha
+(`uq_obs_chave_idempotencia` 72 MB, `uq_obs_versao` 84 MB, `ix_obs_asof` 96 MB em 1e6; antes, com hex,
+370 B/linha). A confirmação custa 226 B (heap 126 + PK 100) — 3,6× menos que uma observação.
 
 Payload bruto (20.000 linhas GAQL sintéticas): campanha 448 B de JSON → 718 B por linha jsonb ×
 75 B/linha em lote de 200 (pglz); termo 782 → 1.109 × 172 B (lz4 130 B). O sintético repete strings mais
@@ -195,7 +192,7 @@ API por lote não lido).
 | Medida (sem partição → com partição) | 1e5 | 1e6 | 1e7 |
 |---|---:|---:|---:|
 | `as_of` por chave, longo | 0,036 / 0,29 → 0,075 / 1,47 | 0,058 / 0,24 → 0,051 / 0,87 | 0,216 / 1,25 → 0,187 / 1,33 |
-| `as_of` por chave, `dil_obs_0001` | 0,018 / 0,19 | 0,069 / 2,04 | – |
+| `as_of` por chave, `dil_obs_0001` final | 0,019 / 0,094 | 0,020 / 0,19 | – |
 | `as_of` por chave, réplica v21 (`campaign_ix`) | 0,048 / 0,33 | 0,061 / 3,17 | – |
 | snapshot conta×dia (`DISTINCT ON`), longo | 0,56 → 0,18 | 4,8 → 2,0 | 34,4 → 14,7 |
 | ingestão 1.000 + commit, longo — cru / dedup | 13,2 / 16,3 | 14,6 / 20,7 | 13,2 / 11,0 |
@@ -206,27 +203,25 @@ pontual fica abaixo de 1 ms no p50 em todas as escalas e abaixo de 3,2 ms no p99
 com folga (≥ 48 mil linhas/s por conexão no p50, pior caso: dedup em 1e6). A partição melhora o snapshot de um dia (2,3–3×) e
 deixa o pontual igual ou pior na cauda.
 
-### 5.3 `as_of` GLOBAL (todas as chaves; R1 F26) — s, mediana de 5 após 1 aquecimento
+### 5.3 `as_of` GLOBAL (todas as chaves; R1 F26) — s, mediana de 5 após 1 aquecimento (DDL final)
 
 | Consulta | 1e5 (meio / fim) | 1e6 (meio / fim) |
 |---|---:|---:|
-| `dil_obs.observacao_as_of(t)` (função real da frente A) | 0,12 / 0,99 | **8,5 / 17,5** |
-| mesma consulta inline, linha inteira (`DISTINCT ON … o.*`) | 0,10 / 0,07 | **0,18 / 0,32** |
-| inline só a chave (index-only scan em `uq_obs_versao`) | 0,035 / 0,021 | 0,12 / 0,18 |
-| `dil_obs.observacao_latest` (= `as_of(now())`) | 0,86 | **19,0** (máx 38,8) |
+| `dil_obs.observacao_as_of(t)` (função final, inlinada) | 0,040 / 0,045 | **0,164 / 0,363** |
+| mesma consulta escrita à mão, linha inteira (`DISTINCT ON … o.*`) | 0,028 / 0,042 | 0,189 / 0,290 |
+| à mão, só a chave (index-only scan em `ix_obs_asof`) | 0,018 / 0,024 | 0,088 / 0,134 |
+| `dil_obs.observacao_latest` (= `as_of(now())`) | 0,040 | **0,399** |
 | longo sintético, `DISTINCT ON` total (snapshot) | 0,071 | 0,69 |
 | Parquet: DuckDB / Polars | 0,009 / 0,013 | 0,071 / 0,112 (1e7: 0,92 / 1,54) |
 
-### 5.4 Achado para a frente A (não corrigido aqui; fora do ownership de B)
+### 5.4 Achado para a frente A — resolvido
 
-A função `dil_obs.observacao_as_of` é `LANGUAGE sql STABLE … SET search_path = ''`. Funções com
-cláusula `SET` não são inlinadas pelo planejador: o conjunto inteiro (linha completa de cada chave) é
-materializado antes do `count`/filtro de quem chama. Resultado medido: **48–55× mais lenta** que a mesma
-consulta inline em 1e6 linhas (8,5 s × 0,18 s; 17,5 s × 0,32 s), e a view `observacao_latest` herda o
-custo (19 s). Opções para a frente A, a medir: view `security_invoker` com o `DISTINCT ON` direto
-(inlinável), ou função `SECURITY INVOKER` sem `SET` com nomes totalmente qualificados. Após D2 continua igual: em 1e5, função 0,65 s × inline 0,045 s (14×; o fator cresce com o
-volume). Também: o formato longo do DDL custa **1.043 B por valor** pós-D2, 29× o largo tipado e ~7,3× a
-linha real da v21 por valor.
+A 1ª versão de `observacao_as_of` tinha `SET search_path` e não era inlinada: 8,5 / 17,5 s em 1e6 contra
+0,18 / 0,32 s da consulta à mão (48–55×), e `observacao_latest` 19 s (histórico: `MEDICOES.md` do commit `2c1949c9`,
+HANDOFF-B §8.3). A frente A tirou `SET` e `STRICT` e qualificou nomes; nesta medição a
+função final fica no mesmo patamar da consulta à mão (0,16–0,36 s no global, 0,02 ms no ponto). A ordem
+de grandeza dos 8,5–17,5 s não foi reproduzida pela A (1,5–3,4 s com `EXPLAIN ANALYZE` no servidor);
+a diferença provável é a forma de medir (aqui: cliente psql, outra carga) — as duas apontaram o mesmo defeito.
 
 ### 5.5 DuckDB / Polars (só leitura analítica de snapshot)
 
@@ -237,24 +232,33 @@ DuckDB sobre Parquet reconstrói um snapshot inteiro ~10× mais rápido que o Po
 ## 6. Recomendações (com números)
 
 1. **Gravar só o que mudou** (−94% das observações na vertical completa ×100 horária: 1,46 M → 83 mil
-   linhas/dia, com p de revisão de termos 0,005), mantendo no recibo do run "li N, igual M" para provar
-   cobertura. **Atenção — conflito com a regra D2 da frente A** (`HANDOFF-A.md` §7.1): com `observed_at` na
-   chave da leitura, toda releitura vira versão, e o `Registro`/`dil_obs` deixam de deduplicar observação.
-   Custo medido no modelo (política `registro_d2`, payload ainda deduplicado): hoje, 1 conta, **71 MB/dia**
-   com o DDL longo pós-D2 da frente A (v21 real: 17,5 MB/dia; recomendada: 0,43 MB/dia); ×100, vertical horária:
-   **7,25 GB/dia → 2,9 TB em 13 meses e 7,9 TB em 3 anos** (4,1× a v21 real); com D2 sobre o largo tipado,
-   450 GB em 3 anos. D2 resolve um problema real (ordem do `as_of` e passagem de `partial` a fechada), então
-   a proposta é separar as duas coisas: versão só quando o conteúdo muda (ou o status/cobertura muda) e a
-   prova de releitura numa tabela estreita de "leituras" (chave natural, `observed_at`, `available_at`,
-   sha do payload) ou só no recibo do run. Decisão da frente A/integrador; não aplicada aqui.
+   linhas/dia, com p de revisão de termos 0,005), mantendo prova de releitura. **Com o D2' da frente A**
+   (`HANDOFF-A.md` §7.2) isso já acontece no `Registro`/`dil_obs`: a releitura igual vira **confirmação**
+   estreita (226 B) e a versão só nasce quando o estado muda. Tabela final (modelo, payload em linha-em-lote):
+
+   | Política | hoje (1 conta, agenda atual) | ×100, vertical horária, 13 meses | ×100, vertical horária, 3 anos |
+   |---|---:|---:|---:|
+   | v21 real (1.140 B/linha, sem dedup) | 17,5 MB/dia | 704 GB | 1,95 TB |
+   | recomendada (largo tipado, dedup, rollup, 13 m) | 0,43 MB/dia | 22 GB | 30 GB |
+   | **D2' sobre `dil_obs` final** | **17,3 MB/dia** | **734 GB** | **2,03 TB** |
+   | D2' + termos 1×/dia | 5,1 MB/dia | 259 GB | 717 GB |
+   | D2' + partição, bruto 13 m + rollup | 17,5 MB/dia | 743 GB | 751 GB |
+
+   As confirmações são ~79% dos bytes do D2' (×100: 6,96 M confirmações/dia × 226 B = 1,47 GB/dia, de
+   1,85 GB/dia; versões + índices 0,36 GB/dia). O modelo é conservador: conta mudança por LINHA (se uma métrica muda,
+   todas as métricas da linha viram versão), enquanto o D2' decide por observação. Alavancas, em ordem:
+   termos 1×/dia (−65% a ×100); `run_id`/`lote_id` textuais trocados por inteiros na confirmação (a A já
+   aponta); retenção das confirmações mais curta que a das versões (servem a frescor e reparo, não ao `as_of`).
+   *Histórico*: sob o D2 puro (toda releitura vira versão), o mesmo cenário dava 2,9 TB em 13 meses e 7,9 TB
+   em 3 anos — superado pelo D2'.
 2. **Payload bruto: hash por linha, linhas novas gravadas juntas num lote jsonb** ("linha em lote"):
    dedup por lote inteiro quase nunca acontece em janela grande (100% dos lotes de termos continuam
    "novos"); dedup linha a linha sem lote paga 718–1.109 B/linha. Na vertical ×100 horária o payload cai
    de ~0,23 para ~0,02 GB/dia.
 3. **Colunas tipadas, não JSONB nem formato longo, para as métricas**: largo tipado 36 B/valor; JSONB 64;
-   réplica v21 106; v21 real ~143; longo tipado 258; DDL longo da frente A 1.043 (pós-D2). Se o contrato exigir
+   réplica v21 106; v21 real ~143; longo tipado 258; DDL longo final da frente A 823. Se o contrato exigir
    estado por métrica, `NULL` + bitmask de estado cabe no largo. Decisão a alinhar com a frente A: com o
-   DDL longo atual, a política recomendada a ×100 vai de 30 GB para 210 GB em 3 anos.
+   DDL longo final, a política recomendada a ×100 vai de 30 GB para 170 GB em 3 anos.
 4. **Índices**: em produção, os GIN de `metrics` e `dimensions` e o `campaign_ix` têm **0 scans** e a pkey
    também (recibo :33) — remover os GIN é candidato direto (proposta, não aplicada). Para `as_of` basta um
    btree único `(chave lógica, disponivel_em desc)`.

@@ -135,10 +135,13 @@ POLITICAS = {
                                            rotulo="tipado, dedup, sem índices (piso teórico)"),
     "compacto_dedup_linha_em_lote": Politica(dedup_observacao=True, dedup_payload="linha_em_lote",
                                              rotulo="tipado, dedup obs + linha gravada em lote"),
-    # regra D2 da frente A (observed_at na chave da leitura): toda releitura vira versão; o payload bruto
-    # continua deduplicado por conteúdo (hash por linha)
-    "registro_d2": Politica(dedup_observacao=False, dedup_payload="linha_em_lote",
-                            rotulo="regra D2 da frente A: toda releitura é versão; payload por linha em lote"),
+    # D2' da frente A (HANDOFF-A §7.2): versão só quando o estado muda; releitura igual = confirmação
+    # estreita em dil_obs.confirmacao; payload bruto deduplicado por linha em lote
+    "registro_d2_linha": Politica(dedup_observacao=True, dedup_payload="linha_em_lote", confirmacoes=True,
+                                  rotulo="D2' da frente A: versão quando muda + confirmação estreita por releitura"),
+    "registro_d2_linha_13m": Politica(dedup_observacao=True, dedup_payload="linha_em_lote", confirmacoes=True,
+                                      particao_mensal=True, retencao_bruto_dias=396, rollup_diario=True,
+                                      rotulo="D2' + partição mensal, bruto (versões e confirmações) 13 m + rollup"),
     "recomendada": Politica(dedup_observacao=True, dedup_payload="linha_em_lote", particao_mensal=True,
                             retencao_bruto_dias=396, rollup_diario=True,
                             rotulo="tipado largo, dedup obs + linha em lote, partição mensal, bruto 13 m + rollup"),
