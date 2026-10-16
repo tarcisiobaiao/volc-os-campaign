@@ -1597,7 +1597,7 @@
           "id": "P10-T15",
           "title": "Fechar o gate de curadoria pós-integração para todos os agentes",
           "status": "partial",
-          "proof": "AGENTS.md, CLAUDE.md e PROTOCOLO-FECHAMENTO-AGENTES.md agora exigem identificação da tarefa, evidência, lacunas, atualização da fonte humana e rebuild do grafo; o schema do writer ADK também exige curation_handoff. Falta o curador único consumir esse handoff automaticamente depois do merge e publicar recibo visível no QG.",
+          "proof": "AGENTS.md, CLAUDE.md e PROTOCOLO-FECHAMENTO-AGENTES.md exigem identificação da tarefa, evidência, lacunas, atualização da fonte humana e rebuild do grafo; o schema do writer ADK exige curation_handoff. Em 15/10/2026, ADR-ORQUESTRACAO-MULTISSUPERFICIE-AGENTES.md e agent-clusters-current.json formalizaram integrador único, ownership por lane, path locks, handoff tipado, fila serial e hard stops para Claude Projects, terminal Codex e terminal Claude. Falta o curador consumir o handoff automaticamente depois do merge e publicar recibo visível no QG.",
           "explanation": "Impedir que Codex, Claude, Grok ou qualquer worker concluam trabalho material sem reconciliar Roadmap Vivo, curadoria humana e grafo híbrido. Workers paralelos não disputam a fonte: entregam proposta; um curador atualiza depois da integração.",
           "acceptance": "Toda integração material produz um recibo com task_ids, graph_nodes, estado honesto, evidência, lacunas e frescor; o curador único reconcilia a fonte humana, roda o pipeline oficial e o QG expõe o recibo sem depender do chat que executou a tarefa.",
           "dependencies": [
@@ -1607,6 +1607,8 @@
           ],
           "links": [
             "docs/architecture/PROTOCOLO-FECHAMENTO-AGENTES.md",
+            "docs/architecture/ADR-ORQUESTRACAO-MULTISSUPERFICIE-AGENTES.md",
+            "docs/operations/agent-clusters-current.json",
             "tools/agent-harness/src/volc_agent_harness/schemas/writer-result.schema.json"
           ]
         },

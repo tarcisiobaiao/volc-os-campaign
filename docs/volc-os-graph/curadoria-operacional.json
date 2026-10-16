@@ -564,7 +564,7 @@
       "cluster": "governance",
       "state": "partial",
       "summary": "Obriga Codex, Claude, Grok e workers ADK a devolver tarefa, nós, evidência, lacunas e estado honesto para um curador único após a integração.",
-      "evidence": "AGENTS.md, CLAUDE.md, PROTOCOLO-FECHAMENTO-AGENTES.md e o schema writer-result exigem curation_handoff. Ainda falta o curador automático pós-merge e o recibo correspondente no QG."
+      "evidence": "AGENTS.md, CLAUDE.md, PROTOCOLO-FECHAMENTO-AGENTES.md e o schema writer-result exigem curation_handoff. Em 15/10/2026, o ADR de orquestração multissuperfície e o manifesto versionado dividiram Claude Projects, terminal Codex e terminal Claude por ownership, com integrador único, path locks, handoff tipado, fila serial e hard stops. Ainda falta o curador automático pós-merge e o recibo correspondente no QG."
     },
     {
       "id": "concept:strategy_intake",

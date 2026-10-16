@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-15T20:18:58-03:00",
+  "generated_at": "2026-10-15T22:02:16-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 928,
-    "markdown": 665,
+    "files": 930,
+    "markdown": 667,
     "sql": 263,
     "tracked": 928,
-    "untracked": 0,
+    "untracked": 2,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 56,
-      "documentation": 475,
+      "documentation": 477,
       "generated": 2,
       "module-guide": 45,
       "product-document": 23,
@@ -1263,6 +1263,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/architecture/ADR-ORQUESTRACAO-MULTISSUPERFICIE-AGENTES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 5024,
+      "lines": 136,
+      "sha256": "87166acb9d41bba77c2db340e26c4be986e3fbbe42a6e02c133864da2fe776ab",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/architecture/ADR-PRENSA-DIRECAO-TIPOGRAFICA-V2.md",
       "extension": ".md",
       "classification": "documentation",
@@ -1603,9 +1615,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 1934,
-      "lines": 55,
-      "sha256": "9cf92f506bca70163bafca54e04337c6c02c6afeac7065e539ae1e853807a9ad",
+      "bytes": 2547,
+      "lines": 69,
+      "sha256": "82c3064d1a49aa42f5418eae75059f43f39b723912800098a6c134a7fe485579",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1665,7 +1677,7 @@
       "tracked": true,
       "bytes": 26276,
       "lines": 343,
-      "sha256": "0ba5842f49d1164ef953e274a7dae81a34a95cc75de5fc1cf2abf1e74c51c900",
+      "sha256": "3748e07b4e9bfb49275da2d7bd4673f2f145d13091a950b3cb7c49d212f834f6",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6322,6 +6334,18 @@
       "bytes": 25711,
       "lines": 325,
       "sha256": "832c7cb9beabdcbddfd1103cdd80876adf648b80506ba6ccc7dc40b539439847",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/operations/CLUSTERS-AGENTES-20261015.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 4539,
+      "lines": 86,
+      "sha256": "60fbb7d9af8bff019d955c25f797de3282b3894f7bffb17ee170ae7eea104a3c",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

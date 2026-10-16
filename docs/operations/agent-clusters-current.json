@@ -1,0 +1,161 @@
+{
+  "schema_version": "1.0",
+  "epoch": "20261015-multisurface-v1",
+  "generated_at": "2026-10-15T22:02:26-03:00",
+  "canonical_repo": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign-qg-real-20261007",
+  "control_plane_parent_sha": "6124c5501a4ab267057ae4e1f4b20bdbf3ee70f9",
+  "lane_start_rule": "Use origin/main only after it contains this manifest; never reset to control_plane_parent_sha.",
+  "integrator": {
+    "surface": "codex_coordinator",
+    "checkout": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign-qg-real-20261007",
+    "exclusive_authority": [
+      "main",
+      "push",
+      "merge",
+      "deploy",
+      "production_mutations",
+      "migration_order",
+      "volc-os-workbook/ROADMAP-VIVO.json",
+      "docs/volc-os-graph/curadoria-operacional.json",
+      "docs/volc-os-graph/volc-os-graph.json",
+      "graphify-out/**"
+    ]
+  },
+  "shared_path_locks": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "supabase/migrations/README.md",
+    "backend/app/main.py",
+    "src/App.tsx",
+    "src/components/layout/Layout.tsx",
+    "src/components/layout/Navigation.tsx",
+    "package-lock.json"
+  ],
+  "lanes": [
+    {
+      "id": "projects-experience-qa",
+      "surface": "claude_projects",
+      "status": "planned",
+      "mission": "Rebuild W13 over current W7, then D1; run read-only funnel and paid-destination QA",
+      "base_rule": "origin/main containing this manifest",
+      "suggested_branch": "mission/projects-experience-w13-20261015",
+      "roadmap_tasks": [
+        "P05-T13",
+        "P09-T15",
+        "P09-T16",
+        "P09-T17",
+        "P09-T18",
+        "P10-T22",
+        "P14-T02"
+      ],
+      "write_policy": "one_writer_per_path_set",
+      "forbidden": [
+        "main",
+        "push",
+        "deploy",
+        "migrations",
+        "shared_operational_authorities",
+        "ads_collectors",
+        "bia_hermes"
+      ],
+      "sequence": [
+        "w13_rebuild",
+        "w13_review",
+        "d1_reapply",
+        "funnel_writer_only_after_separate_lock"
+      ]
+    },
+    {
+      "id": "codex-economic-decision",
+      "surface": "codex_terminal",
+      "status": "active_external",
+      "mission": "Google Ads and JoinAds collection, economic attribution, freshness ledger and shadow decision plane",
+      "base_rule": "origin/main containing this manifest",
+      "suggested_branch": "mission/codex-economic-control-plane-20261015",
+      "owned_path_families": [
+        "volc_ads/**",
+        "measurement/**",
+        "backend/app/trafego/**",
+        "backend/app/monetizacao/**",
+        "domain-specific tests and docs"
+      ],
+      "roadmap_tasks": [
+        "P06-T02",
+        "P06-T03",
+        "P06-T04",
+        "P06-T05",
+        "P06-T07",
+        "P06-T08",
+        "P08-T02",
+        "P09-T14",
+        "P10-T16",
+        "P14-T02"
+      ],
+      "forbidden": [
+        "main",
+        "push",
+        "deploy",
+        "apply_migration",
+        "shared_operational_authorities",
+        "bia_hermes",
+        "funnelforge_editorial"
+      ]
+    },
+    {
+      "id": "claude-bia-hermes",
+      "surface": "claude_terminal",
+      "status": "active_reconciliation_required",
+      "mission": "Integrate the same Bia used by Telegram, preserving the real proofs and producing a candidate for current main",
+      "current_branch": "feat/bia-hermes-volc-v1",
+      "current_head": "3b1b142d70f76ab71e98b9752d61d4e6099686a5",
+      "current_worktree": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/worktrees/bia-hermes-volc-v1",
+      "original_base": "a54a77e2f99d487daf33cc303d9af611603aa940",
+      "target_base_rule": "origin/main containing this manifest",
+      "owned_path_families": [
+        "backend/app/agente_bia/**",
+        "src/features/bia/**",
+        "deploy/hermes-*/**",
+        "scripts/bia_*",
+        "docs/bia-hermes/**",
+        "docs/architecture/ADR-BIA-HERMES-VOLC-V1.md",
+        "supabase/migrations/v27_01_*"
+      ],
+      "roadmap_tasks": [
+        "P09-T04",
+        "P09-T06",
+        "P10-T13"
+      ],
+      "known_production_drift": "Local receipts indicate v20_01 and v27_01 were applied to the official Supabase while the corresponding code is not yet in main; verify in handoff without reapplying.",
+      "forbidden": [
+        "main",
+        "push",
+        "new_agent_persona",
+        "ads_collectors",
+        "w13_d1",
+        "shared_operational_authorities"
+      ]
+    }
+  ],
+  "integration_queue": [
+    "bia_hermes_drift_closure",
+    "economic_ads_candidate",
+    "w13_candidate",
+    "d1_candidate",
+    "joinads_gtm_measurement_runtime_git_reconciliation",
+    "operational_convergence"
+  ],
+  "hard_stops": [
+    "official_checkout_dirty",
+    "write_outside_owned_paths",
+    "concurrent_writer_same_path",
+    "secret_in_diff_or_log",
+    "rewrite_applied_migration",
+    "unexplained_test_failure",
+    "rollback_not_proven",
+    "unapproved_external_mutation",
+    "free_disk_below_10_gib"
+  ],
+  "handoff_contract": "docs/architecture/ADR-ORQUESTRACAO-MULTISSUPERFICIE-AGENTES.md",
+  "historical_control_plane": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/control-plane",
+  "historical_control_plane_status": "stale_preserved_do_not_resume"
+}

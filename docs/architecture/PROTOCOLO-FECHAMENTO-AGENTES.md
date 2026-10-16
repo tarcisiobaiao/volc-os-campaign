@@ -40,6 +40,20 @@ Roadmap e curadoria são arquivos de alta contenção. Em missões paralelas:
 Isso não é uma exceção ao dever de atualizar. É o mecanismo que evita três
 agentes produzirem três versões incompatíveis da verdade.
 
+## Coordenação entre superfícies
+
+Quando Claude Projects, terminal Codex e terminal Claude trabalham ao mesmo
+tempo, cada superfície recebe branch, worktree e conjunto de paths exclusivos.
+O integrador único mantém `main`, migrations, arquivos compartilhados e memória
+operacional fora do alcance dos executores. O contrato, os hard stops e o
+manifesto atual estão em:
+
+- `docs/architecture/ADR-ORQUESTRACAO-MULTISSUPERFICIE-AGENTES.md`;
+- `docs/operations/agent-clusters-current.json`.
+
+Um grupo multiagente pode ter vários scouts e revisores, mas nunca dois writers
+para o mesmo conjunto de arquivos.
+
 ## Gate de conclusão
 
 Uma tarefa só pode virar `done` quando:
