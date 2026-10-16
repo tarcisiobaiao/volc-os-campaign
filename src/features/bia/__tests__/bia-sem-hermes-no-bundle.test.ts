@@ -44,12 +44,29 @@ describe('fonte da Bia no front', () => {
 
   it('o cliente só conhece /api/agent/* e reaproveita o secureApi', () => {
     const api = readFileSync(join(pastaBia, 'api.ts'), 'utf-8');
-    const rotas = [...api.matchAll(/`(\/api\/[^`$]*)/g), ...api.matchAll(/'(\/api\/[^']*)'/g)].map((m) => m[1]);
+    const rotas = [...api.matchAll(/`(?:\$\{BASE\})?(\/api\/[^`$]*)/g), ...api.matchAll(/'(\/api\/[^']*)'/g)].map((m) => m[1]);
     expect(rotas.length).toBeGreaterThan(0);
     for (const r of rotas) expect(r.startsWith('/api/agent/')).toBe(true);
     expect(api).toContain("from '@/lib/secureApi'");
-    expect(api).not.toMatch(/\bfetch\(/);
     expect(api).not.toMatch(/createClient/);
+  });
+
+  it('fetch e XHR diretos (SSE, blob e progresso de upload) só vão a ${BASE}/api/agent/', () => {
+    // As únicas exceções ao secureApi: o mesmo token da sessão, a mesma base,
+    // e nenhuma URL vinda de fora (do modelo, do servidor ou do operador).
+    const api = readFileSync(join(pastaBia, 'api.ts'), 'utf-8');
+    const destinos = [
+      ...api.matchAll(/\bfetch\(\s*([^,)]+)/g),
+      ...api.matchAll(/\.open\(\s*'[A-Z]+',\s*([^)]+)\)/g),
+    ].map((m) => m[1].trim());
+    expect(destinos.length).toBe(3);
+    for (const d of destinos) expect(d.startsWith('`${BASE}/api/agent/'), d).toBe(true);
+    expect(api).not.toMatch(/credentials:\s*'include'/);
+    // Nenhum outro arquivo da feature fala com a rede por conta própria.
+    for (const arquivo of listar(pastaBia).filter((a) => !a.endsWith('api.ts'))) {
+      const texto = readFileSync(arquivo, 'utf-8');
+      expect(texto, arquivo).not.toMatch(/\bfetch\(|XMLHttpRequest|EventSource|WebSocket/);
+    }
   });
 
   it('nenhuma VITE_* nova carrega segredo ou endereço do Hermes', () => {
