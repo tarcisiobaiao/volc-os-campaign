@@ -168,11 +168,11 @@ def test_r1_f8_fechamento_com_contagens_do_banco_e_idempotente(cluster_pg, banco
 def test_r1_m4_check_de_contagens_no_banco(cluster_pg, banco):
     """Inserção direta (superusuário) de run fechado com contagem nula ou incoerente: o CHECK segura."""
     base = ("INSERT INTO dil_obs.run_coleta (run_id, fonte, coletor_nome, coletor_versao, iniciado_em, finalizado_em, status, "
-            "n_lidas, n_inseridas, n_noop, n_dead_letter) VALUES ('{r}', 'google_ads', 'c', '1', now(), now(), "
+            "n_lidas, n_inseridas, n_noop, n_dead_letter, n_confirmadas) VALUES ('{r}', 'google_ads', 'c', '1', now(), now(), "
             "'succeeded', {v});")
-    assert "ck_run_contagens" in cluster_pg.falha(base.format(r="m4a", v="NULL, NULL, NULL, NULL"), db=banco)
-    assert "ck_run_contagens" in cluster_pg.falha(base.format(r="m4b", v="1, 5, 0, 0"), db=banco)
-    cluster_pg.psql(base.format(r="m4c", v="5, 5, 0, 0"), db=banco)
+    assert "ck_run_contagens" in cluster_pg.falha(base.format(r="m4a", v="NULL, NULL, NULL, NULL, NULL"), db=banco)
+    assert "ck_run_contagens" in cluster_pg.falha(base.format(r="m4b", v="1, 5, 0, 0, 0"), db=banco)
+    cluster_pg.psql(base.format(r="m4c", v="5, 5, 0, 0, 0"), db=banco)
 
 
 # ============================================================== M5: payload do lote
@@ -240,12 +240,51 @@ def test_d2_releitura_d0_no_banco_igual_ao_registro(cluster_pg, banco, obs):
     from volc_dil.fundacao.observacao import Observacao
 
     reg = Registro()
-    assert res == [reg.registrar(Observacao.de_json(j)).value for _, _, j in leituras] == ["inserido"] * 5
+    # D2': releitura com o mesmo estado = confirmação; o fechamento da janela (partial → observed) = versão
+    assert res == [reg.registrar(Observacao.de_json(j)).value for _, _, j in leituras] == \
+        ["inserido", "confirmado", "inserido", "confirmado", "inserido"]
+    assert c.psql("SELECT count(*) FROM dil_obs.confirmacao WHERE run_id LIKE 'r-d2-%';", db=banco) == "2"
     for h in (6, 8, 9, 31):
         t = BASE + timedelta(hours=h, minutes=30)
         py = [f"{o.valor}:{o.status.value}" for o in reg.as_of(t).values()]
         assert _asof_banco(c, banco, t, "d2") == py
     assert _asof_banco(c, banco, BASE + timedelta(hours=31), "d2") == ["5200000:observed"]
+
+
+def test_d2_linha_banco_igual_ao_registro_em_permutacoes_e_estado_independe_da_ordem(cluster_pg, banco, obs):
+    """D2' no banco: igual leitura atrasada vira confirmação, A→B→A continua, leitura antiga e diferente atrasada
+    materializa a confirmação mais nova; em toda permutação, banco = Registro e o estado em cada corte = dado bruto."""
+    import itertools
+    import random
+
+    from volc_dil.fundacao.observacao import Observacao, Registro, as_of
+
+    # (observed_h, available_h, valor): A, A igual atrasada, B, A de novo, B antiga atrasada
+    base = [(30, 31, 5), (32, 50, 5), (40, 41, 7), (45, 46, 5), (35, 55, 7)]
+    perms = list(itertools.permutations(range(len(base))))
+    random.Random(7).shuffle(perms)
+    c = cluster_pg
+    for n, perm in enumerate(perms[:8]):
+        conta = f"perm{n}"
+        leituras = []
+        for i in perm:
+            oh, ah, v = base[i]
+            payload = f"{conta}-{i}".encode()
+            j = _obs_json(obs, conta=conta, payload=payload, run_id=f"r-{conta}-{i}", lote_id=f"l-{conta}-{i}", h=ah,
+                          observed_at=BASE + timedelta(hours=oh), valor=v * 1_000_000)
+            leituras.append((ah, payload, j, f"r-{conta}-{i}", f"l-{conta}-{i}"))
+        sql = ""
+        for ah, payload, j, run, lote in leituras:
+            sql += _preparo(c, run_id=run, payload=payload, lote_id=lote, t=BASE + timedelta(hours=ah)) + _reg(j)
+        res = [ln[2:] for ln in c.psql(sql, db=banco, papel="dil_obs_escritor").splitlines() if ln.startswith("R:")]
+        reg = Registro()
+        esperado = [reg.registrar(Observacao.de_json(j)).value for _, _, j, _, _ in leituras]
+        assert res == esperado, (perm, res, esperado)
+        brutas = [Observacao.de_json(j) for _, _, j, _, _ in leituras]
+        for h in (32, 42, 47, 52, 56, 80):
+            t = BASE + timedelta(hours=h)
+            bruto = [f"{o.valor}:{o.status.value}" for o in as_of(brutas, t).values()]
+            assert _asof_banco(c, banco, t, conta) == bruto, (perm, h)
 
 
 # ============================================================== relógio do banco

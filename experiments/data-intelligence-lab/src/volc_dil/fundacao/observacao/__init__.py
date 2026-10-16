@@ -18,11 +18,11 @@ from .normalizador import (
     normalizar,
     observacoes_sem_dado,
 )
-from .registro import ConflitoIdempotencia, Registro, ResultadoRegistro, VersaoRegistrada, ordem_versao
+from .registro import Confirmacao, ConflitoIdempotencia, Registro, ResultadoRegistro, VersaoRegistrada, ordem_versao
 from .vocab import MAPA_ESTADO_HERDADO, StatusObservacao, Unidade
 
 __all__ = [
-    "AdaptacaoImpossivel", "adaptar_google_ads_v21", "adaptar_joinads_v2", "AgregadoObservacao", "CAMPOS_JSON", "CampoMetrica", "Coletor", "ConflitoIdempotencia", "ContextoLeitura",
+    "AdaptacaoImpossivel", "Confirmacao", "adaptar_google_ads_v21", "adaptar_joinads_v2", "AgregadoObservacao", "CAMPOS_JSON", "CampoMetrica", "Coletor", "ConflitoIdempotencia", "ContextoLeitura",
     "EntidadeRef", "EsquemaPayload", "MAPA_ESTADO_HERDADO", "Observacao", "ObservacaoInvalida", "PayloadBruto",
     "Registro", "Rejeicao", "ResultadoNormalizacao", "ResultadoRegistro", "StatusObservacao",
     "Unidade", "VersaoRegistrada", "agregar_observacoes", "as_of", "chave_base", "chave_natural",

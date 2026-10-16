@@ -54,6 +54,16 @@ SELECT dil_obs._chave_base(nat, encode(sha256('x'::bytea), 'hex'), 'v1', 'c', '1
 ANALYZE dil_obs.observacao;
 """
 
+# D2': uma confirmação por observação (releitura de mesmo estado uma hora depois), só para medir bytes/linha
+CARGA_CONFIRMACOES = """
+INSERT INTO dil_obs.confirmacao (chave_natural, observed_at, available_at, run_id, lote_id,
+                                 observacao_confirmada, registrado_em)
+SELECT chave_natural, observed_at + interval '1 hour',
+       available_at + interval '1 hour', run_id, lote_id, observacao_id, ingested_at + interval '1 hour'
+  FROM dil_obs.observacao;
+ANALYZE dil_obs.confirmacao;
+"""
+
 
 def _plano(c, db, sql: str) -> str:
     return c.psql("EXPLAIN " + sql, db=db, papel="dil_obs_leitor")
@@ -76,8 +86,14 @@ def _tamanhos(c, db) -> dict:
         "SELECT indexrelid::regclass::text, pg_relation_size(indexrelid) FROM pg_index "
         "WHERE indrelid = 'dil_obs.observacao'::regclass ORDER BY 1;", db=db).splitlines())
     total_idx = sum(int(v) for v in idx.values())
-    return {"linhas": linhas, "heap_por_linha": round(heap / linhas, 1), "indices_por_linha": round(total_idx / linhas, 1),
-            "total_por_valor": round((heap + total_idx) / linhas, 1), "indices_bytes": {k: int(v) for k, v in idx.items()}}
+    saida = {"linhas": linhas, "heap_por_linha": round(heap / linhas, 1), "indices_por_linha": round(total_idx / linhas, 1),
+             "total_por_valor": round((heap + total_idx) / linhas, 1), "indices_bytes": {k: int(v) for k, v in idx.items()}}
+    if c.psql("SELECT to_regclass('dil_obs.confirmacao') IS NOT NULL;", db=db) == "t":
+        nconf = int(c.psql("SELECT count(*) FROM dil_obs.confirmacao;", db=db))
+        if nconf:
+            tot = int(c.psql("SELECT pg_total_relation_size('dil_obs.confirmacao');", db=db))
+            saida["confirmacao_por_linha"] = round(tot / nconf, 1)
+    return saida
 
 
 CONSULTAS = {
@@ -93,6 +109,8 @@ def _medir(c, db, n_ent, dias, versoes, ddl: str = UP) -> dict:
     t0 = time.monotonic()
     c.psql((Path(ddl) if os.path.isabs(ddl) else MIGRACOES / ddl).read_text(encoding="utf-8"), db=db)
     c.psql(_carga_sql(n_ent, dias, versoes), db=db, timeout=3600)
+    if c.psql("SELECT to_regclass('dil_obs.confirmacao') IS NOT NULL;", db=db) == "t":
+        c.psql(CARGA_CONFIRMACOES, db=db, timeout=3600)
     carga = time.monotonic() - t0
     meio, fim = "2025-01-02T00:00:00Z", "2030-01-01T00:00:00Z"
     if dias > 1:
@@ -118,6 +136,8 @@ def test_as_of_e_latest_sao_inlinados_e_chaves_compactas(cluster_pg):
     assert tipos == "chave_idempotencia:bytea,chave_natural:bytea"
     assert c.psql("SELECT bool_and(octet_length(chave_natural) = 32 AND octet_length(chave_idempotencia) = 32) "
                   "FROM dil_obs.observacao;", db=db) == "t"
+    # D2': a confirmação custa uma fração da observação (sem payload, dimensões, textos de linhagem)
+    assert r["tamanho"]["confirmacao_por_linha"] < r["tamanho"]["total_por_valor"] / 2, r["tamanho"]
     nomes = set(r["tamanho"]["indices_bytes"])
     assert nomes == {"dil_obs.observacao_pkey", "dil_obs.uq_obs_chave_idempotencia", "dil_obs.uq_obs_versao",
                      "dil_obs.ix_obs_asof", "dil_obs.ix_obs_entidade", "dil_obs.ix_obs_run"}, nomes

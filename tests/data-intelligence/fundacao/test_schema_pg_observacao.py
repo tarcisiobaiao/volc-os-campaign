@@ -125,7 +125,7 @@ def test_migracao_cria_objetos_rls_forcado_e_sem_default_em_metrica(cluster_pg, 
     tabelas = cluster_pg.psql(
         "SELECT string_agg(relname || ':' || relrowsecurity || relforcerowsecurity, ',' ORDER BY relname) "
         "FROM pg_class WHERE relnamespace = 'dil_obs'::regnamespace AND relkind = 'r';", db=banco_obs)
-    assert tabelas == "dead_letter:truetrue,lote:truetrue,observacao:truetrue,payload_bruto:truetrue,run_coleta:truetrue"
+    assert tabelas == "confirmacao:truetrue,dead_letter:truetrue,lote:truetrue,observacao:truetrue,payload_bruto:truetrue,run_coleta:truetrue"
     defaults = cluster_pg.psql(
         "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'dil_obs' AND table_name = 'observacao' "
         "AND column_default IS NOT NULL AND column_name NOT IN ('observacao_id');", db=banco_obs)
@@ -505,7 +505,7 @@ def _sequencia(obs, rng: random.Random, conta: str, n: int):
 
 def test_equivalencia_as_of_sql_python(cluster_pg, banco_obs, obs):
     rng = random.Random(1610)
-    total = {"inserido": 0, "noop": 0}
+    total = {"inserido": 0, "noop": 0, "confirmado": 0}
     for k in range(8):
         conta = f"eq{k}"
         seq = _sequencia(obs, rng, conta, rng.randint(8, 30))

@@ -300,6 +300,12 @@ class Observacao:
         return (self.status.value, self.valor, self.unidade.value, self.moeda, self.cobertura_ppm)
 
     @property
+    def estado_negocio(self) -> tuple:
+        """Estado de negócio da leitura (D2'): o que precisa mudar para uma releitura virar VERSÃO.
+        Valor, status (inclui o fechamento da janela: partial → observed), unidade/moeda, cobertura e motivo."""
+        return (self.status.value, self.valor, self.unidade.value, self.moeda, self.cobertura_ppm, self.motivo)
+
+    @property
     def tem_valor(self) -> bool:
         return self.valor is not None
 

@@ -170,6 +170,7 @@ CREATE TABLE dil_obs.run_coleta (
   n_inseridas     integer,
   n_noop          integer,
   n_dead_letter   integer,
+  n_confirmadas   integer,   -- D2': releituras de mesmo estado (confirmação, não versão)
   erro            text,
   CONSTRAINT ck_run_textos CHECK (
     dil_obs._texto_ok(run_id) AND dil_obs._texto_ok(coletor_nome) AND dil_obs._texto_ok(coletor_versao)),
@@ -181,11 +182,13 @@ CREATE TABLE dil_obs.run_coleta (
   -- contagens só existem quando a execução termina; nunca nascem 0 por default; no fim são
   -- obrigatórias (IS NOT NULL explícito: CHECK com NULL passaria — R1-F8) e coerentes
   CONSTRAINT ck_run_contagens CHECK (
-    (status = 'running' AND n_lidas IS NULL AND n_inseridas IS NULL AND n_noop IS NULL AND n_dead_letter IS NULL)
+    (status = 'running' AND n_lidas IS NULL AND n_inseridas IS NULL AND n_noop IS NULL AND n_dead_letter IS NULL
+       AND n_confirmadas IS NULL)
     OR (status <> 'running'
        AND n_lidas IS NOT NULL AND n_inseridas IS NOT NULL AND n_noop IS NOT NULL AND n_dead_letter IS NOT NULL
+       AND n_confirmadas IS NOT NULL AND n_confirmadas >= 0
        AND n_lidas >= 0 AND n_inseridas >= 0 AND n_noop >= 0 AND n_dead_letter >= 0
-       AND n_lidas >= n_inseridas + n_noop))
+       AND n_lidas >= n_inseridas + n_noop + n_confirmadas))
 );
 COMMENT ON TABLE dil_obs.run_coleta IS 'Uma execução de coletor. Única tabela com UPDATE: running → estado final, uma vez.';
 
@@ -339,6 +342,27 @@ CREATE TABLE dil_obs.dead_letter (
 COMMENT ON TABLE dil_obs.dead_letter IS 'O que não virou observação (linha sem identidade, chave substituída, esquema desconhecido).';
 CREATE INDEX ix_dl_run ON dil_obs.dead_letter (run_id);
 
+-- D2' (decisão do integrador sobre a medição da frente B): releitura com o MESMO estado de negócio da versão
+-- vigente vira CONFIRMAÇÃO estreita (bytes medidos no HANDOFF-A §7.2), não versão. Guarda só o suficiente para
+-- (a) retry ser no-op (mesmo fato, mesmo observed_at, conhecido de novo depois), (b) frescor ("ainda era verdade em observed_at") e (c)
+-- materializar a leitura como versão se uma leitura antiga e diferente chegar atrasada (regra 4 do Registro):
+-- a chave da leitura é recalculada de (chave_natural, payload do lote, esquema, coletor do run, observed_at).
+-- Sem FK para observacao: o particionamento opcional (0002) troca a PK para (observacao_id, janela_inicio).
+CREATE TABLE dil_obs.confirmacao (
+  chave_natural         bytea NOT NULL,
+  observed_at           timestamptz NOT NULL,
+  available_at          timestamptz NOT NULL,
+  run_id                text NOT NULL REFERENCES dil_obs.run_coleta (run_id),
+  lote_id               text NOT NULL REFERENCES dil_obs.lote (lote_id),
+  observacao_confirmada bigint NOT NULL,
+  registrado_em         timestamptz NOT NULL,
+  CONSTRAINT pk_confirmacao PRIMARY KEY (chave_natural, observed_at, available_at),
+  CONSTRAINT ck_conf_chave CHECK (octet_length(chave_natural) = 32),
+  CONSTRAINT ck_conf_relogios CHECK (observed_at <= available_at AND available_at <= registrado_em)
+);
+COMMENT ON TABLE dil_obs.confirmacao IS
+  'Releitura redundante (mesmo estado da versão vigente): frescor sem duplicar a observação. Append-only.';
+
 -- ---------------------------------------------------------------------------
 -- 3. Append-only provado: UPDATE/DELETE/TRUNCATE rejeitados (trigger de statement:
 --    dispara mesmo quando nenhuma linha casa, e mesmo para superusuário)
@@ -359,6 +383,8 @@ CREATE TRIGGER tg_payload_append_only BEFORE UPDATE OR DELETE OR TRUNCATE ON dil
 CREATE TRIGGER tg_lote_append_only BEFORE UPDATE OR DELETE OR TRUNCATE ON dil_obs.lote
   FOR EACH STATEMENT EXECUTE FUNCTION dil_obs._rejeitar_mutacao();
 CREATE TRIGGER tg_dl_append_only BEFORE UPDATE OR DELETE OR TRUNCATE ON dil_obs.dead_letter
+  FOR EACH STATEMENT EXECUTE FUNCTION dil_obs._rejeitar_mutacao();
+CREATE TRIGGER tg_conf_append_only BEFORE UPDATE OR DELETE OR TRUNCATE ON dil_obs.confirmacao
   FOR EACH STATEMENT EXECUTE FUNCTION dil_obs._rejeitar_mutacao();
 
 -- run_coleta: DELETE/TRUNCATE proibidos; UPDATE só running → final, e só nos campos de fechamento
@@ -410,7 +436,7 @@ BEGIN
   RETURN 'inserido';
 END $$;
 
--- Fechamento (R1-F8): inseridas e dead letters são CONTADAS PELO BANCO; o chamador só informa n_lidas
+-- Fechamento (R1-F8): inseridas, confirmadas (D2') e dead letters são CONTADAS PELO BANCO; o chamador só informa n_lidas
 -- (itens submetidos) e n_noop, que precisam ser coerentes; valores informados para as contagens do banco
 -- precisam bater. Repetir o mesmo fechamento é 'noop'; outro desfecho é erro.
 -- Trava a linha da execução (FOR UPDATE) antes de contar: observações em voo (que seguram FOR SHARE)
@@ -425,6 +451,7 @@ DECLARE
   r dil_obs.run_coleta%ROWTYPE;
   v_ins integer;
   v_dl integer;
+  v_conf integer;
 BEGIN
   IF p_status IS NULL OR p_status NOT IN ('succeeded', 'failed', 'partial') THEN
     RAISE EXCEPTION 'contrato: finalizar exige estado final (succeeded, failed, partial)' USING ERRCODE = 'DLC01';
@@ -443,6 +470,11 @@ BEGIN
   -- contagens em comandos novos: em READ COMMITTED enxergam o que foi confirmado até a trava
   SELECT count(*) INTO v_ins FROM dil_obs.observacao WHERE run_id = p_run_id;
   SELECT count(*) INTO v_dl FROM dil_obs.dead_letter WHERE run_id = p_run_id;
+  -- confirmações ainda não materializadas (a materializada já conta em inseridas)
+  SELECT count(*) INTO v_conf FROM dil_obs.confirmacao c
+   WHERE c.run_id = p_run_id
+     AND NOT EXISTS (SELECT 1 FROM dil_obs.observacao o WHERE o.chave_natural = c.chave_natural
+                       AND o.observed_at = c.observed_at AND o.available_at = c.available_at);
   IF r.status <> 'running' THEN
     IF (r.status, r.n_lidas, r.n_noop, r.erro) IS NOT DISTINCT FROM (p_status, p_n_lidas, p_n_noop, p_erro)
        AND coalesce(p_n_inseridas, r.n_inseridas) = r.n_inseridas
@@ -459,13 +491,13 @@ BEGIN
      OR p_n_dead_letter IS DISTINCT FROM v_dl AND p_n_dead_letter IS NOT NULL THEN
     RAISE EXCEPTION 'contagem_incoerente: o banco contou inseridas=%, dead_letter=%', v_ins, v_dl USING ERRCODE = 'DLC01';
   END IF;
-  IF p_n_lidas < v_ins + p_n_noop THEN
-    RAISE EXCEPTION 'contagem_incoerente: n_lidas (%) menor que inseridas+noop (%)', p_n_lidas, v_ins + p_n_noop
-      USING ERRCODE = 'DLC01';
+  IF p_n_lidas < v_ins + p_n_noop + v_conf THEN
+    RAISE EXCEPTION 'contagem_incoerente: n_lidas (%) menor que inseridas+noop+confirmadas (%)', p_n_lidas,
+      v_ins + p_n_noop + v_conf USING ERRCODE = 'DLC01';
   END IF;
   UPDATE dil_obs.run_coleta
      SET status = p_status, finalizado_em = greatest(dil_obs._agora(), iniciado_em), n_lidas = p_n_lidas,
-         n_inseridas = v_ins, n_noop = p_n_noop, n_dead_letter = v_dl, erro = p_erro
+         n_inseridas = v_ins, n_noop = p_n_noop, n_dead_letter = v_dl, n_confirmadas = v_conf, erro = p_erro
    WHERE run_id = p_run_id;
   RETURN 'finalizado';
 END $$;
@@ -542,8 +574,10 @@ BEGIN
 END $$;
 
 -- Regras idênticas a volc_dil.fundacao.observacao.Registro.registrar (oráculo do teste de equivalência):
---   chave da leitura nova → 'inserido'; mesma chave com conteúdo diferente → conflito_idempotencia;
---   mesma chave e mesmo conteúdo → 'noop'. Mesmo (chave_natural, available_at) com outra leitura → versao_ambigua.
+--   mesma leitura (versão ou confirmação) → 'noop' (conteúdo diferente → conflito_idempotencia);
+--   mesmo estado de negócio da vigente no instante da leitura → 'confirmado' (D2'); senão → 'inserido',
+--   seguido do reparo que materializa confirmações que voltariam a vencer com outro estado.
+--   Mesmo (chave_natural, available_at) com outra versão → versao_ambigua.
 -- Entrada `json` (não jsonb): o texto original é preservado, então `5e0`, `1.0` e chave repetida são
 -- detectáveis (jsonb normalizaria) — paridade com Observacao.de_json_texto (R1-F9).
 CREATE FUNCTION dil_obs.registrar_observacao(p json) RETURNS text
@@ -577,6 +611,14 @@ DECLARE
   v_nat bytea;
   v_base bytea;
   v_exist dil_obs.observacao%ROWTYPE;
+  v_q dil_obs.observacao%ROWTYPE;
+  v_cur dil_obs.observacao%ROWTYPE;
+  v_x dil_obs.observacao%ROWTYPE;
+  v_g dil_obs.observacao%ROWTYPE;
+  v_c dil_obs.confirmacao%ROWTYPE;
+  v_obs timestamptz;
+  v_t timestamptz;
+  v_red boolean;
   v_lote dil_obs.lote%ROWTYPE;
   v_run dil_obs.run_coleta%ROWTYPE;
   v_payload_recebido timestamptz;
@@ -719,6 +761,7 @@ BEGIN
   -- serializa escritores concorrentes do mesmo fato
   PERFORM pg_advisory_xact_lock(hashtextextended(encode(v_nat, 'hex'), 0));
 
+  -- 1. a MESMA leitura (versão ou confirmação) → no-op; conteúdo diferente → conflito
   SELECT * INTO v_exist FROM dil_obs.observacao WHERE chave_idempotencia = v_base;
   IF FOUND THEN
     IF (v_exist.status, v_exist.valor, v_exist.unidade, v_exist.moeda::text, v_exist.cobertura_ppm)
@@ -728,7 +771,50 @@ BEGIN
     END IF;
     RETURN 'noop';
   END IF;
+  SELECT o.* INTO v_exist FROM dil_obs.confirmacao c JOIN dil_obs.observacao o ON o.observacao_id = c.observacao_confirmada
+   WHERE c.chave_natural = v_nat AND c.observed_at = (j ->> 'observed_at')::timestamptz AND c.available_at <= v_avail
+     AND (o.status, o.valor, o.unidade, o.moeda::text, o.cobertura_ppm, o.motivo)
+         IS NOT DISTINCT FROM (j ->> 'status', v_valor, j ->> 'unidade', j ->> 'moeda', v_cob, j ->> 'motivo');
+  IF FOUND THEN
+    IF (v_exist.status, v_exist.valor, v_exist.unidade, v_exist.moeda::text, v_exist.cobertura_ppm)
+       IS DISTINCT FROM (j ->> 'status', v_valor, j ->> 'unidade', j ->> 'moeda', v_cob) THEN
+      RAISE EXCEPTION 'conflito_idempotencia: mesma leitura (já confirmada) com conteúdo diferente' USING ERRCODE = 'DLI01';
+    END IF;
+    RETURN 'noop';
+  END IF;
 
+  -- 2. redundância (D2'): mesmo estado da vigente no instante desta leitura, e de toda versão que venha a vencer
+  --    antes dela nos cortes seguintes → confirmação estreita
+  v_obs := (j ->> 'observed_at')::timestamptz;
+  v_red := false;
+  SELECT * INTO v_q FROM dil_obs.observacao
+   WHERE chave_natural = v_nat AND (observed_at, available_at) < (v_obs, v_avail) AND available_at <= v_avail
+   ORDER BY observed_at DESC, available_at DESC LIMIT 1;
+  IF FOUND AND (v_q.status, v_q.valor, v_q.unidade, v_q.moeda::text, v_q.cobertura_ppm, v_q.motivo)
+               IS NOT DISTINCT FROM (j ->> 'status', v_valor, j ->> 'unidade', j ->> 'moeda', v_cob, j ->> 'motivo') THEN
+    v_red := true;
+    v_cur := v_q;
+    FOR v_x IN SELECT * FROM dil_obs.observacao
+                WHERE chave_natural = v_nat AND (observed_at, available_at) < (v_obs, v_avail) AND available_at > v_avail
+                ORDER BY available_at LOOP
+      IF (v_x.observed_at, v_x.available_at) > (v_cur.observed_at, v_cur.available_at) THEN
+        IF (v_x.status, v_x.valor, v_x.unidade, v_x.moeda::text, v_x.cobertura_ppm, v_x.motivo)
+           IS DISTINCT FROM (j ->> 'status', v_valor, j ->> 'unidade', j ->> 'moeda', v_cob, j ->> 'motivo') THEN
+          v_red := false;
+          EXIT;
+        END IF;
+        v_cur := v_x;
+      END IF;
+    END LOOP;
+  END IF;
+  IF v_red THEN
+    INSERT INTO dil_obs.confirmacao (chave_natural, observed_at, available_at, run_id, lote_id,
+                                     observacao_confirmada, registrado_em)
+    VALUES (v_nat, v_obs, v_avail, j ->> 'run_id', j ->> 'lote_id', v_q.observacao_id, dil_obs._agora());
+    RETURN 'confirmado';
+  END IF;
+
+  -- 3. versão nova
   IF EXISTS (SELECT 1 FROM dil_obs.observacao WHERE chave_natural = v_nat AND available_at = v_avail) THEN
     RAISE EXCEPTION 'versao_ambigua: outra leitura do mesmo fato com o mesmo available_at' USING ERRCODE = 'DLV01';
   END IF;
@@ -742,10 +828,48 @@ BEGIN
     v_base, v_nat, j ->> 'fonte', j ->> 'conta', j ->> 'entidade_tipo', j ->> 'entidade_id', v_grao,
     v_dims, j ->> 'metrica', j ->> 'value_kind', v_valor, j ->> 'unidade', j ->> 'moeda',
     (j ->> 'janela_inicio')::timestamptz, (j ->> 'janela_fim')::timestamptz, j ->> 'timezone',
-    (j ->> 'observed_at')::timestamptz, (j ->> 'source_updated_at')::timestamptz, v_avail,
+    v_obs, (j ->> 'source_updated_at')::timestamptz, v_avail,
     dil_obs._agora(),  -- relógio do banco: o escritor não declara quando escreveu
     j ->> 'run_id', j ->> 'request_id', j ->> 'lote_id', j ->> 'payload_sha256', j ->> 'payload_ref',
     j ->> 'schema_version', j ->> 'coletor_nome', j ->> 'coletor_versao', j ->> 'status', j ->> 'motivo', v_cob);
+
+  -- 4. reparo (D2'): em todo corte >= available_at desta versão, se uma confirmação passaria a vencer com outro
+  --    estado, ela é materializada como versão (leitura antiga e diferente chegando atrasada)
+  FOR v_t IN SELECT t FROM (SELECT v_avail AS t
+                            UNION SELECT c.available_at FROM dil_obs.confirmacao c
+                                   WHERE c.chave_natural = v_nat AND c.available_at > v_avail
+                            UNION SELECT o.available_at FROM dil_obs.observacao o
+                                   WHERE o.chave_natural = v_nat AND o.available_at > v_avail) AS s
+             ORDER BY t LOOP
+    SELECT * INTO v_g FROM dil_obs.observacao WHERE chave_natural = v_nat AND available_at <= v_t
+     ORDER BY observed_at DESC, available_at DESC LIMIT 1;
+    SELECT c.* INTO v_c FROM dil_obs.confirmacao c
+     WHERE c.chave_natural = v_nat AND c.available_at <= v_t
+       AND NOT EXISTS (SELECT 1 FROM dil_obs.observacao o WHERE o.chave_natural = c.chave_natural
+                         AND o.observed_at = c.observed_at AND o.available_at = c.available_at)
+     ORDER BY c.observed_at DESC, c.available_at DESC LIMIT 1;
+    CONTINUE WHEN NOT FOUND;
+    CONTINUE WHEN (v_c.observed_at, v_c.available_at) <= (v_g.observed_at, v_g.available_at);
+    SELECT * INTO v_q FROM dil_obs.observacao WHERE observacao_id = v_c.observacao_confirmada;
+    CONTINUE WHEN (v_q.status, v_q.valor, v_q.unidade, v_q.moeda::text, v_q.cobertura_ppm, v_q.motivo)
+                  IS NOT DISTINCT FROM (v_g.status, v_g.valor, v_g.unidade, v_g.moeda::text, v_g.cobertura_ppm, v_g.motivo);
+    IF EXISTS (SELECT 1 FROM dil_obs.observacao WHERE chave_natural = v_nat AND available_at = v_c.available_at) THEN
+      RAISE EXCEPTION 'versao_ambigua: confirmação a materializar tem o mesmo available_at de outra versão' USING ERRCODE = 'DLV01';
+    END IF;
+    INSERT INTO dil_obs.observacao (
+      chave_idempotencia, chave_natural, fonte, conta, entidade_tipo, entidade_id, grao,
+      dimensoes, metrica, value_kind, valor, unidade, moeda, janela_inicio, janela_fim, timezone, observed_at,
+      source_updated_at, available_at, ingested_at, run_id, request_id, lote_id, payload_sha256, payload_ref,
+      schema_version, coletor_nome, coletor_versao, status, motivo, cobertura_ppm)
+    SELECT dil_obs._chave_base(v_nat, l.payload_sha256, l.schema_version, r.coletor_nome, r.coletor_versao, v_c.observed_at),
+           v_nat, v_q.fonte, v_q.conta, v_q.entidade_tipo, v_q.entidade_id, v_q.grao,
+           v_q.dimensoes, v_q.metrica, v_q.value_kind, v_q.valor, v_q.unidade, v_q.moeda, v_q.janela_inicio,
+           v_q.janela_fim, v_q.timezone, v_c.observed_at, NULL, v_c.available_at, dil_obs._agora(), v_c.run_id, NULL,
+           v_c.lote_id, l.payload_sha256, 'sha256:' || l.payload_sha256, l.schema_version, r.coletor_nome,
+           r.coletor_versao, v_q.status, v_q.motivo, v_q.cobertura_ppm
+      FROM dil_obs.lote AS l JOIN dil_obs.run_coleta AS r ON r.run_id = v_c.run_id
+     WHERE l.lote_id = v_c.lote_id;
+  END LOOP;
   RETURN 'inserido';
 END $$;
 
@@ -789,6 +913,8 @@ ALTER TABLE dil_obs.observacao ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dil_obs.observacao FORCE ROW LEVEL SECURITY;
 ALTER TABLE dil_obs.dead_letter ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dil_obs.dead_letter FORCE ROW LEVEL SECURITY;
+ALTER TABLE dil_obs.confirmacao ENABLE ROW LEVEL SECURITY;
+ALTER TABLE dil_obs.confirmacao FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY pl_run_leitura ON dil_obs.run_coleta FOR SELECT TO dil_obs_leitor, dil_obs_dono USING (true);
 CREATE POLICY pl_run_insercao ON dil_obs.run_coleta FOR INSERT TO dil_obs_dono WITH CHECK (status = 'running');
@@ -806,6 +932,8 @@ CREATE POLICY pl_obs_insercao ON dil_obs.observacao FOR INSERT TO dil_obs_dono W
 
 CREATE POLICY pl_dl_leitura ON dil_obs.dead_letter FOR SELECT TO dil_obs_leitor, dil_obs_dono USING (true);
 CREATE POLICY pl_dl_insercao ON dil_obs.dead_letter FOR INSERT TO dil_obs_dono WITH CHECK (true);
+CREATE POLICY pl_conf_leitura ON dil_obs.confirmacao FOR SELECT TO dil_obs_leitor, dil_obs_dono USING (true);
+CREATE POLICY pl_conf_insercao ON dil_obs.confirmacao FOR INSERT TO dil_obs_dono WITH CHECK (true);
 -- Nenhuma policy de UPDATE/DELETE em observacao/payload_bruto/lote/dead_letter: além do trigger, RLS também nega.
 
 -- ---------------------------------------------------------------------------
@@ -841,6 +969,7 @@ GRANT EXECUTE ON FUNCTION
 TO dil_obs_escritor;
 
 GRANT SELECT ON dil_obs.run_coleta, dil_obs.payload_bruto, dil_obs.lote, dil_obs.observacao, dil_obs.dead_letter,
+                dil_obs.confirmacao,
                 dil_obs.observacao_latest
 TO dil_obs_leitor;
 GRANT EXECUTE ON FUNCTION dil_obs.observacao_as_of(timestamptz) TO dil_obs_leitor;
