@@ -1,105 +1,162 @@
-# Swarm Lab — resultados (worker E, Fase 5)
+# Swarm Lab — resultados (worker E, Fase 5) — revisão pós-F2
 
 **Natureza:** simulação sintética com seed. Nenhuma célula é campanha real, nenhum
 parâmetro vem de dado real (os dados reais só deram forma ao gerador), nada aqui é
-"validado". O código não tem caminho para rede, Google Ads, Supabase ou mutação
-(teste `test_modulo_swarm_nao_tem_caminho_para_rede_ou_mutacao_real`).
+"validado". Sem caminho para rede, Google Ads, Supabase ou mutação real (teste AST
+`test_modulo_swarm_nao_tem_caminho_para_rede_ou_mutacao_real`).
+
+Números deste texto foram copiados de `SWARM-TABELAS.md`, que é **gerado** dos JSON
+por `scripts/swarm_tabelas.py tudo` (não editar à mão). Em caso de divergência, vale
+o arquivo gerado.
+
+Seções marcadas **PÓS-REGISTRO / EXPLORATÓRIO** foram acrescentadas depois da revisão
+adversarial F2 e **não** fazem parte do critério pré-registrado.
 
 ## Veredito
 
-> **"ASHA/SH supera random, equal e greedy sem aumentar falsos vencedores ou drawdown?" → NÃO.**
+> **"ASHA/SH supera random, equal e greedy sem aumentar falsos vencedores ou drawdown?" → NÃO** (em simulação).
 
-Pela regra pré-registrada (`PRE-REGISTRO.md`, escrito antes dos grids; o sha256
-está no manifesto de cada JSON), nenhum dos quatro candidatos (`sh_parcial`,
-`sh_madura`, `asha_parcial`, `asha_madura`) supera o melhor baseline simples em
-nenhum dos 12 cenários do grid principal, nos 48 cenários do grid de
-sensibilidade, nem em nenhuma das 28 variantes de eta/degrau/unidade/n_final. Em
-todos os casos o melhor baseline foi o **greedy conservador com receita parcial**.
+- **Pré-registrado** (`PRE-REGISTRO.md`, sha256 `453e0aff…`, no manifesto de cada JSON):
+  0 de 48 comparações no grid principal (12 cenários × 4 candidatos), 0 de 192 na
+  sensibilidade, 0 de 120 no grid de parâmetros. O melhor baseline foi sempre o
+  `greedy_parcial`.
+- **Pós-registro, com a métrica de falsos vencedores relativa ao oráculo** (F2-01):
+  continua 0 em todas as comparações (48 + 192 + 120 + 80 do varrimento de saturação).
+  O veredito não depende do defeito da métrica pré-registrada, porque o que falha
+  é sempre a condição de regret.
+- Ressalva: na diferença **pareada** por seed, que não é a regra pré-registrada, o SH
+  ganha do greedy por pouco quando **não há saturação** e a maturação é uniforme.
+  São −R$539 [−611; −467] no cenário ideal (D=0, ruído baixo, n_final=4) e
+  −R$227 [−360; −95] sem saturação com D=3. Os ICs marginais se cruzam. Nesses
+  cenários o Thompson (extensão) é melhor que os dois.
 
-Única ressalva (fora da regra pré-registrada, que exige ICs marginais sem
-sobreposição): no cenário **ideal** — sem saturação de escala, sem atraso e com
-ruído baixo — o SH tem regret menor que o greedy na diferença **pareada** por seed
-(−R$539 [−611; −467] com n_final=4; até −R$2.029 com degraus de 20 cliques), ou
-seja 1,5–5% do regret. Os ICs marginais se cruzam, então não conta como "supera".
-E nesse mesmo cenário o Thompson (extensão) é melhor que os dois.
+### Atribuição causal (reescrita — a versão anterior foi refutada pela revisão F2-02)
 
-Resumo: **SH só ganha (marginalmente, no pareado) quando o problema é
-"identificação do melhor braço" puro — estacionário, independente, sem atraso,
-sem saturação. Cada desvio dessas condições que o dado real do VOLC tem (receita
-com atraso, saturação, não estacionariedade, interferência) piora SH/ASHA mais do
-que piora o greedy.**
+A versão anterior dizia que *cada* desvio (atraso, saturação, não estacionariedade,
+interferência) piorava SH/ASHA mais que o greedy. **Isso estava errado para
+interferência e não estacionariedade.** A diferença-em-diferenças pareada abaixo é
+pós-registro, com 200 seeds comuns, Δ = regret(candidato) − regret(greedy_parcial),
+DiD = Δ(alvo) − Δ(referência), e DiD > 0 quer dizer que o fator prejudica o
+candidato mais que o greedy. Ela mostra:
+
+| fator isolado | sh_parcial | sh_madura | asha_parcial | asha_madura |
+|---|---|---|---|---|
+| **saturação** (cap×2,5 vs ×100, D=3) | **+1794 [1620; 1968]** | −78 [−262; 107] | +651 [321; 980] | **+2310 [2051; 2568]** |
+| saturação (D=0, ruído baixo) | **+1739 [1590; 1888]** | +1739 | +655 [389; 920] | +655 |
+| **maturação heterogênea** (vencedoras lentas, D=3) | **+1308 [1034; 1581]** | −74 [−122; −26] | **+3860 [3068; 4651]** | −74 |
+| atraso D=3, maturação uniforme | +253 [112; 393] | **+1343 [1105; 1582]** | +398 [195; 600] | **+2323 [1873; 2773]** |
+| ruído alto | +392 [123; 662] | +243 [16; 471] | +251 [−124; 626] | +48 [−257; 353] |
+| ruído base vs baixo | +102 [−57; 261] | −74 [−202; 54] | +224 [−24; 473] | +152 [−37; 341] |
+| não estacionariedade | +133 [−50; 316] (n.s.) | +262 [138; 386] | −278 [−614; 58] (n.s.) | −59 [−319; 201] (n.s.) |
+| **interferência** (rho=0,5) | **−220 [−429; −10]** | −72 [−247; 103] | **−637 [−948; −325]** | **−893 [−1147; −639]** |
+
+Leitura correta:
+- **O fator dominante é a saturação de escala** para `sh_parcial` e para o ASHA. SH
+  promove e concentra, o que estoura a capacidade das células. No varrimento de
+  `cap_mult_mediana`, o Δ(sh_parcial − greedy) com D=3 e maturação uniforme cai
+  monotonicamente: 1567 (×2,5), 652 (×4), 57 (×6, n.s.), −184 (×10) e −227 (×100).
+  Com beta=0,6 (saturação branda) o gap já é 524 em ×2,5.
+- **Maturação heterogênea** (vencedoras que maturam devagar) é o segundo fator para
+  quem decide com receita parcial. O efeito é enorme no ASHA.
+- **Atraso com maturação uniforme** custa sobretudo às variantes `madura`, pelo
+  tempo de espera, e não pela ordenação.
+- **Interferência favorece SH/ASHA** em relação ao greedy. Não estacionariedade não
+  tem efeito diferencial significativo sobre sh_parcial ou ASHA; tem um efeito
+  pequeno sobre sh_madura (+262).
+- Mesmo sem saturação, o SH nunca satisfaz a regra pré-registrada. Com vencedoras
+  lentas, sem saturação, ele perde de novo (+1347).
 
 ## Arquivos
 
 | arquivo | o quê |
 |---|---|
 | `src/volc_dil/swarm/cenario.py` | gerador de cenários (seed → cenário determinístico) |
-| `src/volc_dil/swarm/simulador.py` | ciclos, validação de orçamento, receita reportada (maturação), métricas por execução |
+| `src/volc_dil/swarm/simulador.py` | ciclos, validação de orçamento, receita reportada (maturação), métricas (inclui `excesso_perdedoras_vs_oraculo_*`, pós-registro) |
 | `src/volc_dil/swarm/politicas.py` | equal, greedy, SH (+random com o mesmo cronograma), ASHA, Thompson top-n, oráculo MILP |
-| `src/volc_dil/swarm/experimento.py` | Monte Carlo pareado, IC, critério pré-registrado |
+| `src/volc_dil/swarm/experimento.py` | Monte Carlo pareado, IC, `avaliar_criterio` (pré-registrado) e `avaliar_criterio_exploratorio` |
 | `src/volc_dil/swarm/diagnostico.py` | premissas do ASHA (correlação baixa→alta fidelidade) |
-| `src/volc_dil/swarm/regras.py` | regra de parada por rung igual à do Optuna (conferida 60/60) |
-| `scripts/swarm_grid.py` | grids `principal`, `parametros`, `sensibilidade --bloco ...`, `diagnostico` |
-| `scripts/swarm_tabelas.py` | imprime as tabelas deste relatório a partir dos JSON |
+| `src/volc_dil/swarm/regras.py` | regra de parada por rung no estilo Optuna (só referência; nenhuma política a usa) |
+| `scripts/swarm_grid.py` | grids `principal`, `parametros`, `sensibilidade`, `diagnostico`, `pos_registro --bloco did|saturacao` |
+| `scripts/swarm_tabelas.py` | gera `SWARM-TABELAS.md` a partir dos JSON (`tudo`) |
+| `scripts/swarm_mutantes.py` | teste de mutação (copia para diretório temporário; não toca o repo) |
 | `scripts/swarm_crosscheck_optuna.py` | sonda isolada contra o Optuna (não roda no venv do lab) |
-| `results/swarm/PRE-REGISTRO.md` | critério e hipóteses escritos antes dos grids |
-| `results/swarm/swarm_{principal,parametros,diagnostico,sensibilidade_*}.json` | resultados determinísticos com manifesto (seed, parâmetros, versões, sha256 das fontes e do pré-registro, fingerprint) |
+| `results/swarm/PRE-REGISTRO.md` | critério e hipóteses escritos antes dos grids (não alterado) |
+| `results/swarm/SWARM-TABELAS.md` | todas as tabelas, geradas |
+| `results/swarm/swarm_{principal,parametros,diagnostico,sensibilidade_*}.json` | grids pré-registrados (+ bloco `pos_registro` por cenário) |
+| `results/swarm/swarm_pos_registro_{did,saturacao}.json` | análises exploratórias F2-02 |
+| `results/swarm/swarm_mutantes.json` | 11/11 mutantes mortos |
 | `results/swarm/swarm_custo_*.json` | tempo de parede (não determinístico, separado de propósito) |
-| `results/swarm/swarm_crosscheck_optuna.json` | conferência contra optuna 5.0.0 |
-| `tests/data-intelligence/test_swarm.py` | 24 contraprovas, 2,5 s |
+| `tests/data-intelligence/test_swarm.py` | 35 testes, ~4 s |
 
 Comandos (da raiz do repo, `OMP_NUM_THREADS=2`, um processo por vez):
 
 ```bash
-PY=experiments/data-intelligence-lab/.venv/bin/python
-$PY experiments/data-intelligence-lab/scripts/swarm_grid.py --grid principal        # ~97 s
-$PY experiments/data-intelligence-lab/scripts/swarm_grid.py --grid parametros       # ~123 s
-$PY experiments/data-intelligence-lab/scripts/swarm_grid.py --grid diagnostico      # ~7 s
-$PY experiments/data-intelligence-lab/scripts/swarm_grid.py --grid sensibilidade --bloco estacionario      # ~140 s
-$PY experiments/data-intelligence-lab/scripts/swarm_grid.py --grid sensibilidade --bloco nao_estacionario  # ~159 s
-$PY experiments/data-intelligence-lab/scripts/swarm_tabelas.py principal|parametros|sensibilidade|diagnostico
+PY=experiments/data-intelligence-lab/.venv/bin/python; G=experiments/data-intelligence-lab/scripts/swarm_grid.py
+$PY $G --grid principal                       # ~103 s
+$PY $G --grid parametros                      # ~141 s
+$PY $G --grid sensibilidade --bloco estacionario      # ~146 s
+$PY $G --grid sensibilidade --bloco nao_estacionario  # ~164 s
+$PY $G --grid diagnostico                     # ~6 s
+$PY $G --grid pos_registro --bloco did        # ~43 s   (exploratório)
+$PY $G --grid pos_registro --bloco saturacao  # ~125 s  (exploratório)
+$PY experiments/data-intelligence-lab/scripts/swarm_tabelas.py tudo
+$PY experiments/data-intelligence-lab/scripts/swarm_mutantes.py
 $PY -m pytest tests/data-intelligence/test_swarm.py -q
 ```
 
-Seeds dos grids: `1_000_000 .. 1_000_199` (200 por cenário), disjuntas do piloto
-de depuração (0..39), divulgado no pré-registro.
+Seeds dos grids: `1_000_000 .. 1_000_199` (200 por cenário). São disjuntas do piloto
+de depuração (0..39), que está divulgado no pré-registro. Os JSON foram regenerados
+com o código final. Comparei campo a campo todas as métricas, critérios e pares
+pré-registrados contra a primeira geração: **0 diferenças**. Mudaram só o hash das
+fontes no manifesto e os blocos novos `pos_registro`.
+
+### Precedência do pré-registro (F2-13)
+
+A evidência é só o filesystem; não há commit, porque commitar é tarefa do coordenador.
+Birth time e mtime do `PRE-REGISTRO.md` são `2026-10-16T00:08:58`. Os grids da
+primeira geração saíram em `swarm_principal.json` 00:15:23, `swarm_parametros.json`
+00:17:31 e `swarm_sensibilidade_*` 00:20:06 / 00:22:46. Uma tentativa anterior do
+grid principal, por volta de 00:13, abortou por tamanho do JSON e não gravou nada.
+Isso não prova a ordem contra um adversário: o mtime é editável. O commit `fc05316a`
+(2026-10-16 00:26:15) fixa o **conteúdo**: o sha256 `453e0aff…` é o mesmo dos
+manifestos, e o arquivo não foi alterado desde então. Mas esse commit é **posterior**
+aos grids, então a precedência continua apoiada só no mtime (limitação aceita).
 
 ## Modelo (resumo; detalhes nas docstrings)
 
 - K=16 células sintéticas (rótulos canal × ângulo × objetivo × device), T=30 ciclos,
-  orçamento fixo R$960/ciclo, mínimo R$10 por célula ativa (ou 0 = podada).
-- Valor verdadeiro `v_k` = receita por R$ (margem = v−1), log-t com cauda: maioria
-  < 1, ~25% vencedoras. Saturação: acima de `cap_k` cada R$ rende só 25%.
-- Receita realizada: Poisson de eventos monetizados × Gamma, arredondada ao
-  **centavo** (zero-inflada em gasto baixo). Ruído por números aleatórios comuns
-  (mesmo acaso para todas as políticas na mesma seed).
-- Maturação: do ciclo t, na idade a, reporta-se `phi0 + (1−phi0)·min(1, a/D)` da
-  receita final. `uniforme` (phi0=0,5 para todas), `por_canal` (metade dos canais
-  phi0=0,1) e `vencedoras_lentas` (vencedoras phi0=0,1 — o caso adversarial).
-- Não estacionariedade: em T/2 a melhor cai para 0,6× e uma perdedora assume o
-  valor antigo da melhor. Interferência: receita × (1 − rho·gasto das outras do
-  mesmo canal / B).
-- Oráculo: MILP exato por regime (scipy HiGHS), conferido contra busca exaustiva;
-  com interferência é aproximado (ignora canibalização) — documentado.
-- **Fronteira de dinheiro**: alocação, gasto, receita final e reportada são
-  `np.int64` em micros; o validador rejeita float, soma ≠ orçamento, valor
-  negativo e célula ativa abaixo do mínimo. Valor esperado (float64) é só métrica
-  de simulação (regret), nunca registro.
+  orçamento fixo de R$960/ciclo, mínimo de R$10 por célula ativa (ou 0 = podada).
+- Valor verdadeiro `v_k` = receita por R$ (margem = v−1). Segue uma log-t com cauda:
+  a maioria fica abaixo de 1 e ~25% são vencedoras. Saturação: acima de `cap_k`
+  cada R$ rende só `beta` (0,25 no grid pré-registrado; o varrimento pós-registro
+  vai de ×2,5 a ×100 e beta de 0,25 a 0,6).
+- Receita realizada: Poisson de eventos × Gamma, arredondada ao **centavo**
+  (zero-inflada). Ruído com números aleatórios comuns (CRN).
+- Maturação: na idade a, reporta-se `phi0 + (1−phi0)·min(1, a/D)` da receita final.
+  Modos: `uniforme`, `por_canal` e `vencedoras_lentas`.
+- Não estacionariedade: em T/2 a melhor célula cai para 0,6× e uma perdedora assume
+  o valor antigo dela. Interferência: receita × (1 − rho·gasto das outras do mesmo
+  canal / B).
+- Oráculo: MILP exato por regime, conferido contra busca exaustiva. Com interferência
+  ele é aproximado (ignora a canibalização).
+- **Fronteira de dinheiro**: alocação, gasto e receita são `np.int64` em micros. O
+  validador rejeita float, soma ≠ orçamento, valor negativo e célula ativa abaixo do
+  mínimo. O valor esperado (float64) é só métrica de regret.
 
-Políticas (n_final/n_top = 4, degraus (60, 180) cliques, eta=2, ASHA 8 slots):
-`equal`; `random_sh` (cronograma do SH, promoção aleatória — isola o valor da
-informação); `greedy_{parcial,madura}` (janela 3 ciclos, depois move 30% por ciclo
-rumo às top-4 estimadas — o teto de variação); `sh_{parcial,madura}`;
-`asha_{parcial,madura}` (variante de promoção do artigo; produção = n_final
-melhores entre n_final·eta que completam o último rung); `thompson_{parcial,madura}`
-(extensão, top-n gaussiano); `oraculo`. `madura` usa só linhas com idade ≥ D.
+Políticas: n_final/n_top = 4, degraus (60, 180) cliques, eta=2, ASHA com 8 slots e
+greedy com janela de 3 ciclos e passo de 30%. São elas: `equal`, `random_sh`,
+`greedy_{parcial,madura}`, `sh_{parcial,madura}`, `asha_{parcial,madura}` (variante de
+promoção do artigo), `thompson_{parcial,madura}` (extensão) e `oraculo`.
 
 ## Tabela principal — regret (R$, soma de 30 ciclos; média [IC95 MC], n=200)
 
-| cenário | melhor baseline (regret) | sh_parcial | sh_madura | asha_parcial | asha_madura | thompson_parcial (ext.) | Δ pareado sh_parcial − baseline |
+O oráculo tem regret 0 por definição em todos os cenários. O critério pré-registrado
+compara com o melhor baseline:
+
+| cenário | melhor baseline | sh_parcial | sh_madura | asha_parcial | asha_madura | thompson_parcial (ext.) | Δ pareado sh_parcial − baseline |
 |---|---|---|---|---|---|---|---|
 | base (D=3 uniforme) | greedy_parcial: 7556 [6887; 8226] | 9123 [8458; 9788] | 10213 [9411; 11016] | 10164 [9273; 11056] | 12090 [11137; 13043] | 6072 [5520; 6624] | 1567 [1382; 1752] |
-| sem_atraso | greedy_parcial: 7736 [7069; 8404] | 9050 [8382; 9719] | 9050 [8382; 9719] | 9947 [9049; 10845] | 9947 [9049; 10845] | 5961 [5424; 6499] | 1314 [1141; 1487] |
+| sem_atraso | greedy_parcial: 7736 [7069; 8404] | 9050 [8382; 9719] | 9050 | 9947 [9049; 10845] | 9947 | 5961 [5424; 6499] | 1314 [1141; 1487] |
 | atraso_6 | greedy_parcial: 7461 [6792; 8130] | 9036 [8364; 9708] | 11449 [10538; 12360] | 10003 [9111; 10895] | 13818 [12810; 14826] | 6086 [5531; 6642] | 1575 [1391; 1759] |
 | vencedoras_lentas_D3 | greedy_parcial: 7630 [6963; 8297] | 10504 [9794; 11215] | 10213 [9411; 11016] | 14098 [13021; 15175] | 12090 [11137; 13043] | 6907 [6306; 7508] | 2874 [2590; 3159] |
 | vencedoras_lentas_D6 | greedy_parcial: 7742 [7072; 8412] | 12170 [11432; 12907] | 11449 [10538; 12360] | 15076 [13992; 16160] | 13818 [12810; 14826] | 7322 [6710; 7934] | 4428 [4091; 4765] |
@@ -108,37 +165,43 @@ melhores entre n_final·eta que completam o último rung); `thompson_{parcial,ma
 | ruido_alto | greedy_parcial: 8673 [7993; 9353] | 10632 [9891; 11373] | 11573 [10746; 12401] | 11532 [10656; 12408] | 13254 [12325; 14184] | 7375 [6798; 7951] | 1959 [1710; 2208] |
 | nao_estacionario | greedy_parcial: 11714 [10631; 12798] | 13414 [12368; 14460] | 14634 [13441; 15826] | 14045 [12858; 15232] | 16189 [14894; 17484] | 7815 [7196; 8434] | 1700 [1444; 1956] |
 | interferencia (rho=0,5) | greedy_parcial: 7498 [6478; 8518] | 8845 [7796; 9894] | 10083 [8942; 11224] | 9469 [8352; 10586] | 11138 [9882; 12394] | 6196 [5276; 7116] | 1347 [1126; 1568] |
-| ideal_sem_saturacao | greedy_parcial: 36360 [31976; 40745] | 35821 [31469; 40174] | 35821 [31469; 40174] | 37696 [33106; 42286] | 37696 [33106; 42286] | 33106 [28950; 37263] | **−539 [−611; −467]** |
+| ideal_sem_saturacao | greedy_parcial: 36360 [31976; 40745] | 35821 [31469; 40174] | 35821 | 37696 [33106; 42286] | 37696 | 33106 [28950; 37263] | **−539 [−611; −467]** |
 | adverso | greedy_parcial: 11617 [10425; 12810] | 14944 [13628; 16260] | 15337 [13827; 16847] | 16161 [14710; 17612] | 16376 [14879; 17872] | 9511 [8626; 10395] | 3327 [2838; 3815] |
 
-Referências: `equal` regret ≈ 18.259 (base); `random_sh` ≈ 23.583 (pior que equal:
-concentrar em células escolhidas ao acaso estoura a saturação). No cenário ideal o
-regret absoluto é alto para todos porque n_final=4 enquanto o oráculo concentra
-tudo na melhor (HHI=1); com n_final=1 o SH cai para 9.035 e o greedy para 9.321
-(ICs se cruzam; pareado −286 [−429; −144]); Thompson 2.162.
+Referências no base: `equal` 18.259 e `random_sh` 23.583. O random_sh fica pior que
+equal porque concentrar ao acaso estoura a saturação.
 
-### Falsos vencedores, drawdown, poda (média [IC95])
+### Falsos vencedores, drawdown e poda, com a linha do oráculo (média [IC95])
 
-| cenário | política | orç. em perdedoras (5 últimos ciclos) | drawdown R$ | top-k podadas | falso venc./promovida |
-|---|---|---|---|---|---|
-| base | greedy_parcial | 0.23 [0.20; 0.27] | 1760 [1395; 2124] | 0.15 [0.10; 0.21] | 0.33 [0.29; 0.36] |
-| base | sh_parcial | 0.25 [0.21; 0.29] | 2410 [1937; 2883] | 0.49 [0.41; 0.58] | 0.30 [0.27; 0.34] |
-| base | sh_madura | 0.24 [0.20; 0.28] | 2545 [2100; 2989] | 0.46 [0.37; 0.54] | 0.29 [0.26; 0.33] |
-| base | asha_parcial | 0.29 [0.25; 0.32] | 2635 [2166; 3104] | 0.69 [0.59; 0.79] | 0.35 [0.32; 0.39] |
-| base | asha_madura | 0.29 [0.25; 0.33] | 3806 [3338; 4273] | 0.69 [0.59; 0.79] | 0.35 [0.32; 0.39] |
-| vencedoras_lentas_D6 | greedy_parcial | 0.25 [0.21; 0.28] | 1841 [1482; 2199] | 0.09 [0.05; 0.13] | 0.34 [0.31; 0.37] |
-| vencedoras_lentas_D6 | sh_parcial | **0.58** [0.55; 0.61] | 3658 [3066; 4250] | **1.67** [1.55; 1.78] | 0.60 [0.57; 0.63] |
-| vencedoras_lentas_D6 | sh_madura | 0.25 [0.21; 0.28] | 2886 [2433; 3338] | 0.51 [0.43; 0.59] | 0.31 [0.28; 0.34] |
-| vencedoras_lentas_D6 | asha_parcial | **0.71** [0.67; 0.74] | 5072 [4415; 5728] | **2.17** [2.05; 2.30] | 0.72 [0.70; 0.75] |
-| vencedoras_lentas_D6 | asha_madura | 0.28 [0.25; 0.32] | 4343 [3856; 4830] | 0.64 [0.54; 0.73] | 0.34 [0.31; 0.37] |
-| nao_estacionario | greedy_parcial | 0.26 [0.22; 0.30] | 2152 [1741; 2564] | 0.94 [0.87; 1.00] | 0.44 [0.41; 0.47] |
-| nao_estacionario | sh_parcial | 0.30 [0.25; 0.34] | 3049 [2516; 3582] | 1.25 [1.18; 1.33] | 0.43 [0.40; 0.47] |
-| nao_estacionario | asha_madura | 0.33 [0.29; 0.37] | 4330 [3813; 4847] | 1.36 [1.27; 1.46] | 0.46 [0.43; 0.49] |
+| cenário | política | orç. em perdedoras (fim) — **pré-reg.** | excesso vs oráculo (fim) — **pós-reg.** | drawdown R$ | top-k podadas | falso venc./promovida |
+|---|---|---|---|---|---|---|
+| base | **oraculo** | 0.281 [0.240; 0.321] | 0.000 | 513 [325; 700] | 0.24 [0.15; 0.33] | 0.35 [0.32; 0.39] |
+| base | greedy_parcial | 0.235 [0.200; 0.270] | 0.101 [0.083; 0.120] | 1760 [1395; 2124] | 0.15 [0.10; 0.21] | 0.33 [0.29; 0.36] |
+| base | sh_parcial | 0.250 [0.214; 0.286] | 0.161 [0.137; 0.184] | 2410 [1937; 2883] | 0.49 [0.41; 0.58] | 0.30 [0.27; 0.34] |
+| base | sh_madura | 0.240 [0.204; 0.276] | 0.149 [0.125; 0.173] | 2545 [2100; 2989] | 0.46 [0.37; 0.54] | 0.29 [0.26; 0.33] |
+| base | asha_parcial | 0.287 [0.251; 0.324] | 0.186 [0.159; 0.213] | 2635 [2166; 3104] | 0.69 [0.59; 0.79] | 0.35 [0.32; 0.39] |
+| base | asha_madura | 0.291 [0.254; 0.328] | 0.180 [0.154; 0.205] | 3806 [3338; 4273] | 0.69 [0.59; 0.79] | 0.35 [0.32; 0.39] |
+| vencedoras_lentas_D6 | **oraculo** | 0.281 [0.240; 0.321] | 0.000 | 513 [325; 700] | 0.24 [0.15; 0.33] | 0.35 [0.32; 0.39] |
+| vencedoras_lentas_D6 | greedy_parcial | 0.246 [0.211; 0.280] | 0.102 [0.084; 0.120] | 1841 [1482; 2199] | 0.09 [0.05; 0.13] | 0.34 [0.31; 0.37] |
+| vencedoras_lentas_D6 | sh_parcial | **0.581** [0.549; 0.614] | 0.430 [0.404; 0.456] | 3658 [3066; 4250] | **1.67** [1.55; 1.78] | 0.60 [0.57; 0.63] |
+| vencedoras_lentas_D6 | sh_madura | 0.249 [0.213; 0.285] | 0.160 [0.135; 0.185] | 2886 [2433; 3338] | 0.51 [0.43; 0.59] | 0.31 [0.28; 0.34] |
+| vencedoras_lentas_D6 | asha_parcial | **0.706** [0.675; 0.738] | 0.543 [0.514; 0.572] | 5072 [4415; 5728] | **2.17** [2.05; 2.30] | 0.72 [0.70; 0.75] |
+| vencedoras_lentas_D6 | asha_madura | 0.284 [0.247; 0.320] | 0.182 [0.157; 0.206] | 4343 [3856; 4830] | 0.64 [0.54; 0.73] | 0.34 [0.31; 0.37] |
+| ideal_sem_saturacao | **oraculo** | 0.015 [−0.002; 0.032] | 0.000 | 44 [−4; 92] | 2.29 [2.16; 2.42] | 0.01 [−0.00; 0.03] |
+| ideal_sem_saturacao | greedy_parcial | 0.189 [0.155; 0.224] | 0.186 [0.152; 0.219] | 705 [565; 846] | 0.14 [0.10; 0.19] | 0.23 [0.19; 0.26] |
+| ideal_sem_saturacao | sh_parcial | 0.199 [0.164; 0.234] | 0.195 [0.161; 0.229] | 663 [526; 801] | 0.23 [0.17; 0.29] | 0.24 [0.21; 0.27] |
 
-Leitura: no base, o SH não aumenta o orçamento em perdedoras (dentro do IC do
-greedy), mas **aumenta o drawdown** e poda 3× mais células do top-k. O ASHA falha
-nas três condições. HHI (concentração) médio: greedy 0,19, SH 0,22, ASHA 0,22–0,27,
-oráculo 0,30; turnover: SH 0,034, greedy 0,07, Thompson 0,12, asha_madura 0,26.
+**F2-01, defeito da métrica pré-registrada (aceito e exposto, sem alterar o pré-registro).**
+`frac_orcamento_perdedoras_final` pune o ótimo. Com orçamento forçado (Σ=B) e
+saturação, o oráculo põe ~28% do orçamento em células v≤1, mais que o greedy (23%).
+Aplicando o critério pré-registrado ao próprio oráculo, ele "não supera" em
+**8/12** cenários do grid principal (base, sem_atraso, atraso_6, vencedoras_lentas_D3/D6,
+maturacao_por_canal_D3, ruido_baixo, interferencia). A métrica pós-registro
+`excesso_perdedoras_vs_oraculo_final` mede só o gasto em perdedoras **além** do que
+o oráculo poria; o oráculo tem 0 por construção. Com ela o greedy também lidera
+(0,10 vs SH 0,15–0,16 no base), e o veredito se mantém, porque a condição que falha
+é sempre o regret. "Top-k podadas" e "falso venc./promovida" também não são erros
+para o oráculo (que concentra no ideal); a linha do oráculo é o piso de referência.
 
 ## Efeito da decisão com receita madura vs parcial (pareado, Δ = parcial − madura)
 
@@ -150,28 +213,33 @@ oráculo 0,30; turnover: SH 0,034, greedy 0,07, Thompson 0,12, asha_madura 0,26.
 | vencedoras_lentas_D3 | 291 [−42; 625] | **0.65 [0.56; 0.73]** | 2008 [1202; 2814] | **1.13 [1.00; 1.26]** |
 | vencedoras_lentas_D6 | 721 [242; 1200] | **1.16 [1.05; 1.26]** | 1258 [495; 2021] | **1.54 [1.42; 1.66]** |
 
-- Com maturação **uniforme**, decidir com receita parcial é *melhor* (H2 confirmada):
-  todas as vivas gastaram nos mesmos ciclos, o fator de maturação é comum e a
-  ordenação se preserva; esperar a receita madura só custa tempo de exploração.
-  Mas o nível absoluto engana: no rung de 2 ciclos a receita parcial é 58% da
-  madura (diagnóstico) — qualquer regra com limiar absoluto (ex.: "contribuição
-  ≤ 0 → corta") seria enganada mesmo com maturação uniforme.
-- Com maturação **heterogênea** (vencedoras lentas), a decisão parcial poda
-  vencedoras (H1 confirmada) e o efeito cresce com D; o ASHA sofre mais (H3
-  confirmada só no caso heterogêneo; com maturação uniforme não há diferença de
-  poda no ASHA).
-- O greedy é quase imune ao atraso (Δpodadas ≤ 0 em todos), porque usa o
-  acumulado, em que as linhas imaturas são minoria.
+Hipóteses pré-registradas:
+- **H1 confirmada**: com vencedoras lentas e D ≥ 3, sh_parcial poda mais top-k que
+  sh_madura.
+- **H2 confirmada**: com maturação uniforme, receita parcial não piora a ordenação
+  do SH e esperar custa regret. O nível absoluto, porém, engana: no rung de 2 ciclos
+  a receita parcial é 58% da madura. Uma regra de limiar absoluto seria enganada.
+- **H3 refutada como formulada** (F2-12). O pré-registro dizia, sem condição, que
+  "ASHA é mais sensível que SH ao atraso parcial". Com maturação uniforme não há
+  diferença de poda no ASHA (Δ 0,00 / −0,01). O efeito maior no ASHA só aparece com
+  maturação heterogênea, e isso é **achado pós-hoc**, não confirmação da H3.
+- **H4 confirmada (efeito modesto)**: ver diagnóstico.
 
-## Sensibilidade (48 cenários, 200 seeds; regret médio R$)
+O greedy é quase imune ao atraso, porque usa o acumulado, que é majoritariamente
+maduro.
 
-Grade D ∈ {0,1,3,6} × maturação {uniforme, vencedoras_lentas} × ruído
-(valor/evento R$2/8/30) × não estacionariedade {não, sim}. **Nenhum candidato supera
-em nenhum dos 48.** Recortes (estacionário, ruído R$8):
+## Sensibilidade (grade pré-registrada, 200 seeds)
+
+A grade é D ∈ {0,1,3,6} × maturação {uniforme, vencedoras_lentas} × ruído
+(R$2/8/30) × não estacionariedade {não, sim}. São **48 combinações, mas 42 cenários
+distintos** (F2-11): com D=0 a maturação não tem efeito, então as 6 combinações
+D=0 × vencedoras_lentas repetem as de D=0 × uniforme. A tabela gerada marca as
+duplicatas com "=". **Nenhum candidato supera em nenhum dos 42** (nem com a métrica
+pós-registro). Recorte estacionário, ruído R$8:
 
 | D | maturação | equal | greedy_p | sh_p | sh_m | asha_p | asha_m | Δpodadas SH p−m |
 |---|---|---|---|---|---|---|---|---|
-| 0 | — | 18259 | 7736 | 9050 | 9050 | 9947 | 9947 | 0 |
+| 0 | (qualquer) | 18259 | 7736 | 9050 | 9050 | 9947 | 9947 | 0 |
 | 1 | uniforme | 18259 | 7622 | 9037 | 9385 | 10751 | 9665 | 0.01 [−0.04; 0.07] |
 | 1 | vencedoras_lentas | 18259 | 7602 | 9579 | 9385 | 14073 | 9665 | 0.23 [0.16; 0.31] |
 | 3 | uniforme | 18259 | 7556 | 9123 | 10213 | 10164 | 12090 | 0.04 [−0.02; 0.10] |
@@ -179,26 +247,40 @@ em nenhum dos 48.** Recortes (estacionário, ruído R$8):
 | 6 | uniforme | 18259 | 7461 | 9036 | 11449 | 10003 | 13818 | −0.02 [−0.08; 0.04] |
 | 6 | vencedoras_lentas | 18259 | 7742 | 12170 | 11449 | 15076 | 13818 | 1.16 [1.05; 1.26] |
 
-Ruído alto (R$30/evento) aumenta o regret de todos (~+15–20%) sem mudar a ordem;
-não estacionariedade soma ~R$3–5 mil a todas as políticas que comprometem, e o
-SH/ASHA (que encerram a exploração cedo e não revisitam) não se recuperam melhor
-que o greedy. Tabela completa: `swarm_tabelas.py sensibilidade`.
+### PÓS-REGISTRO / EXPLORATÓRIO — saturação (F2-02)
+
+A grade pré-registrada nunca variava `cap_mult_mediana` nem `beta_saturacao`. O
+varrimento exploratório usou cap ∈ {2,5; 4; 6; 10; 100} × beta ∈ {0,25; 0,6} ×
+maturação {uniforme, vencedoras_lentas}, com D=3 e 200 seeds. São 20 combinações;
+com cap ×100 o beta não tem efeito, então há 18 cenários distintos. **0 de 80
+comparações superam**, tanto pela regra pré-registrada quanto pela pós-registro.
+Δ pareado (sh_parcial − greedy_parcial), maturação uniforme, beta=0,25:
+×2,5 1567 [1382; 1752]; ×4 652 [481; 823]; ×6 57 [−89; 203]; ×10 −184 [−318; −50];
+×100 −227 [−360; −95]. Com vencedoras lentas o Δ fica positivo em todos os caps
+(+1347 a +2874).
 
 ## Grid de parâmetros de SH/ASHA (base, vencedoras_lentas_D3, ideal)
 
-eta ∈ {2,3} × primeiro degrau ∈ {20, 60, 150} cliques × {parcial, madura}, mais
-unidade gasto (R$120/R$360) e n_final ∈ {1,2,4}: **nenhuma das 28 variantes supera**
-em nenhum dos 3 cenários. Melhor SH no base: `sh_e3_r60_cliques_parcial` 9.044
-[8.357; 9.732] vs greedy 7.556 [6.887; 8.226]. Degrau curto (20 cliques) com
-receita parcial e vencedoras lentas é o pior caso (SH 14.838–16.307; ASHA até
-19.162, pior que equal). Diferença pareada favorável ao SH/ASHA aparece **apenas**
-no cenário ideal (16 variantes, −R$539 a −R$2.029), nunca nos outros dois.
+A grade foi eta ∈ {2,3} × primeiro degrau ∈ {20, 60, 150} cliques × {parcial, madura},
+mais unidade gasto (R$120/R$360) e n_final ∈ {1,2,4}. **Nenhuma das 120 comparações
+supera.**
+
+Melhores variantes, por menor regret médio (correção F2-09; texto gerado de
+`swarm_tabelas.py fatos`):
+- base: SH `sh_e2_r120brl_gasto_parcial` 8.997 [8.327; 9.667]; ASHA
+  `asha_e3_r20_cliques_parcial` 9.013 [8.333; 9.693]. Greedy: 7.556 [6.887; 8.226].
+- vencedoras_lentas_D3: SH `sh_e3_r150_cliques_parcial` 9.976; ASHA
+  `asha_e2_r120brl_gasto_madura` 10.029. Greedy: 7.630.
+- ideal: SH `sh_e3_r20_cliques_madura` 34.332; ASHA `asha_e3_r20_cliques_madura`
+  34.732. Greedy: 36.360. O Δ pareado é < 0 em 16 de 28 variantes, mas os ICs
+  marginais se cruzam.
+- Δ pareado < 0 aparece **só** no cenário ideal (0 de 28 no base e no vencedoras_lentas_D3).
+- Pior caso: degrau curto (20 cliques) com receita parcial e vencedoras lentas.
+  `asha_e3_r20_cliques_parcial` chega a 19.162, pior que equal.
 
 ## Validade do mapeamento ASHA ("célula = trial, gasto = fidelidade")
 
-ASHA assume (a) avaliação intermediária informativa e monotônica sobre o valor
-final e (b) trials independentes e estacionários. Medido (`swarm_diagnostico.json`,
-alocação equal, Spearman sobre 16 células, 200 seeds):
+Correlação de Spearman (16 células, 200 seeds, alocação equal; `swarm_diagnostico.json`):
 
 | cenário | rung | ρ(parcial, v) | ρ(madura, v) | ρ(madura, valor em escala) | parcial/madura (lentas) |
 |---|---|---|---|---|---|
@@ -209,89 +291,112 @@ alocação equal, Spearman sobre 16 células, 200 seeds):
 | vencedoras_lentas_D6 | 2 ciclos | **0.33** | 0.74 | 0.67 | 0.18 |
 | interferencia | 2 ciclos | 0.71 | 0.71 | 0.65 | — |
 
-Conclusão sobre o mapeamento — **válido só em parte**:
+O mapeamento é **válido só em parte**:
+1. **Válido** como identificação do melhor braço com amostras i.i.d., que é a origem
+   do SH em Karnin et al. 2013. Sem atraso, sem saturação e estacionário, o SH
+   encontra a melhor célula (teste com ruído zero).
+2. **Quebra com atraso de maturação heterogêneo**: o rung baixo ordena errado
+   (ρ 0,74 → 0,33). Esperar a maturação restaura a ordem, mas custa +D ciclos por
+   rung (DiD +1343 no sh_madura).
+3. **Quebra com saturação**, o efeito dominante pelo DiD: a baixa fidelidade mede v,
+   mas na produção o que vale é o valor por R$ na escala.
+4. **Interferência**: viola a independência entre trials (ρ cai um pouco), mas o
+   DiD mostra que ela **não** prejudica o SH/ASHA mais que o greedy; o sinal é o
+   oposto. A frase anterior "quebra com interferência" ficou restrita ao diagnóstico
+   de premissa e não vale como causa do resultado.
+5. **Não estacionariedade**: sem efeito diferencial significativo sobre sh_parcial
+   ou ASHA. A afirmação anterior foi retirada.
+6. **Referência externa (correção F2-14)**: a conferência 60/60 contra
+   `optuna.pruners.SuccessiveHalvingPruner` (optuna 5.0.0) valida
+   `regras.asha_parada_na_chegada`, uma reimplementação da variante de **parada**
+   que **nenhuma política do experimento usa**. A política `ASHA` simulada usa a
+   variante de **promoção** do artigo (Li et al. 2018) e **não tem referência
+   externa**. A correção dela repousa só nos testes próprios: slots respeitados,
+   n_final e acerto sem ruído em ≥12/20. Hyperband não foi implementado.
 
-1. **Válido** como identificação do melhor braço sob amostragem i.i.d. (SH vem de
-   Karnin et al. 2013 para bandits): sem atraso, sem saturação e estacionário, mais
-   gasto = mais amostras da mesma quantidade, a correlação sobe com a fidelidade
-   (0,89 → 0,95) e o SH funciona (acha a melhor com ruído zero; teste).
-2. **Quebra com receita que matura com atraso**: a "curva de aprendizado" deixa de
-   ser monotônica no tempo — o mesmo dado vale mais depois (fator 0,58 → 1). Com
-   maturação heterogênea, o rung baixo ordena errado (ρ 0,74 → 0,33). Esperar a
-   maturação restaura a ordenação, mas cada rung passa a custar +D ciclos, e no
-   ASHA o trial fica pendente sem orçamento — a assincronia não paga a espera.
-3. **Quebra com saturação**: a baixa fidelidade (gasto pequeno) mede v, mas o que
-   importa na produção é o valor por R$ na escala (ρ 0,74 com v vs 0,67 com
-   escala; ρ(v, escala)=0,86). Promover e escalar estoura capacidade; por isso
-   `random_sh` é pior que `equal`.
-4. **Quebra com interferência**: o valor de um trial depende de quem roda junto
-   (mesmo canal); a premissa de independência falha (ρ cai, e o oráculo vira
-   aproximado).
-5. **Quebra com não estacionariedade**: o ASHA compara trials avaliados em
-   regimes diferentes; SH/ASHA encerram a exploração e não revisitam.
-6. A regra de corte por rung foi conferida contra `optuna.pruners.SuccessiveHalvingPruner`
-   (optuna 5.0.0): 60/60 sequências idênticas. Nota: o Optuna implementa a variante de
-   **parada** (decide na chegada ao rung, sem retomar); a política `ASHA` deste lab usa a
-   variante de **promoção** do artigo. Hyperband não foi implementado como política
-   separada — o seu papel (proteger contra escolha ruim do primeiro degrau) foi coberto
-   pelo grid de degraus, e nenhum degrau salvou o SH/ASHA.
+## Contraprovas e mutação
 
-## Contraprovas (tests/data-intelligence/test_swarm.py — 24 passam em 2,5 s)
-
-- mesma seed → mesmo cenário e mesmas métricas (todas as políticas); seed diferente → outro cenário;
-- oráculo tem regret 0; sem interferência nenhuma política bate o oráculo (regret ≥ −1e−3);
-  MILP do oráculo ≥ busca exaustiva em grade de R$10 (K=4);
-- nenhuma política aloca acima/abaixo do orçamento total nem abaixo do mínimo (5 cenários
-  × 3 seeds × 10 políticas, incluindo K=32 e mínimo R$25); validador rejeita float, soma
-  errada, negativo, abaixo do mínimo; `inteirizar` em 300 casos aleatórios;
-- dinheiro: orçamento float é rejeitado; receita é múltiplo de centavo em int64; reportada ≤ final;
-- SH com eta e degraus conhecidos poda o número certo (16→8→4→2; 16→6→2; 16→8→4; 16→4→1);
-- sem ruído e sem atraso o SH acha a melhor (≥19/20, nunca >1% abaixo);
-- **atraso forte (D=6) + vencedoras lentas: SH parcial poda mais top-k que SH madura (IC > 0)**;
-- controle inverso: maturação uniforme → efeito ausente (IC inclui ≤ 0);
-- D=0 → parcial ≡ madura (SH, ASHA, greedy); random usa o mesmo cronograma do SH;
-- ASHA respeita slots e entrega ≤ n_final; sem ruído acha a melhor em ≥12/20 (promove
-  com poucos concluídos — erra mesmo sem ruído);
-- regra de parada = Optuna em caso feito à mão; módulo sem import de rede/subprocess.
+`tests/data-intelligence/test_swarm.py` tem **35 testes** que passam em ~4 s. A suíte
+inteira do lab também passa.
+- **Reprodutibilidade:** mesma seed → mesmo resultado.
+- **Oráculo:**
+  - tem regret 0 e ninguém o bate sem interferência;
+  - o MILP é ≥ busca exaustiva.
+- **Orçamento:**
+  - nunca acima do total nem abaixo do mínimo (5 cenários × 10 políticas);
+  - o validador rejeita float, soma errada, valor negativo e célula abaixo do mínimo;
+  - `inteirizar` passa em 300 casos aleatórios.
+- **Dinheiro:** int64, múltiplo de centavo.
+- **SH:**
+  - poda o número certo (4 configurações);
+  - acha a melhor sem ruído;
+  - **atraso forte + vencedoras lentas: parcial poda mais que madura**, e o controle
+    inverso com maturação uniforme não mostra o efeito;
+  - com D=0, parcial ≡ madura;
+  - random usa o mesmo cronograma.
+- **ASHA:** slots respeitados e n_final entregue.
+- **Novos (F2-03):**
+  - unidade de `avaliar_criterio` com acum sintético. Cobre: supera quando as três
+    condições valem; usa ICs **marginais**, não o pareado; escolhe o baseline de
+    **menor** regret; exige as condições de falsos vencedores e de drawdown; a versão
+    exploratória lê a métrica relativa ao oráculo;
+  - `drawdown_maximo` com valor conhecido;
+  - perdedora = v ≤ 1;
+  - a madura decide exatamente D ciclos depois da parcial;
+  - **regressão do veredito** em 6 seeds fixas (500..505), que fixa regret,
+    perdedoras e drawdown de 10 políticas e o veredito ("não supera", melhor
+    baseline greedy_parcial);
+  - o oráculo tem excesso 0, mas a fração absoluta > 0.
+- **F2-18:** o detector anti-rede agora usa AST, então pega imports dentro de
+  função. Também procura por texto `__import__`, `importlib`, `subprocess`,
+  `socket`, `os.system`, `eval(`, `exec(`, `urlopen` e hosts reais. Cobre
+  `swarm/*.py` e `scripts/swarm_*.py`, e tem uma contraprova do próprio detector.
+  Há uma exceção explícita: `swarm_mutantes.py` (subprocess para rodar pytest local).
+  O crosscheck deixou de usar `importlib`.
+- **Mutação** (`swarm_mutantes.py`): **11/11 mortos**. São os SW1–SW7 da revisão F2
+  com o mesmo texto, mais SW8 (import de socket dentro de função), SW9 (excesso vira
+  fração absoluta), SW10 (critério exploratório lê a métrica errada) e SW11 (random
+  vira SH).
 
 ## Custo computacional
 
 Um processo, `OMP_NUM_THREADS=2`, Mac compartilhado. Por simulação de 30 ciclos:
-SH/random ~2,4–2,7 ms, ASHA ~2,8–3,2 ms, equal/greedy ~3,0–3,3 ms (dominado pelo
-simulador), Thompson ~4,5–4,9 ms, oráculo MILP ~6–11 ms. Parede total dos grids:
-~526 s (≈ 154 mil simulações). Testes: 2,5 s. Custo de decisão é irrelevante perto
-do custo de informação (ciclos de gasto).
+SH ~2,4–2,7 ms, ASHA ~2,8–3,2 ms, equal/greedy ~3,0–3,3 ms, Thompson ~4,5–4,9 ms,
+oráculo MILP ~6–11 ms. Regeneração completa pós-F2: ~728 s de parede em 7 execuções
+sequenciais, a maior com 164 s. Testes: ~4 s. Mutação: ~35 s.
 
 ## Separação de afirmações
 
 **Demonstrado (em simulação, com estas premissas):**
-- SH/ASHA não superam o greedy conservador em nenhum dos 12 + 48 cenários nem nas
-  28 variantes de parâmetros, pela regra pré-registrada;
-- decidir com receita parcial, quando as vencedoras maturam mais devagar, faz o SH
-  podar 0,65 (D=3) a 1,16 (D=6) célula a mais do top-4 e o ASHA 1,13 a 1,54;
-- com maturação uniforme, receita parcial não piora a ordenação do SH e esperar a
-  madura custa R$1–2,4 mil de regret;
-- `random_sh` é pior que `equal`: concentrar sem informação é pior que não concentrar;
-- Thompson top-n (extensão) teve o menor regret de todas as políticas não-oráculo em
-  todos os 12 cenários do grid principal.
+- Nenhum candidato SH/ASHA supera o greedy conservador pela regra pré-registrada
+  (0/360 comparações) nem pela métrica pós-registro (0/440).
+- O fator dominante do gap sh_parcial − greedy é a saturação (DiD +1794). O gap
+  desaparece ou inverte levemente sem saturação (Δ −227 com cap ×100, D=3).
+- Receita parcial com vencedoras lentas faz o SH podar +0,65 (D=3) a +1,16 (D=6)
+  células do top-4, e o ASHA +1,13 a +1,54.
+- Interferência favorece SH/ASHA relativamente ao greedy. Não estacionariedade não
+  tem efeito diferencial significativo sobre sh_parcial.
+- A métrica pré-registrada de falsos vencedores pune o ótimo (oráculo "falha" em 8/12).
+- Thompson top-n (extensão) teve o menor regret entre as políticas não-oráculo nos
+  12 cenários principais.
 
 **Inferido:**
-- a vantagem do greedy vem de não comprometer: ele continua realocando com o acumulado
-  (que é majoritariamente maduro), enquanto SH/ASHA cortam cedo e não revisitam;
-- num ambiente com atraso D+3 e decisão diária (cooldown de 24 h), SH em degraus
-  intra-dia (15 min/2 h) estaria no regime D ≫ duração do rung, onde a receita
-  parcial é quase só o fator de maturação — pior que os casos testados.
+- A vantagem do greedy vem de não se comprometer e de realocar com o acumulado
+  maduro, sem estourar a capacidade.
+- Degraus intra-dia com atraso de D+3 dias cairiam no regime de maturação parcial
+  forte.
 
-**Hipótese (não testada aqui):**
-- Thompson/LinTS bem calibrado poderia ser o candidato a estudar; mas o ganho depende
-  de prior e variância que não estimamos sobre dado real, e o ledger do VOLC não grava
-  probabilidade de ação (não há OPE possível hoje — relatório B, 14/10).
+**Hipótese (não testada):**
+- Thompson/LinTS calibrado como candidato. O ganho depende de prior e variância
+  nunca estimados em dado real, e não há OPE possível sem a probabilidade da ação
+  no ledger.
 
-**Não testado:**
-- `atraso_assumido` mal especificado (madura com D errado); maturação estocástica por
-  célula (restatement com sinal negativo); custo variável (CPC muda com o gasto);
-- K > 32, horizontes diferentes de 30 ciclos, Hyperband como política;
-- interferência com oráculo exato (o oráculo ignora canibalização → regret pode ser < 0
-  nesses cenários; não ocorreu em média);
-- shrinkage/EB nas estimativas do SH/greedy (outra frente — statlab);
-- qualquer dado real: nada aqui autoriza uso operacional.
+**Não testado / limitações aceitas:**
+- `atraso_assumido` mal especificado; restatement com sinal negativo; CPC que varia
+  com o gasto.
+- K > 32; outros horizontes; Hyperband.
+- Política ASHA (promoção) sem referência externa.
+- Oráculo exato com interferência.
+- Shrinkage/EB no SH/greedy.
+- Precedência do pré-registro só por mtime até o commit do coordenador.
+- Qualquer dado real.

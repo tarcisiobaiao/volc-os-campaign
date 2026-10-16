@@ -28,7 +28,7 @@ def rodar_seed(params: ParametrosCenario, seed: int, fabricas: dict[str, Fabrica
         pol = fab(cen)
         pol.nome = nome
         res = oraculo if nome == "oraculo" else simular(cen, pol, rng_politica(seed))
-        saida[nome] = metricas_execucao(res, cen, oraculo.contribuicao_esperada)
+        saida[nome] = metricas_execucao(res, cen, oraculo.contribuicao_esperada, aloc_oraculo=oraculo.alocacao)
     return saida
 
 
@@ -57,7 +57,9 @@ def ic_media(valores) -> dict:
 
 METRICAS_RESUMO = ("regret_brl", "lucro_esperado_brl", "lucro_realizado_micros", "drawdown_micros",
                    "frac_orcamento_perdedoras_final", "taxa_falso_vencedor", "falsos_vencedores",
-                   "promovidas_negativas", "podadas_incorretas", "acertou_melhor", "hhi_medio", "turnover_medio")
+                   "promovidas_negativas", "podadas_incorretas", "acertou_melhor", "hhi_medio", "turnover_medio",
+                   # PÓS-REGISTRO (exploratório, F2-01): excesso em perdedoras além do oráculo
+                   "excesso_perdedoras_vs_oraculo_final", "excesso_perdedoras_vs_oraculo_total")
 
 
 def resumir(acum: dict[str, dict[str, list]]) -> dict[str, dict]:
@@ -77,7 +79,8 @@ BASELINES_SIMPLES = ("equal", "random_sh", "greedy_parcial", "greedy_madura")
 
 
 def avaliar_criterio(acum: dict[str, dict[str, list]], candidato: str,
-                     baselines: tuple[str, ...] = BASELINES_SIMPLES) -> dict:
+                     baselines: tuple[str, ...] = BASELINES_SIMPLES,
+                     metrica_falsos: str = "frac_orcamento_perdedoras_final") -> dict:
     """Critério PRÉ-REGISTRADO (ver results/swarm/PRE-REGISTRO.md):
     supera <=> IC95(regret cand) inteiro abaixo do IC95(regret do melhor baseline)
            E média(frac_orcamento_perdedoras_final cand) <= limite superior IC95 do baseline
@@ -86,16 +89,24 @@ def avaliar_criterio(acum: dict[str, dict[str, list]], candidato: str,
     presentes = [b for b in baselines if b in acum]
     melhor = min(presentes, key=lambda b: float(np.mean(acum[b]["regret_brl"])))
     rc, rb = ic_media(acum[candidato]["regret_brl"]), ic_media(acum[melhor]["regret_brl"])
-    fc, fb = ic_media(acum[candidato]["frac_orcamento_perdedoras_final"]), ic_media(acum[melhor]["frac_orcamento_perdedoras_final"])
+    fc, fb = ic_media(acum[candidato][metrica_falsos]), ic_media(acum[melhor][metrica_falsos])
     dc, db = ic_media(acum[candidato]["drawdown_micros"]), ic_media(acum[melhor]["drawdown_micros"])
     dif = np.asarray(acum[candidato]["regret_brl"]) - np.asarray(acum[melhor]["regret_brl"])
     regret_ok = rc["ic95"][1] < rb["ic95"][0]
     falsos_ok = fc["media"] <= fb["ic95"][1] + 1e-12
     dd_ok = dc["media"] <= db["ic95"][1] + 1e-9
     return {
-        "candidato": candidato, "melhor_baseline": melhor,
+        "candidato": candidato, "melhor_baseline": melhor, "metrica_falsos": metrica_falsos,
         "regret_candidato": rc, "regret_baseline": rb,
         "dif_pareada_regret": ic_media(dif),
         "regret_ok": bool(regret_ok), "falsos_vencedores_ok": bool(falsos_ok), "drawdown_ok": bool(dd_ok),
         "supera": bool(regret_ok and falsos_ok and dd_ok),
     }
+
+
+def avaliar_criterio_exploratorio(acum: dict[str, dict[str, list]], candidato: str,
+                                  baselines: tuple[str, ...] = BASELINES_SIMPLES) -> dict:
+    """PÓS-REGISTRO (exploratório, F2-01): mesmo critério, mas falsos vencedores medidos como
+    excesso de gasto em perdedoras além do oráculo (o ótimo não é mais punido). NÃO substitui o
+    veredito pré-registrado."""
+    return avaliar_criterio(acum, candidato, baselines, metrica_falsos="excesso_perdedoras_vs_oraculo_final")

@@ -170,8 +170,20 @@ def drawdown_maximo(fluxo: np.ndarray) -> int:
     return int((pico - acum).max())
 
 
+def excesso_perdedoras_vs_oraculo(aloc: np.ndarray, aloc_oraculo: np.ndarray, perdedora: np.ndarray,
+                                  orcamento: int) -> float:
+    """PÓS-REGISTRO (exploratório, achado F2-01). Fração do orçamento gasta em células de
+    contribuição <= 0 ALÉM do que o oráculo gastaria nelas: Σ max(0, a − a_oráculo)·perdedora / Σ B.
+
+    Motivo: com orçamento forçado (Σ = B) e saturação, o ótimo também põe dinheiro em
+    perdedoras; a métrica pré-registrada (fração absoluta) pune o ótimo. Esta mede só o excesso.
+    O oráculo tem 0 por construção. Com interferência o oráculo é aproximado (documentado)."""
+    excesso = np.maximum(aloc.astype(np.int64) - aloc_oraculo.astype(np.int64), 0) * perdedora
+    return float(excesso.sum() / (orcamento * aloc.shape[0]))
+
+
 def metricas_execucao(res: ResultadoExecucao, cen: CenarioRealizado, contrib_oraculo: np.ndarray,
-                      janela_final: int = 5) -> dict:
+                      janela_final: int = 5, aloc_oraculo: np.ndarray | None = None) -> dict:
     p = cen.params
     B, K, T = p.orcamento_ciclo_micros, p.K, p.T
     a = res.alocacao
@@ -187,7 +199,14 @@ def metricas_execucao(res: ResultadoExecucao, cen: CenarioRealizado, contrib_ora
     frac = a[jan].astype(float) / B
     falsos = prom & ((v_final <= 1.0) | ~topk_final)
     n_prom = int(prom.sum())
+    pos_registro = {}
+    if aloc_oraculo is not None:
+        pos_registro = {
+            "excesso_perdedoras_vs_oraculo_final": excesso_perdedoras_vs_oraculo(a[jan], aloc_oraculo[jan], perdedora_t[jan], B),
+            "excesso_perdedoras_vs_oraculo_total": excesso_perdedoras_vs_oraculo(a, aloc_oraculo, perdedora_t, B),
+        }
     return {
+        **pos_registro,
         "lucro_realizado_micros": int(fluxo.sum()),
         "lucro_esperado_brl": float(res.contribuicao_esperada.sum()),
         "regret_brl": float(contrib_oraculo.sum() - res.contribuicao_esperada.sum()),

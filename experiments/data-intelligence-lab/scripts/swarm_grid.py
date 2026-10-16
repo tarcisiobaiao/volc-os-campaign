@@ -30,7 +30,13 @@ from volc_dil.contracts import manifesto_execucao, sha256_arquivo  # noqa: E402
 from volc_dil.swarm import VERSAO_SWARM  # noqa: E402
 from volc_dil.swarm.cenario import MICROS, ParametrosCenario  # noqa: E402
 from volc_dil.swarm.diagnostico import diagnosticar_seed  # noqa: E402
-from volc_dil.swarm.experimento import avaliar_criterio, ic_media, resumir, rodar_cenario  # noqa: E402
+from volc_dil.swarm.experimento import (  # noqa: E402
+    avaliar_criterio,
+    avaliar_criterio_exploratorio,
+    ic_media,
+    resumir,
+    rodar_cenario,
+)
 from volc_dil.swarm.politicas import (  # noqa: E402
     ASHA,
     EqualBudget,
@@ -153,9 +159,17 @@ def _bloco_cenario(params: ParametrosCenario, n: int, fabricas: dict, candidatos
         a, b = f"{fam}_parcial", f"{fam}_madura"
         if a in acum and b in acum:
             pares[f"{a}_menos_{b}"] = {m: _pareado(acum, a, b, m) for m in ("regret_brl", "podadas_incorretas")}
-    out = {"parametros_cenario": params.como_dict(), "resumo": resumo, "criterio": crit, "pareado_parcial_madura": pares}
+    # PÓS-REGISTRO (exploratório; achado F2-01): o critério pré-registrado aplicado ao próprio
+    # oráculo (prova de que a métrica de falsos vencedores pune o ótimo) e o critério com a
+    # métrica relativa ao oráculo. Não alteram `criterio` nem o veredito pré-registrado.
+    pos = {"criterio_exploratorio_excesso_vs_oraculo": {c: avaliar_criterio_exploratorio(acum, c) for c in candidatos if c in acum}}
+    if "oraculo" in acum:
+        pos["criterio_pre_registrado_aplicado_ao_oraculo"] = avaliar_criterio(acum, "oraculo")
+    out = {"parametros_cenario": params.como_dict(), "resumo": resumo, "criterio": crit,
+           "pareado_parcial_madura": pares, "pos_registro": pos}
     if compacto:
-        for c in crit.values():
+        for c in [*crit.values(), *pos["criterio_exploratorio_excesso_vs_oraculo"].values(),
+                  *([pos["criterio_pre_registrado_aplicado_ao_oraculo"]] if "oraculo" in acum else [])]:
             for k in ("regret_candidato", "regret_baseline"):
                 c.pop(k)
     return out, tempos
@@ -176,7 +190,12 @@ def grid_principal(n: int) -> tuple[dict, dict]:
         veredito = "sim_em_simulacao_todas_as_condicoes"
     else:
         veredito = "depende"
-    return {"cenarios": res, "veredito_regra_pre_registrada": veredito, "cenarios_em_que_supera": passa}, custo
+    passa_exp = {c: [s for s, r in res.items() if r["pos_registro"]["criterio_exploratorio_excesso_vs_oraculo"][c]["supera"]]
+                 for c in CANDIDATOS}
+    oraculo_falha = [s for s, r in res.items() if not r["pos_registro"]["criterio_pre_registrado_aplicado_ao_oraculo"]["supera"]]
+    return {"cenarios": res, "veredito_regra_pre_registrada": veredito, "cenarios_em_que_supera": passa,
+            "pos_registro": {"cenarios_em_que_supera_com_metrica_excesso_vs_oraculo": passa_exp,
+                             "cenarios_em_que_o_oraculo_nao_supera_pelo_criterio_pre_registrado": oraculo_falha}}, custo
 
 
 def _fabricas_parametros(D: int) -> dict:
@@ -235,6 +254,65 @@ def grid_sensibilidade(n: int, bloco: str) -> tuple[dict, dict]:
     return {"cenarios": res, "parametros_fixos": ParametrosCenario(troca_vencedora_em=troca).como_dict()}, custo
 
 
+def grid_pos_registro_saturacao(n: int) -> tuple[dict, dict]:
+    """PÓS-REGISTRO (exploratório, F2-02): saturação nunca variava no grid pré-registrado."""
+    res, custo = {}, {}
+    for cap in (2.5, 4.0, 6.0, 10.0, 100.0):
+        for beta in (0.25, 0.6):
+            for modo in ("uniforme", "vencedoras_lentas"):
+                nome = f"cap{cap:g}__beta{beta:g}__{modo}__D3"
+                p = ParametrosCenario(nome=nome, cap_mult_mediana=cap, beta_saturacao=beta, modo_maturacao=modo)
+                t0 = time.perf_counter()
+                res[nome], custo[nome] = _bloco_cenario(p, n, fabricas_padrao(3, com_thompson=False), compacto=True)
+                res[nome].pop("parametros_cenario")
+                print(f"  {nome}: {time.perf_counter() - t0:.1f}s", flush=True)
+    return {"cenarios": res, "parametros_fixos": ParametrosCenario().como_dict()}, custo
+
+
+def cenarios_did() -> dict[str, ParametrosCenario]:
+    P = ParametrosCenario
+    c = {k: v for k, v in cenarios_principais().items()
+         if k in ("base", "sem_atraso", "interferencia", "nao_estacionario", "ruido_baixo", "ideal_sem_saturacao",
+                  "vencedoras_lentas_D3", "ruido_alto")}
+    c["ruido_baixo_sem_atraso"] = P(nome="ruido_baixo_sem_atraso", valor_evento_brl=2.0, atraso_ciclos=0)
+    c["sem_saturacao_D3"] = P(nome="sem_saturacao_D3", cap_mult_mediana=100.0)
+    return c
+
+
+# (cenário alvo, cenário de referência, fator isolado)
+PARES_DID = (
+    ("interferencia", "base", "interferência rho=0,5"),
+    ("nao_estacionario", "base", "não estacionariedade"),
+    ("base", "sem_atraso", "atraso D=3 (uniforme)"),
+    ("vencedoras_lentas_D3", "base", "maturação heterogênea (vencedoras lentas)"),
+    ("ruido_alto", "base", "ruído alto"),
+    ("base", "ruido_baixo", "ruído base vs baixo"),
+    ("base", "sem_saturacao_D3", "saturação (cap×2,5 vs ×100), D=3"),
+    ("ruido_baixo_sem_atraso", "ideal_sem_saturacao", "saturação, D=0 ruído baixo"),
+)
+
+
+def grid_pos_registro_did(n: int) -> tuple[dict, dict]:
+    """PÓS-REGISTRO (exploratório, F2-02): diferença-em-diferenças pareada por seed.
+    Δ_s = regret(candidato) − regret(greedy_parcial) em cada cenário; DiD = Δ_alvo − Δ_ref.
+    DiD > 0: o fator piora o candidato MAIS que o greedy (seeds comuns -> pareado)."""
+    cands = ("sh_parcial", "sh_madura", "asha_parcial", "asha_madura")
+    deltas, custo = {}, {}
+    for nome, p in cenarios_did().items():
+        fab = {k: v for k, v in fabricas_padrao(p.atraso_ciclos, com_thompson=False).items()
+               if k in ("greedy_parcial", *cands)}
+        t0 = time.perf_counter()
+        acum = rodar_cenario(p, seeds(n), fab)
+        g = np.asarray(acum["greedy_parcial"]["regret_brl"])
+        deltas[nome] = {c: np.asarray(acum[c]["regret_brl"]) - g for c in cands}
+        custo[nome] = {"_parede_s": time.perf_counter() - t0}
+        print(f"  did {nome}: {custo[nome]['_parede_s']:.1f}s", flush=True)
+    delta_ic = {nome: {c: ic_media(d) for c, d in dd.items()} for nome, dd in deltas.items()}
+    did = {f"{alvo}__menos__{ref}": {"fator": fator, **{c: ic_media(deltas[alvo][c] - deltas[ref][c]) for c in cands}}
+           for alvo, ref, fator in PARES_DID}
+    return {"delta_candidato_menos_greedy": delta_ic, "did": did}, custo
+
+
 def grid_diagnostico(n: int) -> tuple[dict, dict]:
     todos = cenarios_principais()
     res = {}
@@ -252,8 +330,9 @@ def grid_diagnostico(n: int) -> tuple[dict, dict]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--grid", required=True, choices=["principal", "parametros", "sensibilidade", "diagnostico"])
-    ap.add_argument("--bloco", default="estacionario", choices=["estacionario", "nao_estacionario"])
+    ap.add_argument("--grid", required=True, choices=["principal", "parametros", "sensibilidade", "diagnostico",
+                                                      "pos_registro"])
+    ap.add_argument("--bloco", default=None, choices=["estacionario", "nao_estacionario", "saturacao", "did"])
     ap.add_argument("--n-seeds", type=int, default=200)
     a = ap.parse_args()
     if not PRE_REGISTRO.exists():
@@ -266,13 +345,20 @@ def main() -> None:
         corpo, custo = grid_parametros(a.n_seeds)
         sufixo = ""
     elif a.grid == "sensibilidade":
+        a.bloco = a.bloco or "estacionario"
+        assert a.bloco in ("estacionario", "nao_estacionario")
         corpo, custo = grid_sensibilidade(a.n_seeds, a.bloco)
+        sufixo = f"_{a.bloco}"
+    elif a.grid == "pos_registro":
+        assert a.bloco in ("saturacao", "did"), "--bloco saturacao|did"
+        corpo, custo = (grid_pos_registro_saturacao if a.bloco == "saturacao" else grid_pos_registro_did)(a.n_seeds)
+        corpo["natureza_da_analise"] = "POS-REGISTRO / EXPLORATORIO: nao faz parte do criterio pre-registrado"
         sufixo = f"_{a.bloco}"
     else:
         corpo, custo = grid_diagnostico(a.n_seeds)
         sufixo = ""
     nome = f"swarm_{a.grid}{sufixo}"
-    corpo["manifesto"] = manifesto(nome, a.n_seeds, {"grid": a.grid, "bloco": a.bloco if a.grid == "sensibilidade" else None,
+    corpo["manifesto"] = manifesto(nome, a.n_seeds, {"grid": a.grid, "bloco": a.bloco,
                                                      "orcamento_ciclo_brl": ParametrosCenario().orcamento_ciclo_micros // MICROS})
     nb = gravar(f"{nome}.json", corpo)
     parede = time.perf_counter() - t0

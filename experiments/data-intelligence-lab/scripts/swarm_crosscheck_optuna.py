@@ -10,28 +10,13 @@ Resultado gravado em 2026-10-16: optuna 5.0.0, 60/60 sequências idênticas.
 """
 import json, sys
 import numpy as np
-import optuna, importlib.util
-_spec = importlib.util.spec_from_file_location("regras", sys.argv[1])
-regras = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(regras)
+import os
+import optuna
+# regras.py só depende de numpy; entra pelo diretório (sem importar o pacote volc_dil.swarm/scipy)
+sys.path.insert(0, os.path.dirname(os.path.abspath(sys.argv[1])))
+import regras  # noqa: E402
 from optuna.pruners import SuccessiveHalvingPruner
 optuna.logging.set_verbosity(optuna.logging.ERROR)
-
-def numpy_stop_rule(vals, eta):
-    # vals: (N, R) valor do trial i no rung r; trials sequenciais; retorna rung máximo alcançado
-    N, R = vals.shape
-    comp = [[] for _ in range(R)]
-    alcancado = np.zeros(N, int)
-    for i in range(N):
-        for r in range(R):
-            comp[r].append(vals[i, r])
-            if r == R - 1:
-                alcancado[i] = R; break
-            c = sorted(comp[r]); idx = len(c) // eta - 1
-            if idx == -1: idx = 0
-            if vals[i, r] >= c[-(idx + 1)]:
-                continue
-            alcancado[i] = r + 1; break
-    return alcancado
 
 def optuna_rule(vals, eta):
     N, R = vals.shape
