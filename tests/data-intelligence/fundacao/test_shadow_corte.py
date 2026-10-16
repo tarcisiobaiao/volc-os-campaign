@@ -126,10 +126,14 @@ def test_quarentena_de_versao_ambigua(base):
     with pytest.raises(VersaoAmbigua):
         FluxoIndexado(list(fs.observacoes) + [gemea]).as_of(t)
     fi = FluxoIndexado(list(fs.observacoes) + [gemea], ambiguidade="quarentena")
-    assert len(fi.quarentena) == 2
-    assert not fi.quarentena_visivel(o.available_at - timedelta(seconds=1))
+    assert o.chave_natural not in fi.as_of(t) and len(fi.ambiguos_em(t)[o.chave_natural]) == 2
+    assert not fi.ambiguos_em(o.available_at - timedelta(seconds=1))
     s = construir_snapshot(fi, t, cfg.corte)
     assert any(d.codigo == "versao_ambigua_em_quarentena" for d in s.diagnosticos_dados)
+    from volc_dil.fundacao.shadow.tipos import EntidadeCampanha
+
+    dia = o.janela_inicio.date().isoformat()
+    assert f"versao_ambigua:custo:{dia}" in s.bloqueios_de(EntidadeCampanha(o.conta, o.entidade.id))
 
 
 def test_cortes_regulares_exigem_timezone():

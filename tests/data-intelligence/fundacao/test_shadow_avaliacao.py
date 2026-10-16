@@ -41,11 +41,17 @@ def test_avaliacao_deterministica():
     assert json.dumps(a1, sort_keys=True) == json.dumps(a2, sort_keys=True)
 
 
-def test_null_zero_erra_cortes_onde_a_regra_madura_nao_erra():
-    _, _, a = _rodar("zero_sintetizado", [Manter(), RegraMargem(), catalogo_padrao()[-1]])
+def test_null_zero_propoe_cortes_infundados_e_o_kernel_bloqueia_todos():
+    fs, res, a = _rodar("zero_sintetizado", [Manter(), RegraMargem(), catalogo_padrao()[-1]])
     nz, rm = a["politicas"]["regra_margem_null_zero"], a["politicas"]["regra_margem"]
-    assert nz["cortes_errados"] > rm["cortes_errados"] == 0
-    assert nz["cortes_errados_por_sinal_imaturo"] >= 1
+    assert rm["cortes_errados"] == 0
+    # a anti-baseline quer pausar a campanha 0 (ROAS verdadeiro 1,50: todo corte dela é errado) por "campanha morta"
+    mortas = [p for d in res.da_politica("regra_margem_null_zero") for p in d.decisao.propostas
+              if p.motivo.startswith("campanha_morta")]
+    assert mortas and all(p.entidade.campaign_id.endswith("0") for p in mortas)
+    # ...e o kernel bloqueia: ela declara usar dias sem receita medida (cobertura não comprovada, R2-G3)
+    assert all(any(b.startswith("cobertura_receita_nao_comprovada") for b in p.bloqueios) for p in mortas)
+    assert nz["cortes_errados"] == 0 and nz["propostas_bloqueadas_no_corte_diario"] > 0
 
 
 def test_guardiao_reduz_cortes_errados_por_sinal_imaturo_em_campanha_nova():

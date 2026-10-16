@@ -162,6 +162,27 @@ class VerdadeSimulador:
             self._cache[fator] = out
         return self._cache[fator]
 
+    def divergencia_manter_vs_mundo(self) -> dict:
+        """Quanto o `manter` re-simulado (verba diária fixa às 00h) difere do mundo observado, por célula.
+
+        Zero quando o cenário não muda verba dentro do dia. Em `mudanca_orcamento` a verba muda às 9h/14h: a
+        re-simulação com verba diária (gancho `orcamento_diario_micros` da E) não reproduz a mudança intradiária
+        — o contrafactual daquele cenário é aproximado e este número diz quanto."""
+        m = self.sim.mundo
+        custo, rec = m.diario("custo_final_micros"), m.diario("receita_micros")
+        base = self._matriz(BPS)
+        n = soma = 0
+        for c, e in enumerate(self.ents):
+            for i, d in enumerate(self.dias):
+                if (e, d) not in base:
+                    continue
+                r = int(rec[c, i])
+                r = r * self.taxa.numerator // self.taxa.denominator if self.usd[c] else r
+                dif = abs(base[(e, d)] - (r - int(custo[c, i])))
+                n += dif != 0
+                soma += dif
+        return {"celulas": len(base), "celulas_divergentes": n, "soma_abs_micros": soma}
+
     def lucros(self, plano: dict) -> dict:
         out = {}
         for cel, fator in plano.items():

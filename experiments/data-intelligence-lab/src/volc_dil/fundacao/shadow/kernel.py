@@ -14,7 +14,12 @@ Bloqueios:
 - `moeda_misturada_receita:<dia>` — o dia inteiro não pôde ser juntado por moeda;
 - `receita_recusada_pela_juncao:<erro>:<dia>` — a junção da C recusou a receita do dia (grão misto,
   linha duplicada: somar duplicaria dinheiro — R1-F5);
-- `cobertura_receita_baixa:<dia>` — fração da receita com chave abaixo do mínimo num dia de evidência.
+- `cobertura_receita_baixa:<dia>` — fração da receita com chave abaixo do mínimo num dia de evidência;
+- `cobertura_receita_nao_comprovada:<dia>:<denominador>` — num dia de evidência a cobertura da partição de
+  receita da campanha não é medida contra `/earnings` (earnings ausente, `unavailable`, ou só a soma do próprio
+  key-value, que dá 1 por construção). Sem denominador independente não há prova de cobertura (R2-G3).
+  `ConfigKernel(cobertura_sem_earnings="aceitar_declarado")` existe SÓ para fontes sintéticas que não emitem
+  earnings (simulador da E: toda receita tem chave por construção) e fica registrado na config do ledger.
 """
 from __future__ import annotations
 
@@ -30,10 +35,16 @@ from .tipos import ACOES_QUE_MUDAM_VERBA, DecisaoShadow, ExecucaoProibida, Propo
 class ConfigKernel:
     janela_dias: int = 7
     cobertura_minima: Fraction = Fraction(9, 10)
+    cobertura_sem_earnings: str = "bloquear"  # | "aceitar_declarado" (só sintético sem earnings)
+
+    def __post_init__(self) -> None:
+        if self.cobertura_sem_earnings not in ("bloquear", "aceitar_declarado"):
+            raise ValueError(f"cobertura_sem_earnings desconhecida: {self.cobertura_sem_earnings!r}")
 
     def para_json(self) -> dict:
         return {"janela_dias": self.janela_dias,
-                "cobertura_minima": f"{self.cobertura_minima.numerator}/{self.cobertura_minima.denominator}"}
+                "cobertura_minima": f"{self.cobertura_minima.numerator}/{self.cobertura_minima.denominator}",
+                "cobertura_sem_earnings": self.cobertura_sem_earnings}
 
 
 class PropostaForaDoCorte(RuntimeError):
@@ -63,11 +74,26 @@ def bloqueios_para(p: PropostaShadow, snap: SnapshotShadow, cfg: ConfigKernel) -
         for x in cob.bloqueios:
             if x.startswith("receita_recusada_pela_juncao"):
                 b.add(f"{x}:{dia.isoformat()}")
+    explicita = bool(p.evidencia_dict().get("dias"))
     for dia in _dias_evidencia(p, snap, cfg):
         cob = snap.cobertura_de(dia)
-        frac = None if cob is None else cob.fracao_minima
-        if cob is not None and frac is not None and frac < cfg.cobertura_minima:
-            b.add(f"cobertura_receita_baixa:{dia.isoformat()}")
+        f = snap.fato(p.entidade, dia)
+        moeda = f.receita_moeda if f is not None else None
+        if cob is None or not cob.fracoes:
+            if not explicita:
+                continue  # janela padrão: dia sem nenhuma receita lida ainda não é evidência de nada
+            particoes = [(None, "indisponivel")]  # a política declarou usar um dia sem receita medida
+        elif moeda is not None:
+            particoes = [cob.cobertura_da_moeda(moeda)]
+        else:  # campanha sem receita no dia: toda partição do dia precisa estar comprovada
+            particoes = [(fr, d) for _, fr, d in cob.fracoes] or [(None, "indisponivel")]
+        for frac, denom in particoes:
+            if denom != "earnings_dominio_dia" or frac is None:
+                if cfg.cobertura_sem_earnings == "bloquear" or frac is None:
+                    b.add(f"cobertura_receita_nao_comprovada:{dia.isoformat()}:{denom}")
+                    continue
+            if frac < cfg.cobertura_minima:
+                b.add(f"cobertura_receita_baixa:{dia.isoformat()}")
     moedas = {(f.custo_moeda, f.receita_moeda) for f in snap.fatos_de(p.entidade) if f.custo_moeda and f.receita_moeda}
     for de_custo, de_receita in sorted(moedas):
         if snap.cambio(de_receita, de_custo) is None:

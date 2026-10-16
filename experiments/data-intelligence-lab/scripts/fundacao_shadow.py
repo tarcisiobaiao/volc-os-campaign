@@ -32,6 +32,7 @@ from volc_dil.fundacao.shadow import _gerador_provisorio as gp  # noqa: E402
 from volc_dil.fundacao.shadow.avaliacao import avaliar, registrar_resultados_maduros  # noqa: E402
 from volc_dil.fundacao.shadow.controles import PoliticaTrapaceira  # noqa: E402
 from volc_dil.fundacao.shadow.fluxo import FluxoIndexado  # noqa: E402
+from volc_dil.fundacao.shadow.kernel import ConfigKernel  # noqa: E402
 from volc_dil.fundacao.shadow.ledger import LedgerShadow, SinkJsonl  # noqa: E402
 from volc_dil.fundacao.shadow.motor import ConfigShadow, auditar_null_zero, detectar_vazamento, executar_replay  # noqa: E402
 from volc_dil.fundacao.shadow.politicas import Manter, RegraMargem, catalogo_padrao, regra_margem_null_zero  # noqa: E402
@@ -41,10 +42,17 @@ from volc_dil.fundacao.shadow.versao import versao_codigo  # noqa: E402
 SAIDA_PADRAO = RAIZ_LAB / "results" / "fundacao" / "shadow"
 HORA_DECISAO = 7
 SEED = 20261016
+# 19 dos 20 cenários do catálogo 1.0.0 da E. Fora: `escala_10x` (500 campanhas; só testa volume — o custo por
+# corte é O(visíveis) e foi medido em 06 §11; não muda nenhuma decisão por campanha). `sensor_sem_campanha` só
+# mexe em `site_analytics`, fonte que o snapshot ignora: entra para PROVAR que as decisões ficam iguais às do
+# `estavel`; `dedup_por_segundo` também injeta bots no mundo, então muda a verdade (R2-G21).
 CENARIOS_SIMULADOR = ("estavel", "campanha_nova_aprendendo", "atraso_receita_longo", "restatement_custo",
-                      "fonte_fora_do_ar", "zero_falso", "zero_sintetizado_coletor", "identidade_trocada",
-                      "moeda_misturada", "vazamento_tentado", "custo_d0_multiversao", "execucao_presa",
-                      "gatilho_legado_joinads")
+                      "fonte_fora_do_ar", "outlier_bot", "quebra_regime_rpm", "mudanca_orcamento", "sazonal_fim_de_semana",
+                      "zero_falso", "zero_sintetizado_coletor", "identidade_trocada", "moeda_misturada", "vazamento_tentado",
+                      "custo_d0_multiversao", "execucao_presa", "gatilho_legado_joinads", "sensor_sem_campanha",
+                      "dedup_por_segundo")
+# o simulador não emite /earnings (toda receita tem chave por construção): cobertura aceita por declaração
+KERNEL_SIMULADOR = ConfigKernel(cobertura_sem_earnings="aceitar_declarado")
 
 
 def _rodar(fs, cortes, cfg, dir_ledger: Path | None, nome_ledger: str, hora: int) -> dict:
@@ -121,9 +129,11 @@ def modo_simulador(dir_led: Path | None, cenarios, n_campanhas: int, n_dias: int
     out = {}
     for nome in cenarios:
         fs = fluxo_do_simulador(nome, SEED, n_campanhas=n_campanhas, n_dias=n_dias)
-        cfg = ConfigShadow(ConfigCorte(cambios=fs.cambios))
+        cfg = ConfigShadow(ConfigCorte(cambios=fs.cambios), KERNEL_SIMULADOR)
         cortes = cortes_do_simulador(fs, dia_inicial=5)
         out[nome] = _rodar(fs, cortes, cfg, dir_led, f"simulador__{nome}.jsonl", HORA_DECISAO)
+        out[nome]["deterministico"]["config_kernel"] = KERNEL_SIMULADOR.para_json()
+        out[nome]["deterministico"]["verdade_manter_vs_mundo"] = fs.verdade.divergencia_manter_vs_mundo()
     return out
 
 
@@ -135,8 +145,8 @@ def _md(res: dict) -> str:
               "> **Gerado** por `scripts/fundacao_shadow.py` a partir de `shadow_resultados.json`; não editar à mão.",
               "> **Natureza:** gerador provisório e/ou Simulator Lab (thread E). Lucro contrafactual vem da VERDADE do",
               "> gerador. Nada aqui é eficácia, calibração ou validação com dado real.", "",
-              f"- versão do código (provisório): `{res.get('versao_codigo', '')[:16]}…`; (simulador): "
-              f"`{res.get('versao_codigo_simulador', '')[:16]}…`; sha determinístico: `{res['deterministico_sha256'][:16]}…`",
+              f"- versão do código: `{res.get('versao_codigo', '')[:16]}…`; sha determinístico: `{res['deterministico_sha256'][:16]}…`",
+              "- kernel: provisório com `cobertura_sem_earnings=bloquear`; simulador com `aceitar_declarado` (a E não emite /earnings)",
               f"- decisão diária às {HORA_DECISAO}h (America/Sao_Paulo), aplicada ao dia seguinte; menu do oráculo: manter, reduzir 30%, pausar",
               "- valores em BRL (micros ÷ 10⁶), arredondados; `vs manter` positivo = ganharia contra não fazer nada", ""]
     for fonte in ("provisorio", "simulador"):
@@ -174,7 +184,7 @@ def _md(res: dict) -> str:
 
 def _deterministico(res: dict) -> dict:
     return {k: ({n: r["deterministico"] for n, r in v.items()} if k in ("provisorio", "simulador") else v)
-            for k, v in res.items() if k in ("provisorio", "simulador", "gates", "versao_codigo", "versao_codigo_simulador")}
+            for k, v in res.items() if k in ("provisorio", "simulador", "gates", "versao_codigo")}
 
 
 def modo_real(a) -> int:
@@ -205,7 +215,9 @@ def main() -> int:
     ap.add_argument("--cenarios", nargs="*", default=list(CENARIOS_SIMULADOR))
     ap.add_argument("--n-campanhas", type=int, default=8)
     ap.add_argument("--n-dias", type=int, default=16)
-    ap.add_argument("--verificar", action="store_true")
+    ap.add_argument("--verificar", action="store_true", help="regenera em memória provisório, gates e (se o simulador "
+                    "estiver no checkout) a seção simulador, e compara o sha determinístico de cada parte")
+    ap.add_argument("--sem-simulador", action="store_true", help="com --verificar: pula a seção simulador (~6 min)")
     ap.add_argument("--saida", default=None)
     ap.add_argument("--ledgers", default=None, help="diretório para gravar os ledgers JSONL (~9 MB por cenário); "
                     "sem ele, só os sha256 entram no resultado")
@@ -222,10 +234,21 @@ def main() -> int:
     if a.verificar:
         gravado = json.loads(arq.read_text())
         novo = {"provisorio": modo_sintetico(None), "gates": _gates_sinteticos(), "versao_codigo": versao_codigo()}
-        esperado = sha256_de(_deterministico({k: gravado[k] for k in ("provisorio", "gates", "versao_codigo")}))
-        obtido = sha256_de(_deterministico(novo))
-        print(f"esperado {esperado}\nobtido   {obtido}")
-        return 0 if esperado == obtido else 1
+        partes = ["provisorio", "gates", "versao_codigo"]
+        if "simulador" in gravado and not a.sem_simulador:
+            try:
+                import volc_dil.fundacao.simulador  # noqa: F401
+            except ImportError:
+                print("simulador ausente no checkout: seção simulador NÃO verificada")
+            else:
+                novo["simulador"] = modo_simulador(None, list(gravado["simulador"]), a.n_campanhas, a.n_dias)
+                partes.append("simulador")
+        ok = True
+        for k in partes:
+            e, o = sha256_de(_deterministico({k: gravado.get(k)})), sha256_de(_deterministico({k: novo[k]}))
+            print(f"{k:14s} esperado {e[:16]}… obtido {o[:16]}… {'ok' if e == o else 'DIFERENTE'}")
+            ok &= e == o
+        return 0 if ok else 1
     saida.mkdir(parents=True, exist_ok=True)
     res = json.loads(arq.read_text()) if arq.exists() else {}
     dir_led = Path(a.ledgers).resolve() if a.ledgers else None
@@ -233,9 +256,9 @@ def main() -> int:
         res["versao_codigo"] = versao_codigo()
         res["provisorio"] = modo_sintetico(dir_led)
         res["gates"] = _gates_sinteticos()
+    res.pop("versao_codigo_simulador", None)  # desde o merge, provisório e simulador rodam na mesma árvore
     if a.simulador:
-        # pode rodar noutra árvore (com o simulador da E): a versão do código fica registrada à parte
-        res["versao_codigo_simulador"] = versao_codigo()
+        res["versao_codigo"] = versao_codigo()
         res["simulador"] = modo_simulador(dir_led, a.cenarios, a.n_campanhas, a.n_dias)
     res["deterministico_sha256"] = sha256_de(_deterministico(res))
     arq.write_text(json.dumps(res, ensure_ascii=False, indent=1, sort_keys=True) + "\n")

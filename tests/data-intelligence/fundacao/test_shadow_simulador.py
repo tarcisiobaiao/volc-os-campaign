@@ -149,6 +149,20 @@ def test_verdade_simulador_e_pareada(estavel):
                 assert base[(ent, d)] == int(rec[c, i]) - int(custo[c, i])
 
 
+def test_divergencia_do_contrafactual_so_onde_a_verba_muda_no_dia(estavel):
+    assert estavel.verdade.divergencia_manter_vs_mundo()["celulas_divergentes"] == 0
+    mud = fluxo_do_simulador("mudanca_orcamento", SEED, **TAM)
+    assert mud.verdade.divergencia_manter_vs_mundo()["celulas_divergentes"] > 0  # documentado em 06 §7.2
+
+
+def test_cenario_so_de_sensor_nao_muda_decisoes(estavel):
+    base = executar_replay(estavel.observacoes, _cortes(estavel), [RegraMargem(), equal()], config=_cfg(estavel))
+    for nome in ("sensor_sem_campanha",):  # dedup_por_segundo também injeta bots no MUNDO: muda a verdade
+        fs = fluxo_do_simulador(nome, SEED, **TAM)
+        r = executar_replay(fs.observacoes, _cortes(fs), [RegraMargem(), equal()], config=_cfg(fs))
+        assert [d.decisao.assinatura() for d in r.decisoes] == [d.decisao.assinatura() for d in base.decisoes], nome
+
+
 def test_replay_e_avaliacao_no_simulador(estavel):
     res = executar_replay(estavel.observacoes, _cortes(estavel), [Manter(), equal(), RegraMargem(), Guardiao72h(RegraMargem())],
                           config=_cfg(estavel))

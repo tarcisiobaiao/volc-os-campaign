@@ -2,7 +2,10 @@
 
 Construção (`construir_snapshot(fluxo_indexado, T, config)`):
 
-1. `fluxo.as_of(T)` (regra da thread A: maior `available_at <= T` por chave natural);
+1. `fluxo.as_of(T)` (regra da thread A, D1/D3: entre as leituras com `available_at <= T`, vence a de maior
+   `observed_at`, depois maior `available_at`); fato com topo ambíguo sai do snapshot e bloqueia a entidade
+   (`versao_ambigua:*`, R2-G11); custo campanha × dia só sem dimensões — custo só dimensionado não é somado
+   (bloqueio `custo_so_com_dimensoes:*`, R2-G12);
 2. custo Google Ads campanha × dia e receita JoinAds campanha × dia (base `revenue_basis`) viram as
    entradas de `identidade.juntar_campanha_dia`, um dia por vez, para que cobertura de receita,
    balde `nao_atribuivel` e resolução determinística de identidade venham da thread C;
@@ -143,7 +146,7 @@ class FatoCampanhaDia:
 @dataclass(frozen=True)
 class CoberturaDia:
     dia: date
-    fracoes: tuple[tuple[str, Optional[Fraction]], ...]  # (moeda, fração da receita com chave)
+    fracoes: tuple[tuple[str, Optional[Fraction], str], ...]  # (moeda, fração da receita com chave, denominador)
     denominador: str
     receita_nao_atribuida: int  # nº de linhas no balde nao_atribuivel
     bloqueios: tuple[str, ...]
@@ -151,13 +154,20 @@ class CoberturaDia:
 
     @property
     def fracao_minima(self) -> Optional[Fraction]:
-        valores = [f for _, f in self.fracoes if f is not None]
+        valores = [f for _, f, _ in self.fracoes if f is not None]
         if not valores or len(valores) != len(self.fracoes):
             return None
         return min(valores)
 
+    def cobertura_da_moeda(self, moeda: Optional[str]) -> tuple[Optional[Fraction], str]:
+        """(fração, denominador) da partição de receita na `moeda`; ('indisponivel') se não houver."""
+        for m, f, d in self.fracoes:
+            if m == moeda:
+                return f, d
+        return None, "indisponivel"
+
     def para_json(self) -> dict:
-        return {"dia": self.dia.isoformat(), "fracoes": [[m, para_json_seguro(f)] for m, f in self.fracoes],
+        return {"dia": self.dia.isoformat(), "fracoes": [[m, para_json_seguro(f), d] for m, f, d in self.fracoes],
                 "denominador": self.denominador, "receita_nao_atribuida": self.receita_nao_atribuida,
                 "bloqueios": list(self.bloqueios),
                 "sem_receita_valida": [[e.customer_id, e.campaign_id] for e in self.sem_receita_valida]}
@@ -403,17 +413,18 @@ def _juntar_dia(custos: list[CustoCampanhaDia], receitas: list[ReceitaChaveDia],
         grupos[""] = []
     custo_linhas: dict[tuple, LinhaCampanhaDia] = {}
     receita_por: dict[tuple, list[tuple[str, Medida]]] = defaultdict(list)
-    coberturas: list[tuple[str, Optional[Fraction]]] = []
+    coberturas: list[tuple[str, Optional[Fraction], str]] = []
     denominadores: set[str] = set()
     nao_atrib = 0
     for moeda, rs in sorted(grupos.items()):
-        dom = dom_grupos.get(moeda) if moeda else None
+        # earnings sem valor (unavailable/missing) não tem moeda: vale para toda partição → denominador indisponível
+        dom = (dom_grupos.get(moeda, []) + dom_grupos.get("", [])) if moeda else None
         extra = _so(_JUNCAO_PARAMS, as_of=t, dominios_dia_kv_coletados={(r.dia, r.dominio) for r in rs} if rs else None)
         res = juntar_campanha_dia(custos, [], rs, registro, receitas_dominio=dom if dom else None,
                                   fuso_sensor=config.fuso, fuso_receita_verificado=config.fuso_receita_verificado, **extra)
         nao_atrib += len(res.receita_nao_atribuida)
         if moeda:
-            coberturas.append((moeda, res.cobertura.fracao_receita_com_chave))
+            coberturas.append((moeda, res.cobertura.fracao_receita_com_chave, res.cobertura.denominador_receita))
             denominadores.add(res.cobertura.denominador_receita)
         for ln in res.linhas:
             k = (ln.customer_id, ln.campaign_id)
@@ -445,13 +456,14 @@ def construir_snapshot(fluxo: FluxoIndexado, t: datetime, config: ConfigCorte = 
         raise ContratoViolado("construir_snapshot recebe FluxoIndexado")
     fuso = config.fuso
     zona = ZoneInfo(fuso)
-    vig = fluxo.as_of(t)
+    vig, ambiguos = fluxo.as_of_com_ambiguos(t)
     n_vers: dict[str, int] = fluxo.n_versoes(t)
     dia_corte = _dia_local(t, fuso)
     dia_min = dia_corte - timedelta(days=config.janela_dias)
 
     custo_obs: dict[tuple, list[ItemFluxo]] = defaultdict(list)
     cliques_obs: dict[tuple, Observacao] = {}
+    custo_dim: dict[tuple, list[ItemFluxo]] = defaultdict(list)  # custo campanha × dia COM dimensões (R2-G12)
     receita_obs: dict[date, list[ItemFluxo]] = defaultdict(list)
     dominio_obs: dict[date, list[Observacao]] = defaultdict(list)
     primeiro: dict[EntidadeCampanha, date] = {}
@@ -473,11 +485,13 @@ def construir_snapshot(fluxo: FluxoIndexado, t: datetime, config: ConfigCorte = 
             vistos_registro[k] = min(dia, vistos_registro.get(k, dia))
             if o.valor is not None and o.valor > 0:
                 primeiro[ent] = min(dia, primeiro.get(ent, dia))
-            if dia >= dia_min:
+            if dia >= dia_min and o.dimensoes:
+                custo_dim[(o.conta, o.entidade.id, dia)].append(item)
+            elif dia >= dia_min:
                 custo_obs[(o.conta, o.entidade.id, dia)].append(item)
                 if o.status is StatusObservacao.MISSING and (o.motivo or "").startswith("zero_sem"):
                     diags.append(DiagnosticoDado("zero_sem_prova_de_linha", ent, f"{dia.isoformat()}:{o.motivo}"))
-        elif _eh_cliques(o) and dia >= dia_min:
+        elif _eh_cliques(o) and dia >= dia_min and not o.dimensoes:
             cliques_obs[(o.conta, o.entidade.id, dia)] = o
         elif _eh_receita(o, config.revenue_basis) and dia >= dia_min:
             if o.entidade.tipo == "domain":
@@ -502,7 +516,31 @@ def construir_snapshot(fluxo: FluxoIndexado, t: datetime, config: ConfigCorte = 
                 conta, _, cid = env.partition("/")
                 bloq_ent[EntidadeCampanha(conta, cid)].add(f"colisao_identidade:{col.tipo.value}")
 
-    dias = sorted({d for (_, _, d) in custo_obs} | set(receita_obs) | set(dominio_obs))
+    # fatos com topo ambíguo (R2-G11): ficaram fora do as_of; a entidade é bloqueada, nada é escolhido
+    amb_cids: dict[str, set[str]] = defaultdict(set)
+    for nat, itens in ambiguos.items():
+        o = itens[0].obs
+        if not _eh_dia(o, fuso):
+            continue
+        dia_amb = _dia_local(o.janela_inicio, fuso).isoformat()
+        if _eh_custo(o):
+            bloq_ent[EntidadeCampanha(o.conta, o.entidade.id)].add(f"versao_ambigua:custo:{dia_amb}")
+        elif _eh_receita(o, config.revenue_basis) and o.entidade.tipo != "domain":
+            ck, cv = _chave_receita(o)
+            if ck == "utm_campaign" and cv:
+                amb_cids[cv].add(f"versao_ambigua:receita:{dia_amb}")
+    for e in [EntidadeCampanha(c, i) for (c, i) in vistos_registro]:
+        if e.campaign_id in amb_cids:
+            bloq_ent[e].update(amb_cids[e.campaign_id])
+
+    for chave in sorted(set(custo_dim) - set(custo_obs)):
+        conta, cid, d = chave
+        bloq_ent[EntidadeCampanha(conta, cid)].add(f"custo_so_com_dimensoes:{d.isoformat()}")
+    for chave in sorted(set(custo_dim) & set(custo_obs)):
+        diags.append(DiagnosticoDado("custo_dimensionado_ignorado", EntidadeCampanha(chave[0], chave[1]),
+                                     f"{chave[2].isoformat()}: usado o custo sem dimensões; {len(custo_dim[chave])} leituras dimensionadas fora"))
+
+    dias = sorted({d for (_, _, d) in custo_obs} | {d for (_, _, d) in custo_dim} | set(receita_obs) | set(dominio_obs))
     fatos: list[FatoCampanhaDia] = []
     coberturas: list[CoberturaDia] = []
     for dia in dias:
@@ -510,9 +548,14 @@ def construir_snapshot(fluxo: FluxoIndexado, t: datetime, config: ConfigCorte = 
         for (conta, cid, d), itens in sorted(custo_obs.items()):
             if d != dia:
                 continue
+            if len(itens) != 1:  # pragma: no cover - uma chave natural sem dimensões por campanha × dia
+                raise ContratoViolado(f"custo campanha × dia com {len(itens)} fatos sem dimensões: {conta}/{cid}/{d}")
             o = itens[0].obs
             cl = cliques_obs.get((conta, cid, d))
             custos.append(_custo_dia(conta, cid, d, _dinheiro(o), None if cl is None else cl.valor, _estado(o), o.available_at))
+        for (conta, cid, d), itens in sorted(custo_dim.items()):
+            if d == dia and (conta, cid, d) not in custo_obs:  # só dimensionado: recusa somar (identidade da soma não declarada)
+                custos.append(_custo_dia(conta, cid, d, None, None, EstadoMedida.FALHA, max(i.obs.available_at for i in itens)))
         bloqueios_dia: set[str] = set()
         receitas = []
         rec_por_cid: dict[str, list[Observacao]] = defaultdict(list)
@@ -551,6 +594,9 @@ def construir_snapshot(fluxo: FluxoIndexado, t: datetime, config: ConfigCorte = 
                 bloq_ent[ent].add("moeda_misturada")
             citens = custo_obs.get((conta, cid, dia), [])
             cst, cmot = _pior_status([i.obs for i in citens])
+            if not citens and (conta, cid, dia) in custo_dim:
+                citens = custo_dim[(conta, cid, dia)]
+                cst, cmot = "invalid", f"custo_so_com_dimensoes: {len(citens)} leituras; soma sem partição declarada recusada"
             robs = rec_por_cid.get(cid, [])
             rst, rmot = _pior_status(robs)
             if cid not in validas:
@@ -565,10 +611,9 @@ def construir_snapshot(fluxo: FluxoIndexado, t: datetime, config: ConfigCorte = 
     avisos = []
     if not config.fuso_receita_verificado:
         avisos.append("fuso de fechamento do dia JoinAds não verificado")
-    amb = fluxo.quarentena_visivel(t)
-    if amb:
+    if ambiguos:
         diags.append(DiagnosticoDado("versao_ambigua_em_quarentena", None,
-                                     f"{len(amb)} leituras de {len({i.chave_natural for i in amb})} fatos fora do as_of"))
+                                     f"{sum(len(v) for v in ambiguos.values())} leituras de {len(ambiguos)} fatos com topo ambíguo fora do as_of"))
     for fonte, n in sorted(ignoradas.items()):
         diags.append(DiagnosticoDado("fonte_ignorada", None, f"{fonte}:{n} fatos vigentes não lidos"))
     return SnapshotShadow(
