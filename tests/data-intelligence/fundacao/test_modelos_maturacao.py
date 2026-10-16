@@ -138,3 +138,17 @@ def test_triangulo_de_registros_converge_para_final():
     fim = tab.final()
     np.testing.assert_allclose(tri["por_campanha"][:, :, 6], fim)
     assert np.all(np.isnan(tri["por_campanha"][:, :, 0]) | (tri["por_campanha"][:, :, 0] <= fim * 1.5))
+
+
+def test_coorte_do_regime_antigo_usa_fator_antigo():
+    C, A = 50, 3
+    f_antigo, f_novo = np.array([0.5, 0.8, 0.95, 1.0]), np.array([0.2, 0.5, 0.8, 1.0])
+    fat = np.where(np.arange(C)[:, None] >= 40, f_novo[None, :], f_antigo[None, :])
+    tri = 100.0 * fat
+    reg = M.Achado("mudanca_maturacao", True, "cusum_link_ratio", indice=45, ponto_estimado=40,
+                   detalhes={"pontos": [40]})
+    cfg = M.ConfigNowcast(janela_coortes=10, maturidade_minima=0.1, min_coortes=3)
+    velho = M.nowcast(tri, 41, 39, cfg, regime=reg)  # coorte 39 (regime antigo), idade 2
+    assert velho["fator"] == pytest.approx(0.95) and velho["estimativa"] == pytest.approx(100.0)
+    novo = M.nowcast(tri, 41, 41, cfg, regime=reg)
+    assert isinstance(novo, ResultadoInsuficiente) and novo.motivo == "regime_de_maturacao_mudou"

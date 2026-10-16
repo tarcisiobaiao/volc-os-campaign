@@ -79,6 +79,7 @@ class ConfigMonitor:
     k: float              # folga do CUSUM em unidades de desvio robusto
     h: float              # limiar do CUSUM
     min_ref: int = 5
+    escala: str = "mad"   # "mad" (robusta) | "max_mad_dp" (conservadora: MAD subestima com cauda pesada e ref curta)
 
 
 def _razao_ligacao(tri: np.ndarray, as_of: int, idade: int) -> np.ndarray:
@@ -121,6 +122,10 @@ def monitor_maturacao(tri: np.ndarray, as_of: int, cfg: ConfigMonitor, *, inicio
         return Achado("sem_achado", False, "cusum_link_ratio", detalhes={"motivo": "referencia_insuficiente"})
     med = float(np.median(lr[ref]))
     mad = float(np.median(np.abs(lr[ref] - med))) * 1.4826
+    if cfg.escala == "max_mad_dp":
+        mad = max(mad, float(np.std(lr[ref], ddof=1)))
+    elif cfg.escala != "mad":
+        raise ValueError("escala: mad | max_mad_dp")
     escala = max(mad, 1e-6 * max(abs(med), 1.0), 1e-9)
     sp = sn = 0.0
     inicio_p = inicio_n = None
@@ -182,15 +187,17 @@ def _prior_final(tri: np.ndarray, as_of: int, idade_final: int, janela: int, ini
 
 def nowcast(tri: np.ndarray, as_of: int, coorte: int, cfg: ConfigNowcast, *, metodo: str = "chain_ladder",
             fator_fixo: Optional[np.ndarray] = None, prior_final: Optional[float] = None,
-            monitor: ConfigMonitor | Sequence[ConfigMonitor] | None = None) -> dict[str, Any] | ResultadoInsuficiente:
+            monitor: ConfigMonitor | Sequence[ConfigMonitor] | None = None,
+            regime: Optional[Achado] = None) -> dict[str, Any] | ResultadoInsuficiente:
     """Nowcast do valor final da coorte ``coorte`` no ``as_of`` (inteiros em dias).
 
     ``metodo``: ``chain_ladder`` (obs/m(a), herdado), ``bornhuetter_ferguson`` (obs + (1-m(a))·prior,
     prior = média dos finais maduros da janela, ou ``prior_final``), ``fator_fixo`` (obs/f(a) com
     ``fator_fixo`` congelado pelo chamador), ``observado`` (anti-baseline: obs como se fosse final).
-    Com ``monitor`` (um ou vários): se ``regime_vigente`` acha mudança, só coortes a partir do ponto estimado entram
-    no fator (o herdado exclui coortes com célula NaN) e a guarda devolve ``insuficiente`` até haver
-    ``min_coortes`` coortes pós-mudança maduras."""
+    Com ``monitor`` (um ou vários) ou ``regime`` já calculado por ``regime_vigente``: o fator usa só as
+    coortes do MESMO segmento de regime da coorte pedida (o herdado exclui coortes com célula NaN);
+    coorte do regime novo → ``insuficiente`` (motivo ``regime_de_maturacao_mudou``) até haver
+    ``min_coortes`` coortes pós-mudança maduras; coorte do regime antigo segue com o fator antigo."""
     if metodo not in METODOS_NOWCAST:
         raise ValueError(f"método desconhecido: {metodo}")
     C, A1 = tri.shape
@@ -205,14 +212,18 @@ def nowcast(tri: np.ndarray, as_of: int, coorte: int, cfg: ConfigNowcast, *, met
         return {"status": "maduro" if idade == A else "estimado", "estimativa": float(obs), "observado": float(obs),
                 "fator": 1.0, "idade": idade, "metodo": metodo, "intervalo": None, "regime": None}
     base = tri
-    achado = None
+    achado = regime
     inicio = 0
-    if monitor is not None:
+    if achado is None and monitor is not None:
         achado = regime_vigente(tri, as_of, monitor)
-        if achado.detectado:
-            inicio = int(achado.ponto_estimado)
-            base = tri.copy()
-            base[:inicio] = np.nan  # coortes do regime antigo saem do fator (herdado as exclui)
+    if achado is not None and achado.detectado:
+        pontos = sorted(int(p) for p in achado.detalhes.get("pontos", [achado.ponto_estimado]))
+        cortes = [0] + pontos + [C]
+        j = max(i for i in range(len(cortes) - 1) if cortes[i] <= coorte)
+        inicio, fim = cortes[j], cortes[j + 1]
+        base = tri.copy()
+        base[:inicio] = np.nan  # coortes de outro regime saem do fator (o herdado as exclui)
+        base[fim:] = np.nan
     if metodo == "fator_fixo":
         if fator_fixo is None:
             raise ValueError("fator_fixo exige o vetor de fatores congelado")
@@ -225,7 +236,7 @@ def nowcast(tri: np.ndarray, as_of: int, coorte: int, cfg: ConfigNowcast, *, met
     motivo = str(motivo_guarda(m, n, obs, cfg)[0])
     regime = achado.como_dict() if achado is not None else None
     if motivo:
-        if achado is not None and achado.detectado and motivo in ("coortes_maduras_insuficientes", "fator_indefinido"):
+        if inicio > 0 and motivo in ("coortes_maduras_insuficientes", "fator_indefinido"):
             motivo = "regime_de_maturacao_mudou"
         return ResultadoInsuficiente(motivo, {"idade": idade, "n_coortes": n, "fator": m if np.isfinite(m) else None,
                                               "regime": regime})
