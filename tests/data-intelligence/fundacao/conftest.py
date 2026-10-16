@@ -175,6 +175,16 @@ def cluster_pg():
         c.parar()
 
 
+@pytest.fixture
+def cluster_pg_dedicado():
+    """Cluster só deste teste: rollback mexe em papéis, que são globais do cluster."""
+    c = subir_cluster()
+    try:
+        yield c
+    finally:
+        c.parar()
+
+
 @pytest.fixture(scope="session")
 def banco_obs(cluster_pg):
     """Banco com a migration 0001 aplicada uma vez para a sessão (testes não destrutivos)."""

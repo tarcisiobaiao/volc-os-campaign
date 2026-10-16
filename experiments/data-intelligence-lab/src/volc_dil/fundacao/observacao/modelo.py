@@ -49,9 +49,10 @@ def _texto(nome: str, v: Any, *, obrigatorio: bool = True) -> None:
         if obrigatorio:
             raise ObservacaoInvalida(f"{nome} é obrigatório")
         return
-    if not isinstance(v, str) or not v.strip():
+    # só o espaço ASCII é aparado/recusado nas bordas: é o que `btrim` do Postgres faz (paridade com o CHECK)
+    if not isinstance(v, str) or not v.strip(" "):
         raise ObservacaoInvalida(f"{nome} vazio ou não-texto")
-    if v != v.strip():
+    if v != v.strip(" "):
         raise ObservacaoInvalida(f"{nome} com espaço nas bordas (identidade não se normaliza em silêncio)")
     if chaves.tem_controle(v):
         raise ObservacaoInvalida(f"{nome} contém caractere de controle")
@@ -200,7 +201,7 @@ class Observacao:
             raise ObservacaoInvalida(f"valor precisa ser int (micros ou contagem), não {type(v).__name__}")
         if v is not None and not (BIGINT_MIN <= v <= BIGINT_MAX):
             raise ObservacaoInvalida("valor fora do intervalo bigint")
-        if st not in SEM_MOTIVO_OBRIGATORIO and not (isinstance(self.motivo, str) and self.motivo.strip()):
+        if st not in SEM_MOTIVO_OBRIGATORIO and not (isinstance(self.motivo, str) and self.motivo.strip(" ")):
             raise ObservacaoInvalida(f"status {st.value} exige motivo")
         if self.motivo is not None and not isinstance(self.motivo, str):
             raise ObservacaoInvalida("motivo precisa ser texto")
