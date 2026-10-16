@@ -1,0 +1,4367 @@
+{
+ "deterministico_sha256": "6928cdd3ad14804b81aca7bdec0cf04fb3a7e3f50d9e0b3e59b32f133ef6cb33",
+ "gates": {
+  "auditoria_null_zero": {
+   "manter": {
+    "cega_a_dados": true,
+    "decisoes_que_distinguem_null_de_zero": 0,
+    "decisoes_sensiveis_a_valores": 0,
+    "politica": "manter",
+    "snapshots_com_lacuna": 10,
+    "suspeita_null_como_zero": false
+   },
+   "regra_margem": {
+    "cega_a_dados": false,
+    "decisoes_que_distinguem_null_de_zero": 2,
+    "decisoes_sensiveis_a_valores": 9,
+    "politica": "regra_margem",
+    "snapshots_com_lacuna": 10,
+    "suspeita_null_como_zero": false
+   },
+   "regra_margem_null_zero": {
+    "cega_a_dados": false,
+    "decisoes_que_distinguem_null_de_zero": 0,
+    "decisoes_sensiveis_a_valores": 10,
+    "politica": "regra_margem_null_zero",
+    "snapshots_com_lacuna": 10,
+    "suspeita_null_como_zero": true
+   }
+  },
+  "vazamento": {
+   "controle_trapaceira": {
+    "alterados_antes": 20,
+    "alterados_depois": 19,
+    "cortes_antes": 20,
+    "cortes_depois": 19,
+    "vazou": true
+   },
+   "manter": {
+    "alterados_antes": 0,
+    "alterados_depois": 19,
+    "cortes_antes": 20,
+    "cortes_depois": 19,
+    "vazou": false
+   },
+   "regra_margem": {
+    "alterados_antes": 0,
+    "alterados_depois": 19,
+    "cortes_antes": 20,
+    "cortes_depois": 19,
+    "vazou": false
+   }
+  }
+ },
+ "provisorio": {
+  "base": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": 127969111,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 60,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 646,
+        "insuficiente": 306,
+        "reduzir_verba": 494
+       },
+       "celulas_com_mudanca_de_verba": 60,
+       "cortes_errados": 12,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 26,
+       "drawdown_max_vs_manter_micros": 728448546,
+       "estabilidade": {
+        "fracao_trocas": "120/1440",
+        "pares": 1440,
+        "trocas": 120
+       },
+       "lucro_micros": -600479435,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 2773769138,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": -728448546
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 285,
+        "insuficiente": 306,
+        "manter": 570,
+        "reduzir_verba": 285
+       },
+       "celulas_com_mudanca_de_verba": 30,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 15,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "120/1440",
+        "pares": 1440,
+        "trocas": 120
+       },
+       "lucro_micros": 364048735,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 1836921750,
+       "vs_equal_micros": 964528170,
+       "vs_manter_micros": 236079624
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 144,
+        "manter": 651,
+        "pausar": 434,
+        "reduzir_verba": 217
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "6/1440",
+        "pares": 1440,
+        "trocas": 6
+       },
+       "lucro_micros": 1798268399,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 374463839,
+       "vs_equal_micros": 2398747834,
+       "vs_manter_micros": 1670299288
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 96,
+        "manter": 632,
+        "pausar": 434,
+        "reduzir_verba": 284
+       },
+       "celulas_com_mudanca_de_verba": 31,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 31,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "8/1440",
+        "pares": 1440,
+        "trocas": 8
+       },
+       "lucro_micros": 1806015424,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 366716814,
+       "vs_equal_micros": 2406494859,
+       "vs_manter_micros": 1678046313
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1446
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1440",
+        "pares": 1440,
+        "trocas": 0
+       },
+       "lucro_micros": 127969111,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 2044763127,
+       "vs_equal_micros": 728448546,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 144,
+        "manter": 651,
+        "pausar": 434,
+        "reduzir_verba": 217
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "6/1440",
+        "pares": 1440,
+        "trocas": 6
+       },
+       "lucro_micros": 1798268399,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 374463839,
+       "vs_equal_micros": 2398747834,
+       "vs_manter_micros": 1670299288
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 632,
+        "pausar": 482,
+        "reduzir_verba": 332
+       },
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "4/1440",
+        "pares": 1440,
+        "trocas": 4
+       },
+       "lucro_micros": 1990371058,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 182361180,
+       "vs_equal_micros": 2590850493,
+       "vs_manter_micros": 1862401947
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 520,
+        "pausar": 500,
+        "reduzir_verba": 426
+       },
+       "celulas_com_mudanca_de_verba": 49,
+       "cortes_errados": 7,
+       "cortes_errados_por_sinal_imaturo": 7,
+       "cortes_executaveis_em_tese": 49,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "40/1440",
+        "pares": 1440,
+        "trocas": 40
+       },
+       "lucro_micros": 2009004894,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 163727344,
+       "vs_equal_micros": 2609484329,
+       "vs_manter_micros": 1881035783
+      }
+     }
+    },
+    "cenario": "base",
+    "decisoes_sha256": "b9baf19cb2fbd84c4e92d17f7181163a06c4464fe7679e4a1daa7df5e27dda6d",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "16cfdc5ca750713a13fc0b706cfff5c0997d9fca6f9ad304478551d82e75db4f",
+    "meta": {
+     "adaptacao": {
+      "dead_letter": [],
+      "fracao_repeticao": "697/3264",
+      "n_linhas_joinads": 336,
+      "n_linhas_v21": 480,
+      "n_observacoes": 2567,
+      "n_observacoes_brutas": 3264,
+      "quarentena": [],
+      "repeticoes_descartadas": 697,
+      "runs_presos": []
+     },
+     "gerador": "provisorio@1"
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 2567,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.056,
+    "ms_por_corte_todas_politicas": 27.42,
+    "replay_s": 6.608
+   }
+  },
+  "campanha_nova": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": 232198239,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 57,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 665,
+        "insuficiente": 306,
+        "reduzir_verba": 418
+       },
+       "celulas_com_mudanca_de_verba": 57,
+       "cortes_errados": 12,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 790909854,
+       "estabilidade": {
+        "fracao_trocas": "114/1383",
+        "pares": 1383,
+        "trocas": 114
+       },
+       "lucro_micros": -558711615,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 2756217102,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": -790909854
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 190,
+        "insuficiente": 306,
+        "manter": 703,
+        "reduzir_verba": 190
+       },
+       "celulas_com_mudanca_de_verba": 20,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 10,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "114/1383",
+        "pares": 1383,
+        "trocas": 114
+       },
+       "lucro_micros": 413375297,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 1806115575,
+       "vs_equal_micros": 972086912,
+       "vs_manter_micros": 181177058
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 255,
+        "manter": 483,
+        "pausar": 434,
+        "reduzir_verba": 217
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "6/1383",
+        "pares": 1383,
+        "trocas": 6
+       },
+       "lucro_micros": 1869410044,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 327530211,
+       "vs_equal_micros": 2428121659,
+       "vs_manter_micros": 1637211805
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 129,
+        "insuficiente": 72,
+        "manter": 522,
+        "pausar": 434,
+        "reduzir_verba": 232
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "8/1383",
+        "pares": 1383,
+        "trocas": 8
+       },
+       "lucro_micros": 1869410044,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 327530211,
+       "vs_equal_micros": 2428121659,
+       "vs_manter_micros": 1637211805
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1389
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1383",
+        "pares": 1383,
+        "trocas": 0
+       },
+       "lucro_micros": 232198239,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 1964742016,
+       "vs_equal_micros": 790909854,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 255,
+        "manter": 483,
+        "pausar": 434,
+        "reduzir_verba": 217
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "6/1383",
+        "pares": 1383,
+        "trocas": 6
+       },
+       "lucro_micros": 1869410044,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 327530211,
+       "vs_equal_micros": 2428121659,
+       "vs_manter_micros": 1637211805
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 72,
+        "manter": 522,
+        "pausar": 482,
+        "reduzir_verba": 313
+       },
+       "celulas_com_mudanca_de_verba": 33,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 33,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "5/1383",
+        "pares": 1383,
+        "trocas": 5
+       },
+       "lucro_micros": 2047146127,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 149794128,
+       "vs_equal_micros": 2605857742,
+       "vs_manter_micros": 1814947888
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 431,
+        "pausar": 572,
+        "reduzir_verba": 386
+       },
+       "celulas_com_mudanca_de_verba": 46,
+       "cortes_errados": 6,
+       "cortes_errados_por_sinal_imaturo": 6,
+       "cortes_executaveis_em_tese": 46,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "25/1383",
+        "pares": 1383,
+        "trocas": 25
+       },
+       "lucro_micros": 1860437346,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 336502909,
+       "vs_equal_micros": 2419148961,
+       "vs_manter_micros": 1628239107
+      }
+     }
+    },
+    "cenario": "campanha_nova",
+    "decisoes_sha256": "3bcf32ac7ce4845eef7219cd22faac5984147dd9c972e218a40227327ed062f0",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "5cad86ede5333b0c2602c8b938dfe67d3c4fd9c4719cb622a8d8ba5d0530d3d6",
+    "meta": {
+     "adaptacao": {
+      "dead_letter": [],
+      "fracao_repeticao": "662/3040",
+      "n_linhas_joinads": 315,
+      "n_linhas_v21": 445,
+      "n_observacoes": 2378,
+      "n_observacoes_brutas": 3040,
+      "quarentena": [],
+      "repeticoes_descartadas": 662,
+      "runs_presos": []
+     },
+     "gerador": "provisorio@1"
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 2378,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.037,
+    "ms_por_corte_todas_politicas": 26.14,
+    "replay_s": 6.3
+   }
+  },
+  "identidade_trocada": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": 127969111,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 60,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 646,
+        "insuficiente": 306,
+        "reduzir_verba": 494
+       },
+       "celulas_com_mudanca_de_verba": 36,
+       "cortes_errados": 8,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 421623800,
+       "estabilidade": {
+        "fracao_trocas": "126/1440",
+        "pares": 1440,
+        "trocas": 126
+       },
+       "lucro_micros": -293654689,
+       "propostas_bloqueadas_no_corte_diario": 24,
+       "regret_vs_oraculo_micros": 2466386927,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": -421623800
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 247,
+        "insuficiente": 306,
+        "manter": 646,
+        "reduzir_verba": 247
+       },
+       "celulas_com_mudanca_de_verba": 6,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 3,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "126/1440",
+        "pares": 1440,
+        "trocas": 126
+       },
+       "lucro_micros": 174815723,
+       "propostas_bloqueadas_no_corte_diario": 20,
+       "regret_vs_oraculo_micros": 2000847324,
+       "vs_equal_micros": 468470412,
+       "vs_manter_micros": 46846612
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 144,
+        "manter": 651,
+        "pausar": 434,
+        "reduzir_verba": 217
+       },
+       "celulas_com_mudanca_de_verba": 19,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "9/1440",
+        "pares": 1440,
+        "trocas": 9
+       },
+       "lucro_micros": 1247519394,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 925212844,
+       "vs_equal_micros": 1541174083,
+       "vs_manter_micros": 1119550283
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 96,
+        "manter": 632,
+        "pausar": 434,
+        "reduzir_verba": 284
+       },
+       "celulas_com_mudanca_de_verba": 17,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "11/1440",
+        "pares": 1440,
+        "trocas": 11
+       },
+       "lucro_micros": 1058927484,
+       "propostas_bloqueadas_no_corte_diario": 14,
+       "regret_vs_oraculo_micros": 1113804754,
+       "vs_equal_micros": 1352582173,
+       "vs_manter_micros": 930958373
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1446
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1440",
+        "pares": 1440,
+        "trocas": 0
+       },
+       "lucro_micros": 127969111,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 2044763127,
+       "vs_equal_micros": 421623800,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 144,
+        "manter": 651,
+        "pausar": 434,
+        "reduzir_verba": 217
+       },
+       "celulas_com_mudanca_de_verba": 19,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "9/1440",
+        "pares": 1440,
+        "trocas": 9
+       },
+       "lucro_micros": 1247519394,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 925212844,
+       "vs_equal_micros": 1541174083,
+       "vs_manter_micros": 1119550283
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 632,
+        "pausar": 482,
+        "reduzir_verba": 332
+       },
+       "celulas_com_mudanca_de_verba": 21,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 21,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "7/1440",
+        "pares": 1440,
+        "trocas": 7
+       },
+       "lucro_micros": 1243283118,
+       "propostas_bloqueadas_no_corte_diario": 14,
+       "regret_vs_oraculo_micros": 929449120,
+       "vs_equal_micros": 1536937807,
+       "vs_manter_micros": 1115314007
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 490,
+        "pausar": 509,
+        "reduzir_verba": 447
+       },
+       "celulas_com_mudanca_de_verba": 29,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 29,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "44/1440",
+        "pares": 1440,
+        "trocas": 44
+       },
+       "lucro_micros": 1268205267,
+       "propostas_bloqueadas_no_corte_diario": 20,
+       "regret_vs_oraculo_micros": 904526971,
+       "vs_equal_micros": 1561859956,
+       "vs_manter_micros": 1140236156
+      }
+     }
+    },
+    "cenario": "identidade_trocada",
+    "decisoes_sha256": "b87c58796a54826c69c917ebe4fbc4e9667d8cb0d357889980b9930b8f9d944c",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "8a40f21e0c816c6c27b623fb19636714f1cdf46e7b933b807afb99fa97c49b1f",
+    "meta": {
+     "adaptacao": {
+      "dead_letter": [],
+      "fracao_repeticao": "705/3264",
+      "n_linhas_joinads": 336,
+      "n_linhas_v21": 480,
+      "n_observacoes": 2559,
+      "n_observacoes_brutas": 3264,
+      "quarentena": [],
+      "repeticoes_descartadas": 705,
+      "runs_presos": []
+     },
+     "gerador": "provisorio@1"
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 2559,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.056,
+    "ms_por_corte_todas_politicas": 33.54,
+    "replay_s": 8.083
+   }
+  },
+  "moeda_misturada": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": 127969111,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 60,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 646,
+        "insuficiente": 306,
+        "reduzir_verba": 494
+       },
+       "celulas_com_mudanca_de_verba": 60,
+       "cortes_errados": 12,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 26,
+       "drawdown_max_vs_manter_micros": 728448546,
+       "estabilidade": {
+        "fracao_trocas": "120/1440",
+        "pares": 1440,
+        "trocas": 120
+       },
+       "lucro_micros": -600479435,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 2773769138,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": -728448546
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 285,
+        "insuficiente": 306,
+        "manter": 570,
+        "reduzir_verba": 285
+       },
+       "celulas_com_mudanca_de_verba": 30,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 15,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "120/1440",
+        "pares": 1440,
+        "trocas": 120
+       },
+       "lucro_micros": 364048735,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 1836921750,
+       "vs_equal_micros": 964528170,
+       "vs_manter_micros": 236079624
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 144,
+        "manter": 651,
+        "pausar": 434,
+        "reduzir_verba": 217
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "6/1440",
+        "pares": 1440,
+        "trocas": 6
+       },
+       "lucro_micros": 1798268399,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 374463839,
+       "vs_equal_micros": 2398747834,
+       "vs_manter_micros": 1670299288
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 96,
+        "manter": 632,
+        "pausar": 434,
+        "reduzir_verba": 284
+       },
+       "celulas_com_mudanca_de_verba": 31,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 31,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "8/1440",
+        "pares": 1440,
+        "trocas": 8
+       },
+       "lucro_micros": 1806015424,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 366716814,
+       "vs_equal_micros": 2406494859,
+       "vs_manter_micros": 1678046313
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1446
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1440",
+        "pares": 1440,
+        "trocas": 0
+       },
+       "lucro_micros": 127969111,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 2044763127,
+       "vs_equal_micros": 728448546,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 144,
+        "manter": 651,
+        "pausar": 434,
+        "reduzir_verba": 217
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "6/1440",
+        "pares": 1440,
+        "trocas": 6
+       },
+       "lucro_micros": 1798268399,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 374463839,
+       "vs_equal_micros": 2398747834,
+       "vs_manter_micros": 1670299288
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 632,
+        "pausar": 482,
+        "reduzir_verba": 332
+       },
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "4/1440",
+        "pares": 1440,
+        "trocas": 4
+       },
+       "lucro_micros": 1990371058,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 182361180,
+       "vs_equal_micros": 2590850493,
+       "vs_manter_micros": 1862401947
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 520,
+        "pausar": 500,
+        "reduzir_verba": 426
+       },
+       "celulas_com_mudanca_de_verba": 49,
+       "cortes_errados": 7,
+       "cortes_errados_por_sinal_imaturo": 7,
+       "cortes_executaveis_em_tese": 49,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "40/1440",
+        "pares": 1440,
+        "trocas": 40
+       },
+       "lucro_micros": 2009004894,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 163727344,
+       "vs_equal_micros": 2609484329,
+       "vs_manter_micros": 1881035783
+      }
+     }
+    },
+    "cenario": "moeda_misturada",
+    "decisoes_sha256": "9d8376e41ee300618d06652048b4f57e983d0934c820c1879f581b7fc21f6551",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "9be67eb5db6f8dd887947a1784349d7ecd008d2cd63f08da264ec6585d5ae74c",
+    "meta": {
+     "adaptacao": {
+      "dead_letter": [],
+      "fracao_repeticao": "697/3264",
+      "n_linhas_joinads": 336,
+      "n_linhas_v21": 480,
+      "n_observacoes": 2567,
+      "n_observacoes_brutas": 3264,
+      "quarentena": [],
+      "repeticoes_descartadas": 697,
+      "runs_presos": []
+     },
+     "gerador": "provisorio@1"
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 2567,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.038,
+    "ms_por_corte_todas_politicas": 26.92,
+    "replay_s": 6.488
+   }
+  },
+  "restatement_tardio": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": 127969111,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 60,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 646,
+        "insuficiente": 306,
+        "reduzir_verba": 494
+       },
+       "celulas_com_mudanca_de_verba": 60,
+       "cortes_errados": 12,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 26,
+       "drawdown_max_vs_manter_micros": 728448546,
+       "estabilidade": {
+        "fracao_trocas": "120/1440",
+        "pares": 1440,
+        "trocas": 120
+       },
+       "lucro_micros": -600479435,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 2773769138,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": -728448546
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 285,
+        "insuficiente": 306,
+        "manter": 570,
+        "reduzir_verba": 285
+       },
+       "celulas_com_mudanca_de_verba": 30,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 15,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "120/1440",
+        "pares": 1440,
+        "trocas": 120
+       },
+       "lucro_micros": 364048735,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 1836921750,
+       "vs_equal_micros": 964528170,
+       "vs_manter_micros": 236079624
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 144,
+        "manter": 635,
+        "pausar": 434,
+        "reduzir_verba": 233
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "7/1440",
+        "pares": 1440,
+        "trocas": 7
+       },
+       "lucro_micros": 1798268399,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 374463839,
+       "vs_equal_micros": 2398747834,
+       "vs_manter_micros": 1670299288
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 96,
+        "manter": 632,
+        "pausar": 434,
+        "reduzir_verba": 284
+       },
+       "celulas_com_mudanca_de_verba": 31,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 31,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "8/1440",
+        "pares": 1440,
+        "trocas": 8
+       },
+       "lucro_micros": 1806015424,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 366716814,
+       "vs_equal_micros": 2406494859,
+       "vs_manter_micros": 1678046313
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1446
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1440",
+        "pares": 1440,
+        "trocas": 0
+       },
+       "lucro_micros": 127969111,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 2044763127,
+       "vs_equal_micros": 728448546,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 144,
+        "manter": 635,
+        "pausar": 434,
+        "reduzir_verba": 233
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "7/1440",
+        "pares": 1440,
+        "trocas": 7
+       },
+       "lucro_micros": 1798268399,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 374463839,
+       "vs_equal_micros": 2398747834,
+       "vs_manter_micros": 1670299288
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 632,
+        "pausar": 482,
+        "reduzir_verba": 332
+       },
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "4/1440",
+        "pares": 1440,
+        "trocas": 4
+       },
+       "lucro_micros": 1990371058,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 182361180,
+       "vs_equal_micros": 2590850493,
+       "vs_manter_micros": 1862401947
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 520,
+        "pausar": 500,
+        "reduzir_verba": 426
+       },
+       "celulas_com_mudanca_de_verba": 49,
+       "cortes_errados": 7,
+       "cortes_errados_por_sinal_imaturo": 7,
+       "cortes_executaveis_em_tese": 49,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "40/1440",
+        "pares": 1440,
+        "trocas": 40
+       },
+       "lucro_micros": 2009004894,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 163727344,
+       "vs_equal_micros": 2609484329,
+       "vs_manter_micros": 1881035783
+      }
+     }
+    },
+    "cenario": "restatement_tardio",
+    "decisoes_sha256": "f36840c20a64ae609238054ee6c7be8e5bf3ddb95177d2a703fcb37f5ab6886a",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "d21c8c0e3bfcf73753cfea28eb174c619ed861ef109f4848a67ba1fb090eb2c3",
+    "meta": {
+     "adaptacao": {
+      "dead_letter": [],
+      "fracao_repeticao": "701/3272",
+      "n_linhas_joinads": 338,
+      "n_linhas_v21": 480,
+      "n_observacoes": 2571,
+      "n_observacoes_brutas": 3272,
+      "quarentena": [],
+      "repeticoes_descartadas": 701,
+      "runs_presos": []
+     },
+     "gerador": "provisorio@1"
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 2571,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.033,
+    "ms_por_corte_todas_politicas": 26.73,
+    "replay_s": 6.442
+   }
+  },
+  "zero_sintetizado": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": 127969111,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 60,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 494,
+        "insuficiente": 477,
+        "reduzir_verba": 475
+       },
+       "celulas_com_mudanca_de_verba": 51,
+       "cortes_errados": 4,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 25,
+       "drawdown_max_vs_manter_micros": 277261903,
+       "estabilidade": {
+        "fracao_trocas": "102/1440",
+        "pares": 1440,
+        "trocas": 102
+       },
+       "lucro_micros": -149292792,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 2322025030,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": -277261903
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 190,
+        "insuficiente": 477,
+        "manter": 589,
+        "reduzir_verba": 190
+       },
+       "celulas_com_mudanca_de_verba": 20,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 10,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "102/1440",
+        "pares": 1440,
+        "trocas": 102
+       },
+       "lucro_micros": 288756054,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 1886648556,
+       "vs_equal_micros": 438048846,
+       "vs_manter_micros": 160786943
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 265,
+        "manter": 530,
+        "pausar": 434,
+        "reduzir_verba": 217
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "7/1440",
+        "pares": 1440,
+        "trocas": 7
+       },
+       "lucro_micros": 1798268399,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 374463839,
+       "vs_equal_micros": 1947561191,
+       "vs_manter_micros": 1670299288
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 96,
+        "insuficiente": 121,
+        "manter": 511,
+        "pausar": 434,
+        "reduzir_verba": 284
+       },
+       "celulas_com_mudanca_de_verba": 31,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 31,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "9/1440",
+        "pares": 1440,
+        "trocas": 9
+       },
+       "lucro_micros": 1806015424,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 366716814,
+       "vs_equal_micros": 1955308216,
+       "vs_manter_micros": 1678046313
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1446
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1440",
+        "pares": 1440,
+        "trocas": 0
+       },
+       "lucro_micros": 127969111,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 2044763127,
+       "vs_equal_micros": 277261903,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 265,
+        "manter": 530,
+        "pausar": 434,
+        "reduzir_verba": 217
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "7/1440",
+        "pares": 1440,
+        "trocas": 7
+       },
+       "lucro_micros": 1798268399,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 374463839,
+       "vs_equal_micros": 1947561191,
+       "vs_manter_micros": 1670299288
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 121,
+        "manter": 511,
+        "pausar": 482,
+        "reduzir_verba": 332
+       },
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "5/1440",
+        "pares": 1440,
+        "trocas": 5
+       },
+       "lucro_micros": 1990371058,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 182361180,
+       "vs_equal_micros": 2139663850,
+       "vs_manter_micros": 1862401947
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 442,
+        "pausar": 573,
+        "reduzir_verba": 431
+       },
+       "celulas_com_mudanca_de_verba": 52,
+       "cortes_errados": 10,
+       "cortes_errados_por_sinal_imaturo": 10,
+       "cortes_executaveis_em_tese": 52,
+       "drawdown_max_vs_manter_micros": 9038053,
+       "estabilidade": {
+        "fracao_trocas": "43/1440",
+        "pares": 1440,
+        "trocas": 43
+       },
+       "lucro_micros": 1537893852,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 634838386,
+       "vs_equal_micros": 1687186644,
+       "vs_manter_micros": 1409924741
+      }
+     }
+    },
+    "cenario": "zero_sintetizado",
+    "decisoes_sha256": "384d67c89b7522e64bc888662507e9e1ec4f85153ccb5daad7edaf8d74ee8c70",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "2d2f5fd5e0e483be406c8b5c840ce5034655918d27e52393533f2572aea574db",
+    "meta": {
+     "adaptacao": {
+      "dead_letter": [],
+      "fracao_repeticao": "674/3132",
+      "n_linhas_joinads": 303,
+      "n_linhas_v21": 480,
+      "n_observacoes": 2458,
+      "n_observacoes_brutas": 3132,
+      "quarentena": [],
+      "repeticoes_descartadas": 674,
+      "runs_presos": []
+     },
+     "gerador": "provisorio@1"
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 2458,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.033,
+    "ms_por_corte_todas_politicas": 33.18,
+    "replay_s": 7.997
+   }
+  }
+ },
+ "simulador": {
+  "atraso_receita_longo": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269115,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 946,
+        "insuficiente": 602,
+        "reduzir_verba": 380
+       },
+       "celulas_com_mudanca_de_verba": 63,
+       "cortes_errados": 3,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 606018,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 37086190,
+       "propostas_bloqueadas_no_corte_diario": 3,
+       "regret_vs_oraculo_micros": 134669213,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 151355305
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 288,
+        "insuficiente": 602,
+        "manter": 750,
+        "reduzir_verba": 288
+       },
+       "celulas_com_mudanca_de_verba": 25,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 14,
+       "drawdown_max_vs_manter_micros": 910111,
+       "estabilidade": {
+        "fracao_trocas": "157/1920",
+        "pares": 1920,
+        "trocas": 157
+       },
+       "lucro_micros": -114962436,
+       "propostas_bloqueadas_no_corte_diario": 3,
+       "regret_vs_oraculo_micros": 256949109,
+       "vs_equal_micros": -152048626,
+       "vs_manter_micros": -693321
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 205,
+        "manter": 958,
+        "pausar": 190,
+        "reduzir_verba": 575
+       },
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 4,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "24/1920",
+        "pares": 1920,
+        "trocas": 24
+       },
+       "lucro_micros": -49914357,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 191662276,
+       "vs_equal_micros": -87000547,
+       "vs_manter_micros": 64354758
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 181,
+        "manter": 683,
+        "pausar": 271,
+        "reduzir_verba": 793
+       },
+       "celulas_com_mudanca_de_verba": 49,
+       "cortes_errados": 8,
+       "cortes_errados_por_sinal_imaturo": 8,
+       "cortes_executaveis_em_tese": 49,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "40/1920",
+        "pares": 1920,
+        "trocas": 40
+       },
+       "lucro_micros": 33256062,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 108491857,
+       "vs_equal_micros": -3830128,
+       "vs_manter_micros": 147525177
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -151355305,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 205,
+        "manter": 958,
+        "pausar": 190,
+        "reduzir_verba": 575
+       },
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 4,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "24/1920",
+        "pares": 1920,
+        "trocas": 24
+       },
+       "lucro_micros": -49914357,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 191662276,
+       "vs_equal_micros": -87000547,
+       "vs_manter_micros": 64354758
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 683,
+        "pausar": 306,
+        "reduzir_verba": 939
+       },
+       "celulas_com_mudanca_de_verba": 56,
+       "cortes_errados": 10,
+       "cortes_errados_por_sinal_imaturo": 10,
+       "cortes_executaveis_em_tese": 56,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "32/1920",
+        "pares": 1920,
+        "trocas": 32
+       },
+       "lucro_micros": 48078461,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 93669458,
+       "vs_equal_micros": 10992271,
+       "vs_manter_micros": 162347576
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 447,
+        "pausar": 503,
+        "reduzir_verba": 978
+       },
+       "celulas_com_mudanca_de_verba": 68,
+       "cortes_errados": 18,
+       "cortes_errados_por_sinal_imaturo": 18,
+       "cortes_executaveis_em_tese": 68,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "60/1920",
+        "pares": 1920,
+        "trocas": 60
+       },
+       "lucro_micros": 113611150,
+       "propostas_bloqueadas_no_corte_diario": 1,
+       "regret_vs_oraculo_micros": 28136769,
+       "vs_equal_micros": 76524960,
+       "vs_manter_micros": 227880265
+      }
+     }
+    },
+    "cenario": "atraso_receita_longo",
+    "decisoes_sha256": "6f1470b8523633ba74ca2973b40a36d3bef928f90e942d4ea0d6ae0e5a3b8bf5",
+    "ledger_entradas": 2008,
+    "ledger_sha256": "c0e3c411e098d277742dedc4ad452dbb2e191d025aed8ab3f3966c3e2adbf621",
+    "meta": {
+     "cenario": "atraso_receita_longo",
+     "descartados_sem_metrica": 908,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3409,
+     "n_registros": 4317,
+     "regras_aplicadas": {
+      "late->invalid:chave_substituida": 2,
+      "late->observed:coleta_atrasada": 237,
+      "observed->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3409,
+    "n_resultados_maduros": 80,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.041,
+    "ms_por_corte_todas_politicas": 35.15,
+    "replay_s": 8.472
+   }
+  },
+  "campanha_nova_aprendendo": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -190485334,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1102,
+        "insuficiente": 458,
+        "reduzir_verba": 361
+       },
+       "celulas_com_mudanca_de_verba": 75,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "154/1913",
+        "pares": 1913,
+        "trocas": 154
+       },
+       "lucro_micros": 29155527,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 91734692,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 219640861
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 228,
+        "insuficiente": 458,
+        "manter": 1007,
+        "reduzir_verba": 228
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 12,
+       "drawdown_max_vs_manter_micros": 1015030,
+       "estabilidade": {
+        "fracao_trocas": "154/1913",
+        "pares": 1913,
+        "trocas": 154
+       },
+       "lucro_micros": -191440180,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 278030818,
+       "vs_equal_micros": -220595707,
+       "vs_manter_micros": -954846
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 473,
+        "manter": 604,
+        "pausar": 99,
+        "reduzir_verba": 745
+       },
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 189659,
+       "estabilidade": {
+        "fracao_trocas": "11/1913",
+        "pares": 1913,
+        "trocas": 11
+       },
+       "lucro_micros": -140126043,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 226373373,
+       "vs_equal_micros": -169281570,
+       "vs_manter_micros": 50359291
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 216,
+        "insuficiente": 209,
+        "manter": 692,
+        "pausar": 97,
+        "reduzir_verba": 707
+       },
+       "celulas_com_mudanca_de_verba": 34,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 34,
+       "drawdown_max_vs_manter_micros": 189659,
+       "estabilidade": {
+        "fracao_trocas": "11/1913",
+        "pares": 1913,
+        "trocas": 11
+       },
+       "lucro_micros": -140254518,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 226501848,
+       "vs_equal_micros": -169410045,
+       "vs_manter_micros": 50230816
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1921
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1913",
+        "pares": 1913,
+        "trocas": 0
+       },
+       "lucro_micros": -190485334,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 276732664,
+       "vs_equal_micros": -219640861,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 473,
+        "manter": 604,
+        "pausar": 99,
+        "reduzir_verba": 745
+       },
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 189659,
+       "estabilidade": {
+        "fracao_trocas": "11/1913",
+        "pares": 1913,
+        "trocas": 11
+       },
+       "lucro_micros": -140126043,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 226373373,
+       "vs_equal_micros": -169281570,
+       "vs_manter_micros": 50359291
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 209,
+        "manter": 692,
+        "pausar": 161,
+        "reduzir_verba": 859
+       },
+       "celulas_com_mudanca_de_verba": 41,
+       "cortes_errados": 3,
+       "cortes_errados_por_sinal_imaturo": 3,
+       "cortes_executaveis_em_tese": 41,
+       "drawdown_max_vs_manter_micros": 189659,
+       "estabilidade": {
+        "fracao_trocas": "6/1913",
+        "pares": 1913,
+        "trocas": 6
+       },
+       "lucro_micros": -135518420,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 221765750,
+       "vs_equal_micros": -164673947,
+       "vs_manter_micros": 54966914
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 760,
+        "pausar": 313,
+        "reduzir_verba": 848
+       },
+       "celulas_com_mudanca_de_verba": 52,
+       "cortes_errados": 3,
+       "cortes_errados_por_sinal_imaturo": 3,
+       "cortes_executaveis_em_tese": 52,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "22/1913",
+        "pares": 1913,
+        "trocas": 22
+       },
+       "lucro_micros": -108164525,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 194411855,
+       "vs_equal_micros": -137320052,
+       "vs_manter_micros": 82320809
+      }
+     }
+    },
+    "cenario": "campanha_nova_aprendendo",
+    "decisoes_sha256": "62b5a4adfd7fbd6e16c0f049cc0fa05eb753f6273bd6fb1fd24493ed270b90ee",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "4840924883e0f29309a67ce3f6cbca427401b84e399ca4dd59ab5da38dbe5780",
+    "meta": {
+     "cenario": "campanha_nova_aprendendo",
+     "descartados_sem_metrica": 931,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3177,
+     "n_registros": 4108,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 23,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 8,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3177,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.319,
+    "ms_por_corte_todas_politicas": 35.87,
+    "replay_s": 8.644
+   }
+  },
+  "custo_d0_multiversao": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269115,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1121,
+        "insuficiente": 427,
+        "reduzir_verba": 380
+       },
+       "celulas_com_mudanca_de_verba": 77,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "158/1920",
+        "pares": 1920,
+        "trocas": 158
+       },
+       "lucro_micros": 103903296,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 71698607,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 218172411
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 323,
+        "insuficiente": 427,
+        "manter": 855,
+        "reduzir_verba": 323
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 1865100,
+       "estabilidade": {
+        "fracao_trocas": "158/1920",
+        "pares": 1920,
+        "trocas": 158
+       },
+       "lucro_micros": -115917425,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 257904098,
+       "vs_equal_micros": -219820721,
+       "vs_manter_micros": -1648310
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -187539404,
+       "vs_manter_micros": 30633007
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1309,
+        "pausar": 86,
+        "reduzir_verba": 461
+       },
+       "celulas_com_mudanca_de_verba": 24,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 24,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "14/1920",
+        "pares": 1920,
+        "trocas": 14
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -180844054,
+       "vs_manter_micros": 37328357
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -218172411,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -187539404,
+       "vs_manter_micros": 30633007
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1309,
+        "pausar": 102,
+        "reduzir_verba": 517
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "12/1920",
+        "pares": 1920,
+        "trocas": 12
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -180844054,
+       "vs_manter_micros": 37328357
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1243,
+        "pausar": 110,
+        "reduzir_verba": 575
+       },
+       "celulas_com_mudanca_de_verba": 36,
+       "cortes_errados": 4,
+       "cortes_errados_por_sinal_imaturo": 4,
+       "cortes_executaveis_em_tese": 36,
+       "drawdown_max_vs_manter_micros": 744143,
+       "estabilidade": {
+        "fracao_trocas": "27/1920",
+        "pares": 1920,
+        "trocas": 27
+       },
+       "lucro_micros": -67036439,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 208784358,
+       "vs_equal_micros": -170939735,
+       "vs_manter_micros": 47232676
+      }
+     }
+    },
+    "cenario": "custo_d0_multiversao",
+    "decisoes_sha256": "d995c3515ec091e81a1c129c26de42e817656638753b4cb8efbac50a9f84d5f3",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "55da7029fc764a22557bb894fed831813dba0c0cdc40a78d6b74118d47904a98",
+    "meta": {
+     "cenario": "custo_d0_multiversao",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 8212,
+     "n_registros": 9249,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 39,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 8212,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.389,
+    "ms_por_corte_todas_politicas": 37.01,
+    "replay_s": 8.918
+   }
+  },
+  "estavel": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269115,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1102,
+        "insuficiente": 446,
+        "reduzir_verba": 380
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 102515913,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 72481328,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 216785028
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 323,
+        "insuficiente": 446,
+        "manter": 836,
+        "reduzir_verba": 323
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 1865100,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": -115917425,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 257904098,
+       "vs_equal_micros": -218433338,
+       "vs_manter_micros": -1648310
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -186152021,
+       "vs_manter_micros": 30633007
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1309,
+        "pausar": 86,
+        "reduzir_verba": 461
+       },
+       "celulas_com_mudanca_de_verba": 24,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 24,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "14/1920",
+        "pares": 1920,
+        "trocas": 14
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -179456671,
+       "vs_manter_micros": 37328357
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -216785028,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -186152021,
+       "vs_manter_micros": 30633007
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1309,
+        "pausar": 102,
+        "reduzir_verba": 517
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "12/1920",
+        "pares": 1920,
+        "trocas": 12
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -179456671,
+       "vs_manter_micros": 37328357
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1248,
+        "pausar": 110,
+        "reduzir_verba": 570
+       },
+       "celulas_com_mudanca_de_verba": 36,
+       "cortes_errados": 4,
+       "cortes_errados_por_sinal_imaturo": 4,
+       "cortes_executaveis_em_tese": 36,
+       "drawdown_max_vs_manter_micros": 744143,
+       "estabilidade": {
+        "fracao_trocas": "27/1920",
+        "pares": 1920,
+        "trocas": 27
+       },
+       "lucro_micros": -67036439,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 208784358,
+       "vs_equal_micros": -169552352,
+       "vs_manter_micros": 47232676
+      }
+     }
+    },
+    "cenario": "estavel",
+    "decisoes_sha256": "124b0d8f1b01e03e835af1f90b316b20c57511a40a29ab4e5b567d49497c1a34",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "df83d88f090f59ba7d00143bc745130ea1a9cdd2c8f894cf38b2efec4e19a241",
+    "meta": {
+     "cenario": "estavel",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3538,
+     "n_registros": 4575,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 24,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3538,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.326,
+    "ms_por_corte_todas_politicas": 38.17,
+    "replay_s": 9.199
+   }
+  },
+  "execucao_presa": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269115,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1026,
+        "insuficiente": 522,
+        "reduzir_verba": 380
+       },
+       "celulas_com_mudanca_de_verba": 72,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "148/1920",
+        "pares": 1920,
+        "trocas": 148
+       },
+       "lucro_micros": 97224989,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 72369282,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 211494104
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 304,
+        "insuficiente": 522,
+        "manter": 798,
+        "reduzir_verba": 304
+       },
+       "celulas_com_mudanca_de_verba": 30,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 16,
+       "drawdown_max_vs_manter_micros": 1379017,
+       "estabilidade": {
+        "fracao_trocas": "148/1920",
+        "pares": 1920,
+        "trocas": 148
+       },
+       "lucro_micros": -115431342,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 257418015,
+       "vs_equal_micros": -212656331,
+       "vs_manter_micros": -1162227
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -180861097,
+       "vs_manter_micros": 30633007
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1317,
+        "pausar": 86,
+        "reduzir_verba": 453
+       },
+       "celulas_com_mudanca_de_verba": 23,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 23,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "12/1920",
+        "pares": 1920,
+        "trocas": 12
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -174165747,
+       "vs_manter_micros": 37328357
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -211494104,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -180861097,
+       "vs_manter_micros": 30633007
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1317,
+        "pausar": 102,
+        "reduzir_verba": 509
+       },
+       "celulas_com_mudanca_de_verba": 26,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 26,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "10/1920",
+        "pares": 1920,
+        "trocas": 10
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -174165747,
+       "vs_manter_micros": 37328357
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1256,
+        "pausar": 110,
+        "reduzir_verba": 562
+       },
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 4,
+       "cortes_errados_por_sinal_imaturo": 4,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 744143,
+       "estabilidade": {
+        "fracao_trocas": "25/1920",
+        "pares": 1920,
+        "trocas": 25
+       },
+       "lucro_micros": -67036439,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 208784358,
+       "vs_equal_micros": -164261428,
+       "vs_manter_micros": 47232676
+      }
+     }
+    },
+    "cenario": "execucao_presa",
+    "decisoes_sha256": "6a891ad241fca855ab75bc3ab664ed5dbb76ddf5385e027ea96615dc5cc8a0d5",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "ff249293832a81c1a273e773a00946cc80fc1c3bc3f7a186d0c6d12c0e39946c",
+    "meta": {
+     "cenario": "execucao_presa",
+     "descartados_sem_metrica": 1008,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3389,
+     "n_registros": 4397,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 40,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 20
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3389,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.348,
+    "ms_por_corte_todas_politicas": 37.43,
+    "replay_s": 9.02
+   }
+  },
+  "fonte_fora_do_ar": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269115,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 969,
+        "insuficiente": 598,
+        "reduzir_verba": 361
+       },
+       "celulas_com_mudanca_de_verba": 68,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "140/1920",
+        "pares": 1920,
+        "trocas": 140
+       },
+       "lucro_micros": 87716925,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 84659206,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 201986040
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 323,
+        "insuficiente": 598,
+        "manter": 684,
+        "reduzir_verba": 323
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 1865100,
+       "estabilidade": {
+        "fracao_trocas": "140/1920",
+        "pares": 1920,
+        "trocas": 140
+       },
+       "lucro_micros": -115917425,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 257904098,
+       "vs_equal_micros": -203634350,
+       "vs_manter_micros": -1648310
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 485,
+        "manter": 982,
+        "pausar": 48,
+        "reduzir_verba": 413
+       },
+       "celulas_com_mudanca_de_verba": 19,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "28/1920",
+        "pares": 1920,
+        "trocas": 28
+       },
+       "lucro_micros": -84923216,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 226671135,
+       "vs_equal_micros": -172640141,
+       "vs_manter_micros": 29345899
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "insuficiente": 249,
+        "manter": 1148,
+        "pausar": 38,
+        "reduzir_verba": 421
+       },
+       "celulas_com_mudanca_de_verba": 20,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "27/1920",
+        "pares": 1920,
+        "trocas": 27
+       },
+       "lucro_micros": -84923216,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 226671135,
+       "vs_equal_micros": -172640141,
+       "vs_manter_micros": 29345899
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -201986040,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 485,
+        "manter": 982,
+        "pausar": 48,
+        "reduzir_verba": 413
+       },
+       "celulas_com_mudanca_de_verba": 19,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "28/1920",
+        "pares": 1920,
+        "trocas": 28
+       },
+       "lucro_micros": -84923216,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 226671135,
+       "vs_equal_micros": -172640141,
+       "vs_manter_micros": 29345899
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 249,
+        "manter": 1148,
+        "pausar": 54,
+        "reduzir_verba": 477
+       },
+       "celulas_com_mudanca_de_verba": 23,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 23,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "25/1920",
+        "pares": 1920,
+        "trocas": 25
+       },
+       "lucro_micros": -84923216,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 226671135,
+       "vs_equal_micros": -172640141,
+       "vs_manter_micros": 29345899
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 863,
+        "pausar": 577,
+        "reduzir_verba": 488
+       },
+       "celulas_com_mudanca_de_verba": 52,
+       "cortes_errados": 19,
+       "cortes_errados_por_sinal_imaturo": 19,
+       "cortes_executaveis_em_tese": 52,
+       "drawdown_max_vs_manter_micros": 5836660,
+       "estabilidade": {
+        "fracao_trocas": "42/1920",
+        "pares": 1920,
+        "trocas": 42
+       },
+       "lucro_micros": -72960734,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 214708653,
+       "vs_equal_micros": -160677659,
+       "vs_manter_micros": 41308381
+      }
+     }
+    },
+    "cenario": "fonte_fora_do_ar",
+    "decisoes_sha256": "77d2465d7582ea3ab5060ae6d62b73a7e81c8f50cad1a4b4dbf331ff35ff5922",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "4315851c8494841f5a39c0f11ad548eae9012e27744a25f271c79bc696f41ec9",
+    "meta": {
+     "cenario": "fonte_fora_do_ar",
+     "descartados_sem_metrica": 1061,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3562,
+     "n_registros": 4623,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 48,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3562,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 1.258,
+    "ms_por_corte_todas_politicas": 66.73,
+    "replay_s": 16.082
+   }
+  },
+  "gatilho_legado_joinads": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269115,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1102,
+        "insuficiente": 446,
+        "reduzir_verba": 380
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 102515913,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 72481328,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 216785028
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 323,
+        "insuficiente": 446,
+        "manter": 836,
+        "reduzir_verba": 323
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 1865100,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": -115917425,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 257904098,
+       "vs_equal_micros": -218433338,
+       "vs_manter_micros": -1648310
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -186152021,
+       "vs_manter_micros": 30633007
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1309,
+        "pausar": 86,
+        "reduzir_verba": 461
+       },
+       "celulas_com_mudanca_de_verba": 24,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 24,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "14/1920",
+        "pares": 1920,
+        "trocas": 14
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -179456671,
+       "vs_manter_micros": 37328357
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -216785028,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -186152021,
+       "vs_manter_micros": 30633007
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1309,
+        "pausar": 102,
+        "reduzir_verba": 517
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "12/1920",
+        "pares": 1920,
+        "trocas": 12
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -179456671,
+       "vs_manter_micros": 37328357
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1248,
+        "pausar": 110,
+        "reduzir_verba": 570
+       },
+       "celulas_com_mudanca_de_verba": 36,
+       "cortes_errados": 4,
+       "cortes_errados_por_sinal_imaturo": 4,
+       "cortes_executaveis_em_tese": 36,
+       "drawdown_max_vs_manter_micros": 744143,
+       "estabilidade": {
+        "fracao_trocas": "27/1920",
+        "pares": 1920,
+        "trocas": 27
+       },
+       "lucro_micros": -67036439,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 208784358,
+       "vs_equal_micros": -169552352,
+       "vs_manter_micros": 47232676
+      }
+     }
+    },
+    "cenario": "gatilho_legado_joinads",
+    "decisoes_sha256": "d97479305b9fb05595b0e4cf41a6e09231df373f0b4551815685d3b8d78e259a",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "ccd0f36c910df92535f778711be6784735a90b79f79f70e4a229ca6f05e96b3e",
+    "meta": {
+     "cenario": "gatilho_legado_joinads",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 5352,
+     "n_registros": 6389,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 26,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 5352,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.657,
+    "ms_por_corte_todas_politicas": 51.3,
+    "replay_s": 12.363
+   }
+  },
+  "identidade_trocada": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -89057661,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 988,
+        "insuficiente": 541,
+        "reduzir_verba": 399
+       },
+       "celulas_com_mudanca_de_verba": 51,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 10128,
+       "estabilidade": {
+        "fracao_trocas": "153/1920",
+        "pares": 1920,
+        "trocas": 153
+       },
+       "lucro_micros": 48487713,
+       "propostas_bloqueadas_no_corte_diario": 22,
+       "regret_vs_oraculo_micros": 114941048,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 137545374
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 190,
+        "insuficiente": 541,
+        "manter": 1007,
+        "reduzir_verba": 190
+       },
+       "celulas_com_mudanca_de_verba": 15,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 8,
+       "drawdown_max_vs_manter_micros": 1247821,
+       "estabilidade": {
+        "fracao_trocas": "150/1920",
+        "pares": 1920,
+        "trocas": 150
+       },
+       "lucro_micros": -90245298,
+       "propostas_bloqueadas_no_corte_diario": 5,
+       "regret_vs_oraculo_micros": 231324654,
+       "vs_equal_micros": -138733011,
+       "vs_manter_micros": -1187637
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 241,
+        "manter": 1182,
+        "pausar": 96,
+        "reduzir_verba": 409
+       },
+       "celulas_com_mudanca_de_verba": 15,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 15,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "13/1920",
+        "pares": 1920,
+        "trocas": 13
+       },
+       "lucro_micros": -86063420,
+       "propostas_bloqueadas_no_corte_diario": 6,
+       "regret_vs_oraculo_micros": 227142776,
+       "vs_equal_micros": -134551133,
+       "vs_manter_micros": 2994241
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1309,
+        "pausar": 164,
+        "reduzir_verba": 383
+       },
+       "celulas_com_mudanca_de_verba": 16,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 16,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -81558796,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 222638152,
+       "vs_equal_micros": -130046509,
+       "vs_manter_micros": 7498865
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -89057661,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 230137017,
+       "vs_equal_micros": -137545374,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 241,
+        "manter": 1182,
+        "pausar": 96,
+        "reduzir_verba": 409
+       },
+       "celulas_com_mudanca_de_verba": 15,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 15,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "13/1920",
+        "pares": 1920,
+        "trocas": 13
+       },
+       "lucro_micros": -86063420,
+       "propostas_bloqueadas_no_corte_diario": 6,
+       "regret_vs_oraculo_micros": 227142776,
+       "vs_equal_micros": -134551133,
+       "vs_manter_micros": 2994241
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1309,
+        "pausar": 180,
+        "reduzir_verba": 439
+       },
+       "celulas_com_mudanca_de_verba": 19,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 1,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "13/1920",
+        "pares": 1920,
+        "trocas": 13
+       },
+       "lucro_micros": -81558796,
+       "propostas_bloqueadas_no_corte_diario": 8,
+       "regret_vs_oraculo_micros": 222638152,
+       "vs_equal_micros": -130046509,
+       "vs_manter_micros": 7498865
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1251,
+        "pausar": 198,
+        "reduzir_verba": 479
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 3,
+       "cortes_errados_por_sinal_imaturo": 3,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 744143,
+       "estabilidade": {
+        "fracao_trocas": "24/1920",
+        "pares": 1920,
+        "trocas": 24
+       },
+       "lucro_micros": -77813116,
+       "propostas_bloqueadas_no_corte_diario": 11,
+       "regret_vs_oraculo_micros": 218892472,
+       "vs_equal_micros": -126300829,
+       "vs_manter_micros": 11244545
+      }
+     }
+    },
+    "cenario": "identidade_trocada",
+    "decisoes_sha256": "e4f2a69a593a3815d2bd0395c069daf85a867b95ee435cb7714eaef41b14fbb7",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "13aa4a13732afdb68c5710586f77ea90ac17ca1f3fdeafd84f9af870c162ebbb",
+    "meta": {
+     "cenario": "identidade_trocada",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3538,
+     "n_registros": 4575,
+     "regras_aplicadas": {
+      "late->invalid:chave_substituida": 1,
+      "late->observed:coleta_atrasada": 23,
+      "observed->invalid:chave_substituida": 40,
+      "partial->invalid:chave_substituida": 46,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 36
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3538,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.283,
+    "ms_por_corte_todas_politicas": 53.87,
+    "replay_s": 12.982
+   }
+  },
+  "moeda_misturada": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269194,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1102,
+        "insuficiente": 446,
+        "reduzir_verba": 380
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 102515843,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 72481330,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 216785037
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 323,
+        "insuficiente": 446,
+        "manter": 836,
+        "reduzir_verba": 323
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 1865090,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": -115917492,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 257904122,
+       "vs_equal_micros": -218433335,
+       "vs_manter_micros": -1648298
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636202,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384069,
+       "vs_equal_micros": -186152045,
+       "vs_manter_micros": 30632992
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1309,
+        "pausar": 86,
+        "reduzir_verba": 461
+       },
+       "celulas_com_mudanca_de_verba": 24,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 24,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "14/1920",
+        "pares": 1920,
+        "trocas": 14
+       },
+       "lucro_micros": -76940852,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688719,
+       "vs_equal_micros": -179456695,
+       "vs_manter_micros": 37328342
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -114269194,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017061,
+       "vs_equal_micros": -216785037,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1206,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636202,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384069,
+       "vs_equal_micros": -186152045,
+       "vs_manter_micros": 30632992
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1309,
+        "pausar": 102,
+        "reduzir_verba": 517
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "12/1920",
+        "pares": 1920,
+        "trocas": 12
+       },
+       "lucro_micros": -76940852,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688719,
+       "vs_equal_micros": -179456695,
+       "vs_manter_micros": 37328342
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1248,
+        "pausar": 110,
+        "reduzir_verba": 570
+       },
+       "celulas_com_mudanca_de_verba": 36,
+       "cortes_errados": 4,
+       "cortes_errados_por_sinal_imaturo": 4,
+       "cortes_executaveis_em_tese": 36,
+       "drawdown_max_vs_manter_micros": 744143,
+       "estabilidade": {
+        "fracao_trocas": "27/1920",
+        "pares": 1920,
+        "trocas": 27
+       },
+       "lucro_micros": -67036541,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 208784408,
+       "vs_equal_micros": -169552384,
+       "vs_manter_micros": 47232653
+      }
+     }
+    },
+    "cenario": "moeda_misturada",
+    "decisoes_sha256": "4240959bda9ba6c1365b52055606632b6902e2c6363a70dfb782735c450f3a89",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "1db51ad09fe87f55b9f11c0dd89079a00084b433dd7f6b0f5ae057774cd49db2",
+    "meta": {
+     "cenario": "moeda_misturada",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3538,
+     "n_registros": 4575,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 24,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3538,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.442,
+    "ms_por_corte_todas_politicas": 40.66,
+    "replay_s": 9.799
+   }
+  },
+  "restatement_custo": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": 93864887,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1121,
+        "insuficiente": 446,
+        "reduzir_verba": 361
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 217988033,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 36253045,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 124123146
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 284,
+        "insuficiente": 446,
+        "manter": 914,
+        "reduzir_verba": 284
+       },
+       "celulas_com_mudanca_de_verba": 28,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 15,
+       "drawdown_max_vs_manter_micros": 355158,
+       "estabilidade": {
+        "fracao_trocas": "163/1920",
+        "pares": 1920,
+        "trocas": 163
+       },
+       "lucro_micros": 93956577,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 95814031,
+       "vs_equal_micros": -124031456,
+       "vs_manter_micros": 91690
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1115,
+        "pausar": 62,
+        "reduzir_verba": 559
+       },
+       "celulas_com_mudanca_de_verba": 25,
+       "cortes_errados": 5,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 25,
+       "drawdown_max_vs_manter_micros": 1111575,
+       "estabilidade": {
+        "fracao_trocas": "21/1920",
+        "pares": 1920,
+        "trocas": 21
+       },
+       "lucro_micros": 107428960,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 82163752,
+       "vs_equal_micros": -110559073,
+       "vs_manter_micros": 13564073
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1187,
+        "pausar": 74,
+        "reduzir_verba": 595
+       },
+       "celulas_com_mudanca_de_verba": 31,
+       "cortes_errados": 5,
+       "cortes_errados_por_sinal_imaturo": 5,
+       "cortes_executaveis_em_tese": 31,
+       "drawdown_max_vs_manter_micros": 1111575,
+       "estabilidade": {
+        "fracao_trocas": "26/1920",
+        "pares": 1920,
+        "trocas": 26
+       },
+       "lucro_micros": 109792586,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 79800126,
+       "vs_equal_micros": -108195447,
+       "vs_manter_micros": 15927699
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": 93864887,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 95727825,
+       "vs_equal_micros": -124123146,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1115,
+        "pausar": 62,
+        "reduzir_verba": 559
+       },
+       "celulas_com_mudanca_de_verba": 25,
+       "cortes_errados": 5,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 25,
+       "drawdown_max_vs_manter_micros": 1111575,
+       "estabilidade": {
+        "fracao_trocas": "21/1920",
+        "pares": 1920,
+        "trocas": 21
+       },
+       "lucro_micros": 107428960,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 82163752,
+       "vs_equal_micros": -110559073,
+       "vs_manter_micros": 13564073
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1187,
+        "pausar": 98,
+        "reduzir_verba": 643
+       },
+       "celulas_com_mudanca_de_verba": 34,
+       "cortes_errados": 6,
+       "cortes_errados_por_sinal_imaturo": 6,
+       "cortes_executaveis_em_tese": 34,
+       "drawdown_max_vs_manter_micros": 2044993,
+       "estabilidade": {
+        "fracao_trocas": "23/1920",
+        "pares": 1920,
+        "trocas": 23
+       },
+       "lucro_micros": 107747593,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 81845119,
+       "vs_equal_micros": -110240440,
+       "vs_manter_micros": 13882706
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1109,
+        "pausar": 105,
+        "reduzir_verba": 714
+       },
+       "celulas_com_mudanca_de_verba": 41,
+       "cortes_errados": 7,
+       "cortes_errados_por_sinal_imaturo": 7,
+       "cortes_executaveis_em_tese": 41,
+       "drawdown_max_vs_manter_micros": 2044993,
+       "estabilidade": {
+        "fracao_trocas": "44/1920",
+        "pares": 1920,
+        "trocas": 44
+       },
+       "lucro_micros": 112714830,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 76877882,
+       "vs_equal_micros": -105273203,
+       "vs_manter_micros": 18849943
+      }
+     }
+    },
+    "cenario": "restatement_custo",
+    "decisoes_sha256": "c1965ff4d75c48f94851e184688bbb2a1b3a7cff4b2213e3ccb99283db1a6046",
+    "ledger_entradas": 2008,
+    "ledger_sha256": "52c593c9a29984b61612b1ba3b8f31b498f829e58b96e4e1d3748ba542f7a6b1",
+    "meta": {
+     "cenario": "restatement_custo",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3538,
+     "n_registros": 4575,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 24,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3538,
+    "n_resultados_maduros": 80,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.081,
+    "ms_por_corte_todas_politicas": 47.87,
+    "replay_s": 11.538
+   }
+  },
+  "vazamento_tentado": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269115,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1102,
+        "insuficiente": 446,
+        "reduzir_verba": 380
+       },
+       "celulas_com_mudanca_de_verba": 76,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 20,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "156/1920",
+        "pares": 1920,
+        "trocas": 156
+       },
+       "lucro_micros": 102515913,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 72481328,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 216785028
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 307,
+        "insuficiente": 446,
+        "manter": 868,
+        "reduzir_verba": 307
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 17,
+       "drawdown_max_vs_manter_micros": 1865100,
+       "estabilidade": {
+        "fracao_trocas": "159/1920",
+        "pares": 1920,
+        "trocas": 159
+       },
+       "lucro_micros": -115917425,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 257904098,
+       "vs_equal_micros": -218433338,
+       "vs_manter_micros": -1648310
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1198,
+        "pausar": 48,
+        "reduzir_verba": 490
+       },
+       "celulas_com_mudanca_de_verba": 23,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 23,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -186152021,
+       "vs_manter_micros": 30633007
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1318,
+        "pausar": 64,
+        "reduzir_verba": 474
+       },
+       "celulas_com_mudanca_de_verba": 23,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 23,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "11/1920",
+        "pares": 1920,
+        "trocas": 11
+       },
+       "lucro_micros": -74405664,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 216153583,
+       "vs_equal_micros": -176921577,
+       "vs_manter_micros": 39863451
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -216785028,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 192,
+        "manter": 1198,
+        "pausar": 48,
+        "reduzir_verba": 490
+       },
+       "celulas_com_mudanca_de_verba": 23,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 23,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -186152021,
+       "vs_manter_micros": 30633007
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1318,
+        "pausar": 80,
+        "reduzir_verba": 530
+       },
+       "celulas_com_mudanca_de_verba": 26,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 26,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "9/1920",
+        "pares": 1920,
+        "trocas": 9
+       },
+       "lucro_micros": -74405664,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 216153583,
+       "vs_equal_micros": -176921577,
+       "vs_manter_micros": 39863451
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1255,
+        "pausar": 99,
+        "reduzir_verba": 574
+       },
+       "celulas_com_mudanca_de_verba": 32,
+       "cortes_errados": 4,
+       "cortes_errados_por_sinal_imaturo": 4,
+       "cortes_executaveis_em_tese": 32,
+       "drawdown_max_vs_manter_micros": 744143,
+       "estabilidade": {
+        "fracao_trocas": "26/1920",
+        "pares": 1920,
+        "trocas": 26
+       },
+       "lucro_micros": -67613570,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 209361489,
+       "vs_equal_micros": -170129483,
+       "vs_manter_micros": 46655545
+      }
+     }
+    },
+    "cenario": "vazamento_tentado",
+    "decisoes_sha256": "f29d634c9f31c38d5f9c7847eb29b628cf2a59c1c16cdd5043e8f721573627f4",
+    "ledger_entradas": 2008,
+    "ledger_sha256": "d1e11969b67bd2d75c63a3a6bba27bbb0da196aa85805463ea722c22ead6185b",
+    "meta": {
+     "cenario": "vazamento_tentado",
+     "descartados_sem_metrica": 1172,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3673,
+     "n_registros": 4845,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 35,
+      "observed->invalid:chave_substituida": 4,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3673,
+    "n_resultados_maduros": 80,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.033,
+    "ms_por_corte_todas_politicas": 38.15,
+    "replay_s": 9.195
+   }
+  },
+  "zero_falso": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269115,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 950,
+        "insuficiente": 617,
+        "reduzir_verba": 361
+       },
+       "celulas_com_mudanca_de_verba": 67,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "138/1920",
+        "pares": 1920,
+        "trocas": 138
+       },
+       "lucro_micros": 87667291,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 84659206,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 201936406
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 266,
+        "insuficiente": 617,
+        "manter": 779,
+        "reduzir_verba": 266
+       },
+       "celulas_com_mudanca_de_verba": 26,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 14,
+       "drawdown_max_vs_manter_micros": 1589425,
+       "estabilidade": {
+        "fracao_trocas": "138/1920",
+        "pares": 1920,
+        "trocas": 138
+       },
+       "lucro_micros": -115366156,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 257352829,
+       "vs_equal_micros": -203033447,
+       "vs_manter_micros": -1097041
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 288,
+        "manter": 1110,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -171303399,
+       "vs_manter_micros": 30633007
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "manter": 1309,
+        "pausar": 80,
+        "reduzir_verba": 467
+       },
+       "celulas_com_mudanca_de_verba": 24,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 24,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "14/1920",
+        "pares": 1920,
+        "trocas": 14
+       },
+       "lucro_micros": -79131484,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 220879403,
+       "vs_equal_micros": -166798775,
+       "vs_manter_micros": 35137631
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1928
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/1920",
+        "pares": 1920,
+        "trocas": 0
+       },
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -201936406,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 288,
+        "manter": 1110,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/1920",
+        "pares": 1920,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -171303399,
+       "vs_manter_micros": 30633007
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1309,
+        "pausar": 96,
+        "reduzir_verba": 523
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "12/1920",
+        "pares": 1920,
+        "trocas": 12
+       },
+       "lucro_micros": -79131484,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 220879403,
+       "vs_equal_micros": -166798775,
+       "vs_manter_micros": 35137631
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1308,
+        "pausar": 123,
+        "reduzir_verba": 497
+       },
+       "celulas_com_mudanca_de_verba": 35,
+       "cortes_errados": 6,
+       "cortes_errados_por_sinal_imaturo": 6,
+       "cortes_executaveis_em_tese": 35,
+       "drawdown_max_vs_manter_micros": 1301632,
+       "estabilidade": {
+        "fracao_trocas": "43/1920",
+        "pares": 1920,
+        "trocas": 43
+       },
+       "lucro_micros": -42555748,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 184303667,
+       "vs_equal_micros": -130223039,
+       "vs_manter_micros": 71713367
+      }
+     }
+    },
+    "cenario": "zero_falso",
+    "decisoes_sha256": "84eb99574d9db902f761b77659f57e2912e5522fd58025c2e3d708b448210a48",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "434eff4a644bdd77be76a5c4e19f19be885ccad77aa509338f4cdb90d17ee84f",
+    "meta": {
+     "cenario": "zero_falso",
+     "descartados_sem_metrica": 1037,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 3538,
+     "n_registros": 4575,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 24,
+      "observed->invalid:chave_substituida": 3,
+      "observed->missing:observado_zero_sem_confirmacao": 70,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 6
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 3538,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.577,
+    "ms_por_corte_todas_politicas": 80.15,
+    "replay_s": 19.317
+   }
+  },
+  "zero_sintetizado_coletor": {
+   "deterministico": {
+    "avaliacao": {
+     "hora_decisao": 7,
+     "horizonte_dias": 1,
+     "lucro_manter_micros": -114269115,
+     "menu_bps": [
+      10000,
+      7000,
+      0
+     ],
+     "n_celulas": 80,
+     "natureza": "testado_com_sintetico",
+     "politicas": {
+      "equal": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 1102,
+        "insuficiente": 8177,
+        "reduzir_verba": 361
+       },
+       "celulas_com_mudanca_de_verba": 75,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 19,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "154/9600",
+        "pares": 9600,
+        "trocas": 154
+       },
+       "lucro_micros": 102841811,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 72481328,
+       "vs_equal_micros": 0,
+       "vs_manter_micros": 217110926
+      },
+      "greedy_conservador": {
+       "acoes_em_todos_os_cortes": {
+        "aumentar_verba": 266,
+        "insuficiente": 8177,
+        "manter": 931,
+        "reduzir_verba": 266
+       },
+       "celulas_com_mudanca_de_verba": 26,
+       "cortes_errados": 1,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 14,
+       "drawdown_max_vs_manter_micros": 1589425,
+       "estabilidade": {
+        "fracao_trocas": "154/9600",
+        "pares": 9600,
+        "trocas": 154
+       },
+       "lucro_micros": -115366156,
+       "propostas_bloqueadas_no_corte_diario": 2,
+       "regret_vs_oraculo_micros": 257352829,
+       "vs_equal_micros": -218207967,
+       "vs_manter_micros": -1097041
+      },
+      "guardiao_72h[regra_margem]": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 8000,
+        "manter": 1110,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/9600",
+        "pares": 9600,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -186477919,
+       "vs_manter_micros": 30633007
+      },
+      "guardiao_72h[regra_margem_imatura]": {
+       "acoes_em_todos_os_cortes": {
+        "alerta": 72,
+        "insuficiente": 7712,
+        "manter": 1309,
+        "pausar": 86,
+        "reduzir_verba": 461
+       },
+       "celulas_com_mudanca_de_verba": 24,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 24,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "14/9600",
+        "pares": 9600,
+        "trocas": 14
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -179782569,
+       "vs_manter_micros": 37328357
+      },
+      "manter": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 9640
+       },
+       "celulas_com_mudanca_de_verba": 0,
+       "cortes_errados": 0,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 0,
+       "drawdown_max_vs_manter_micros": 0,
+       "estabilidade": {
+        "fracao_trocas": "0/9600",
+        "pares": 9600,
+        "trocas": 0
+       },
+       "lucro_micros": -114269115,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 256017034,
+       "vs_equal_micros": -217110926,
+       "vs_manter_micros": 0
+      },
+      "regra_margem": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 8000,
+        "manter": 1110,
+        "pausar": 50,
+        "reduzir_verba": 480
+       },
+       "celulas_com_mudanca_de_verba": 22,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 0,
+       "cortes_executaveis_em_tese": 22,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "15/9600",
+        "pares": 9600,
+        "trocas": 15
+       },
+       "lucro_micros": -83636108,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 225384027,
+       "vs_equal_micros": -186477919,
+       "vs_manter_micros": 30633007
+      },
+      "regra_margem_imatura": {
+       "acoes_em_todos_os_cortes": {
+        "insuficiente": 7712,
+        "manter": 1309,
+        "pausar": 102,
+        "reduzir_verba": 517
+       },
+       "celulas_com_mudanca_de_verba": 27,
+       "cortes_errados": 2,
+       "cortes_errados_por_sinal_imaturo": 2,
+       "cortes_executaveis_em_tese": 27,
+       "drawdown_max_vs_manter_micros": 276845,
+       "estabilidade": {
+        "fracao_trocas": "12/9600",
+        "pares": 9600,
+        "trocas": 12
+       },
+       "lucro_micros": -76940758,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 218688677,
+       "vs_equal_micros": -179782569,
+       "vs_manter_micros": 37328357
+      },
+      "regra_margem_null_zero": {
+       "acoes_em_todos_os_cortes": {
+        "manter": 1253,
+        "pausar": 7846,
+        "reduzir_verba": 541
+       },
+       "celulas_com_mudanca_de_verba": 37,
+       "cortes_errados": 5,
+       "cortes_errados_por_sinal_imaturo": 5,
+       "cortes_executaveis_em_tese": 37,
+       "drawdown_max_vs_manter_micros": 744143,
+       "estabilidade": {
+        "fracao_trocas": "65/9600",
+        "pares": 9600,
+        "trocas": 65
+       },
+       "lucro_micros": -61778330,
+       "propostas_bloqueadas_no_corte_diario": 0,
+       "regret_vs_oraculo_micros": 203526249,
+       "vs_equal_micros": -164620141,
+       "vs_manter_micros": 52490785
+      }
+     }
+    },
+    "cenario": "zero_sintetizado_coletor",
+    "decisoes_sha256": "941c6b73b01b9ebb0d8fe1c29f4d9c349a7900422e6d47183df2789e56b50d48",
+    "ledger_entradas": 2000,
+    "ledger_sha256": "f01e6ec93540fa23ab8adcc0c47eb1bf2a039fc4d72393ba2c23edb215e9439f",
+    "meta": {
+     "cenario": "zero_sintetizado_coletor",
+     "descartados_sem_metrica": 1041,
+     "gerador": "simulador@1.0.0/catalogo@1.0.0",
+     "inicio": "2026-08-03",
+     "n_dias": 16,
+     "n_observacoes": 12760,
+     "n_registros": 13801,
+     "regras_aplicadas": {
+      "late->observed:coleta_atrasada": 30,
+      "observed->invalid:chave_substituida": 3,
+      "partial->invalid:chave_substituida": 4,
+      "zero_confirmed->missing:zero_sem_prova_de_linha": 3105
+     },
+     "rejeitados": 0,
+     "runs_presos": 0
+    },
+    "n_cortes": 241,
+    "n_decisoes": 1928,
+    "n_observacoes": 12760,
+    "n_resultados_maduros": 72,
+    "seed": 20261016
+   },
+   "tempos": {
+    "avaliacao_s": 0.412,
+    "ms_por_corte_todas_politicas": 195.22,
+    "replay_s": 47.048
+   }
+  }
+ },
+ "versao_codigo": "91fc5f5c7a3c89eddc7b4e9e64a5dd2d91047c8e0d8631d4ed3c2e33492076dd",
+ "versao_codigo_simulador": "a1efaf08d3afa7e1443ab15bdb6b29d2f7c9f78e68b41089730d63620bc18d00"
+}

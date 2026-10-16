@@ -33,25 +33,31 @@ ASOF = ("SELECT string_agg(chave_natural || ':' || status || ':' || coalesce(val
 
 def _carga(itens) -> str:
     """itens: (conta, dia, h_disponivel, payload, valor). Registra pelas funções públicas, como um coletor."""
-    sql = ["SELECT dil_obs.registrar_run('run-part', 'google_ads', 'c', '1', '2026-06-01T00:00:00-03:00');"]
+    relogio = ("RESET ROLE; CREATE OR REPLACE FUNCTION dil_obs._agora() RETURNS timestamptz LANGUAGE sql STABLE PARALLEL SAFE "
+               "SET search_path = '' AS $$ SELECT {} $$; SET ROLE dil_obs_escritor;")
+    sql = []
     for conta, dia, h, payload, valor in itens:
         sha = hashlib.sha256(payload).hexdigest()
         ano, mes, d = dia if len(dia) == 3 else (2026, *dia)
         ini = datetime(ano, mes, d, tzinfo=BRT)
         obs_at, disp = ini + timedelta(days=1), ini + timedelta(hours=h)
         lote = f"lote-{conta}-{sha[:10]}-{h}"
+        run = f"run-{conta}-{ini.date().isoformat()}"
+        sql.append(relogio.format(f"'{disp.isoformat()}'::timestamptz"))  # relógio do banco simulado (R1-F1)
+        sql.append(f"SELECT dil_obs.registrar_run('{run}', 'google_ads', 'c', '1', '{ini.isoformat()}');")
         sql.append(f"SELECT dil_obs.registrar_payload('{sha}', decode('{payload.hex()}', 'hex'), 'application/json');")
-        sql.append(f"SELECT dil_obs.registrar_lote('{lote}', 'run-part', '{sha}', 'v1', '{{}}', '{obs_at.isoformat()}');")
+        sql.append(f"SELECT dil_obs.registrar_lote('{lote}', '{run}', '{sha}', 'v1', '{{}}', NULL);")
         o = {"fonte": "google_ads", "conta": conta, "entidade_tipo": "campaign", "entidade_id": "1",
              "grao": ["campaign", "day"], "dimensoes": [], "metrica": "cost", "value_kind": None, "valor": valor,
              "unidade": "micros", "moeda": "BRL" if valor is not None else None, "janela_inicio": ini.isoformat(),
              "janela_fim": (ini + timedelta(days=1)).isoformat(), "timezone": "America/Sao_Paulo",
              "observed_at": obs_at.isoformat(), "source_updated_at": None, "available_at": disp.isoformat(),
-             "ingested_at": disp.isoformat(), "run_id": "run-part", "request_id": None, "lote_id": lote,
+             "ingested_at": disp.isoformat(), "run_id": run, "request_id": None, "lote_id": lote,
              "payload_sha256": sha, "payload_ref": f"sha256:{sha}", "schema_version": "v1", "coletor_nome": "c",
              "coletor_versao": "1", "status": "observed" if valor else "missing",
              "motivo": None if valor else "linha_ausente_na_resposta", "cobertura_ppm": None}
-        sql.append(f"SELECT 'R:' || dil_obs.registrar_observacao('{json.dumps(o)}'::jsonb);")
+        sql.append(f"SELECT 'R:' || dil_obs.registrar_observacao('{json.dumps(o)}'::json);")
+    sql.append(relogio.format("pg_catalog.now()"))
     return "\n".join(sql)
 
 

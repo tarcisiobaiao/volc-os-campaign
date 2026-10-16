@@ -14,8 +14,9 @@ Regras:
   `invalid` com motivo `chave_substituida:<pedida>-><devolvida>`;
 - entidade esperada sem linha numa resposta íntegra → `missing` (`linha_ausente_na_resposta`);
 - valor nulo explícito da fonte → `missing` (`valor_nulo_na_fonte:<campo>`), nunca 0;
-- 0 explícito → `zero_confirmed`; janela ainda aberta em `observed_at` → `partial` com cobertura
-  proporcional ao tempo decorrido (motivo `janela_aberta`).
+- 0 explícito → `zero_confirmed`; janela ainda aberta em `observed_at` → `partial` com a cobertura
+  declarada pela fonte (`ContextoLeitura.cobertura_ppm`) ou, sem ela, cobertura nula e motivo
+  `janela_aberta;cobertura_desconhecida` — nunca cobertura fabricada pelo relógio (R1-F17).
 
 Puro: recebe bytes e contexto, devolve dados. Quem grava é outra camada.
 """
@@ -31,8 +32,8 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 from ...contracts.money import MICROS
 from ...contracts.vocab import Metrica, ValueKind
 from . import chaves
-from .modelo import Coletor, EntidadeRef, Observacao
-from .vocab import COBERTURA_PPM_MAX, COBERTURA_PPM_MIN, StatusObservacao, Unidade
+from .modelo import COBERTURA_DESCONHECIDA, Coletor, EntidadeRef, Observacao
+from .vocab import StatusObservacao, Unidade
 
 Validador = Callable[[Mapping[str, Any], "ContextoLeitura"], Optional[str]]
 
@@ -106,6 +107,9 @@ class ContextoLeitura:
     entidades_esperadas: tuple[str, ...] = ()
     request_id: Optional[str] = None
     source_updated_at: Optional[datetime] = None
+    # cobertura de janela aberta declarada pela FONTE (ex.: horas fechadas/24). None = desconhecida:
+    # o normalizador não fabrica cobertura a partir do relógio (R1-F17)
+    cobertura_ppm: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -175,11 +179,11 @@ def _obs(
     )
 
 
-def _cobertura_ppm(ctx: ContextoLeitura) -> int:
-    total = (ctx.janela_fim - ctx.janela_inicio).total_seconds()
-    decorrido = (ctx.observed_at - ctx.janela_inicio).total_seconds()
-    ppm = int(decorrido * 1_000_000 // total) if total > 0 else COBERTURA_PPM_MIN
-    return max(COBERTURA_PPM_MIN, min(COBERTURA_PPM_MAX, ppm))
+def _parcial(ctx: ContextoLeitura) -> tuple[Optional[int], str]:
+    """(cobertura, motivo) de uma janela aberta: só a cobertura declarada pela fonte; senão desconhecida."""
+    if ctx.cobertura_ppm is None:
+        return None, f"janela_aberta;{COBERTURA_DESCONHECIDA}"
+    return ctx.cobertura_ppm, "janela_aberta"
 
 
 def _primeiro(linha: Mapping[str, Any], nomes: Sequence[str]) -> tuple[bool, Any]:
@@ -320,8 +324,9 @@ def normalizar(
             elif c.unidade is Unidade.MICROS and ctx.moeda is None:
                 observacoes.append(_obs(ctx, payload, ent_id, c, StatusObservacao.INVALID, motivo="moeda_nao_declarada"))
             elif janela_aberta:
+                cob, mot = _parcial(ctx)
                 observacoes.append(_obs(ctx, payload, ent_id, c, StatusObservacao.PARTIAL, valor=valor,
-                                        motivo="janela_aberta", cobertura_ppm=_cobertura_ppm(ctx)))
+                                        motivo=mot, cobertura_ppm=cob))
             elif valor == 0:
                 observacoes.append(_obs(ctx, payload, ent_id, c, StatusObservacao.ZERO_CONFIRMED, valor=0))
             else:

@@ -38,7 +38,7 @@ produção pelo recibo do integrador; **[X]** executado nesta thread (JavaScript
 | JoinAds v2 | `wip/historico-joinads-20261015` (`192bc065`) `n8n/joinads_v2_normalize.js:66-116` (`campaign_id` só se `^\d+$`, `:69-70`), `:166-184` (rejeita chave trocada e id inválido), `:186-233` (endpoints) | aplicado e ativo em shadow [P L1, L9] |
 | GAM | `main:supabase/migrations/20260910143000_gam_attribution_grain_router.sql:1-22`; `main:…/v17_04_arbitragem_reconciliada.sql:84-86` | `gam_metrics` vazia no snapshot (grafo) |
 | AdSense | `main:src/sql/adsense_funnel_aggregation.sql:38,226-227` (`url × date`) | suspenso desde fev/2026 [W identity-gap-matrix] |
-| Funil | `campaign_funnel_urls` (17 linhas antigas, 0/17 com host creditoup, campanha atual ausente) [W `journey-contract.json` `page_role`]; `trafego_vinculo` vazio [D grafo `concept:reconciliation`] | |
+| Funil | `campaign_funnel_urls` (17 linhas antigas, 0/17 com host do site monetizado, campanha atual ausente) [W `journey-contract.json` `page_role`]; `trafego_vinculo` vazio [D grafo `concept:reconciliation`] | |
 | Contratos de atribuição anteriores | `043c77f5:.claude-ads/runs/economic-attribution-20261015T1310-0300/{identity-gap-matrix,journey-contract,writer-reader-map}.json` | o `journey-contract.json` **já registrava** o defeito como risco R7 |
 
 ## 2. Sobrevivência ponta a ponta de cada chave
@@ -136,15 +136,15 @@ if (!v || clean(v, 200) !== v.replace(/\s+/g, ' ')) return '';                  
 ```
 
 `clean()` troca PII por `[x]`; se mudou algo, o valor inteiro é descartado. Qualquer sequência de ≥ 10 caracteres entre
-dígitos/espaço/`().-` que comece e termine em dígito casa — `24278665189` casa (e casa também a de CPF, `:72`).
+dígitos/espaço/`().-` que comece e termine em dígito casa — o id da campanha ativa (11 dígitos; nos vetores, o sintético `20000000011`) casa (e casa também a de CPF, `:72`).
 
 ### 5.3 Veredito
 
 **As duas afirmações estão certas pela metade; a do roadmap está certa no efeito.** O código *lê* `utm_campaign`
 (allowlist `:121`), mas, para o template vivo (`{campaignid}`), *descarta o valor*. Provas:
 
-- [X] Executando o `utmValue` real extraído do HTML em Node: `utmValue("24278665189") === ""`; a URL real do template vira
-  `{source:"google", medium:"cpc", term:"cursos_senac", paid:1}` — sem `campaign` e sem `content`
+- [X] Executando o `utmValue` real extraído do HTML em Node: `utmValue("20000000011") === ""` (id sintético de 11 dígitos; o real, de mesmo comprimento, dá o mesmo resultado); a URL real do template vira
+  `{source:"google", medium:"cpc", term:"cursos_tecnicos", paid:1}` — sem `campaign` e sem `content`
   (`receipts/identidade/vetores_utm_sensor_v3.json`, `cenarios_campaign[0]`).
 - [P] Produção 15–16/10: 28 sessões `paid=1`, todas com `utm.source`, nenhuma com `utm.campaign`; chaves em 3 dias:
   paid 53, source 29, medium 29, term 28, **campaign 1** (RECIBO-LEITURAS L4).
@@ -177,10 +177,10 @@ as custom_keys `land_uri`/`id_post_wp` que o wrapper não define também chegam)
 Já feitas pelo integrador (read-only, recibo citado): L1, L3, L4, L5, L9–L12. Pendentes, consultas exatas:
 
 1. **Setter do key-value da JoinAds (L6)** — GTM API read-only, versão live: listar tags e o HTML de cada tag custom
-   (`GET https://tagmanager.googleapis.com/tagmanager/v2/accounts/6334941389/containers/241170721/versions/live`, escopo
+   (`GET https://tagmanager.googleapis.com/tagmanager/v2/accounts/<conta-gtm>/containers/<container-gtm>/versions/live`, escopo
    `tagmanager.readonly`), procurar `setTargeting`, `utm_campaign` e `joinads`. E no site, sem gerar impressão:
-   `curl -s https://creditoup.com.br/r/guia-cursos-senac/ | grep -o 'script.joinads.me[^"]*'`.
-2. **Comprimento de `ad_group.id`** — GAQL read-only: `SELECT ad_group.id FROM ad_group WHERE campaign.id = 24278665189`
+   `curl -s https://<site-monetizado>/<landing>/ | grep -o 'script.joinads.me[^"]*'`.
+2. **Comprimento de `ad_group.id`** — GAQL read-only: `SELECT ad_group.id FROM ad_group WHERE campaign.id = <campanha-ativa>`
    (só o comprimento interessa; não precisa imprimir o valor).
 3. **Formato de `land_uri`** e `custom_key=utm_content` — `SELECT endpoint, custom_key, left(custom_value,1) AS inicio,
    length(custom_value) AS n, count(*) FROM joinads_observation WHERE metric_date >= date '2026-10-08' GROUP BY 1,2,3,4 ORDER BY 1,2;`
@@ -195,13 +195,13 @@ Já feitas pelo integrador (read-only, recibo citado): L1, L3, L4, L5, L9–L12.
 
 | # | Passo | Destrava | Custo / risco | Autorização | Teste que provaria |
 |---|---|---|---|---|---|
-| 1 | **Sensor: isentar `utm_campaign`/`utm_content` da regex de telefone quando o valor é `^\d{6,20}$`** (allowlist por chave, mantendo o filtro para o resto) | campanha × dia e grupo × dia no tráfego; funil por campanha | Baixo risco de privacidade (id de campanha/grupo não é dado pessoal, mas 11 dígitos podem ser um CPF por coincidência — mitigar exigindo chave UTM conhecida, nunca valor livre); **mudança no GTM** | publicação GTM (P16-T05/P06-T07) | vetor-ouro novo: `utmValue('24278665189')` com a regra nova = `'24278665189'` e `utmValue('123.456.789-01')` = `''`; canário: `count(*) FILTER (WHERE payload->'utm'->>'campaign' ~ '^\d+$') > 0` em `raw_events` pós-publicação; `test_identidade_ponta_a_ponta` com `RegistroCampanhas` igual e `cobertura.fracao_sessoes_pagas_resolvidas` → próxima de 1 |
-| 2 | Alternativa sem tocar o filtro: `utm_campaign=gads_{campaignid}`? **Não funciona** — a regex não é ancorada (`c24278665189` também cai [X]). Só funcionaria quebrando o id com letras, o que ValueTrack não faz | — | — | — | `test_campaign_id_real_e_descartado_como_pii` já prova |
+| 1 | **Sensor: isentar `utm_campaign`/`utm_content` da regex de telefone quando o valor é `^\d{6,20}$`** (allowlist por chave, mantendo o filtro para o resto) | campanha × dia e grupo × dia no tráfego; funil por campanha | Baixo risco de privacidade (id de campanha/grupo não é dado pessoal, mas 11 dígitos podem ser um CPF por coincidência — mitigar exigindo chave UTM conhecida, nunca valor livre); **mudança no GTM** | publicação GTM (P16-T05/P06-T07) | vetor-ouro novo: `utmValue('<campanha-ativa>')` com a regra nova = `'<campanha-ativa>'` e `utmValue('123.456.789-01')` = `''`; canário: `count(*) FILTER (WHERE payload->'utm'->>'campaign' ~ '^\d+$') > 0` em `raw_events` pós-publicação; `test_identidade_ponta_a_ponta` com `RegistroCampanhas` igual e `cobertura.fracao_sessoes_pagas_resolvidas` → próxima de 1 |
+| 2 | Alternativa sem tocar o filtro: `utm_campaign=gads_{campaignid}`? **Não funciona** — a regex não é ancorada (`c20000000011` também cai [X]). Só funcionaria quebrando o id com letras, o que ValueTrack não faz | — | — | — | `test_campaign_id_real_e_descartado_como_pii` já prova |
 | 3 | **JoinAds: coletar `custom_key=utm_content`** (grupo) no v2 | grupo × dia custo × receita | +1 request/dia/endpoint (API agrega por chamada); quota não documentada; depende de o setter do key-value levar `utm_content` cru | n8n (ativação) | `SELECT count(*) FROM joinads_observation WHERE custom_key='utm_content' AND custom_value ~ '^\d{10,}$'`; reconciliação Σ grupo ≈ Σ campanha por dia |
 | 4 | ValueTrack `{matchtype}`/`{keyword}` já estão no sufixo; para keyword determinística seria preciso `{targetid}` (`kwd-<criterion_id>`) **e** a JoinAds aceitar essa key — não aceita (lista fechada `gerar_flows_joinads.py:394`) | keyword × dia só no tráfego | allowlist do sensor ampliada (`vc_target`) | GTM | vetor + canário como no passo 1 |
 | 5 | **Chave de sessão na receita** (ex.: key-value `sid` por impressão) | sessão × receita | **Alto**: o wrapper bloqueia `sid/session` por política (`wrapper:33`), viola o desenho privacy-by-design e provavelmente a política do Ad Manager para identificadores; a JoinAds não reporta por key arbitrária | jurídico + parceiro | — (não recomendado) |
 | 6 | **Click id** (`gclid` em `raw_events`) | clique × sessão | **Alto** (identificador de clique é dado pessoal sob LGPD com consentimento); exige revisão de consentimento — o site envia `granted` por padrão antes da escolha (`VOLC-MEASUREMENT-V3-2026-10-15.md` §Consentimento) | jurídico | — |
-| 7 | Vínculo datado campanha → funil (`trafego_vinculo`) para 24278665189 | funil × campanha | baixo; humano confirma | operador | `SELECT … FROM trafego_vinculo WHERE campaign_id='24278665189' AND valido_em…` = 1 linha |
+| 7 | Vínculo datado campanha → funil (`trafego_vinculo`) para <campanha-ativa> | funil × campanha | baixo; humano confirma | operador | `SELECT … FROM trafego_vinculo WHERE campaign_id='<campanha-ativa>' AND valido_em…` = 1 linha |
 | 8 | Declarar o fuso da JoinAds (leitura 4) | dia determinístico dos dois lados | nenhum | — | `Cobertura.fuso_receita_verificado=True` com prova |
 
 ## 8. Módulo `volc_dil.fundacao.identidade` (API pública)
@@ -210,7 +210,8 @@ Já feitas pelo integrador (read-only, recibo citado): L1, L3, L4, L5, L9–L12.
   `normalizar_valor_wrapper_v2`, `utm_da_pagina_sensor_v3` (réplica de `campaign()` com `sessionStorage`),
   `parse_query_urlsearchparams`, `limpar_utm_ingest`, `UtmSessao`. Fiel a JS em `\s`, `\d`, `/i`, corte UTF-16 e
   `URLSearchParams` — provado contra 65 vetores nomeados + 3000 pseudoaleatórios + 11 cenários de `campaign()` gerados pelo
-  código real.
+  código real. **Ressalva Unicode (R1-F24):** idêntica até o Unicode 15.1 do CPython 3.13; o Node 26 usa Unicode 17 e o
+  revisor mediu 3.536/4.000 divergências em caracteres novos do 16/17 (0/6.003 até 15.1). Valor fora do 15.1 → chave probabilística.
 - `chave_campanha`: `interpretar_chave_campanha` (→ `campaign_id` **ou** `MotivoRecusa`: `ausente`, `descartado_pelo_sensor`,
   `macro_nao_expandida`, `chave_trocada`, `textual_ambiguo`, `possivelmente_truncado`, `id_invalido`),
   `interpretar_campanha_da_sessao` (distingue "UTM perdida pelo sensor" de "orgânico").
@@ -219,6 +220,52 @@ Já feitas pelo integrador (read-only, recibo citado): L1, L3, L4, L5, L9–L12.
 - `graos`: `MATRIZ`, `exigir_grao`, `receita_por_sessao` (sempre recusa), `GraoNaoSuportado` (carrega o grão honesto disponível).
 - `colisao`: `detectar_colisoes_registro` (mesma UTM/duas campanhas, id em duas contas, renomeação, truncamento ambíguo),
   `detectar_custom_key_substituida`, `colisoes_de_normalizacao`.
-- `juncao`: `juntar_campanha_dia` → `ResultadoJuncao(linhas, cobertura, receita_nao_atribuida)`; `para_json`.
-  Só receita **determinística** entra na linha; probabilística vai ao balde com motivo
-  `receita_exige_chave_deterministica:*`. Tráfego aceita probabilística e marca `confianca_sessoes`.
+- `juncao`: `juntar_campanha_dia(custos, eventos, receitas, registro, *, as_of, receitas_dominio=None,
+  dominios_dia_kv_coletados=None, trafego_campanha_comprovado=False, …)` → `ResultadoJuncao(linhas, cobertura,
+  receita_nao_atribuida)`; `para_json`. Só receita **determinística** entra na linha; probabilística vai ao balde com
+  motivo `receita_exige_chave_deterministica:*`. Tráfego aceita probabilística e marca `confianca_sessoes`.
+
+### 8.1 Contrato de entrada da junção (R1-F5)
+
+A junção recebe **estado `as_of`, não fluxo**:
+
+1. `as_of` obrigatório, com fuso. Linha com `disponivel_em > as_of` (ou evento com `ts > as_of`) → `FuturoNaJuncao`.
+2. Cada `ReceitaChaveDia` é a **versão vigente em `as_of`** de uma identidade
+   `(endpoint, grao, dia, dominio, custom_key, custom_value, dimensao)` e traz `disponivel_em` (sem ele → `ContratoDeEntrada`).
+   Quem resolve versões é o chamador (ex.: `joinads_observation_latest` ou o `as_of` da thread A).
+3. **Um único grão de receita por chamada** (`campaign_day` legado, `campaign_adunit_day` ou `campaign_country_adunit_day`
+   da v2), com `len(dimensao)` coerente; dois grãos/endpoints → `GraoMistoNaReceita` (são cortes do mesmo dinheiro:
+   somá-los dobra a receita). Identidade repetida (inclusive diferindo só por espaço/`www.`) → `LinhaDuplicada`.
+4. Custo: um estado por `(conta, campanha, dia)`; earnings: um por `(dia, domínio)`; repetição → `LinhaDuplicada`.
+5. Tráfego segue `MATRIZ` (R1-F6): Google Ads × Sensor em campanha × dia é `nao_atribuivel` hoje ⇒ toda linha sai com
+   sessões `nao_atribuivel` e o motivo da matriz; `trafego_campanha_comprovado=True` só quando a condição `requer` estiver
+   provada (vetor-ouro do sensor novo + canário). Zero de sessões só com sensor visto no **host declarado da campanha**
+   (`CampanhaRegistrada.hosts`) naquele dia; sem host declarado → `ausente`. Cliques `None` → `nao_coletado`.
+6. Cobertura de receita (R1-F19): denominador = earnings dos domínio × dia que **também** tiveram /key-value coletado
+   (padrão: os presentes nas linhas; ou `dominios_dia_kv_coletados` explícito, para incluir coleta que voltou vazia).
+   Earnings sem /key-value coletado vai a `receita_earnings_sem_kv`; receita com chave sem earnings, a
+   `receita_kv_sem_earnings`; ambos com aviso, nenhum entra como "sem chave".
+
+## 9. Resposta à revisão adversarial R1
+
+Fonte: `handoffs/REVISAO-ADVERSARIAL-R1.md` (achados da thread C). Testes novos em
+`tests/data-intelligence/fundacao/test_identidade_r1.py` (18) e `test_identidade_sem_sensiveis.py` (3); todos falhavam
+antes (os scripts do revisor reproduziram 2× a receita, cliques `0`, zero de sessão sem sensor, fração 1/10 e `custon_key`
+ignorado na base `3c5281e8`; o F18 dava `UnicodeEncodeError`).
+
+| Achado | Correção | Prova |
+|---|---|---|
+| F5 dupla contagem | identidade de linha `(endpoint, grão, dia, domínio, custom_key, custom_value, dimensão)`; `GraoMistoNaReceita`, `LinhaDuplicada`, `FuturoNaJuncao`; `as_of` obrigatório (contrato §8.1); custo e earnings também sem duplicata | `test_f5_*` (8) |
+| F6 null→0 e matriz | cliques `None` → `nao_coletado`; sessões seguem `capacidade(G,S,campanha,dia)` (hoje `nao_atribuivel`); zero só com sensor no host da campanha | `test_f6_*` (4) |
+| F18 surrogate | `_js_len` (surrogatepass) no parser | `test_f18_*` |
+| F19 universos | denominador = earnings ∩ /key-value coletado; baldes `receita_earnings_sem_kv`/`receita_kv_sem_earnings` + avisos | `test_f19_*` (3) |
+| F23 `??` | `custom_key` null cai para `custon_key` | `test_f23_*` |
+| F20 (M13) | teste com `" utm_campaign "` | `test_m13_*` — mutante M13 reaplicado: morre |
+| F24 Unicode | ressalva no docstring de `normalizacao.py` e no §8 | — |
+| F25 dados reais | conta, campanha, GTM, domínio, cliente e valores monetários substituídos por sintéticos nos arquivos da thread C; vetores regenerados do mesmo JS (sha256 da fonte inalterado); varredura `test_identidade_sem_sensiveis.py` | 3 testes |
+
+Mutantes nas correções: 11 aplicados, 11 mortos (M13, `??`, duplicata de receita, grão misto, cliques `None`, matriz,
+host do zero, universo do denominador, `as_of`, custo duplicado, `_js_len`).
+
+Não contestei nenhum achado. Observação: o veredito da contradição (§5) não muda — os valores reais citados antes estão
+nos recibos do repositório (`043c77f5`); aqui ficam só ids sintéticos de mesmo comprimento, que reproduzem a mesma prova.

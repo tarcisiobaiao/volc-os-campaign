@@ -183,7 +183,13 @@ def test_janela_aberta_vira_partial_com_cobertura(ctx):
     intra = ContextoLeitura(**{**ctx.__dict__, "observed_at": d + timedelta(hours=12),
                                "available_at": d + timedelta(hours=12), "ingested_at": d + timedelta(hours=12)})
     o = _por(normalizar(_payload([_linha()]), ESQUEMAS, intra))[("23100000001", "revenue")]
-    assert (o.status, o.valor, o.cobertura_ppm, o.motivo) == (StatusObservacao.PARTIAL, 123_456, 500_000, "janela_aberta")
+    # R1-F17: sem cobertura declarada pela fonte, não se fabrica 50% pelo relógio
+    assert (o.status, o.valor, o.cobertura_ppm, o.motivo) == (StatusObservacao.PARTIAL, 123_456, None, "janela_aberta;cobertura_desconhecida")
+    # cobertura declarada pela fonte passa intacta (mata M11: cobertura constante)
+    for declarada in (1, 250_000, 999_999):
+        dec = ContextoLeitura(**{**intra.__dict__, "cobertura_ppm": declarada})
+        o = _por(normalizar(_payload([_linha()]), ESQUEMAS, dec))[("23100000001", "revenue")]
+        assert (o.cobertura_ppm, o.motivo) == (declarada, "janela_aberta")
 
 
 def test_schema_desconhecido_e_payload_nao_json(ctx):

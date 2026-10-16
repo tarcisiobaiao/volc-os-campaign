@@ -204,16 +204,15 @@ def _custo_a_b_a(conta, slot):
     return [{"campaign_id": "cmp-0", "impressions": 1, "cost": v, "conversions": 1}]
 
 
-def test_a_b_a_e_preservado_como_reafirmacao():
+def test_a_b_a_e_preservado_como_leitura_nova():
     sink = SinkMemoria(relogio_sink())
     t = Transporte(valores=_custo_a_b_a)
     rs = [run_coleta(ped(s), **gravar(sink, transporte=t)) for s in ("06:00", "07:00", "08:00")]
-    # a regra da frente A versiona por payload: a linha mudou → as 3 métricas da linha ganham versão
-    assert [(r.inseridas, r.reafirmadas) for r in rs] == [(3, 0), (3, 0), (0, 3)]
+    # regra D2 da frente A: observed_at entra na idempotência → cada leitura em outra hora é versão nova
+    assert [(r.inseridas, r.noop) for r in rs] == [(3, 0), (3, 0), (3, 0)]
     custo = [o for o in sink.registro.observacoes if o.metrica is Metrica.CUSTO]
     hist = sink.registro.historico(custo[0].chave_natural)
     assert [v.observacao.valor for v in hist] == [10_000_000, 20_000_000, 10_000_000]
-    assert [v.tipo.value for v in hist] == ["leitura", "leitura", "reafirmacao"]
     cortes = [r.gravado_em for r in rs]
     assert [sink.as_of(t)[custo[0].chave_natural][3] for t in cortes] == [10_000_000, 20_000_000, 10_000_000]
 
@@ -247,7 +246,7 @@ def test_equivalencia_serial_paralelo_compara_as_of_em_todos_os_cortes():
                       sink=s_par, modo="gravar", politica=pol, **NADA)
         assert _historia(s_par) == ref, f"as_of divergiu na rodada {rodada}"
         assert s_par.instantes_de_gravacao() == s_serial.instantes_de_gravacao()
-    # o último corte mostra A de novo (reafirmação), não B
+    # o último corte mostra A de novo (A→B→A preservado), não B
     custos = sorted(v[3] for v in ref[-1].values() if v[0] == "cost")
     assert custos == sorted([(10 + k) * 1_000_000 for k in range(6)] * 2)
 

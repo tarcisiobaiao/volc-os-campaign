@@ -182,3 +182,49 @@ def test_json_ida_e_volta(obs):
     del sem["lote_id"]
     with pytest.raises(ObservacaoInvalida, match="lote_id"):
         Observacao.de_json(sem)
+
+
+# ---------------------------------------------------------------- R1-F9: paridade de fronteira com o SQL
+def test_r1_f9_timezone_com_caixa_exata(obs):
+    with pytest.raises(ObservacaoInvalida, match="timezone inválido"):
+        obs(timezone="america/sao_paulo")  # o macOS aceita no sistema de arquivos; a base IANA não
+    with pytest.raises(ObservacaoInvalida, match="timezone"):
+        obs(timezone=" UTC")
+    assert obs(timezone="UTC").timezone == "UTC"
+
+
+@pytest.mark.parametrize(
+    "campo, valor",
+    [("janela_inicio", "2026-10-14T00:00:00"), ("available_at", "2026-10-15"), ("observed_at", "2026-10-15T04:00:00 -03:00"),
+     ("ingested_at", "2026-10-15T04:06:00.1234567-03:00"), ("janela_fim", 1760497200)],
+)
+def test_r1_f9_instante_sem_offset_ou_fora_do_formato(obs, campo, valor):
+    with pytest.raises(ObservacaoInvalida, match="offset explícito"):
+        Observacao.de_json({**obs().para_json(), campo: valor})
+
+
+def test_r1_f9_texto_json_estrito(obs):
+    import json as _json
+
+    j = obs().para_json()
+    assert Observacao.de_json_texto(_json.dumps(j)) == obs()
+    with pytest.raises(ObservacaoInvalida):
+        Observacao.de_json_texto(_json.dumps(j).replace('"valor": 5000000', '"valor": 5e6'))  # float
+    with pytest.raises(ObservacaoInvalida, match="repetida"):
+        Observacao.de_json_texto(_json.dumps(j)[:-1] + ', "valor": 1}')
+    with pytest.raises(ObservacaoInvalida, match="constante"):
+        Observacao.de_json_texto(_json.dumps(j).replace('"valor": 5000000', '"valor": NaN'))
+    for campo, v in (("conta", 1234567890), ("schema_version", "v\u001fc"), ("schema_version", "v "),
+                     ("request_id", " r\u0007 "), ("coletor_nome", "")):
+        with pytest.raises(ObservacaoInvalida):
+            Observacao.de_json({**j, campo: v})
+
+
+# ---------------------------------------------------------------- R1-F17: cobertura desconhecida representável
+def test_r1_f17_partial_com_cobertura_desconhecida(obs):
+    d = obs().janela_inicio
+    aberto = dict(observed_at=d + timedelta(hours=1), available_at=d + timedelta(hours=1), ingested_at=d + timedelta(hours=1))
+    o = obs(status="partial", motivo="janela_aberta;cobertura_desconhecida", cobertura_ppm=None, **aberto)
+    assert o.cobertura_ppm is None
+    with pytest.raises(ObservacaoInvalida, match="cobertura_desconhecida"):
+        obs(status="partial", motivo="janela_aberta", cobertura_ppm=None, **aberto)
