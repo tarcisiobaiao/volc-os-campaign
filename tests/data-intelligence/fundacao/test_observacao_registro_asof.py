@@ -209,9 +209,12 @@ def _conteudo(estado):
 
 def test_propriedade_idempotencia_e_as_of(obs):
     rng = random.Random(20261016)
+    caminhos = {x: 0 for x in ResultadoRegistro}
     for _ in range(150):
         seq = _gerar_sequencia(obs, rng, rng.randint(1, 25))
-        r = Registro(seq)
+        r = Registro()
+        for x in r.registrar_todas(seq):
+            caminhos[x] += 1
         n = len(r)
         assert all(x is ResultadoRegistro.NOOP for x in r.registrar_todas(seq)), "reaplicar a sequência não é no-op"
         assert len(r) == n
@@ -226,3 +229,4 @@ def test_propriedade_idempotencia_e_as_of(obs):
         fim = latest(r.observacoes, _t(obs, 10_000))
         for o in fim.values():
             assert (o.valor is None) == (o.status in (StatusObservacao.MISSING, StatusObservacao.UNAVAILABLE))
+    assert all(v > 0 for v in caminhos.values()), f"gerador não exercitou todos os caminhos: {caminhos}"
