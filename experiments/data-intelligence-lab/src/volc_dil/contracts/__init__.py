@@ -14,7 +14,7 @@ from .aggregate import (
     rotulo_economico,
     verificar_nao_circular,
 )
-from .fingerprint import json_canonico, manifesto_execucao, sha256_arquivo, sha256_de, versoes
+from .fingerprint import json_canonico, manifesto_execucao, sha256_arquivo, sha256_codigo, sha256_de, versoes
 from .money import MICROS, Dinheiro, MoedasDiferentes
 from .observation import ChaveUnidade, ContratoViolado, Observacao
 from .snapshot import ESQUEMA_SNAPSHOT, Snapshot, VazamentoDeFuturo, VersaoAmbigua, verificar_sem_futuro
@@ -35,6 +35,6 @@ __all__ = [
     "Metrica", "MetodoAtribuicao", "MoedasDiferentes", "Observacao", "RECEITA_CONTABIL",
     "ROTULO_ECONOMICO", "Snapshot", "ValueKind", "ValueKindsMisturados", "VazamentoDeFuturo",
     "VersaoAmbigua", "agregar", "contribuicao", "exigir_mesma_identidade", "json_canonico",
-    "manifesto_execucao", "rotulo_economico", "sha256_arquivo", "sha256_de", "verificar_nao_circular",
+    "manifesto_execucao", "rotulo_economico", "sha256_arquivo", "sha256_codigo", "sha256_de", "verificar_nao_circular",
     "verificar_sem_futuro", "versoes",
 ]

@@ -37,13 +37,34 @@ def versoes(pacotes: Iterable[str] = PACOTES_RASTREADOS) -> dict[str, str | None
     return saida
 
 
-def manifesto_execucao(*, nome: str, seed: int | None, entradas: dict[str, str], parametros: dict) -> dict:
-    """Manifesto mínimo exigido de todo resultado: sem seed+fingerprint+versões, resultado é inválido."""
+def sha256_codigo(caminhos: Iterable[str]) -> str:
+    """Hash do código que produziu um resultado. Chave = nome do arquivo (independe da máquina)."""
+    import os
+
+    return sha256_de({os.path.basename(c): sha256_arquivo(c) for c in sorted(caminhos)})
+
+
+def manifesto_execucao(
+    *,
+    nome: str,
+    seed: int | None,
+    entradas: dict[str, str],
+    parametros: dict,
+    codigo_sha256: str | None = None,
+    resultado: Any = None,
+) -> dict:
+    """Manifesto mínimo exigido de todo resultado: sem seed+fingerprint+versões, resultado é inválido.
+
+    O fingerprint cobre seed, entradas, parâmetros e — quando informados — o hash do código e
+    o hash do resultado; assim, mudar o código ou o número muda o fingerprint.
+    """
     corpo = {
         "nome": nome,
         "seed": seed,
         "entradas_sha256": dict(sorted(entradas.items())),
         "parametros": parametros,
+        "codigo_sha256": codigo_sha256,
+        "resultado_sha256": sha256_de(resultado) if resultado is not None else None,
         "versoes": versoes(),
     }
     corpo["fingerprint"] = sha256_de({k: v for k, v in corpo.items() if k != "versoes"})
