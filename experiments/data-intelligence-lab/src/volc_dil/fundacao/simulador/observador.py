@@ -507,7 +507,7 @@ class _Emissor:
                 arm.append("custo_zero_inserido")
             leitura_id = hashlib.sha256(f"{ctx['run_id']}|{entidade}|{metrica}|{ja_ini}".encode()).hexdigest()[:20]
             vf = final.get(metrica)
-            if fonte == "site_analytics" and metrica == "pageviews" and valor is not None and vf is not None and valor < vf:
+            if (self.po.site_dedup_por_segundo and fonte == "site_analytics" and metrica == "pageviews" and valor is not None and vf is not None and valor < vf and "zero_falso" not in arm):
                 arm.append("dedup_por_segundo")
             rest = (valor - vf) if (valor is not None and vf is not None and metrica in ("cost", "clicks")
                                     and fonte == "google_ads" and sl.tipo != "intradia") else None

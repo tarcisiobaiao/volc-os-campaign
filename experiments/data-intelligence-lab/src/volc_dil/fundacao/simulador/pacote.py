@@ -29,8 +29,8 @@ from . import cenarios as _cen
 from .calibracao import medir_forma
 
 # Tamanhos do pacote (o catálogo é 50×30; o pacote é reduzido para caber em poucos MB).
-TAMANHO_PACOTE = (6, 14)
-TAMANHO_PACOTE_ESCALA = (60, 7)
+TAMANHO_PACOTE = (4, 7)
+TAMANHO_PACOTE_ESCALA = (40, 3)
 
 
 def _arquivos_codigo() -> list[str]:
