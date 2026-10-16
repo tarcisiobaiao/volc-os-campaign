@@ -1,0 +1,30 @@
+alembic==1.20.0
+    # via optuna
+colorlog==6.12.0
+    # via optuna
+mako==1.4.3
+    # via alembic
+markupsafe==3.0.3
+    # via mako
+numpy==2.5.3
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   optuna
+optuna==5.0.0
+packaging==26.3
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   optuna
+pyyaml==6.0.3
+    # via optuna
+sqlalchemy==2.1.1
+    # via
+    #   alembic
+    #   optuna
+tqdm==4.70.1
+    # via optuna
+typing-extensions==4.16.0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   alembic
+    #   sqlalchemy

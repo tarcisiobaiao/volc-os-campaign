@@ -1,0 +1,14 @@
+lightgbm==4.7.0
+narwhals==2.26.0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   lightgbm
+numpy==2.5.3
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   lightgbm
+    #   scipy
+scipy==1.18.1
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   lightgbm

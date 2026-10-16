@@ -1,0 +1,654 @@
+{
+ "duckdb": {
+  "version": "1.5.6",
+  "uploaded": "2026-09-28T13:37:14.588282Z",
+  "requires_python": ">=3.10.0",
+  "license": "",
+  "classifiers": [
+   "MIT License"
+  ],
+  "cp313_arm": [
+   "duckdb-1.5.6-cp313-cp313-macosx_10_13_universal2.whl",
+   "duckdb-1.5.6-cp313-cp313-macosx_11_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 32810376,
+  "last_before_cutoff": [
+   "2026-09-28T13:37:14.588282Z",
+   "1.5.6"
+  ],
+  "n_deps": 6
+ },
+ "polars": {
+  "version": "2.0.0",
+  "uploaded": "2026-10-06T11:44:04.327938Z",
+  "requires_python": ">=3.10",
+  "license": "Copyright (c) 2025 Ritchie Vink\n        ",
+  "classifiers": [
+   "MIT License"
+  ],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 876611,
+  "last_before_cutoff": [
+   "2026-09-09T07:40:12.053452Z",
+   "1.44.2"
+  ],
+  "n_deps": 31
+ },
+ "optuna": {
+  "version": "5.0.0",
+  "uploaded": "2026-09-07T05:16:19.943294Z",
+  "requires_python": ">=3.9",
+  "license": "",
+  "classifiers": [
+   "MIT License"
+  ],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 442352,
+  "last_before_cutoff": [
+   "2026-09-07T05:16:19.943294Z",
+   "5.0.0"
+  ],
+  "n_deps": 37
+ },
+ "confseq": {
+  "version": "0.0.11",
+  "uploaded": "2023-01-26T06:02:45.182961Z",
+  "requires_python": "",
+  "license": "",
+  "classifiers": [
+   "MIT License"
+  ],
+  "cp313_arm": [],
+  "pure": false,
+  "whl_size": 0,
+  "last_before_cutoff": [
+   "2023-01-26T06:02:45.182961Z",
+   "0.0.11"
+  ],
+  "n_deps": 7
+ },
+ "mabwiser": {
+  "version": "2.7.4",
+  "uploaded": "2024-08-30T23:41:06.353420Z",
+  "requires_python": null,
+  "license": "",
+  "classifiers": [
+   "Apache Software License"
+  ],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 61081,
+  "last_before_cutoff": [
+   "2024-08-30T23:41:06.353420Z",
+   "2.7.4"
+  ],
+  "n_deps": 6
+ },
+ "vowpalwabbit": {
+  "version": "9.11.9",
+  "uploaded": "2026-09-27T23:37:41.046938Z",
+  "requires_python": ">=3.10",
+  "license": "BSD 3-Clause License",
+  "classifiers": [
+   "BSD License"
+  ],
+  "cp313_arm": [
+   "vowpalwabbit-9.11.9-cp313-cp313-macosx_11_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 2292283,
+  "last_before_cutoff": [
+   "2026-09-27T23:37:41.046938Z",
+   "9.11.9"
+  ],
+  "n_deps": 0
+ },
+ "obp": {
+  "version": "0.5.7",
+  "uploaded": "2023-04-14T21:06:58.073828Z",
+  "requires_python": "",
+  "license": "Apache License",
+  "classifiers": [
+   "Apache Software License"
+  ],
+  "cp313_arm": [],
+  "pure": false,
+  "whl_size": 0,
+  "last_before_cutoff": [
+   "2023-04-14T21:06:58.073828Z",
+   "0.5.7"
+  ],
+  "n_deps": 0
+ },
+ "scikit-learn": {
+  "version": "1.9.1",
+  "uploaded": "2026-09-10T18:32:29.891551Z",
+  "requires_python": ">=3.11",
+  "license": "BSD-3-Clause",
+  "classifiers": [],
+  "cp313_arm": [
+   "scikit_learn-1.9.1-cp313-cp313-macosx_12_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 8262364,
+  "last_before_cutoff": [
+   "2026-09-10T18:32:29.891551Z",
+   "1.9.1"
+  ],
+  "n_deps": 5
+ },
+ "statsmodels": {
+  "version": "0.15.0",
+  "uploaded": "2026-08-27T10:34:19.376888Z",
+  "requires_python": ">=3.10",
+  "license": "BSD-3-Clause",
+  "classifiers": [],
+  "cp313_arm": [
+   "statsmodels-0.15.0-cp313-cp313-macosx_11_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 11556170,
+  "last_before_cutoff": [
+   "2026-08-27T10:34:19.376888Z",
+   "0.15.0"
+  ],
+  "n_deps": 42
+ },
+ "lightgbm": {
+  "version": "4.7.0",
+  "uploaded": "2026-07-18T21:00:35.225082Z",
+  "requires_python": ">=3.10",
+  "license": "",
+  "classifiers": [],
+  "cp313_arm": [
+   "lightgbm-4.7.0-py3-none-macosx_12_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 1498914,
+  "last_before_cutoff": [
+   "2026-07-18T21:00:35.225082Z",
+   "4.7.0"
+  ],
+  "n_deps": 15
+ },
+ "catboost": {
+  "version": "1.2.10",
+  "uploaded": "2026-02-18T16:11:29.502872Z",
+  "requires_python": null,
+  "license": "Apache License, Version 2.0",
+  "classifiers": [],
+  "cp313_arm": [
+   "catboost-1.2.10-cp313-cp313-macosx_11_0_universal2.whl"
+  ],
+  "pure": false,
+  "whl_size": 28829400,
+  "last_before_cutoff": [
+   "2026-02-18T16:11:29.502872Z",
+   "1.2.10"
+  ],
+  "n_deps": 10
+ },
+ "pymc-marketing": {
+  "version": "1.2.0",
+  "uploaded": "2026-09-29T05:19:55.417072Z",
+  "requires_python": ">=3.12",
+  "license": "Apache License\n                         ",
+  "classifiers": [
+   "Apache Software License"
+  ],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 771110,
+  "last_before_cutoff": [
+   "2026-09-29T05:19:55.417072Z",
+   "1.2.0"
+  ],
+  "n_deps": 84
+ },
+ "pymc": {
+  "version": "6.3.2",
+  "uploaded": "2026-09-08T12:53:34.476379Z",
+  "requires_python": ">=3.12",
+  "license": "Apache License, Version 2.0",
+  "classifiers": [
+   "Apache Software License"
+  ],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 608275,
+  "last_before_cutoff": [
+   "2026-09-08T12:53:34.476379Z",
+   "6.3.2"
+  ],
+  "n_deps": 11
+ },
+ "ortools": {
+  "version": "9.15.6755",
+  "uploaded": "2026-01-14T15:37:15.704449Z",
+  "requires_python": ">=3.9",
+  "license": "Apache 2.0",
+  "classifiers": [
+   "Apache Software License"
+  ],
+  "cp313_arm": [
+   "ortools-9.15.6755-cp313-cp313-macosx_11_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 21914246,
+  "last_before_cutoff": [
+   "2026-01-14T15:37:15.704449Z",
+   "9.15.6755"
+  ],
+  "n_deps": 6
+ },
+ "cvxpy": {
+  "version": "1.9.3",
+  "uploaded": "2026-09-19T16:43:46.676102Z",
+  "requires_python": ">=3.11",
+  "license": "Apache-2.0",
+  "classifiers": [],
+  "cp313_arm": [
+   "cvxpy-1.9.3-cp313-cp313-macosx_10_13_universal2.whl"
+  ],
+  "pure": false,
+  "whl_size": 1663654,
+  "last_before_cutoff": [
+   "2026-09-19T16:43:46.676102Z",
+   "1.9.3"
+  ],
+  "n_deps": 39
+ },
+ "google-ads": {
+  "version": "34.0.0",
+  "uploaded": "2026-10-15T14:47:05.276766Z",
+  "requires_python": "<3.15,>=3.9",
+  "license": "Apache License\n                         ",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 19440103,
+  "last_before_cutoff": [
+   "2026-09-23T21:18:12.542758Z",
+   "33.0.0"
+  ],
+  "n_deps": 18
+ },
+ "google-ads-api-report-fetcher": {
+  "version": "1.18.3",
+  "uploaded": "2026-02-04T09:26:12.605529Z",
+  "requires_python": ">=3.9",
+  "license": "Apache 2.0",
+  "classifiers": [
+   "Apache Software License"
+  ],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 58995,
+  "last_before_cutoff": [
+   "2026-02-04T09:26:12.605529Z",
+   "1.18.3"
+  ],
+  "n_deps": 16
+ },
+ "garf-core": {
+  "version": "1.3.3",
+  "uploaded": "2026-09-29T08:34:33.902311Z",
+  "requires_python": ">=3.9",
+  "license": "Apache 2.0",
+  "classifiers": [
+   "Apache Software License"
+  ],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 45047,
+  "last_before_cutoff": [
+   "2026-09-29T08:34:33.902311Z",
+   "1.3.3"
+  ],
+  "n_deps": 14
+ },
+ "garf-google-ads": {
+  "version": "1.2.1",
+  "uploaded": "2026-07-30T08:29:48.406401Z",
+  "requires_python": ">=3.9",
+  "license": "Apache 2.0",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 34691,
+  "last_before_cutoff": [
+   "2026-07-30T08:29:48.406401Z",
+   "1.2.1"
+  ],
+  "n_deps": 9
+ },
+ "google-ads-mcp": {
+  "version": "0.0.5",
+  "uploaded": "2026-10-09T14:04:25.047657Z",
+  "requires_python": ">=3.10",
+  "license": "Apache-2.0",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 37903,
+  "last_before_cutoff": [
+   "2026-09-25T13:15:17.092869Z",
+   "0.0.4"
+  ],
+  "n_deps": 6
+ },
+ "sentence-transformers": {
+  "version": "6.1.0",
+  "uploaded": "2026-09-18T10:44:22.841108Z",
+  "requires_python": ">=3.10",
+  "license": "Apache-2.0",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 740560,
+  "last_before_cutoff": [
+   "2026-09-18T10:44:22.841108Z",
+   "6.1.0"
+  ],
+  "n_deps": 27
+ },
+ "bertopic": {
+  "version": "0.17.4",
+  "uploaded": "2025-12-03T14:19:32.884893Z",
+  "requires_python": ">=3.10",
+  "license": "MIT License\r\n        \r\n        Copyright",
+  "classifiers": [
+   "MIT License"
+  ],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 154669,
+  "last_before_cutoff": [
+   "2025-12-03T14:19:32.884893Z",
+   "0.17.4"
+  ],
+  "n_deps": 30
+ },
+ "pgvector": {
+  "version": "0.5.1",
+  "uploaded": "2026-10-09T01:50:21.614621Z",
+  "requires_python": ">=3.10",
+  "license": "MIT",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 31056,
+  "last_before_cutoff": [
+   "2026-07-06T18:27:26.797803Z",
+   "0.5.0"
+  ],
+  "n_deps": 0
+ },
+ "feast": {
+  "version": "0.67.0",
+  "uploaded": "2026-10-13T13:57:45.293547Z",
+  "requires_python": ">=3.10.0",
+  "license": "Apache-2.0",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 9311292,
+  "last_before_cutoff": [
+   "2026-09-30T14:21:55.416872Z",
+   "0.67.0.dev114"
+  ],
+  "n_deps": 165
+ },
+ "prefect": {
+  "version": "3.8.8",
+  "uploaded": "2026-10-06T16:57:05.314926Z",
+  "requires_python": "<3.15,>=3.10",
+  "license": "Apache-2.0",
+  "classifiers": [
+   "Apache Software License"
+  ],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 6948513,
+  "last_before_cutoff": [
+   "2026-09-30T08:23:10.299754Z",
+   "3.8.8.dev1"
+  ],
+  "n_deps": 83
+ },
+ "dagster": {
+  "version": "1.13.26",
+  "uploaded": "2026-10-09T21:27:07.378285Z",
+  "requires_python": "<3.15,>=3.10",
+  "license": "Apache-2.0",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 2041580,
+  "last_before_cutoff": [
+   "2026-09-21T23:16:50.420021Z",
+   "1.13.24"
+  ],
+  "n_deps": 100
+ },
+ "apache-airflow": {
+  "version": "3.3.2",
+  "uploaded": "2026-09-17T08:38:26.148357Z",
+  "requires_python": "!=3.15,>=3.10",
+  "license": "Apache-2.0",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 13331,
+  "last_before_cutoff": [
+   "2026-09-17T08:38:26.148357Z",
+   "3.3.2"
+  ],
+  "n_deps": 251
+ },
+ "ray": {
+  "version": "2.59.0",
+  "uploaded": "2026-10-02T07:01:58.582482Z",
+  "requires_python": ">=3.10",
+  "license": "Apache 2.0",
+  "classifiers": [],
+  "cp313_arm": [
+   "ray-2.59.0-cp313-cp313-macosx_12_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 67360214,
+  "last_before_cutoff": [
+   "2026-08-23T04:45:46.075988Z",
+   "2.58.0"
+  ],
+  "n_deps": 285
+ },
+ "redis": {
+  "version": "8.1.0",
+  "uploaded": "2026-07-30T08:50:58.497552Z",
+  "requires_python": ">=3.10",
+  "license": "MIT",
+  "classifiers": [
+   "MIT License"
+  ],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 560618,
+  "last_before_cutoff": [
+   "2026-07-30T08:50:58.497552Z",
+   "8.1.0"
+  ],
+  "n_deps": 11
+ },
+ "clickhouse-connect": {
+  "version": "1.10.1",
+  "uploaded": "2026-10-14T23:16:13.591808Z",
+  "requires_python": "<3.15,>=3.10",
+  "license": "Apache-2.0",
+  "classifiers": [],
+  "cp313_arm": [
+   "clickhouse_connect-1.10.1-cp313-cp313-macosx_11_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 485535,
+  "last_before_cutoff": [
+   "2026-09-22T15:07:25.609664Z",
+   "1.9.0"
+  ],
+  "n_deps": 22
+ },
+ "google-cloud-bigquery": {
+  "version": "3.46.2",
+  "uploaded": "2026-10-15T17:49:06.152785Z",
+  "requires_python": ">=3.10",
+  "license": "Apache 2.0",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 269195,
+  "last_before_cutoff": [
+   "2026-09-17T20:29:41.900000Z",
+   "3.45.2"
+  ],
+  "n_deps": 31
+ },
+ "riskfolio-lib": {
+  "version": "7.4.0",
+  "uploaded": "2026-10-04T05:08:17.005854Z",
+  "requires_python": ">=3.10",
+  "license": "BSD (3-clause)",
+  "classifiers": [],
+  "cp313_arm": [
+   "riskfolio_lib-7.4.0-cp313-cp313-macosx_10_13_universal2.whl"
+  ],
+  "pure": false,
+  "whl_size": 434293,
+  "last_before_cutoff": [
+   "2026-05-31T07:11:19.001687Z",
+   "7.3.0"
+  ],
+  "n_deps": 15
+ },
+ "bytewax": {
+  "version": "0.21.1",
+  "uploaded": "2024-11-25T20:09:29.964577Z",
+  "requires_python": ">=3.8",
+  "license": "",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": false,
+  "whl_size": 0,
+  "last_before_cutoff": [
+   "2024-11-25T20:09:29.964577Z",
+   "0.21.1"
+  ],
+  "n_deps": 5
+ },
+ "scikit-survival": {
+  "version": "0.28.0",
+  "uploaded": "2026-07-05T12:04:16.604087Z",
+  "requires_python": ">=3.11",
+  "license": "GPL-3.0-or-later",
+  "classifiers": [],
+  "cp313_arm": [
+   "scikit_survival-0.28.0-cp313-cp313-macosx_11_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 890611,
+  "last_before_cutoff": [
+   "2026-07-05T12:04:16.604087Z",
+   "0.28.0"
+  ],
+  "n_deps": 9
+ },
+ "prophet": {
+  "version": "1.5.0",
+  "uploaded": "2026-10-05T06:25:22.379005Z",
+  "requires_python": ">=3.10",
+  "license": "MIT",
+  "classifiers": [],
+  "cp313_arm": [
+   "prophet-1.5.0-py3-none-macosx_11_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 12018178,
+  "last_before_cutoff": [
+   "2026-08-15T04:04:39.335938Z",
+   "1.4.0"
+  ],
+  "n_deps": 17
+ },
+ "google-meridian": {
+  "version": "2.1.0",
+  "uploaded": "2026-09-25T00:09:50.560978Z",
+  "requires_python": ">=3.10",
+  "license": "",
+  "classifiers": [],
+  "cp313_arm": [],
+  "pure": true,
+  "whl_size": 635909,
+  "last_before_cutoff": [
+   "2026-09-25T00:09:50.560978Z",
+   "2.1.0"
+  ],
+  "n_deps": 37
+ },
+ "numpy": {
+  "version": "2.5.4",
+  "uploaded": "2026-10-10T20:02:40.843976Z",
+  "requires_python": ">=3.12",
+  "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+  "classifiers": [],
+  "cp313_arm": [
+   "numpy-2.5.4-cp313-cp313-macosx_11_0_arm64.whl",
+   "numpy-2.5.4-cp313-cp313-macosx_14_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 12009826,
+  "last_before_cutoff": [
+   "2026-09-06T16:24:29.244371Z",
+   "2.5.3"
+  ],
+  "n_deps": 0
+ },
+ "scipy": {
+  "version": "1.18.1",
+  "uploaded": "2026-08-21T23:23:44.522812Z",
+  "requires_python": ">=3.12",
+  "license": "Copyright (c) 2001-2002 Enthought, Inc. ",
+  "classifiers": [
+   "BSD License"
+  ],
+  "cp313_arm": [
+   "scipy-1.18.1-cp313-cp313-macosx_12_0_arm64.whl",
+   "scipy-1.18.1-cp313-cp313-macosx_14_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 28715106,
+  "last_before_cutoff": [
+   "2026-08-21T23:23:44.522812Z",
+   "1.18.1"
+  ],
+  "n_deps": 40
+ },
+ "torch": {
+  "version": "2.14.1",
+  "uploaded": "2026-09-30T17:43:48.426734Z",
+  "requires_python": ">=3.10",
+  "license": "Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND MIT",
+  "classifiers": [],
+  "cp313_arm": [
+   "torch-2.14.1-cp313-cp313-macosx_14_0_arm64.whl"
+  ],
+  "pure": false,
+  "whl_size": 127315286,
+  "last_before_cutoff": [
+   "2026-09-30T17:43:48.426734Z",
+   "2.14.1"
+  ],
+  "n_deps": 17
+ }
+}

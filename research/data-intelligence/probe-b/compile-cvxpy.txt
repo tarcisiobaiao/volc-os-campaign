@@ -1,0 +1,50 @@
+cffi==2.1.1
+    # via clarabel
+clarabel==0.11.1
+    # via cvxpy
+cloudpickle==3.1.2
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   joblib
+cvxpy==1.9.3
+highspy==1.15.1
+    # via cvxpy
+jinja2==3.1.6
+    # via osqp
+joblib==1.6.0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   osqp
+markupsafe==3.0.3
+    # via jinja2
+numpy==2.5.3
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   clarabel
+    #   cvxpy
+    #   highspy
+    #   osqp
+    #   qdldl
+    #   scipy
+    #   scs
+    #   sparsediffpy
+osqp==1.1.3
+    # via cvxpy
+pycparser==3.0
+    # via cffi
+qdldl==0.1.9.post1
+    # via cvxpy
+scipy==1.18.1
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   clarabel
+    #   cvxpy
+    #   osqp
+    #   qdldl
+    #   scs
+scs==3.3.1
+    # via cvxpy
+setuptools==84.0.0
+    # via osqp
+sparsediffpy==0.6.1
+    # via cvxpy

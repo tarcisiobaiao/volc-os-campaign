@@ -1,0 +1,8 @@
+== ortools+google-ads 33
+protobuf==6.33.6
+== ortools + protobuf==7.35.1 (pin do backend)
+error: No solution found when resolving dependencies
+  cause: Because ortools>=9.15.6755 depends on protobuf>=6.33.1,<6.34 and you require ortools==9.15.6755, we can conclude that you require protobuf>=6.33.1,<6.34.
+         And because you require protobuf==7.35.1, we can conclude that your requirements are unsatisfiable.
+== google-ads-mcp 0.0.4 (n pacotes)
+87

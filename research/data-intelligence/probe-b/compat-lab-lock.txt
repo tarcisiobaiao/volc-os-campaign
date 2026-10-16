@@ -1,0 +1,44 @@
+== pymc-marketing==1.2.0
+error: No solution found when resolving dependencies
+  cause: Because pymc-marketing>=1.2.0 depends on numpy>=2.0,<2.5 and numpy==2.5.3, we can conclude that pymc-marketing>=1.2.0 cannot be used.
+         And because you require pymc-marketing==1.2.0, we can conclude that your requirements are unsatisfiable.
+rc=1 n=0
+== optuna==5.0.0
+rc=0 n=11
+== mabwiser==2.7.4
+rc=0 n=20
+== vowpalwabbit==9.11.9
+rc=0 n=1
+== lightgbm==4.7.0
+rc=0 n=4
+== catboost==1.2.10
+rc=0 n=17
+== cvxpy==1.9.3
+rc=0 n=16
+== ortools==9.15.6755
+rc=0 n=9
+== google-ads==33.0.0
+rc=0 n=24
+== scikit-survival==0.28.0
+rc=0 n=17
+== prophet==1.4.0
+rc=0 n=17
+== riskfolio-lib==7.3.0
+rc=0 n=85
+== bertopic==0.17.4
+rc=0 n=51
+== sentence-transformers==6.1.0
+rc=0 n=41
+== google-meridian==2.1.0
+error: No solution found when resolving dependencies
+  cause: Because google-meridian>=2.1.0 depends on statsmodels>=0.14.5,<0.15 and statsmodels==0.15.0, we can conclude that google-meridian>=2.1.0 cannot be used.
+         And because you require google-meridian==2.1.0, we can conclude that your requirements are unsatisfiable.
+rc=1 n=0
+== garf-google-ads==1.2.1
+rc=0 n=47
+== bytewax==0.21.1
+error: No solution found when resolving dependencies
+  cause: Because bytewax==0.21.1 has no wheels with a matching Python ABI tag (e.g., `cp313`) and you require bytewax==0.21.1, we can conclude that your requirements are unsatisfiable.
+
+hint: You require CPython 3.13 (`cp313`), but we only found wheels for `bytewax` (v0.21.1) with the following Python ABI tags: `cp38`, `cp39`, `cp310`, `cp311`, `cp312`
+rc=1 n=0

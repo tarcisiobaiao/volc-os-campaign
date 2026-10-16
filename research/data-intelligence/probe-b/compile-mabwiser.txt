@@ -1,0 +1,71 @@
+cloudpickle==3.1.2
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   joblib
+contourpy==1.4.0
+    # via matplotlib
+cycler==0.12.1
+    # via matplotlib
+fonttools==4.66.1
+    # via matplotlib
+joblib==1.6.0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   mabwiser
+    #   scikit-learn
+kiwisolver==1.5.1
+    # via matplotlib
+mabwiser==2.7.4
+matplotlib==3.11.2
+    # via seaborn
+narwhals==2.26.0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   scikit-learn
+numpy==2.5.3
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   contourpy
+    #   mabwiser
+    #   matplotlib
+    #   pandas
+    #   scikit-learn
+    #   scipy
+    #   seaborn
+packaging==26.3
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   matplotlib
+pandas==3.0.6
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   mabwiser
+    #   seaborn
+pillow==12.3.0
+    # via matplotlib
+pyparsing==3.3.3
+    # via matplotlib
+python-dateutil==2.9.0.post0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   matplotlib
+    #   pandas
+scikit-learn==1.9.1
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   mabwiser
+scipy==1.18.1
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   mabwiser
+    #   scikit-learn
+seaborn==0.13.2
+    # via mabwiser
+six==1.17.0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   python-dateutil
+threadpoolctl==3.7.0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   scikit-learn

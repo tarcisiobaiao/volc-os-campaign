@@ -1,0 +1,54 @@
+catboost==1.2.10
+contourpy==1.4.0
+    # via matplotlib
+cycler==0.12.1
+    # via matplotlib
+fonttools==4.66.1
+    # via matplotlib
+graphviz==0.21
+    # via catboost
+kiwisolver==1.5.1
+    # via matplotlib
+matplotlib==3.11.2
+    # via catboost
+narwhals==2.26.0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   plotly
+numpy==2.5.3
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   catboost
+    #   contourpy
+    #   matplotlib
+    #   pandas
+    #   scipy
+packaging==26.3
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   matplotlib
+    #   plotly
+pandas==3.0.6
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   catboost
+pillow==12.3.0
+    # via matplotlib
+plotly==7.1.0
+    # via catboost
+pyparsing==3.3.3
+    # via matplotlib
+python-dateutil==2.9.0.post0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   matplotlib
+    #   pandas
+scipy==1.18.1
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   catboost
+six==1.17.0
+    # via
+    #   -c ../../research/data-intelligence/probe-b/lab-lock-constraints.txt
+    #   catboost
+    #   python-dateutil
