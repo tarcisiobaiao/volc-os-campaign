@@ -89,14 +89,15 @@ class Snapshot:
             versoes.sort(key=lambda x: x.disponivel_em)
             ultima = versoes[-1]
             empatadas = [v for v in versoes if v.disponivel_em == ultima.disponivel_em]
-            conteudos = {sha256_de(v.para_json()) for v in empatadas}
-            if len(conteudos) > 1:
+            # só serializa/hasheia quando há empate (perfil da bancada: ~90% do tempo era aqui)
+            if len(empatadas) > 1 and len({sha256_de(v.para_json()) for v in empatadas}) > 1:
                 raise VersaoAmbigua(f"versões conflitantes do mesmo fato no mesmo instante: {chave[0].entidade_id}/{chave[1]}")
             escolhidas.append(ultima)
             substituidas += len(versoes) - len(empatadas)
 
-        escolhidas.sort(key=lambda o: sha256_de(o.para_json()))
-        corpo = [o.para_json() for o in escolhidas]
+        pares = sorted(((sha256_de(j), j, o) for o in escolhidas for j in (o.para_json(),)), key=lambda x: x[0])
+        escolhidas = [o for _, _, o in pares]
+        corpo = [j for _, j, _ in pares]
         moedas = Counter(o.moeda for o in escolhidas if o.moeda)
         manifesto = {
             "esquema": ESQUEMA_SNAPSHOT,

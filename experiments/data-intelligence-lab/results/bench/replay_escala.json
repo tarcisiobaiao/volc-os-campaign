@@ -38,10 +38,10 @@
    "n_dias": 20,
    "n_unidades": 9,
    "obs_por_snapshot_max": 234,
-   "politica_s": 0.003,
-   "snapshot_ms_por_decisao": 3.77,
-   "snapshot_s": 0.072,
-   "total_s": 0.08
+   "politica_s": 0.004,
+   "snapshot_ms_por_decisao": 2.32,
+   "snapshot_s": 0.044,
+   "total_s": 0.054
   },
   {
    "decisoes": 19,
@@ -49,10 +49,10 @@
    "n_dias": 20,
    "n_unidades": 51,
    "obs_por_snapshot_max": 1326,
-   "politica_s": 0.016,
-   "snapshot_ms_por_decisao": 22.09,
-   "snapshot_s": 0.42,
-   "total_s": 0.465
+   "politica_s": 0.015,
+   "snapshot_ms_por_decisao": 13.26,
+   "snapshot_s": 0.252,
+   "total_s": 0.297
   },
   {
    "decisoes": 19,
@@ -60,21 +60,21 @@
    "n_dias": 20,
    "n_unidades": 201,
    "obs_por_snapshot_max": 5226,
-   "politica_s": 0.06,
-   "snapshot_ms_por_decisao": 86.23,
-   "snapshot_s": 1.638,
-   "total_s": 1.81
+   "politica_s": 0.062,
+   "snapshot_ms_por_decisao": 51.83,
+   "snapshot_s": 0.985,
+   "total_s": 1.158
   },
   {
    "decisoes": 19,
-   "emissao_s": 0.252,
+   "emissao_s": 0.257,
    "n_dias": 20,
    "n_unidades": 501,
    "obs_por_snapshot_max": 13026,
-   "politica_s": 0.155,
-   "snapshot_ms_por_decisao": 217.13,
-   "snapshot_s": 4.125,
-   "total_s": 4.557
+   "politica_s": 0.163,
+   "snapshot_ms_por_decisao": 141.73,
+   "snapshot_s": 2.693,
+   "total_s": 3.139
   }
  ]
 }
