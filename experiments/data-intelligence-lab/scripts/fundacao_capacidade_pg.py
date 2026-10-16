@@ -518,7 +518,11 @@ def medir_dil_obs(cl: Cluster, n_alvo: int) -> dict:
         for forma, q in (("funcao", f"select count(*) from dil_obs.observacao_as_of('{t}')"),
                          ("consulta", f"select count(*) from (select distinct on (chave_natural) chave_natural "
                                       f"from dil_obs.observacao where available_at <= '{t}' "
-                                      f"order by chave_natural, available_at desc) s")):
+                                      f"order by chave_natural, available_at desc) s"),
+                         # mesma consulta da função, linha inteira (o.*), mas inline: separa o custo de não-inlining
+                         ("consulta_linha_inteira", f"select count(*) from (select distinct on (o.chave_natural) o.* "
+                                                    f"from dil_obs.observacao o where o.available_at <= '{t}' "
+                                                    f"order by o.chave_natural, o.available_at desc) s")):
             tempos, linhas = [], None
             for _ in range(N_GLOBAL + 1):
                 t1 = time.perf_counter()
@@ -687,6 +691,7 @@ def main() -> int:
     ap.add_argument("--porta", type=int, default=54931)
     ap.add_argument("--raiz-tmp", default=None, help="diretório do cluster (padrão: artifacts/ do lab, gitignored)")
     ap.add_argument("--payload-linhas", type=int, default=20000)
+    ap.add_argument("--apenas-dil-obs", action="store_true", help="só o DDL real da frente A (escalas <= 1e6)")
     a = ap.parse_args()
     escalas = [int(float(x)) for x in a.escalas.split(",")]
     lab = Path(__file__).resolve().parents[1]
@@ -710,8 +715,13 @@ def main() -> int:
             "select name, setting from pg_settings where name in ('fsync','synchronous_commit','wal_level',"
             "'shared_buffers','work_mem','default_toast_compression','block_size','autovacuum')").splitlines())
         cl.sql(PROC)
+        if a.apenas_dil_obs:
+            for n in escalas:
+                print(f"[pg] dil_obs_0001 n={n:.0e}", file=sys.stderr, flush=True)
+                resultado["medicoes"].append(medir_dil_obs(cl, n))
+            escalas = []
         t0 = time.perf_counter()
-        resultado["payload"] = medir_payload(cl, a.payload_linhas, 200)
+        resultado["payload"] = medir_payload(cl, a.payload_linhas, 200) if escalas else None
         resultado["payload_s"] = time.perf_counter() - t0
         for n in escalas:
             variantes = ["longo"] if n >= 10**7 else ["longo", "texto", "largo", "jsonb", "v21"]
@@ -739,7 +749,7 @@ def main() -> int:
     dir_an = raiz.parent / "fundacao_capacidade_analitico"
     dir_an.mkdir(parents=True, exist_ok=True)
     try:
-        resultado["analitico"] = [comparar_analitico(n, dir_an) for n in escalas if n <= 10**7]
+        resultado["analitico"] = [comparar_analitico(n, dir_an) for n in escalas if n <= 10**7] if escalas else []
     finally:
         shutil.rmtree(dir_an, ignore_errors=True)
     resultado["fim_epoch"] = time.time()

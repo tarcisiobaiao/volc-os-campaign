@@ -38,6 +38,18 @@ REAL = {
 }
 
 
+def carregar_pg() -> dict:
+    """pg_medicoes.json + (se existir) a rodada só do DDL da frente A, que substitui as linhas dil_obs_0001."""
+    pg = json.loads((BENCH / "pg_medicoes.json").read_text(encoding="utf-8"))
+    sup = BENCH / "pg_medicoes_dil_obs.json"
+    if sup.exists():
+        extra = json.loads(sup.read_text(encoding="utf-8"))
+        pg["medicoes"] = [m for m in pg["medicoes"] if m["variante"] != "dil_obs_0001"] + extra["medicoes"]
+        pg["rodada_dil_obs"] = {k: extra.get(k) for k in ("duracao_s", "cluster_apagado", "pico_amostrado_dir_cluster_bytes",
+                                                          "amostras")}
+    return pg
+
+
 def _medicao(pg: dict, variante: str, n: int, part: bool = False) -> dict:
     for m in pg["medicoes"]:
         if m["variante"] == variante and m["n_alvo"] == n and m["particionada"] == part:
@@ -89,7 +101,7 @@ GRADE_POLITICAS = (  # (política, perfil)
 
 def rodar() -> dict:
     pg_path, horas_path = BENCH / "pg_medicoes.json", BENCH / "horas_campanha_d30.json"
-    pg = json.loads(pg_path.read_text(encoding="utf-8"))
+    pg = carregar_pg()
     pfs = perfis(pg)
     conjuntos = {"atual": cen.jobs_atuais(), "vertical_completa": cen.jobs_vertical_completa()}
     grade = []
@@ -177,7 +189,9 @@ def rodar() -> dict:
                            + [str(Path(__file__))])
     corpo["manifesto"] = manifesto_execucao(
         nome="fundacao_capacidade_modelo", seed=SEED,
-        entradas={"pg_medicoes.json": sha256_arquivo(str(pg_path)), "horas_campanha_d30.json": sha256_arquivo(str(horas_path))},
+        entradas={"pg_medicoes.json": sha256_arquivo(str(pg_path)), "horas_campanha_d30.json": sha256_arquivo(str(horas_path)),
+                  **({"pg_medicoes_dil_obs.json": sha256_arquivo(str(BENCH / "pg_medicoes_dil_obs.json"))}
+                     if (BENCH / "pg_medicoes_dil_obs.json").exists() else {})},
         parametros={"fatores": list(cen.FATORES_CRESCIMENTO), "cadencias": list(cen.CADENCIAS)},
         codigo_sha256=codigo, resultado=grade)
     return corpo
@@ -289,7 +303,8 @@ def medicoes_md(pg: dict) -> str:
          "incluído); globais medidas no cliente psql (inclui ~10–20 ms de processo).", "",
          f"- {pg.get('postgres', '')[:60]}; config {pg.get('config')}; amostras {pg.get('amostras')}",
          f"- duração {_f(pg.get('duracao_s', 0), 0)} s; pico amostrado do diretório do cluster "
-         f"{_f(pg.get('pico_amostrado_dir_cluster_bytes', 0) / GB, 2)} GiB; cluster apagado: {pg.get('cluster_apagado')}", "",
+         f"{_f(pg.get('pico_amostrado_dir_cluster_bytes', 0) / GB, 2)} GiB; cluster apagado: {pg.get('cluster_apagado')}",
+         f"- linhas `dil_obs_0001` vêm da rodada dedicada (`pg_medicoes_dil_obs.json`): {pg.get('rodada_dil_obs')}", "",
          "## Tamanho", "", "| variante | partição | n alvo | linhas | heap B/linha | índices B/linha | total B/valor | índices por nome (MB) |",
          "|---|---|---:|---:|---:|---:|---:|---|"]
     for m in pg["medicoes"]:
@@ -327,7 +342,7 @@ def medicoes_md(pg: dict) -> str:
 
 def main() -> int:
     c = rodar()
-    pg = json.loads((BENCH / "pg_medicoes.json").read_text(encoding="utf-8"))
+    pg = carregar_pg()
     (BENCH / "MEDICOES.md").write_text(medicoes_md(pg), encoding="utf-8")
     (BENCH / "modelo.json").write_text(json.dumps(c, ensure_ascii=False, indent=1, sort_keys=True, default=str) + "\n",
                                        encoding="utf-8")
