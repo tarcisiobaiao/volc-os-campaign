@@ -284,6 +284,11 @@ class Settings(BaseSettings):
     bia_hermes_timeout_s: float = 120.0
     bia_limite_por_minuto: int = 6
     bia_max_caracteres: int = 4000
+    # Executor do cérebro (VPS): comando forçado de SSH de um usuário sem shell
+    # útil. Destino `usuario@host` e caminho da chave PRIVADA dedicada (0600, só
+    # neste host). Ausentes = a gravação pela web fica desligada (503).
+    bia_cerebro_ssh_destino: Optional[str] = None
+    bia_cerebro_ssh_chave: Optional[str] = None
 
     # ---- Behaviour ------------------------------------------------------------
     pautador_persist_default: bool = True  # persist to Supabase when creds exist

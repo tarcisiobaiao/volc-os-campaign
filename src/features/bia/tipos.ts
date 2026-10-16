@@ -59,7 +59,7 @@ export interface ExecucaoDaBia {
   entrada: string;
   resposta: string | null;
   erro: { codigo: string; mensagem: string | null } | null;
-  contexto: { campanha: ContextoPedido | null; anexos: AnexoReferencia[] } | null;
+  contexto: { campanha: ContextoPedido | null; anexos: AnexoReferencia[]; intencao?: IntencaoDeEnvio } | null;
   criada_em: string;
   terminada_em: string | null;
 }
@@ -73,11 +73,72 @@ export interface EstadoDaBia {
   capacidades: string[];
 }
 
+/** Intenção tipada: o servidor monta o pedido à Bia. */
+export type IntencaoDeEnvio = 'rascunho_cerebro';
+
 export interface PedidoDeEnvio {
   request_id: string;
   texto: string;
   contexto?: ContextoPedido;
   anexos?: string[];
+  intencao?: IntencaoDeEnvio;
+}
+
+export type DestinoDoCerebro = 'volc' | 'arbitragem' | 'pessoal';
+export type TipoDeCaptura = 'decisao' | 'captura' | 'pendencia' | 'referencia' | 'nota';
+
+/** O que a Bia devolve no rascunho (JSON pedido pelo servidor). */
+export interface RascunhoDoCerebro {
+  destino: DestinoDoCerebro;
+  titulo: string;
+  tipo: TipoDeCaptura;
+  resumo: string;
+  decisoes: string[];
+  aprendizados: string[];
+  pendencias: string[];
+  hipoteses: string[];
+  tags: string[];
+}
+
+export interface PedidoDeCaptura {
+  request_id: string;
+  destino: DestinoDoCerebro;
+  titulo: string;
+  tipo: TipoDeCaptura;
+  conteudo: string;
+  tags: string[];
+  execucao_id?: string;
+}
+
+export interface CapturaGravada {
+  cerebro: DestinoDoCerebro;
+  repo: string;
+  caminho: string;
+  sidecar: string;
+  sha256: string;
+  bytes: number;
+  salvo_no_servidor: boolean;
+  sincronizado_github: boolean;
+  git: { estado: string; commitado: boolean };
+  ja_existia: boolean;
+}
+
+export interface StatusDoCerebro {
+  repos: {
+    cerebro: DestinoDoCerebro;
+    branch: string | null;
+    commit: string | null;
+    commit_em: string | null;
+    alteracoes: number | null;
+    capturas_web_pendentes: number | null;
+    a_frente: number | null;
+    atras: number | null;
+    ultima_busca: string | null;
+    estacao_web: boolean | null;
+    ok: boolean;
+  }[];
+  verificado_em: string | null;
+  somente_leitura: true;
 }
 
 export type ClasseDeComando =

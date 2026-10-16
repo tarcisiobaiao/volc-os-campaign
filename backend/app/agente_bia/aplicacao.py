@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Sequence
 
 from app.agente_bia import dominio as dom
+from app.agente_bia.cerebro import dominio as cerebro_dom
 from app.agente_bia.anexos import dominio as anexos_dm
 from app.agente_bia.portas import (
     MensagemDoMotor,
@@ -340,8 +341,10 @@ class CasosDeUso:
         # Formato do `contexto` gravado: {"campanha": {...}?, "anexos": [...]?}.
         # Execuções antigas gravaram a campanha direto ({campaign_ref, janela}).
         bruto = dict(preparo.contexto or {})
-        pedido_campanha = bruto.get("campanha") if ("campanha" in bruto or "anexos" in bruto) else (bruto or None)
+        formato_novo = any(k in bruto for k in ("campanha", "anexos", "intencao"))
+        pedido_campanha = bruto.get("campanha") if formato_novo else (bruto or None)
         refs_anexos = list(bruto.get("anexos") or [])
+        intencao = bruto.get("intencao") if formato_novo else None
 
         documentos: List[DocumentoAnexado] = []
         imagens: List[tuple] = []   # (nome, data_url)
@@ -390,8 +393,11 @@ class CasosDeUso:
                         execucao_id, type(exc).__name__)
             return await self._fechar(dono, execucao_id, dom.Estado.FAILED, None,
                                       "hermes_indisponivel", inicio, {})
+        # Intenção tipada: o pedido ao motor é do SERVIDOR; a entrada do operador vira observação.
+        entrada = (cerebro_dom.pedido_de_rascunho(preparo.entrada)
+                   if intencao == cerebro_dom.INTENCAO_RASCUNHO else preparo.entrada)
         texto_ao_motor = montar_mensagem_ao_motor(
-            preparo.entrada, contexto, execucao_id=execucao_id, documentos=documentos,
+            entrada, contexto, execucao_id=execucao_id, documentos=documentos,
             imagens=[nome for nome, _ in imagens])
         conteudo: Any = texto_ao_motor
         if imagens:

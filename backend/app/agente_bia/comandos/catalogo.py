@@ -47,7 +47,16 @@ COMANDOS_WEB: Tuple[ComandoWeb, ...] = (
     ComandoWeb("status", "Ver o estado da conversa: mensagens, tokens, custo e versão do Hermes", "",
                "backend", ("status", "usage", "version")),
     ComandoWeb("ajuda", "Listar os comandos disponíveis e indisponíveis", "", "local", ("help", "commands")),
+    ComandoWeb("cerebro", "Status dos três cérebros (só leitura: git, sem sincronizar)", "", "backend", ()),
+    ComandoWeb("salvar", "Preparar uma captura desta conversa para o cérebro, com prévia antes de gravar",
+               "", "local", ()),
 )
+
+#: Skills do Hermes com equivalente seguro na web (o resto das skills fica bloqueado).
+EQUIVALENTES_DE_SKILL: Dict[str, str] = {
+    "salve": "salvar",
+    "cerebro": "cerebro",
+}
 
 #: Classe e motivo de cada comando do registro do Hermes. Ausente aqui = recusa
 #: por padrão (nenhum comando novo de uma versão futura vira executável sozinho).
@@ -197,9 +206,13 @@ def catalogo() -> Tuple[EntradaDoCatalogo, ...]:
             equivalente_web=_equivalente(r["name"]), aliases=tuple(r.get("aliases") or ()),
             superficies_hermes=superficies))
     for s in inv["skills"]:
+        equivalente = EQUIVALENTES_DE_SKILL.get(s["name"])
+        motivo = (f"No Telegram a skill escreve e faz git com ferramentas. Na web: /{equivalente}, "
+                  "sem ferramenta para a Bia." if equivalente else MOTIVO_SKILL)
         saida.append(EntradaDoCatalogo(
             nome=s["name"], descricao="Skill do Hermes", args="", origem="hermes_skill", classe=TOOL,
-            disponivel=False, execucao=None, motivo=MOTIVO_SKILL, superficies_hermes=("cli", "gateway")))
+            disponivel=False, execucao=None, motivo=motivo, equivalente_web=equivalente,
+            superficies_hermes=("cli", "gateway")))
     return tuple(saida)
 
 

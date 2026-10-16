@@ -24,6 +24,8 @@ const api = vi.hoisted(() => ({
   enviarAnexo: vi.fn(),
   urlDoAnexo: vi.fn(),
   acompanhar: vi.fn(),
+  cerebroStatus: vi.fn(),
+  gravarCaptura: vi.fn(),
 }));
 const mobile = vi.hoisted(() => ({ valor: false }));
 
@@ -36,6 +38,7 @@ vi.mock('@/lib/supabase', () => ({ supabase: { auth: { getSession: vi.fn() } } }
 
 import { BiaNoLayout } from '../BiaNoLayout';
 import { AVISO_MEMORIA_COMPARTILHADA, AVISO_MODO_CONSULTA } from '../BiaWidget';
+import { lerRascunho, montarConteudo } from '../componentes/CartaoDeCaptura';
 import { chaveDoRascunho } from '../componentes/Compositor';
 import { chaveDaConversa } from '../useBia';
 
@@ -64,6 +67,7 @@ const CATALOGO: ComandoDoCatalogo[] = [
   cmd('contexto', { args: '<id da campanha>' }),
   cmd('status', { classe: 'hermes_safe', execucao: 'backend' }),
   cmd('ajuda', { aliases: ['/commands'] }),
+  cmd('cerebro', { classe: 'hermes_safe', execucao: 'backend' }), cmd('salvar'),
   cmd('compress', { origem: 'hermes_registro', classe: 'hermes_safe', disponivel: false, execucao: null,
                     motivo: 'Reescreve o histórico da sessão; fora da V1.' }),
   cmd('cron', { origem: 'hermes_registro', classe: 'requires_tool', disponivel: false, execucao: null,
@@ -753,5 +757,120 @@ describe('teclado, foco e celular', () => {
         (el.id && painel.querySelector(`label[for="${el.id}"]`)?.textContent);
       expect(nome, el.outerHTML.slice(0, 80)).toBeTruthy();
     }
+  });
+});
+
+
+describe('cérebro (rascunho pela Bia, gravação tipada pelo servidor)', () => {
+  const RASCUNHO = {
+    destino: 'volc', titulo: 'Atalhos do cérebro na web', tipo: 'decisao',
+    resumo: 'Decidimos os atalhos.', decisoes: ['Botões chamam executor tipado'], aprendizados: [],
+    pendencias: ['Instalar executor no VPS'], hipoteses: ['Uso diário'], tags: ['bia'],
+  };
+  const rascunhoExe = (resposta: string) =>
+    exe({ id: 'r1', entrada: 'Preparar captura desta conversa para o cérebro.', resposta,
+          contexto: { campanha: null, anexos: [], intencao: 'rascunho_cerebro' } });
+
+  async function preparar(execucoes: ExecucaoDaBia[]) {
+    window.localStorage.setItem(chaveDaConversa(A), CONV);
+    api.historico.mockResolvedValue({ conversa: { id: CONV }, execucoes });
+    logar(A);
+    render(<BiaNoLayout />);
+    const painel = await abrir();
+    return { painel, campo: await campoPronto() };
+  }
+
+  it('lê o JSON do rascunho e monta o conteúdo separando decisão de hipótese', () => {
+    const r = lerRascunho('Aqui:\n```json\n' + JSON.stringify(RASCUNHO) + '\n```')!;
+    expect(r.titulo).toBe('Atalhos do cérebro na web');
+    const md = montarConteudo(r, new Date('2026-10-16T12:00:00Z'));
+    expect(md).toContain('## Decisões\n\n- Botões chamam executor tipado');
+    expect(md).toContain('- [ ] 2026-10-16: Instalar executor no VPS');
+    expect(md).toContain('## Hipóteses (não confirmadas)');
+    expect(lerRascunho('sem json')).toBeNull();
+    expect(lerRascunho('{"destino":"x"}')).toBeNull(); // sem título
+  });
+
+  it('"Salvar no cérebro" pede o rascunho por intenção tipada, sem texto livre nem anexos', async () => {
+    api.enviar.mockResolvedValue({ execucao: rascunhoExe('...') });
+    await preparar([exe({ resposta: 'conversa' })]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Salvar no cérebro/ }));
+    });
+    const pedido = api.enviar.mock.calls[0][1];
+    expect(pedido.intencao).toBe('rascunho_cerebro');
+    expect(pedido.anexos).toBeUndefined();
+  });
+
+  it('sem conversa ainda, o atalho explica e não envia', async () => {
+    await preparar([]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Salvar no cérebro/ }));
+    });
+    expect(api.enviar).not.toHaveBeenCalled();
+    expect((await screen.findByRole('alert')).textContent).toContain('converse com a Bia primeiro');
+  });
+
+  it('prévia editável → salvar grava com o MESMO request_id e mostra o recibo honesto', async () => {
+    api.gravarCaptura
+      .mockRejectedValueOnce(new ErroDeApi('A rede falhou.', 0, 'REDE'))
+      .mockResolvedValueOnce({ captura: {
+        cerebro: 'volc', repo: 'cerebro-volc', caminho: 'inbox/bia-web/2026-10-16-1200-atalhos.md',
+        sidecar: 'inbox/bia-web/2026-10-16-1200-atalhos.md.meta.yaml', sha256: 'abcdef0123456789', bytes: 120,
+        salvo_no_servidor: true, sincronizado_github: false, git: { estado: '??', commitado: false }, ja_existia: false } });
+    await preparar([exe({ resposta: 'conversa' }), rascunhoExe('```json\n' + JSON.stringify(RASCUNHO) + '\n```')]);
+    const form = await screen.findByRole('form', { name: 'Captura para o cérebro' });
+    expect(within(form).getByText('Rascunho — ainda não salvo')).toBeTruthy();
+    const titulo = within(form).getByLabelText('Título') as HTMLInputElement;
+    expect(titulo.value).toBe('Atalhos do cérebro na web');
+    fireEvent.change(titulo, { target: { value: 'Atalhos (editado)' } });
+    fireEvent.change(within(form).getByLabelText('Cérebro'), { target: { value: 'arbitragem' } });
+    await act(async () => {
+      fireEvent.click(within(form).getByRole('button', { name: /Salvar no cérebro/ }));
+    });
+    expect((await screen.findByRole('alert')).textContent).toContain('rede falhou');
+    await act(async () => {
+      fireEvent.click(within(form).getByRole('button', { name: /Salvar no cérebro/ }));
+    });
+    const [primeiro, segundo] = api.gravarCaptura.mock.calls.map((c) => c[0]);
+    expect(segundo.request_id).toBe(primeiro.request_id);
+    expect(segundo).toMatchObject({ destino: 'arbitragem', titulo: 'Atalhos (editado)', tipo: 'decisao', execucao_id: 'r1' });
+    expect(segundo.conteudo).toContain('## Decisões');
+    expect(await screen.findByText('Salvo no servidor')).toBeTruthy();
+    expect(screen.getByText('inbox/bia-web/2026-10-16-1200-atalhos.md')).toBeTruthy();
+    expect(screen.getByText(/Não sincronizado com o GitHub/)).toBeTruthy();
+  });
+
+  it('servidor sem executor: diz o motivo e oferece copiar', async () => {
+    api.gravarCaptura.mockRejectedValue(new ErroDeApi(
+      'A gravação no cérebro pela web ainda não está ligada neste servidor. Copie a captura e use /salve no Telegram.',
+      503, 'cerebro_nao_configurado'));
+    await preparar([exe({ resposta: 'conversa' }), rascunhoExe('```json\n' + JSON.stringify(RASCUNHO) + '\n```')]);
+    const form = await screen.findByRole('form', { name: 'Captura para o cérebro' });
+    await act(async () => {
+      fireEvent.click(within(form).getByRole('button', { name: /Salvar no cérebro/ }));
+    });
+    expect((await screen.findByRole('alert')).textContent).toContain('ainda não está ligada');
+    expect(within(form).getByText('Copie e use /salve no Telegram.')).toBeTruthy();
+  });
+
+  it('rascunho fora do formato não vira formulário nem grava', async () => {
+    await preparar([rascunhoExe('Desculpe, não consegui.')]);
+    expect(await screen.findByText('A Bia não devolveu a captura no formato esperado.')).toBeTruthy();
+    expect(screen.queryByRole('form', { name: 'Captura para o cérebro' })).toBeNull();
+  });
+
+  it('/cerebro mostra o status dos três, só leitura', async () => {
+    api.cerebroStatus.mockResolvedValue({ verificado_em: '', somente_leitura: true, repos: [
+      { cerebro: 'volc', branch: 'main', commit: 'e5f80c3', commit_em: '', alteracoes: 0, capturas_web_pendentes: 2,
+        a_frente: 0, atras: 1, ultima_busca: null, estacao_web: true, ok: true },
+    ] });
+    const { campo } = await preparar([]);
+    await digitar(campo, '/cerebro');
+    await teclar(campo, 'Enter');
+    expect(await screen.findByText('/cerebro · somente leitura')).toBeTruthy();
+    expect(screen.getByText('e5f80c3 · 1 atrás')).toBeTruthy();
+    expect(screen.getByText(/Nada foi sincronizado/)).toBeTruthy();
+    expect(api.enviar).not.toHaveBeenCalled();
   });
 });

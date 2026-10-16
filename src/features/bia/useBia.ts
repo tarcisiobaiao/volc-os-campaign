@@ -26,7 +26,9 @@ import {
   type ConversaDaBia,
   type EstadoDaBia,
   type ExecucaoDaBia,
+  type IntencaoDeEnvio,
   type ResultadoDoStatus,
+  type StatusDoCerebro,
 } from './tipos';
 
 export const chaveDaConversa = (userId: string) => `volc.bia.conversa.${userId}`;
@@ -38,6 +40,7 @@ const ESPERA_PADRAO_MS = 300_000;
 export type NotaLocal =
   | { id: string; tipo: 'ajuda'; criada_em: string }
   | { id: string; tipo: 'status'; criada_em: string; resultado: ResultadoDoStatus; duracao_ms?: number }
+  | { id: string; tipo: 'cerebro'; criada_em: string; resultado: StatusDoCerebro }
   | { id: string; tipo: 'recusa'; criada_em: string; titulo: string; texto: string }
   | { id: string; tipo: 'info'; criada_em: string; texto: string };
 
@@ -265,7 +268,10 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
   }, [api]);
 
   const enviar = useCallback(
-    async (texto: string, opcoes: { anexos?: string[]; contexto?: ContextoPedido } = {}): Promise<boolean> => {
+    async (
+      texto: string,
+      opcoes: { anexos?: string[]; contexto?: ContextoPedido; intencao?: IntencaoDeEnvio } = {},
+    ): Promise<boolean> => {
       if (enviandoRef.current) return false;
       enviandoRef.current = true;
       let id = conversaId;
@@ -280,6 +286,7 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
           texto,
           ...(opcoes.anexos?.length ? { anexos: opcoes.anexos } : {}),
           ...(opcoes.contexto ? { contexto: opcoes.contexto } : {}),
+          ...(opcoes.intencao ? { intencao: opcoes.intencao } : {}),
         };
         const { execucao } = await api.enviar(id, pedido);
         if (!vivo.current) return true;
@@ -330,6 +337,22 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
     }
   }, [api, conversaId, adicionarNota]);
 
+  /** Status dos três cérebros (só leitura). Indisponível vira nota com o motivo do servidor. */
+  const statusDoCerebro = useCallback(async () => {
+    try {
+      const r = await api.cerebroStatus();
+      if (vivo.current) adicionarNota({ tipo: 'cerebro', resultado: r });
+    } catch (e) {
+      if (vivo.current) adicionarNota({ tipo: 'recusa', titulo: '/cerebro', texto: mensagemDe(e) });
+    }
+  }, [api, adicionarNota]);
+
+  /** Pede à Bia (sem ferramenta) um rascunho de captura. Nada é gravado aqui. */
+  const pedirRascunho = useCallback(
+    (observacao = '') => enviar(observacao, { intencao: 'rascunho_cerebro' }),
+    [enviar],
+  );
+
   const ultimaResposta = execucoes.slice().reverse().find((x) => x.estado === 'succeeded' && x.resposta)?.resposta ?? null;
 
   return {
@@ -354,6 +377,8 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
     verificar,
     adicionarNota,
     executarStatus,
+    statusDoCerebro,
+    pedirRascunho,
   };
 }
 

@@ -50,6 +50,8 @@ from app.agente_bia.aplicacao import (
 )
 from app.agente_bia.anexos import dominio as anexos_dm
 from app.agente_bia.anexos.armazem import Armazem
+from app.agente_bia.cerebro import dominio as cerebro_dom
+from app.agente_bia.cerebro.infra_ssh import CerebroIndisponivel, CerebroRecusou, ExecutorCerebroSSH
 from app.agente_bia.comandos import catalogo as comandos
 from app.agente_bia.gateway import contexto_campanha as ctxc
 from app.agente_bia.gateway.catalogo import (
@@ -97,6 +99,10 @@ def armazem() -> Armazem:
     if _ARMAZEM is None:
         _ARMAZEM = Armazem()
     return _ARMAZEM
+
+
+def executor_cerebro(settings: Settings = Depends(get_settings)) -> ExecutorCerebroSSH:
+    return ExecutorCerebroSSH(settings.bia_cerebro_ssh_destino, settings.bia_cerebro_ssh_chave)
 
 
 def casos_de_uso(cfg: configuracao.ConfiguracaoDaBia = Depends(configuracao_da_bia),
@@ -161,6 +167,18 @@ class CorpoMensagem(_Estrito):
     texto: str = Field(default="", max_length=dom.MAX_ENTRADA_ABSOLUTO)
     contexto: Optional[ContextoPedido] = None
     anexos: List[uuid.UUID] = Field(default_factory=list, max_length=anexos_dm.MAX_ANEXOS_POR_MENSAGEM)
+    #: Intenção tipada (hoje só o rascunho do cérebro). O servidor monta o pedido.
+    intencao: Optional[Literal["rascunho_cerebro"]] = None
+
+
+class CorpoCaptura(_Estrito):
+    request_id: uuid.UUID
+    destino: Literal["volc", "arbitragem", "pessoal"]
+    titulo: str = Field(max_length=cerebro_dom.MAX_TITULO * 2)
+    tipo: Literal["decisao", "captura", "pendencia", "referencia", "nota"]
+    conteudo: str = Field(max_length=cerebro_dom.MAX_CONTEUDO + 2000)
+    tags: List[str] = Field(default_factory=list, max_length=cerebro_dom.MAX_TAGS)
+    execucao_id: Optional[uuid.UUID] = None
 
 
 class CorpoComando(_Estrito):
@@ -227,10 +245,13 @@ def _contexto_publico(contexto: Optional[Dict[str, Any]]) -> Optional[Dict[str, 
     """`{campanha, anexos}` para a interface; execuções antigas gravaram só a campanha."""
     if not contexto:
         return None
-    if "campanha" in contexto or "anexos" in contexto:
+    if any(k in contexto for k in ("campanha", "anexos", "intencao")):
         anexos = [{k: a.get(k) for k in ("id", "nome", "tipo", "familia", "tamanho")}
                   for a in contexto.get("anexos") or [] if isinstance(a, dict)]
-        return {"campanha": contexto.get("campanha"), "anexos": anexos}
+        publico = {"campanha": contexto.get("campanha"), "anexos": anexos}
+        if contexto.get("intencao") == cerebro_dom.INTENCAO_RASCUNHO:
+            publico["intencao"] = cerebro_dom.INTENCAO_RASCUNHO
+        return publico
     return {"campanha": contexto, "anexos": []}
 
 
@@ -357,11 +378,18 @@ async def enviar(conversa_id: str, request: Request, response: Response,
             raise HTTPException(status_code=422, detail={"codigo": "contexto_invalido",
                                                          "mensagem": "Contexto recusado.",
                                                          "erros": exc.erros})
+    if corpo.intencao and (corpo.anexos or campanha):
+        raise HTTPException(status_code=422, detail={
+            "codigo": "intencao_invalida",
+            "mensagem": "O rascunho do cérebro é sobre a conversa: envie sem anexos nem contexto."})
     refs = _anexos_da_mensagem(identidade.sub, corpo.anexos, arm)
     texto = corpo.texto if corpo.texto.strip() or not refs else TEXTO_PADRAO_ANEXOS
+    if corpo.intencao and not texto.strip():
+        texto = cerebro_dom.TEXTO_PADRAO_RASCUNHO
     contexto = None
-    if campanha or refs:
-        contexto = {k: v for k, v in (("campanha", campanha), ("anexos", refs)) if v}
+    if campanha or refs or corpo.intencao:
+        contexto = {k: v for k, v in (("campanha", campanha), ("anexos", refs),
+                                      ("intencao", corpo.intencao)) if v}
     try:
         reserva = await casos.reservar_envio(identidade.sub, cid, str(corpo.request_id),
                                              texto, contexto)
@@ -648,7 +676,8 @@ async def listar_comandos() -> Dict[str, Any]:
 
 @router.post("/comandos/{nome}")
 async def executar_comando(nome: str, request: Request, identidade: Identidade = Depends(exigir_admin),
-                           casos: CasosDeUso = Depends(casos_de_uso)) -> Dict[str, Any]:
+                           casos: CasosDeUso = Depends(casos_de_uso),
+                           ex: ExecutorCerebroSSH = Depends(executor_cerebro)) -> Dict[str, Any]:
     """Executa SÓ comando `disponivel` com `execucao == "backend"`. Recibo estruturado."""
     corpo = await _corpo(request, CorpoComando, vazio_permitido=True)
     entrada = comandos.procurar(nome)
@@ -663,7 +692,10 @@ async def executar_comando(nome: str, request: Request, identidade: Identidade =
                                                      "mensagem": f"/{entrada.nome} roda na interface."})
     # Despacho EXPLÍCITO por nome: comando de backend novo no catálogo sem ação
     # aqui é recusado, nunca cai em outro.
-    acoes = {"status": casos.status}
+    async def _cerebro(_dono: str, _conversa: Optional[str]) -> Dict[str, Any]:
+        return await status_do_cerebro(identidade, ex)
+
+    acoes = {"status": casos.status, "cerebro": _cerebro}
     if entrada.nome not in acoes:
         raise HTTPException(status_code=501, detail={"codigo": "comando_sem_acao",
                                                      "mensagem": f"/{entrada.nome} ainda não tem ação no servidor."})
@@ -680,3 +712,79 @@ async def executar_comando(nome: str, request: Request, identidade: Identidade =
             "recibo": {"executado_em": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                        "origem": "backend", "somente_leitura": True,
                        "duracao_ms": int((time.monotonic() - inicio) * 1000)}}
+
+
+# ── cérebro: status só leitura + gravação tipada (ver cerebro/__init__.py) ───
+
+_INDISPONIVEL_CEREBRO = {
+    ("cerebro_nao_configurado", "gravar"): "A gravação no cérebro pela web ainda não está ligada neste servidor. "
+                                           "Copie a captura e use /salve no Telegram.",
+    ("cerebro_nao_configurado", "status"): "O status do cérebro pela web ainda não está ligado neste servidor. "
+                                           "Use /cerebro no Telegram.",
+    ("cerebro_indisponivel", "gravar"): "O executor do cérebro não respondeu. Nada foi gravado; tente de novo.",
+    ("cerebro_indisponivel", "status"): "O executor do cérebro não respondeu. Tente de novo em instantes.",
+}
+
+
+def _cerebro_indisponivel(exc: CerebroIndisponivel, op: str) -> HTTPException:
+    mensagem = _INDISPONIVEL_CEREBRO.get((exc.codigo, op)) or _INDISPONIVEL_CEREBRO[("cerebro_indisponivel", op)]
+    return HTTPException(status_code=503, detail={"codigo": exc.codigo, "mensagem": mensagem})
+
+
+@router.get("/cerebro/status")
+async def status_do_cerebro(identidade: Identidade = Depends(exigir_admin),
+                            ex: ExecutorCerebroSSH = Depends(executor_cerebro)) -> Dict[str, Any]:
+    """Estado git dos três cérebros, SÓ leitura (sem fetch, sem pull)."""
+    try:
+        r = await ex.status()
+    except CerebroIndisponivel as exc:
+        raise _cerebro_indisponivel(exc, "status")
+    except CerebroRecusou as exc:
+        raise HTTPException(status_code=502, detail={"codigo": exc.codigo, "mensagem": exc.mensagem})
+    campos = ("cerebro", "branch", "commit", "commit_em", "alteracoes", "capturas_web_pendentes",
+              "a_frente", "atras", "ultima_busca", "estacao_web", "ok")
+    return {"repos": [{k: repo.get(k) for k in campos} for repo in r.get("repos", [])],
+            "verificado_em": r.get("verificado_em"), "somente_leitura": True}
+
+
+@router.post("/cerebro/capturas", status_code=201)
+async def gravar_captura(request: Request, response: Response,
+                         identidade: Identidade = Depends(exigir_admin),
+                         casos: CasosDeUso = Depends(casos_de_uso),
+                         ex: ExecutorCerebroSSH = Depends(executor_cerebro)) -> Dict[str, Any]:
+    """Grava UMA captura nova na estação `inbox/bia-web/` do cérebro escolhido.
+
+    Só depois do "confirmar" do operador (o front manda; o servidor confere tudo
+    de novo). Sem commit/push. Mesmo `request_id` devolve o mesmo arquivo.
+    """
+    corpo = await _corpo(request, CorpoCaptura)
+    try:
+        cap = cerebro_dom.validar_captura(corpo.destino, corpo.titulo, corpo.tipo, corpo.conteudo, corpo.tags)
+    except cerebro_dom.CapturaRecusada as exc:
+        raise HTTPException(status_code=422, detail={"codigo": exc.codigo, "mensagem": exc.mensagem})
+    origem: Dict[str, str] = {}
+    if corpo.execucao_id is not None:
+        try:
+            e = await casos.execucao(identidade.sub, str(corpo.execucao_id))
+        except ConversaNaoEncontrada:   # rascunho de outro dono ou inexistente: a mesma resposta
+            raise HTTPException(status_code=404, detail={"codigo": "nao_encontrado",
+                                                         "mensagem": "Rascunho não encontrado."})
+        except LedgerIndisponivel as exc:
+            raise _indisponivel(exc)
+        origem = {"execucao_id": e.id, "conversa_id": e.conversa_id}
+    try:
+        r = await ex.gravar(destino=cap.destino, titulo=cap.titulo, tipo=cap.tipo, conteudo=cap.conteudo,
+                            tags=list(cap.tags), request_id=str(corpo.request_id), origem=origem)
+    except CerebroIndisponivel as exc:
+        raise _cerebro_indisponivel(exc, "gravar")
+    except CerebroRecusou as exc:
+        raise HTTPException(status_code=422, detail={"codigo": exc.codigo, "mensagem": exc.mensagem})
+    if r.get("ja_existia"):
+        response.status_code = 200
+    log.info("bia cerebro captura repo=%s caminho=%s sha256=%s bytes=%s replay=%s",
+             r.get("repo"), r.get("caminho"), r.get("sha256"), r.get("bytes"), bool(r.get("ja_existia")))
+    return {"captura": {"cerebro": cap.destino, "repo": r.get("repo"), "caminho": r.get("caminho"),
+                        "sidecar": r.get("sidecar"), "sha256": r.get("sha256"), "bytes": r.get("bytes"),
+                        "salvo_no_servidor": True,
+                        "sincronizado_github": False,
+                        "git": r.get("git"), "ja_existia": bool(r.get("ja_existia"))}}

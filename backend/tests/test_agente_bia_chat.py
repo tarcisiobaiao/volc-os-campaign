@@ -396,7 +396,8 @@ def test_catalogo_cobre_o_registro_inteiro_e_so_libera_a_lista(banca):
     assert {r["name"] for r in inv["registro"]} <= nomes and len(inv["registro"]) == 82
     assert {s["name"] for s in inv["skills"]} <= nomes and len(inv["skills"]) == 48
     disponiveis = {c["nome"] for c in corpo["comandos"] if c["disponivel"]}
-    assert disponiveis == {"nova", "conversas", "anexar", "copiar", "contexto", "status", "ajuda"}
+    assert disponiveis == {"nova", "conversas", "anexar", "copiar", "contexto", "status", "ajuda",
+                           "cerebro", "salvar"}
     for c in corpo["comandos"]:
         if c["classe"] in ("requires_tool", "external_mutation", "telegram_only"):
             assert not c["disponivel"] and c["motivo"]
@@ -423,7 +424,7 @@ def test_status_e_so_leitura_e_tem_recibo(banca):
 @pytest.mark.parametrize("nome,status,codigo", [
     ("model", 403, "comando_indisponivel_na_web"),
     ("restart", 403, "comando_indisponivel_na_web"),
-    ("cerebro", 403, "comando_indisponivel_na_web"),
+    ("salve", 403, "comando_indisponivel_na_web"),     # a skill; na web, /salvar
     ("nova", 409, "comando_local"),
     ("inexistente", 404, "comando_desconhecido"),
 ])

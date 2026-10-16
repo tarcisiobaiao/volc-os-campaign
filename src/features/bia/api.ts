@@ -17,13 +17,16 @@ import { supabase } from '@/lib/supabase';
 
 import type {
   AnexoDaBia,
+  CapturaGravada,
   ComandoDoCatalogo,
   ConversaDaBia,
   EstadoDaBia,
   EventoDeFluxo,
   ExecucaoDaBia,
+  PedidoDeCaptura,
   PedidoDeEnvio,
   ResultadoDoStatus,
+  StatusDoCerebro,
 } from './tipos';
 
 const BASE = (import.meta.env.VITE_PAUTADOR_API_URL || '').trim().replace(/\/$/, '');
@@ -90,6 +93,13 @@ export const biaApi = {
       `/api/agent/comandos/${id(nome)}`,
       corpo(conversaId ? { conversa_id: conversaId } : {}),
     ),
+
+  /** Status git dos três cérebros, só leitura (executor tipado no VPS). */
+  cerebroStatus: () => cliente.requisitar<StatusDoCerebro>('/api/agent/cerebro/status'),
+
+  /** Grava UMA captura nova na estação `inbox/bia-web/`. Mesmo request_id = mesmo arquivo. */
+  gravarCaptura: (pedido: PedidoDeCaptura) =>
+    cliente.requisitar<{ captura: CapturaGravada }>('/api/agent/cerebro/capturas', corpo(pedido)),
 
   removerAnexo: (anexoId: string) =>
     cliente.requisitar<{ removido: boolean }>(`/api/agent/anexos/${id(anexoId)}/remover`, corpo({})),

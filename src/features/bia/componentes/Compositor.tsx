@@ -124,6 +124,11 @@ export const Compositor: React.FC<Props> = ({ userId, bia, anexos, comandos, cam
               ? 'Sem conexão com a internet.'
               : null;
   const temConteudo = texto.trim().length > 0 || anexos.prontos.length > 0;
+  const motivoSemRascunho = !bia.execucoes.some((x) => x.estado === 'succeeded' && !x.contexto?.intencao)
+    ? 'Ainda não há conversa para salvar: converse com a Bia primeiro.'
+    : bloqueioDeEnvio && bloqueioDeEnvio !== 'Aguarde os arquivos terminarem de subir.'
+      ? bloqueioDeEnvio
+      : null;
   const podeEnviar = !bia.enviando && !bloqueioDeEnvio && temConteudo && texto.length <= limite;
 
   const focar = () => requestAnimationFrame(() => campo.current?.focus());
@@ -184,6 +189,16 @@ export const Compositor: React.FC<Props> = ({ userId, bia, anexos, comandos, cam
         break;
       case 'ajuda':
         bia.adicionarNota({ tipo: 'ajuda' });
+        break;
+      case 'cerebro':
+        void bia.statusDoCerebro();
+        break;
+      case 'salvar':
+        if (motivoSemRascunho) {
+          nota('/salvar', motivoSemRascunho);
+          break;
+        }
+        void bia.pedirRascunho(argumentos);
         break;
       default:
         nota(`/${c.nome}`, 'Este comando ainda não tem ação nesta tela. Nada foi enviado à Bia.');
@@ -380,10 +395,32 @@ export const Compositor: React.FC<Props> = ({ userId, bia, anexos, comandos, cam
           >
             <Icone icon={ICONES_BIA.comandos} rotulo="Comandos" />
           </Button>
-          <p id={ids.dica} className="ml-1 hidden min-w-0 flex-1 truncate text-micro font-normal tracking-normal text-muted-foreground md:block">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="touch-target h-10 gap-1.5 px-2.5 text-muted-foreground"
+            onClick={() => void bia.statusDoCerebro()}
+          >
+            <Icone icon={ICONES_BIA.cerebro} rotulo="Cérebro: status dos três (só leitura)" />
+            <span aria-hidden="true" className="hidden text-micro font-medium tracking-normal lg:inline">Cérebro</span>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="touch-target h-10 gap-1.5 px-2.5 text-muted-foreground"
+            aria-disabled={!!motivoSemRascunho || bia.enviando}
+            title={motivoSemRascunho ?? 'A Bia redige; você revisa e confirma antes de gravar'}
+            onClick={() => (motivoSemRascunho ? setAviso(motivoSemRascunho) : void bia.pedirRascunho())}
+          >
+            <Icone icon={ICONES_BIA.salvar} rotulo="Salvar no cérebro: preparar captura desta conversa" />
+            <span aria-hidden="true" className="hidden text-micro font-medium tracking-normal lg:inline">Salvar no cérebro</span>
+          </Button>
+          <p id={ids.dica} className="ml-1 hidden min-w-0 flex-1 truncate text-micro font-normal tracking-normal text-muted-foreground md:block lg:sr-only">
             Enter envia · Shift+Enter quebra a linha
           </p>
-          <span className="flex-1 md:hidden" />
+          <span className="flex-1 md:hidden lg:block" />
           {pertoDoLimite ? (
             <span
               id={ids.contador}

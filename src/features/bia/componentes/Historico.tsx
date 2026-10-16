@@ -18,6 +18,7 @@ import type { AnexoReferencia, ExecucaoDaBia } from '../tipos';
 import { formatarTamanho } from '../useAnexos';
 import type { NotaLocal } from '../useBia';
 
+import { CartaoDeCaptura } from './CartaoDeCaptura';
 import { MarkdownDaBia } from './Markdown';
 
 export const hora = (iso: string) => {
@@ -193,7 +194,9 @@ export const Turno: React.FC<PropsTurno> = ({ e, parcial, api, onVerificar, onNo
             {e.terminada_em ? <Tempo iso={e.terminada_em} /> : null}
           </p>
           <div className="w-full max-w-full" aria-busy={emCurso || undefined}>
-            {e.estado === 'succeeded' && e.resposta ? (
+            {e.estado === 'succeeded' && e.resposta && e.contexto?.intencao === 'rascunho_cerebro' ? (
+              <CartaoDeCaptura e={e} api={api} />
+            ) : e.estado === 'succeeded' && e.resposta ? (
               <>
                 <MarkdownDaBia texto={e.resposta} />
                 <div className="-ml-2 mt-0.5">
@@ -311,6 +314,41 @@ export const Nota: React.FC<PropsNota> = ({ nota, comandosWeb }) => {
           ))}
         </dl>
         {r.avisos.map((a) => <p key={a} className="mt-1.5 text-muted-foreground">{a}</p>)}
+      </li>
+    );
+  }
+  if (nota.tipo === 'cerebro') {
+    const NOMES = { volc: 'VOLC', arbitragem: 'Arbitragem', pessoal: 'Pessoal' } as const;
+    return (
+      <li className={cn(base, 'border-border bg-card')}>
+        <p className="kicker mb-1">/cerebro · somente leitura</p>
+        <div className="max-w-full overflow-x-auto">
+          <table className="w-full border-collapse text-denso [display:table]">
+            <thead>
+              <tr className="text-left text-muted-foreground">
+                <th scope="col" className="py-1 pr-3 font-medium">Cérebro</th>
+                <th scope="col" className="py-1 pr-3 font-medium">Commit</th>
+                <th scope="col" className="py-1 pr-3 font-medium">Alterações</th>
+                <th scope="col" className="py-1 font-medium">Capturas web</th>
+              </tr>
+            </thead>
+            <tbody>
+              {nota.resultado.repos.map((r) => (
+                <tr key={r.cerebro} className="border-t border-border">
+                  <td className="py-1 pr-3 text-foreground">{NOMES[r.cerebro] ?? r.cerebro}</td>
+                  <td className="numero py-1 pr-3 text-foreground">
+                    {r.ok ? `${r.commit ?? '—'}${r.atras ? ` · ${r.atras} atrás` : ''}${r.a_frente ? ` · ${r.a_frente} à frente` : ''}` : 'sem leitura'}
+                  </td>
+                  <td className="numero py-1 pr-3 text-foreground">{r.alteracoes ?? '—'}</td>
+                  <td className="numero py-1 text-foreground">{r.capturas_web_pendentes ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-1.5 text-muted-foreground">
+          Nada foi sincronizado. Puxar do GitHub, commit e push continuam com /cerebro e /salve no Telegram.
+        </p>
       </li>
     );
   }
