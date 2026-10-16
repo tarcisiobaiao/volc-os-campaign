@@ -174,7 +174,7 @@ def cenarios_provisorios() -> dict[str, EspecProvisoria]:
     }
 
 
-def preparar(nome: str = "base", *, passo_horas: int = 1, dia_inicial: int = 5, **sobrescritas):
+def preparar(nome: str = "base", *, passo_horas: int = 1, dia_inicial: int = 5, hora_inicial: int = 0, **sobrescritas):
     """(FluxoSintetico, cortes, ConfigShadow) prontos para replay — atalho de testes e do script."""
     from dataclasses import replace
 
@@ -186,6 +186,6 @@ def preparar(nome: str = "base", *, passo_horas: int = 1, dia_inicial: int = 5, 
     if sobrescritas:
         espec = replace(espec, **sobrescritas)
     fs = gerar(espec)
-    cortes = cortes_regulares(instante_local(espec.inicio + timedelta(days=dia_inicial), 0),
+    cortes = cortes_regulares(instante_local(espec.inicio + timedelta(days=dia_inicial), hora_inicial),
                               instante_local(espec.inicio + timedelta(days=espec.n_dias - 1), 0), timedelta(hours=passo_horas))
     return fs, cortes, ConfigShadow(ConfigCorte(cambios=fs.cambios))
