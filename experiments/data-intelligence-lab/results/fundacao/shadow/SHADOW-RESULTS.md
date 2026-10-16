@@ -4,7 +4,7 @@
 > **Natureza:** gerador provisório e/ou Simulator Lab (thread E). Lucro contrafactual vem da VERDADE do
 > gerador. Nada aqui é eficácia, calibração ou validação com dado real.
 
-- versão do código: `30749a4f8fb2dc88…`; sha determinístico: `320afd245088e512…`
+- versão do código: `a7a678e4b3f9663c…`; sha determinístico: `68086fa0bae2b887…`
 - kernel: provisório com `cobertura_sem_earnings=bloquear`; simulador com `aceitar_declarado` (a E não emite /earnings)
 - decisão diária às 7h (America/Sao_Paulo), aplicada ao dia seguinte; menu do oráculo: manter, reduzir 30%, pausar
 - valores em BRL (micros ÷ 10⁶), arredondados; `vs manter` positivo = ganharia contra não fazer nada
@@ -13,7 +13,7 @@
 
 ### base
 
-2375 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`f1b04dca1662…`); 28.08 ms/corte (8 políticas). Lucro de `manter`: 128.
+2375 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`092d5faebe76…`); 23.41 ms/corte (8 políticas). Lucro de `manter`: 128.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -28,7 +28,7 @@
 
 ### campanha_nova
 
-2200 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`21dd6a9f14fc…`); 22.36 ms/corte (8 políticas). Lucro de `manter`: 232.
+2200 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`2685b9c12e93…`); 19.34 ms/corte (8 políticas). Lucro de `manter`: 232.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -43,7 +43,7 @@
 
 ### zero_sintetizado
 
-2266 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`ceceb16f8760…`); 24.03 ms/corte (8 políticas). Lucro de `manter`: 128.
+2266 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`5671e66a87f5…`); 19.56 ms/corte (8 políticas). Lucro de `manter`: 128.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -58,7 +58,7 @@
 
 ### identidade_trocada
 
-2367 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`1e9605ac4155…`); 24.54 ms/corte (8 políticas). Lucro de `manter`: 128.
+2367 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`0b219eecc266…`); 20.21 ms/corte (8 políticas). Lucro de `manter`: 128.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -73,7 +73,7 @@
 
 ### moeda_misturada
 
-2375 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`9e3e42551d17…`); 23.34 ms/corte (8 políticas). Lucro de `manter`: 128.
+2375 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`4e5d012adfb9…`); 22.62 ms/corte (8 políticas). Lucro de `manter`: 128.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -88,7 +88,7 @@
 
 ### restatement_tardio
 
-2379 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`1db204a7ec92…`); 26.65 ms/corte (8 políticas). Lucro de `manter`: 128.
+2379 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`69cdc0821732…`); 19.97 ms/corte (8 políticas). Lucro de `manter`: 128.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -105,7 +105,7 @@
 
 ### estavel
 
-3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`88055b9d28d8…`); 27.74 ms/corte (8 políticas). Lucro de `manter`: -114.
+3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`467905e74345…`); 28.37 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -120,7 +120,7 @@
 
 ### campanha_nova_aprendendo
 
-3177 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`ddbded895689…`); 37.8 ms/corte (8 políticas). Lucro de `manter`: -190.
+3177 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`6393d9e7ad72…`); 22.06 ms/corte (8 políticas). Lucro de `manter`: -190.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -135,7 +135,7 @@
 
 ### atraso_receita_longo
 
-3409 observações, 241 cortes horários, 1928 decisões, 80 resultados maduros no ledger (`d133880d1e7f…`); 33.85 ms/corte (8 políticas). Lucro de `manter`: -114.
+3409 observações, 241 cortes horários, 1928 decisões, 80 resultados maduros no ledger (`d45b7a9809b9…`); 25.49 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -150,7 +150,7 @@
 
 ### restatement_custo
 
-3538 observações, 241 cortes horários, 1928 decisões, 80 resultados maduros no ledger (`ea52f092c8a8…`); 30.97 ms/corte (8 políticas). Lucro de `manter`: 94.
+3538 observações, 241 cortes horários, 1928 decisões, 80 resultados maduros no ledger (`244ecda50df4…`); 22.62 ms/corte (8 políticas). Lucro de `manter`: 94.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -165,7 +165,7 @@
 
 ### fonte_fora_do_ar
 
-3562 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`389c881eb204…`); 35.09 ms/corte (8 políticas). Lucro de `manter`: -114.
+3562 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`1af9ec696f05…`); 20.5 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -180,7 +180,7 @@
 
 ### outlier_bot
 
-3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`ce21fc9baacd…`); 39.41 ms/corte (8 políticas). Lucro de `manter`: -135.
+3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`34f67bf1dd42…`); 22.86 ms/corte (8 políticas). Lucro de `manter`: -135.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -195,7 +195,7 @@
 
 ### quebra_regime_rpm
 
-3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`3a7d95fa61a9…`); 44.11 ms/corte (8 políticas). Lucro de `manter`: -1.012.
+3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`1692ada5e9ff…`); 23.04 ms/corte (8 políticas). Lucro de `manter`: -1.012.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -210,7 +210,7 @@
 
 ### mudanca_orcamento
 
-3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`c57dd0782af2…`); 36.22 ms/corte (8 políticas). Lucro de `manter`: -5.
+3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`7d690e5b7e07…`); 25.36 ms/corte (8 políticas). Lucro de `manter`: -5.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -225,7 +225,7 @@
 
 ### sazonal_fim_de_semana
 
-3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`c835ca218557…`); 31.96 ms/corte (8 políticas). Lucro de `manter`: -144.
+3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`0331a05cf036…`); 23.15 ms/corte (8 políticas). Lucro de `manter`: -144.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -240,7 +240,7 @@
 
 ### zero_falso
 
-3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`7150bdef860a…`); 22.38 ms/corte (8 políticas). Lucro de `manter`: -114.
+3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`3237ee56c805…`); 22.96 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -255,7 +255,7 @@
 
 ### zero_sintetizado_coletor
 
-12760 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`7dbb4b3e3fe3…`); 134.57 ms/corte (8 políticas). Lucro de `manter`: -114.
+12760 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`f3b01fb03cce…`); 117.08 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -270,7 +270,7 @@
 
 ### identidade_trocada
 
-3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`77ac88720ee4…`); 30.73 ms/corte (8 políticas). Lucro de `manter`: -89.
+3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`ae06b828bd0b…`); 27.25 ms/corte (8 políticas). Lucro de `manter`: -89.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -285,7 +285,7 @@
 
 ### moeda_misturada
 
-3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`bed74eaad8db…`); 29.47 ms/corte (8 políticas). Lucro de `manter`: -114.
+3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`6daf68f099f5…`); 23.11 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -300,7 +300,7 @@
 
 ### vazamento_tentado
 
-3673 observações, 241 cortes horários, 1928 decisões, 80 resultados maduros no ledger (`8d7e26340237…`); 66.3 ms/corte (8 políticas). Lucro de `manter`: -114.
+3673 observações, 241 cortes horários, 1928 decisões, 80 resultados maduros no ledger (`aa8fb395a5ce…`); 22.35 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -315,7 +315,7 @@
 
 ### custo_d0_multiversao
 
-8212 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`9c454fab1978…`); 45.8 ms/corte (8 políticas). Lucro de `manter`: -114.
+8212 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`5f4d87ae0d84…`); 22.99 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -330,7 +330,7 @@
 
 ### execucao_presa
 
-3389 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`a1fe106aea79…`); 46.32 ms/corte (8 políticas). Lucro de `manter`: -114.
+3389 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`6fa7c74f21c5…`); 26.7 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -345,7 +345,7 @@
 
 ### gatilho_legado_joinads
 
-5352 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`65e85b1588a3…`); 38.23 ms/corte (8 políticas). Lucro de `manter`: -114.
+5352 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`9d7f2973a89d…`); 31.78 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -360,7 +360,7 @@
 
 ### sensor_sem_campanha
 
-3354 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`36e569ccebe8…`); 35.91 ms/corte (8 políticas). Lucro de `manter`: -114.
+3354 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`2ce05b7d6453…`); 27.03 ms/corte (8 políticas). Lucro de `manter`: -114.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -375,7 +375,7 @@
 
 ### dedup_por_segundo
 
-3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`d644cfb97cad…`); 47.1 ms/corte (8 políticas). Lucro de `manter`: -139.
+3538 observações, 241 cortes horários, 1928 decisões, 72 resultados maduros no ledger (`dbe1d43304fd…`); 23.46 ms/corte (8 políticas). Lucro de `manter`: -139.
 
 | política | vs manter | vs equal | regret | drawdown | cortes | errados | errados (imaturo) | bloqueadas | trocas entre cortes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
