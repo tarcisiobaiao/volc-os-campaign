@@ -414,36 +414,50 @@ r_lim AS (SELECT
   (SELECT valor FROM dq_parametros_limiares WHERE nome = 'receita_cobertura_min') AS lo,
   (SELECT valor FROM dq_parametros_limiares WHERE nome = 'receita_cobertura_max') AS hi,
   (SELECT valor FROM dq_parametros_limiares WHERE nome = 'receita_cobertura_critica') AS crit),
-r_dia AS (
-  SELECT o.metric_date,
-         sum(o.revenue_client) FILTER (WHERE o.endpoint = 'earnings') AS earnings,
+r_dd AS (
+  SELECT o.metric_date, o.domain AS dominio,
+         sum(o.revenue_client) FILTER (WHERE o.endpoint = 'earnings'
+                                         AND o.data_status IN ('observed', 'zero_confirmed')) AS earnings,
          sum(o.revenue_client) FILTER (WHERE o.endpoint = 'key_value_campaign_adunit' AND o.campaign_id IS NOT NULL)
            AS receita_kv_campanha,
          sum(o.revenue_client) FILTER (WHERE o.endpoint = 'key_value_campaign_adunit' AND o.campaign_id IS NULL)
            AS receita_kv_sem_campanha,
          count(DISTINCT o.campaign_id) FILTER (WHERE o.endpoint = 'key_value_campaign_adunit') AS n_campanhas,
-         count(DISTINCT o.currency_code) AS n_moedas
+         count(DISTINCT o.currency_code) AS n_moedas,
+         bool_or(o.endpoint = 'earnings') AS tem_earnings,
+         coalesce(bool_and(o.data_status IN ('observed', 'zero_confirmed') AND o.revenue_client IS NOT NULL)
+                    FILTER (WHERE o.endpoint = 'earnings'), true) AS earnings_valido,
+         bool_or(o.endpoint = 'key_value_campaign_adunit') AS tem_kv
   FROM public.joinads_observation_latest o, r_ag, r_lim
   WHERE o.metric_date > (r_ag.agora AT TIME ZONE 'America/Sao_Paulo')::date - r_lim.dias::int
-  GROUP BY o.metric_date
+    AND o.endpoint IN ('earnings', 'key_value_campaign_adunit')
+  GROUP BY o.metric_date, o.domain
+),
+r_cob AS (
+  SELECT d.*,
+         CASE WHEN d.tem_earnings AND d.earnings_valido AND d.earnings > 0 AND d.tem_kv
+              THEN round(coalesce(d.receita_kv_campanha, 0) / d.earnings, 4) END AS cobertura
+  FROM r_dd d
 )
-SELECT d.*,
-       CASE WHEN d.earnings > 0 AND d.receita_kv_campanha IS NOT NULL
-            THEN round(d.receita_kv_campanha / d.earnings, 4) END AS cobertura,
-       CASE WHEN d.n_moedas > 1 THEN 'moeda_mista'
-            WHEN d.earnings IS NULL OR d.earnings <= 0 THEN 'sem_base'
-            WHEN d.receita_kv_campanha IS NULL THEN 'sem_receita_campanha'
-            WHEN round(d.receita_kv_campanha / d.earnings, 4) < l.lo THEN 'cobertura_baixa'
-            WHEN round(d.receita_kv_campanha / d.earnings, 4) > l.hi THEN 'excesso'
+SELECT c.*,
+       CASE WHEN c.n_moedas > 1 THEN 'moeda_mista'
+            WHEN c.tem_earnings AND NOT c.earnings_valido THEN 'earnings_indisponivel'
+            WHEN NOT c.tem_earnings AND c.tem_kv THEN 'kv_sem_earnings'
+            WHEN NOT c.tem_earnings OR c.earnings IS NULL OR c.earnings <= 0 THEN 'sem_base'
+            WHEN NOT c.tem_kv THEN 'earnings_sem_kv'
+            WHEN c.cobertura < l.lo THEN 'cobertura_baixa'
+            WHEN c.cobertura > l.hi THEN 'excesso'
             ELSE 'ok' END AS estado,
-       CASE WHEN d.n_moedas > 1 THEN 'alto'
-            WHEN d.earnings IS NULL OR d.earnings <= 0 THEN 'info'
-            WHEN d.receita_kv_campanha IS NULL THEN 'alto'
-            WHEN round(d.receita_kv_campanha / d.earnings, 4) < l.crit THEN 'alto'
-            WHEN round(d.receita_kv_campanha / d.earnings, 4) < l.lo THEN 'aviso'
-            WHEN round(d.receita_kv_campanha / d.earnings, 4) > l.hi THEN 'alto'
+       CASE WHEN c.n_moedas > 1 THEN 'alto'
+            WHEN c.tem_earnings AND NOT c.earnings_valido THEN 'aviso'
+            WHEN NOT c.tem_earnings AND c.tem_kv THEN 'aviso'
+            WHEN NOT c.tem_earnings OR c.earnings IS NULL OR c.earnings <= 0 THEN 'info'
+            WHEN NOT c.tem_kv THEN 'alto'
+            WHEN c.cobertura < l.crit THEN 'alto'
+            WHEN c.cobertura < l.lo THEN 'aviso'
+            WHEN c.cobertura > l.hi THEN 'alto'
             ELSE 'ok' END AS severidade
-FROM r_dia d CROSS JOIN r_lim l;
+FROM r_cob c CROSS JOIN r_lim l;
 
 -- ===== dq_reconciliacao_custo_d0_d1 =====
 WITH dq_parametros_limiares AS (
@@ -629,17 +643,31 @@ GROUP BY o.fonte, o.coletor_nome;
 -- ===== dq_obs_dead_letter =====
 WITH dl_ag AS (SELECT now() AS agora),
 dl_mot AS (
-  SELECT run_id, jsonb_object_agg(motivo, n) AS motivos
+  SELECT run_id, sum(n)::bigint AS n, jsonb_object_agg(motivo, n) AS motivos
   FROM (SELECT run_id, motivo, count(*) AS n FROM dil_obs.dead_letter GROUP BY 1, 2) z GROUP BY run_id
+),
+dl_run AS (
+  SELECT r.run_id, r.fonte, r.coletor_nome, r.status, r.iniciado_em, r.n_lidas, r.n_dead_letter,
+         coalesce(m.n, 0) AS dead_letter_registrados, coalesce(m.motivos, '{}'::jsonb) AS motivos,
+         GREATEST(coalesce(r.n_dead_letter, 0), coalesce(m.n, 0)) AS dl
+  FROM dil_obs.run_coleta r
+  CROSS JOIN dl_ag
+  LEFT JOIN dl_mot m ON m.run_id = r.run_id
+  WHERE r.status <> 'running' AND r.iniciado_em > dl_ag.agora - interval '14 days' AND r.iniciado_em <= dl_ag.agora
+),
+dl_cls AS (
+  SELECT d.*,
+         CASE WHEN d.n_lidas > 0 THEN round(d.dl::numeric / d.n_lidas, 4) END AS taxa,
+         CASE WHEN d.dead_letter_registrados > coalesce(d.n_dead_letter, 0) THEN 'dead_letter_apos_fechamento'
+              WHEN d.dl > 0 AND coalesce(d.n_lidas, 0) = 0 THEN 'so_dead_letter'
+              WHEN d.n_lidas > 0 AND d.dl::numeric / d.n_lidas > 0.05 THEN 'taxa_alta'
+              ELSE 'ok' END AS classe
+  FROM dl_run d
 )
-SELECT r.run_id, r.fonte, r.coletor_nome, r.status, r.iniciado_em, r.n_lidas, r.n_dead_letter,
-       CASE WHEN r.n_lidas > 0 THEN round(r.n_dead_letter::numeric / r.n_lidas, 4) END AS taxa,
-       coalesce(m.motivos, '{}'::jsonb) AS motivos,
-       CASE WHEN r.n_lidas > 0 AND r.n_dead_letter::numeric / r.n_lidas > 0.05 THEN 'alto' ELSE 'ok' END AS severidade
-FROM dil_obs.run_coleta r
-CROSS JOIN dl_ag
-LEFT JOIN dl_mot m ON m.run_id = r.run_id
-WHERE r.status <> 'running' AND r.iniciado_em > dl_ag.agora - interval '14 days' AND r.iniciado_em <= dl_ag.agora;
+SELECT c.run_id, c.fonte, c.coletor_nome, c.status, c.iniciado_em, c.n_lidas, c.n_dead_letter,
+       c.dead_letter_registrados, c.taxa, c.motivos, c.classe,
+       CASE WHEN c.classe = 'ok' THEN 'ok' ELSE 'alto' END AS severidade
+FROM dl_cls c;
 
 -- ===== dq_obs_status =====
 WITH st_ag AS (SELECT now() AS agora)
@@ -648,8 +676,8 @@ SELECT o.fonte, o.metrica, (o.janela_inicio AT TIME ZONE o.timezone)::date AS di
        CASE WHEN o.status IN ('invalid') THEN 'alto'
             WHEN o.status IN ('unavailable', 'missing', 'late') THEN 'aviso'
             WHEN o.status = 'partial' THEN 'info' ELSE 'ok' END AS severidade
-FROM dil_obs.observacao o CROSS JOIN st_ag
-WHERE o.available_at <= st_ag.agora AND o.janela_inicio > st_ag.agora - interval '14 days'
+FROM st_ag CROSS JOIN LATERAL dil_obs.observacao_as_of(st_ag.agora) o
+WHERE o.janela_inicio > st_ag.agora - interval '14 days'
 GROUP BY 1, 2, 3, 4, 5;
 
 -- ===== dq_obs_runs_orfaos =====

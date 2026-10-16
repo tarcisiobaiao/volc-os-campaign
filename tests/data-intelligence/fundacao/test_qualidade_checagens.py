@@ -272,7 +272,7 @@ def test_reconciliacao_receita_estados():
         LinhaReceitaDia(d.replace(day=9), 0.0, 0.0),
     ])}
     assert est == {10: ("ok", "ok"), 11: ("cobertura_baixa", "aviso"), 12: ("cobertura_baixa", "alto"),
-                   13: ("excesso", "alto"), 14: ("sem_base", "info"), 15: ("sem_receita_campanha", "alto"),
+                   13: ("excesso", "alto"), 14: ("kv_sem_earnings", "aviso"), 15: ("earnings_sem_kv", "alto"),
                    16: ("moeda_mista", "alto"), 9: ("sem_base", "info")}
 
 

@@ -25,8 +25,8 @@ TZ = ZoneInfo("America/Sao_Paulo")
 AGORA_PADRAO = datetime(2026, 10, 16, 15, 0, tzinfo=timezone.utc)  # 12:00 em São Paulo
 CONTA = "1234567890"
 CONTA2 = "9876543210"
-DOMINIO = "creditoup.com.br"
-CAMPANHAS = ("21000000001", "21000000002", "21000000003", "21000000004", "21000000005")
+DOMINIO = "site.exemplo"  # R2-G17: nunca o domínio real do cliente
+CAMPANHAS = ("90000000001", "90000000002", "90000000003", "90000000004", "90000000005")  # ids fictícios
 TERMOS = ("emprestimo rapido", "cartao sem anuidade", "credito pessoal")
 
 

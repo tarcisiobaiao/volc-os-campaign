@@ -79,10 +79,7 @@ class ConjuntoSaude:
             "runs": [r.como_dict() for r in self.runs],
             "observacoes": [o.como_dict() for o in self.observacoes],
             "cobertura_sensor": [c.como_dict() for c in self.cobertura_sensor],
-            "receita_dias": None if self.receita_dias is None else [
-                {"metric_date": x.metric_date.isoformat(), "earnings": x.earnings,
-                 "receita_kv_campanha": x.receita_kv_campanha, "receita_kv_sem_campanha": x.receita_kv_sem_campanha,
-                 "n_campanhas": x.n_campanhas, "n_moedas": x.n_moedas} for x in self.receita_dias],
+            "receita_dias": None if self.receita_dias is None else [x.como_dict() for x in self.receita_dias],
             "series_deriva": self.series_deriva,
             "moeda_esperada": self.moeda_esperada,
         }
