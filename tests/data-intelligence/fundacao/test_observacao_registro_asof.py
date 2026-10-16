@@ -230,3 +230,27 @@ def test_propriedade_idempotencia_e_as_of(obs):
         for o in fim.values():
             assert (o.valor is None) == (o.status in (StatusObservacao.MISSING, StatusObservacao.UNAVAILABLE))
     assert all(v > 0 for v in caminhos.values()), f"gerador não exercitou todos os caminhos: {caminhos}"
+
+
+# ---------------------------------------------------------------- R1
+def test_r1_m7_mesma_leitura_no_instante_da_vigente_e_noop(obs):
+    """k1@t1, k2@t2, k1@t2: a releitura de k1 no MESMO instante da vigente não é reafirmação (seria ambígua)."""
+    r = Registro()
+    k1 = _versao(obs, 30, payload=b"K1")
+    k2 = _versao(obs, 40, payload=b"K2", valor=7_000_000)
+    k1_tarde = _versao(obs, 40, payload=b"K1", run_id="run-x", lote_id="lote-x")
+    assert r.registrar_todas([k1, k2, k1_tarde]) == [ResultadoRegistro.INSERIDO, ResultadoRegistro.INSERIDO, ResultadoRegistro.NOOP]
+
+
+def test_r1_f16_partial_fora_do_total_por_padrao(obs):
+    d = obs().janela_inicio
+    fechado = obs(entidade_id="1")
+    aberto = obs(entidade_id="2", status="partial", valor=1_000_000, motivo="janela_aberta", cobertura_ppm=10,
+                 observed_at=d + H, available_at=d + H, ingested_at=d + H)
+    desconhecido = obs(entidade_id="3", status="partial", valor=2_000_000, motivo="janela_aberta;cobertura_desconhecida",
+                       observed_at=d + H, available_at=d + H, ingested_at=d + H)
+    ag = agregar_observacoes([fechado, aberto, desconhecido])
+    assert ag.valor is None and ag.agregado.estado is EstadoMedida.NAO_COLETADO  # 1% de cobertura não vira `medido`
+    assert (ag.cobertura_minima_ppm, ag.n_cobertura_desconhecida) == (10, 1)
+    opt = agregar_observacoes([fechado, aberto], aceitar_parcial=True)
+    assert opt.valor.micros == 6_000_000 and opt.agregado.cobertura is Cobertura.PARCIAL

@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from types import MappingProxyType
 from typing import Iterable, Mapping, Optional, Sequence
@@ -128,10 +128,16 @@ def para_contrato_economico(
 
 @dataclass(frozen=True)
 class AgregadoObservacao:
-    """Agregado herdado + o que ele não sabe contar: quantos de cada status fino."""
+    """Agregado herdado + o que ele não sabe contar: quantos de cada status fino e a cobertura parcial.
+
+    `cobertura_minima_ppm`: menor cobertura declarada entre os membros `partial` (None se não há partial
+    com cobertura); `n_cobertura_desconhecida`: quantos `partial` não sabem a própria cobertura (R1-F16/F17).
+    """
 
     agregado: Agregado
     por_status: Mapping[str, int]
+    cobertura_minima_ppm: Optional[int] = None
+    n_cobertura_desconhecida: int = 0
 
     @property
     def valor(self) -> Optional[object]:
@@ -150,8 +156,24 @@ def agregar_observacoes(
     metodo: MetodoAtribuicao = MetodoAtribuicao.NAO_APLICAVEL,
 ) -> AgregadoObservacao:
     """Soma por composição com `contracts.agregar`: vazio → ausente; qualquer membro sem valor →
-    total sem valor (salvo `aceitar_parcial`, que marca cobertura parcial). Nunca devolve 0 inventado."""
-    economicas = [para_contrato_economico(o, maturidade=maturidade, metodo=metodo) for o in observacoes]
+    total sem valor (salvo `aceitar_parcial`, que marca cobertura parcial). Nunca devolve 0 inventado.
+
+    `partial` fica FORA do total por padrão (R1-F16): um dia com 1% de cobertura não vira parcela de um
+    total `medido`. Só com `aceitar_parcial=True` o valor parcial entra, e o agregado sai `partial`.
+    """
+    economicas = []
+    for o in observacoes:
+        e = para_contrato_economico(o, maturidade=maturidade, metodo=metodo)
+        if o.status is StatusObservacao.PARTIAL and not aceitar_parcial and e.valor is not None:
+            e = replace(e, valor=None, estado=EstadoMedida.NAO_COLETADO,
+                        motivo=f"partial fora do total: {o.motivo}")
+        economicas.append(e)
     ag = agregar(economicas, aceitar_parcial=aceitar_parcial)
     contagem = Counter(o.status.value for o in observacoes)
-    return AgregadoObservacao(ag, MappingProxyType(dict(sorted(contagem.items()))))
+    parciais = [o for o in observacoes if o.status is StatusObservacao.PARTIAL]
+    conhecidas = [o.cobertura_ppm for o in parciais if o.cobertura_ppm is not None]
+    return AgregadoObservacao(
+        ag, MappingProxyType(dict(sorted(contagem.items()))),
+        cobertura_minima_ppm=min(conhecidas) if conhecidas else None,
+        n_cobertura_desconhecida=len(parciais) - len(conhecidas),
+    )

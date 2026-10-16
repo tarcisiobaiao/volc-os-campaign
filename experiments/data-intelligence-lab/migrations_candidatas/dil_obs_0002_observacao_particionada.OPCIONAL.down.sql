@@ -7,6 +7,40 @@
 -- =============================================================================
 
 BEGIN;
+-- Agir como dil_obs_dono SÓ nesta transação (R1-F2/F22): superusuário não precisa de membresia;
+-- quem já pode SET ROLE dil_obs_dono recebe um WARNING (membresia permanente desliga triggers);
+-- os demais se concedem a membresia (exige ADMIN OPTION no papel) e a revogam no fim do arquivo.
+DO $$
+DECLARE
+  v_super boolean;
+  v_pode boolean;
+BEGIN
+  SELECT rolsuper INTO v_super FROM pg_catalog.pg_roles WHERE rolname = current_user;
+  IF v_super THEN
+    PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'nao', true);
+    RETURN;
+  END IF;
+  IF current_setting('server_version_num')::integer >= 160000 THEN
+    EXECUTE 'SELECT pg_catalog.pg_has_role(current_user, ''dil_obs_dono'', ''SET'')' INTO v_pode;
+  ELSE
+    v_pode := pg_catalog.pg_has_role(current_user, 'dil_obs_dono', 'MEMBER');
+  END IF;
+  IF v_pode THEN
+    RAISE WARNING 'dil_obs: % já pode agir como dil_obs_dono de forma permanente (pode desligar o append-only); revise essa membresia', current_user;
+    PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'nao', true);
+    RETURN;
+  END IF;
+  BEGIN
+    EXECUTE format('GRANT dil_obs_dono TO %I', current_user);
+  EXCEPTION WHEN insufficient_privilege THEN
+    RAISE EXCEPTION 'dil_obs: % não pode administrar o papel dil_obs_dono', current_user
+      USING ERRCODE = 'insufficient_privilege',
+            HINT = 'Aplique como superusuário ou como quem criou os papéis, ou peça a um superusuário: '
+                   'GRANT dil_obs_dono TO <aplicador> WITH ADMIN OPTION, INHERIT FALSE, SET FALSE;';
+  END;
+  PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'sim', true);
+END $$;
+
 SET LOCAL ROLE dil_obs_dono;
 
 LOCK TABLE dil_obs.observacao IN ACCESS EXCLUSIVE MODE;
@@ -65,10 +99,10 @@ CREATE TABLE dil_obs.observacao (
     OR (tipo_registro = 'reafirmacao' AND chave_idempotencia <> chave_base)),
   CONSTRAINT ck_obs_fonte CHECK (fonte ~ '^[a-z][a-z0-9_]*$'),
   CONSTRAINT ck_obs_identidade CHECK (
-        conta <> '' AND conta = btrim(conta) AND conta !~ '[\x01-\x1f\x7f]'
-    AND entidade_tipo <> '' AND entidade_tipo = btrim(entidade_tipo) AND entidade_tipo !~ '[\x01-\x1f\x7f]'
-    AND entidade_id <> '' AND entidade_id = btrim(entidade_id) AND entidade_id !~ '[\x01-\x1f\x7f]'
-    AND timezone <> '' AND schema_version <> '' AND coletor_nome <> '' AND coletor_versao <> ''),
+    dil_obs._texto_ok(conta) AND dil_obs._texto_ok(entidade_tipo) AND dil_obs._texto_ok(entidade_id)
+    AND dil_obs._texto_ok(timezone) AND dil_obs._texto_ok(schema_version) AND dil_obs._texto_ok(coletor_nome)
+    AND dil_obs._texto_ok(coletor_versao) AND dil_obs._texto_ok(run_id) AND dil_obs._texto_ok(lote_id)
+    AND dil_obs._texto_ok(payload_ref) AND (request_id IS NULL OR dil_obs._texto_ok(request_id))),
   CONSTRAINT ck_obs_grao CHECK (
     cardinality(grao) >= 1
     AND grao <@ ARRAY['account', 'campaign', 'ad_group', 'keyword', 'funnel', 'url', 'ad_unit', 'country',
@@ -97,8 +131,10 @@ CREATE TABLE dil_obs.observacao (
   CONSTRAINT ck_obs_zero_confirmed CHECK (status <> 'zero_confirmed' OR (valor IS NOT NULL AND valor = 0)),
   CONSTRAINT ck_obs_sem_valor CHECK (
     status NOT IN ('missing', 'late', 'unavailable', 'unsupported', 'invalid') OR valor IS NULL),
+  -- partial: cobertura declarada (1..999999) OU desconhecida (nula, motivo com `cobertura_desconhecida`) — R1-F17
   CONSTRAINT ck_obs_partial CHECK (
     (status = 'partial' AND cobertura_ppm IS NOT NULL AND cobertura_ppm BETWEEN 1 AND 999999)
+    OR (status = 'partial' AND cobertura_ppm IS NULL AND strpos(coalesce(motivo, ''), 'cobertura_desconhecida') > 0)
     OR (status <> 'partial' AND cobertura_ppm IS NULL)),
   CONSTRAINT ck_obs_janela_fechada CHECK (status NOT IN ('observed', 'zero_confirmed') OR observed_at >= janela_fim),
 
@@ -177,4 +213,13 @@ GRANT SELECT ON dil_obs.observacao, dil_obs.observacao_latest TO dil_obs_leitor;
 GRANT EXECUTE ON FUNCTION dil_obs.observacao_as_of(timestamptz) TO dil_obs_leitor;
 
 RESET ROLE;
+-- Fim da membresia temporária (R1-F2): quem aplicou não continua podendo agir como dono.
+DO $$
+BEGIN
+  IF current_setting('dil_obs.revogar_dono', true) = 'sim'
+     AND EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'dil_obs_dono') THEN
+    EXECUTE format('REVOKE dil_obs_dono FROM %I', current_user);
+  END IF;
+END $$;
+
 COMMIT;
