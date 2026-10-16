@@ -77,3 +77,5 @@ Nós esperados na camada técnica: `backend/app/agente_bia/*`, `src/features/bia
 ## 7. Nota de secret scan
 
 O `gitleaks` (sobre `a54a77e2..HEAD` e sobre `docs/bia-hermes/provas`) só acusou um JWT **sintético** de teste (`sub` fictício, assinatura "assinatura-falsa"), que estava literal no commit `c84eaea1`. No commit de fechamento ele passou a ser montado em runtime. O histórico não foi reescrito (regra da missão). Não é credencial.
+
+Em `e0dee96d..HEAD`, o gitleaks também acusa `generic-api-key` em `provas/producao/POSTFLIGHT-v27_01-20261015.txt:4` no commit `a50ff53f`. É o **md5 do fingerprint de schema** (`58e2c430…`), público e sem valor de credencial. No estado final a linha leva `# gitleaks:allow`. O histórico não foi reescrito.
