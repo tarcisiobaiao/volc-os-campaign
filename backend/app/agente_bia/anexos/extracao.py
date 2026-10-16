@@ -15,12 +15,15 @@ from __future__ import annotations
 
 import csv
 import io
+import warnings
 from dataclasses import dataclass
 from typing import Optional
 
 from app.agente_bia.anexos.dominio import (
     MAX_CARACTERES_POR_DOCUMENTO,
+    MAX_LADO_ENVIO_IMAGEM,
     MAX_LADO_IMAGEM,
+    MAX_PAGINAS_PDF,
     MAX_PIXELS_IMAGEM,
     AnexoRecusado,
     TipoAceito,
@@ -40,14 +43,20 @@ class Processado:
 def _imagem(dados: bytes, tipo: TipoAceito) -> Processado:
     from PIL import Image, ImageOps
 
-    Image.MAX_IMAGE_PIXELS = MAX_PIXELS_IMAGEM
     try:
-        with Image.open(io.BytesIO(dados)) as bruta:
-            bruta.verify()
-        with Image.open(io.BytesIO(dados)) as img:
-            if img.width > MAX_LADO_IMAGEM or img.height > MAX_LADO_IMAGEM:
-                raise AnexoRecusado("imagem_grande", f"Imagem acima de {MAX_LADO_IMAGEM} px de lado.")
-            img = ImageOps.exif_transpose(img)
+        # O aviso de bomba do Pillow vira erro AQUI (sem mexer no global do processo),
+        # e o limite de pixels é conferido no cabeçalho, ANTES de decodificar:
+        # `Image.MAX_IMAGE_PIXELS` sozinho só avisa até 2x o limite.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(io.BytesIO(dados)) as bruta:
+                if bruta.width * bruta.height > MAX_PIXELS_IMAGEM:
+                    raise AnexoRecusado("imagem_grande", "Imagem com resolução acima do limite.")
+                if bruta.width > MAX_LADO_IMAGEM or bruta.height > MAX_LADO_IMAGEM:
+                    raise AnexoRecusado("imagem_grande", f"Imagem acima de {MAX_LADO_IMAGEM} px de lado.")
+                bruta.verify()
+            with Image.open(io.BytesIO(dados)) as original:
+                img = _saneada(original, ImageOps)
             formato = {"png": "PNG", "jpeg": "JPEG", "webp": "WEBP"}[tipo.chave]
             if formato == "JPEG" and img.mode not in ("RGB", "L"):
                 img = img.convert("RGB")
@@ -57,10 +66,19 @@ def _imagem(dados: bytes, tipo: TipoAceito) -> Processado:
             return Processado(saida.getvalue(), None, None, img.width, img.height, False)
     except AnexoRecusado:
         raise
-    except Image.DecompressionBombError as exc:
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
         raise AnexoRecusado("imagem_grande", "Imagem com resolução acima do limite.") from exc
     except Exception as exc:  # noqa: BLE001
         raise AnexoRecusado("imagem_invalida", "A imagem não pôde ser lida.") from exc
+
+
+def _saneada(img, ImageOps):
+    """Orientação aplicada e lado maior reduzido para o que a visão usa de fato."""
+    img = ImageOps.exif_transpose(img)
+    if max(img.width, img.height) > MAX_LADO_ENVIO_IMAGEM:
+        img = img.copy()
+        img.thumbnail((MAX_LADO_ENVIO_IMAGEM, MAX_LADO_ENVIO_IMAGEM))
+    return img
 
 
 def _cortar(texto: str) -> tuple[str, bool]:
@@ -79,10 +97,16 @@ def _pdf(dados: bytes) -> Processado:
         leitor = PdfReader(io.BytesIO(dados))
         if leitor.is_encrypted:
             raise AnexoRecusado("pdf_protegido", "O PDF está protegido por senha.")
-        partes = []
-        for i, pagina in enumerate(leitor.pages):
-            partes.append(f"[página {i + 1}]\n{(pagina.extract_text() or '').strip()}")
         paginas = len(leitor.pages)
+        if paginas > MAX_PAGINAS_PDF:
+            raise AnexoRecusado("pdf_grande", f"PDF acima de {MAX_PAGINAS_PDF} páginas.")
+        partes, total = [], 0
+        for i, pagina in enumerate(leitor.pages):
+            parte = f"[página {i + 1}]\n{(pagina.extract_text() or '').strip()}"
+            partes.append(parte)
+            total += len(parte)
+            if total > MAX_CARACTERES_POR_DOCUMENTO:
+                break  # o resto seria cortado de qualquer forma
     except AnexoRecusado:
         raise
     except Exception as exc:  # noqa: BLE001

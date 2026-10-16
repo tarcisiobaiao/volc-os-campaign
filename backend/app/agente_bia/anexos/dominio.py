@@ -62,6 +62,11 @@ MAX_BYTES_ATIVOS_POR_USUARIO = 80 * MB
 RETENCAO_DIAS = 7
 MAX_PIXELS_IMAGEM = 40_000_000           # contra bomba de descompressão
 MAX_LADO_IMAGEM = 8_000
+#: A visão do modelo não aproveita mais que isso; reduzir aqui corta memória e custo.
+MAX_LADO_ENVIO_IMAGEM = 2_048
+MAX_PAGINAS_PDF = 300
+#: Temporário/órfão só é lixo depois disso: um upload paralelo do mesmo dono pode estar no meio.
+IDADE_MINIMA_ORFAO_S = 600
 MAX_DESCOMPACTADO_DOCX = 40 * MB
 MAX_ENTRADAS_DOCX = 2_000
 
@@ -80,7 +85,9 @@ def normalizar_nome(nome: str) -> str:
     """Nome de exibição seguro: sem caminho, sem controle, NFC, até 120 caracteres."""
     base = (nome or "").replace("\\", "/").split("/")[-1]
     base = unicodedata.normalize("NFC", base)
-    base = re.sub(r"[\x00-\x1f\x7f]", "", base).strip().strip(".")
+    # Controle, marcas bidi (U+202A–202E, U+2066–2069, U+200E/F) e colchetes saem:
+    # o nome vai ao prompt e à tela, e não pode forjar delimitador nem inverter texto.
+    base = re.sub(r"[\x00-\x1f\x7f\u200e\u200f\u202a-\u202e\u2066-\u2069\[\]]", "", base).strip().strip(".")
     if not base:
         base = "arquivo"
     if len(base) > 120:
@@ -110,7 +117,7 @@ def _eh_texto(dados: bytes) -> bool:
 def _docx_valido(dados: bytes) -> None:
     try:
         z = zipfile.ZipFile(BytesIO(dados))
-    except zipfile.BadZipFile as exc:
+    except Exception as exc:  # noqa: BLE001 — BadZipFile, LargeZipFile, ValueError, OSError…
         raise AnexoRecusado("docx_invalido", "O DOCX está corrompido.") from exc
     infos = z.infolist()
     if len(infos) > MAX_ENTRADAS_DOCX:

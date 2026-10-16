@@ -10,15 +10,32 @@
  * `key={user.id}` desmonta o widget inteiro na troca de usuário: nenhum
  * estado, histórico ou conversa salva do anterior sobrevive no React.
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import { useAuth } from '@/contexts/AuthContext';
 
 import { BiaWidget } from './BiaWidget';
 import { isBiaEnabled } from './featureFlag';
 
+/** Logout apaga os rascunhos da Bia desta aba (máquina compartilhada). */
+function apagarRascunhos() {
+  try {
+    const s = window.sessionStorage;
+    for (let i = s.length - 1; i >= 0; i -= 1) {
+      const k = s.key(i);
+      if (k?.startsWith('volc.bia.rascunho.')) s.removeItem(k);
+    }
+  } catch {
+    /* sem armazenamento: nada a apagar */
+  }
+}
+
 const BiaComSessao: React.FC = () => {
   const { user, userProfile } = useAuth();
+  const logado = !!user;
+  useEffect(() => {
+    if (!logado) apagarRascunhos();
+  }, [logado]);
   if (!user || userProfile?.role !== 'ADMIN') return null;
   return <BiaWidget key={user.id} userId={user.id} />;
 };

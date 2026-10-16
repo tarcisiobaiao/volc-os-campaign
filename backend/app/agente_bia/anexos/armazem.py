@@ -16,9 +16,13 @@ Garantias:
 """
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import hashlib
 import json
 import os
+import threading
+import time
 import re
 import tempfile
 import uuid
@@ -76,6 +80,8 @@ class Armazem:
     def __init__(self, raiz: Optional[Path] = None, *, relogio=None) -> None:
         self.raiz = Path(raiz) if raiz else diretorio_padrao()
         self._agora = relogio or (lambda: datetime.now(timezone.utc))
+        self._travas: Dict[str, threading.Lock] = {}
+        self._travas_lock = threading.Lock()
 
     # ── caminhos ──────────────────────────────────────────────────────────
     def _pasta(self, dono: str) -> Path:
@@ -142,20 +148,49 @@ class Armazem:
             return None
 
     # ── escrita ───────────────────────────────────────────────────────────
+    @contextlib.contextmanager
+    def _travado(self, dono: str):
+        """Uma escrita por dono por vez: threads deste processo E outros processos (flock)."""
+        pasta = self._pasta(dono)
+        with self._travas_lock:
+            trava = self._travas.setdefault(pasta.name, threading.Lock())
+        with trava:
+            with self._abrir_trava(pasta) as f:
+                fcntl.flock(f, fcntl.LOCK_EX)
+                try:
+                    yield pasta
+                finally:
+                    fcntl.flock(f, fcntl.LOCK_UN)
+
+    @staticmethod
+    def _abrir_trava(pasta: Path):
+        return os.fdopen(os.open(pasta / ".trava", os.O_RDWR | os.O_CREAT, 0o600), "r+")
+
     def guardar(self, dono: str, dados: bytes, nome: str, content_type: Optional[str]) -> Anexo:
-        self.limpar_expirados(dono)
         nome = dm.normalizar_nome(nome)
         tipo = dm.identificar(dados, nome, content_type)
         sha_original = hashlib.sha256(dados).hexdigest()
-        for existente in self.listar(dono):
-            if existente.sha256_original == sha_original:
-                return existente   # mesmo arquivo do mesmo dono: não ocupa cota de novo
-        ativos = self.listar(dono)
-        if len(ativos) >= dm.MAX_ANEXOS_ATIVOS_POR_USUARIO or \
-                sum(a.tamanho for a in ativos) + len(dados) > dm.MAX_BYTES_ATIVOS_POR_USUARIO:
-            raise CotaExcedida("cota_excedida",
-                               "Limite de anexos guardados atingido. Remova anexos ou aguarde a limpeza.")
+        # Decodificar/extrair é a parte cara: fora da trava. Cota, deduplicação e
+        # gravação ficam dentro dela, juntas — sem corrida entre uploads paralelos.
         proc = processar(dados, tipo)
+        with self._travado(dono) as pasta:
+            self._limpar_pasta(pasta)
+            for existente in self.listar(dono):
+                if existente.sha256_original == sha_original:
+                    # mesmo arquivo do mesmo dono: não ocupa cota de novo, e ganha validade nova
+                    renovado = Anexo(**{**asdict(existente), "expira_em": (
+                        self._agora() + timedelta(days=dm.RETENCAO_DIAS)).isoformat()})
+                    self._gravar(pasta / f"{existente.id}.json",
+                                 json.dumps(asdict(renovado), ensure_ascii=False).encode())
+                    return renovado
+            ativos = self.listar(dono)
+            if len(ativos) >= dm.MAX_ANEXOS_ATIVOS_POR_USUARIO or \
+                    sum(a.tamanho for a in ativos) + len(proc.dados) > dm.MAX_BYTES_ATIVOS_POR_USUARIO:
+                raise CotaExcedida("cota_excedida",
+                                   "Limite de anexos guardados atingido. Remova anexos ou aguarde a limpeza.")
+            return self._escrever(pasta, dono, nome, tipo, proc, sha_original)
+
+    def _escrever(self, pasta: Path, dono: str, nome: str, tipo, proc, sha_original: str) -> Anexo:
         agora = self._agora()
         anexo = Anexo(
             id=str(uuid.uuid4()), dono=dono, nome=nome, tipo=tipo.chave, mime=tipo.mime,
@@ -165,7 +200,6 @@ class Armazem:
             paginas=proc.paginas, largura=proc.largura, altura=proc.altura,
             caracteres=len(proc.texto) if proc.texto is not None else None, truncado=proc.truncado,
         )
-        pasta = self._pasta(dono)
         self._gravar(pasta / f"{anexo.id}.bin", proc.dados)
         if proc.texto is not None:
             self._gravar(pasta / f"{anexo.id}.txt", proc.texto.encode("utf-8"))
@@ -176,12 +210,9 @@ class Armazem:
     def remover(self, dono: str, anexo_id: str) -> bool:
         if self.obter(dono, anexo_id) is None:
             return False
-        pasta = self._pasta(dono)
-        for ext in (".json", ".bin", ".txt"):
-            try:
-                (pasta / f"{anexo_id}{ext}").unlink()
-            except FileNotFoundError:
-                pass
+        with self._travado(dono) as pasta:
+            for ext in (".json", ".bin", ".txt"):
+                (pasta / f"{anexo_id}{ext}").unlink(missing_ok=True)
         return True
 
     # ── retenção ──────────────────────────────────────────────────────────
@@ -195,19 +226,37 @@ class Armazem:
         """Remove anexos expirados (de um dono, ou de todos) e temporários órfãos."""
         if not self.raiz.exists():
             return 0
-        pastas = [self._pasta(dono)] if dono else [p for p in self.raiz.iterdir() if p.is_dir()]
+        if dono:
+            with self._travado(dono) as pasta:
+                return self._limpar_pasta(pasta)
         n = 0
-        for pasta in pastas:
-            for tmp in pasta.glob(".tmp-*"):
+        for pasta in [p for p in self.raiz.iterdir() if p.is_dir()]:
+            with self._travas_lock:
+                trava = self._travas.setdefault(pasta.name, threading.Lock())
+            with trava, self._abrir_trava(pasta) as f:
+                fcntl.flock(f, fcntl.LOCK_EX)
+                try:
+                    n += self._limpar_pasta(pasta)
+                finally:
+                    fcntl.flock(f, fcntl.LOCK_UN)
+        return n
+
+    def _limpar_pasta(self, pasta: Path) -> int:
+        """Chamado SEMPRE com a trava do dono. Temporário/órfão só se for velho."""
+        velho = time.time() - dm.IDADE_MINIMA_ORFAO_S
+        idade = lambda p: p.stat().st_mtime if p.exists() else time.time()  # noqa: E731
+        n = 0
+        for tmp in pasta.glob(".tmp-*"):
+            if idade(tmp) < velho:
                 tmp.unlink(missing_ok=True)
-            for meta in pasta.glob("*.json"):
-                a = self._ler_meta(pasta, meta.stem)
-                if a is None or self._expirado(a):
-                    for ext in (".json", ".bin", ".txt"):
-                        (pasta / f"{meta.stem}{ext}").unlink(missing_ok=True)
-                    n += 1
-            for orfao in pasta.glob("*.bin"):
-                if not (pasta / f"{orfao.stem}.json").exists():
-                    orfao.unlink(missing_ok=True)
-                    (pasta / f"{orfao.stem}.txt").unlink(missing_ok=True)
+        for meta in pasta.glob("*.json"):
+            a = self._ler_meta(pasta, meta.stem)
+            if a is None or self._expirado(a):
+                for ext in (".json", ".bin", ".txt"):
+                    (pasta / f"{meta.stem}{ext}").unlink(missing_ok=True)
+                n += 1
+        for orfao in pasta.glob("*.bin"):
+            if not (pasta / f"{orfao.stem}.json").exists() and idade(orfao) < velho:
+                orfao.unlink(missing_ok=True)
+                (pasta / f"{orfao.stem}.txt").unlink(missing_ok=True)
         return n

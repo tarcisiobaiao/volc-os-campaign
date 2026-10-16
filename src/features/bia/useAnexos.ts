@@ -150,7 +150,11 @@ export function useAnexos(api: BiaApi = biaApi) {
       const item = itensRef.current.find((i) => i.chave === chave);
       cancelamentos.current.get(chave)?.();
       if (item?.previa) URL.revokeObjectURL(item.previa);
-      if (item?.anexo) void api.removerAnexo(item.anexo.id).catch(() => undefined);
+      // O servidor deduplica por conteúdo: o mesmo arquivo duas vezes na fila é UM
+      // anexo lá. Só some do servidor quando nenhum outro item da fila o usa.
+      const compartilhado = item?.anexo
+        && itensRef.current.some((i) => i.chave !== chave && i.anexo?.id === item.anexo!.id);
+      if (item?.anexo && !compartilhado) void api.removerAnexo(item.anexo.id).catch(() => undefined);
       setItens((lista) => lista.filter((i) => i.chave !== chave));
     },
     [api],

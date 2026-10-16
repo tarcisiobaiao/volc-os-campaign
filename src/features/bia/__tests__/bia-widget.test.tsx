@@ -166,12 +166,16 @@ describe('portão da Bia no Layout', () => {
     expect(await within(painel).findByText(AVISO_MEMORIA_COMPARTILHADA)).toBeTruthy(); // estado vazio
   });
 
-  it('logout desmonta o widget', async () => {
+  it('logout desmonta o widget e apaga os rascunhos da aba', async () => {
+    window.sessionStorage.setItem(chaveDoRascunho(A, CONV), 'meu rascunho');
+    window.sessionStorage.setItem('outra.chave', 'fica');
     logar(A);
     const { rerender } = render(<BiaNoLayout />);
     await abrir();
     logar(null);
     rerender(<BiaNoLayout />);
+    expect(window.sessionStorage.getItem(chaveDoRascunho(A, CONV))).toBeNull();
+    expect(window.sessionStorage.getItem('outra.chave')).toBe('fica');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: /Bia/ })).toBeNull();
   });

@@ -534,6 +534,10 @@ async def enviar_anexo(request: Request, identidade: Identidade = Depends(exigir
         status = 413 if exc.codigo in ("arquivo_grande", "imagem_grande") else \
             429 if exc.codigo == "cota_excedida" else 422
         raise HTTPException(status_code=status, detail={"codigo": exc.codigo, "mensagem": exc.mensagem})
+    except OSError as exc:
+        log.warning("bia anexo armazenamento_indisponivel erro=%s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail={"codigo": "anexo_indisponivel",
+                                                     "mensagem": "O armazenamento de anexos está indisponível. Tente de novo."})
     log.info("bia anexo guardado tipo=%s tamanho=%s", anexo.tipo, anexo.tamanho)
     return {"anexo": anexo.publico()}
 
@@ -657,9 +661,15 @@ async def executar_comando(nome: str, request: Request, identidade: Identidade =
     if entrada.execucao != "backend":
         raise HTTPException(status_code=409, detail={"codigo": "comando_local",
                                                      "mensagem": f"/{entrada.nome} roda na interface."})
+    # Despacho EXPLÍCITO por nome: comando de backend novo no catálogo sem ação
+    # aqui é recusado, nunca cai em outro.
+    acoes = {"status": casos.status}
+    if entrada.nome not in acoes:
+        raise HTTPException(status_code=501, detail={"codigo": "comando_sem_acao",
+                                                     "mensagem": f"/{entrada.nome} ainda não tem ação no servidor."})
     inicio = time.monotonic()
     try:
-        resultado = await casos.status(identidade.sub, str(corpo.conversa_id) if corpo.conversa_id else None)
+        resultado = await acoes[entrada.nome](identidade.sub, str(corpo.conversa_id) if corpo.conversa_id else None)
     except ConversaNaoEncontrada:
         raise HTTPException(status_code=404, detail={"codigo": "nao_encontrado",
                                                      "mensagem": "Conversa não encontrada."})
