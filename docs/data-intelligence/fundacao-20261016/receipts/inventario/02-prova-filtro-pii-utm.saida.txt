@@ -1,4 +1,4 @@
-"24278665189"      sensor.utmValue -> ""                 wrapper.safeValue -> ""
+"20000000011"      sensor.utmValue -> ""                 wrapper.safeValue -> ""
 "1234567890"       sensor.utmValue -> ""                 wrapper.safeValue -> ""
 "123456789"        sensor.utmValue -> "123456789"        wrapper.safeValue -> "123456789"
 "senac-caruaru"    sensor.utmValue -> "senac-caruaru"    wrapper.safeValue -> "senac-caruaru"

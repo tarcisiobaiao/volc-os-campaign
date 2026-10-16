@@ -2,10 +2,13 @@
 
 Fonte (somente leitura, `git show`): ref `wip/historico-joinads-20261015`,
 `.claude-ads/runs/google-ads-recovery-20261015T125729-0300/receipts/d-live-campaign-audit.json`, bloco
-`"hour"` (24 segmentos; soma = D30 16/09–15/10 da campanha 24278665189). Não é série diária: é o
+`"hour"` (24 segmentos; soma = D30 16/09–15/10 da campanha ativa da conta). Não é série diária: é o
 agregado de 30 dias por hora do dia (America/Sao_Paulo). Serve para:
 - dizer quanto da atividade cai fora da janela 06–23 do D0;
 - calibrar a taxa λ (eventos que mudam a linha por hora) do modelo de volume.
+
+Saída SANITIZADA (R1 F25): só fatias por hora e taxas médias de contagem; nenhum id de conta/campanha e
+nenhum valor monetário absoluto vai para o repositório.
 
 Uso: <python> -I scripts/fundacao_capacidade_horas.py --repo <worktree do integrador> --saida <json>
 """
@@ -57,20 +60,30 @@ def main() -> int:
     madrugada = range(0, 6)
     res = {
         "fonte": {"ref": REF, "commit": commit, "caminho": CAMINHO, "sha256": hashlib.sha256(bruto).hexdigest()},
-        "periodo": "D30 agregado por hora do dia (16/09–15/10/2026), campanha 24278665189, America/Sao_Paulo",
-        "totais": tot,
-        "por_hora": por_hora,
+        "periodo": "D30 agregado por hora do dia (16/09–15/10/2026), campanha ativa da conta A, America/Sao_Paulo",
+        "sanitizacao": "sem ids e sem valores monetários absolutos; só fatias e taxas de contagem (R1 F25)",
+        "fatia_por_hora": [{"hora": h["hora"], **{m: h[m] / tot[m] for m in met}} for h in por_hora],
         "fatia_00_06": fatia(madrugada),
         "fatia_23": fatia([23]),
         "fatia_fora_da_ultima_leitura_d0_aprox": {m: fatia(madrugada)[m] + fatia([23])[m] * 53 / 60 for m in met},
-        "lambda_campanha_por_hora_media": {m: tot[m] / (DIAS * 24) for m in met},
-        "lambda_campanha_por_hora_pico": {m: max(h[m] for h in por_hora) / DIAS for m in met},
-        "lambda_campanha_por_hora_vale": {m: min(h[m] for h in por_hora) / DIAS for m in met},
-        "nota": "λ = eventos/hora na campanha (5 campanhas na conta, 1 com entrega relevante). Uma linha "
+        "impressoes_por_hora_media": tot["impressions"] / (DIAS * 24),
+        "impressoes_por_hora_pico": max(h["impressions"] for h in por_hora) / DIAS,
+        "impressoes_por_hora_vale": min(h["impressions"] for h in por_hora) / DIAS,
+        "nota": "λ = impressões/hora da campanha ativa (1 de 5 campanhas da conta com entrega). Uma linha "
                 "campanha-dia muda quando QUALQUER métrica muda; impressão é o evento mais frequente.",
     }
+    nomes = {"impressions": "impressoes", "clicks": "cliques", "cost_brl": "custo", "conversions_ads": "conversoes"}
+
+    def renomear(o):
+        if isinstance(o, dict):
+            return {nomes.get(k, k): renomear(v) for k, v in o.items()}
+        if isinstance(o, list):
+            return [renomear(v) for v in o]
+        return o
+
+    res = renomear(res)
     Path(a.saida).write_text(json.dumps(res, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(json.dumps({k: res[k] for k in ("fatia_00_06", "lambda_campanha_por_hora_media")}, ensure_ascii=False))
+    print(json.dumps({k: res[k] for k in ("fatia_00_06", "impressoes_por_hora_media")}, ensure_ascii=False))
     return 0
 
 

@@ -46,10 +46,10 @@
    "sensor_clean_200": "cpc"
   },
   {
-   "entrada": "Cursos Senac",
-   "sensor_v3": "cursos_senac",
-   "wrapper_v2": "cursos_senac",
-   "sensor_clean_200": "cursos senac"
+   "entrada": "Cursos Tecno",
+   "sensor_v3": "cursos_tecno",
+   "wrapper_v2": "cursos_tecno",
+   "sensor_clean_200": "cursos tecno"
   },
   {
    "entrada": "Educação Técnica",
@@ -70,16 +70,16 @@
    "sensor_clean_200": "black friday 2026"
   },
   {
-   "entrada": "cursos-senac-2026",
-   "sensor_v3": "cursos-senac-2026",
-   "wrapper_v2": "cursos-senac-2026",
-   "sensor_clean_200": "cursos-senac-2026"
+   "entrada": "cursos-tecno-2026",
+   "sensor_v3": "cursos-tecno-2026",
+   "wrapper_v2": "cursos-tecno-2026",
+   "sensor_clean_200": "cursos-tecno-2026"
   },
   {
-   "entrada": "senac_sp",
-   "sensor_v3": "senac_sp",
-   "wrapper_v2": "senac_sp",
-   "sensor_clean_200": "senac_sp"
+   "entrada": "tecno_sp",
+   "sensor_v3": "tecno_sp",
+   "wrapper_v2": "tecno_sp",
+   "sensor_clean_200": "tecno_sp"
   },
   {
    "entrada": "Promoção \"Relâmpago\"!",
@@ -130,22 +130,22 @@
    "sensor_clean_200": "linha nova"
   },
   {
-   "entrada": "24278665189",
+   "entrada": "20000000011",
    "sensor_v3": "",
    "wrapper_v2": "",
    "sensor_clean_200": "[x]"
   },
   {
-   "entrada": "2427866518",
+   "entrada": "2000000001",
    "sensor_v3": "",
    "wrapper_v2": "",
    "sensor_clean_200": "[x]"
   },
   {
-   "entrada": "242786651",
-   "sensor_v3": "242786651",
-   "wrapper_v2": "242786651",
-   "sensor_clean_200": "242786651"
+   "entrada": "200000001",
+   "sensor_v3": "200000001",
+   "wrapper_v2": "200000001",
+   "sensor_clean_200": "200000001"
   },
   {
    "entrada": "123456789",
@@ -160,19 +160,19 @@
    "sensor_clean_200": "[x]"
   },
   {
-   "entrada": "c24278665189",
+   "entrada": "c20000000011",
    "sensor_v3": "",
    "wrapper_v2": "",
    "sensor_clean_200": "c[x]"
   },
   {
-   "entrada": "gads_24278_665189",
-   "sensor_v3": "gads_24278_665189",
-   "wrapper_v2": "gads_24278_665189",
-   "sensor_clean_200": "gads_24278_665189"
+   "entrada": "gads_20000_000011",
+   "sensor_v3": "gads_20000_000011",
+   "wrapper_v2": "gads_20000_000011",
+   "sensor_clean_200": "gads_20000_000011"
   },
   {
-   "entrada": "2427-866-5189",
+   "entrada": "2000-000-0011",
    "sensor_v3": "",
    "wrapper_v2": "",
    "sensor_clean_200": "[x]"
@@ -15414,41 +15414,41 @@
  },
  "cenarios_campaign": [
   {
-   "href": "https://creditoup.com.br/r/guia-cursos-senac/?utm_source=google&utm_medium=cpc&utm_campaign=24278665189&utm_term=cursos%20senac&utm_content=165432109876&utm_device=m&gclid=TESTE_SINTETICO",
+   "href": "https://site.exemplo/r/guia-exemplo/?utm_source=google&utm_medium=cpc&utm_campaign=20000000011&utm_term=cursos%20tecnicos&utm_content=165432109876&utm_device=m&gclid=TESTE_SINTETICO",
    "armazenado": null,
    "utm": {
     "source": "google",
     "medium": "cpc",
-    "term": "cursos_senac",
+    "term": "cursos_tecnicos",
     "paid": 1
    },
-   "armazenado_depois": "{\"source\":\"google\",\"medium\":\"cpc\",\"term\":\"cursos_senac\",\"paid\":1}"
+   "armazenado_depois": "{\"source\":\"google\",\"medium\":\"cpc\",\"term\":\"cursos_tecnicos\",\"paid\":1}"
   },
   {
-   "href": "https://creditoup.com.br/r/guia-cursos-senac/?utm_source=google&utm_medium=cpc&utm_campaign=Cursos+Senac&utm_term=bolsa+de+estudo&gbraid=X",
+   "href": "https://site.exemplo/r/guia-exemplo/?utm_source=google&utm_medium=cpc&utm_campaign=Cursos+Tecno&utm_term=bolsa+de+estudo&gbraid=X",
    "armazenado": null,
    "utm": {
     "source": "google",
     "medium": "cpc",
-    "campaign": "cursos_senac",
+    "campaign": "cursos_tecno",
     "term": "bolsa_de_estudo",
     "paid": 1
    },
-   "armazenado_depois": "{\"source\":\"google\",\"medium\":\"cpc\",\"campaign\":\"cursos_senac\",\"term\":\"bolsa_de_estudo\",\"paid\":1}"
+   "armazenado_depois": "{\"source\":\"google\",\"medium\":\"cpc\",\"campaign\":\"cursos_tecno\",\"term\":\"bolsa_de_estudo\",\"paid\":1}"
   },
   {
-   "href": "https://creditoup.com.br/rec/por-onde-comecar-senac-pr/",
-   "armazenado": "{\"source\":\"google\",\"medium\":\"cpc\",\"term\":\"cursos_senac\",\"paid\":1}",
+   "href": "https://site.exemplo/rec/passo-exemplo-pr/",
+   "armazenado": "{\"source\":\"google\",\"medium\":\"cpc\",\"term\":\"cursos_tecnicos\",\"paid\":1}",
    "utm": {
     "source": "google",
     "medium": "cpc",
-    "term": "cursos_senac",
+    "term": "cursos_tecnicos",
     "paid": 1
    },
-   "armazenado_depois": "{\"source\":\"google\",\"medium\":\"cpc\",\"term\":\"cursos_senac\",\"paid\":1}"
+   "armazenado_depois": "{\"source\":\"google\",\"medium\":\"cpc\",\"term\":\"cursos_tecnicos\",\"paid\":1}"
   },
   {
-   "href": "https://creditoup.com.br/rec/por-onde-comecar-senac-pr/",
+   "href": "https://site.exemplo/rec/passo-exemplo-pr/",
    "armazenado": null,
    "utm": {
     "paid": 0
@@ -15456,7 +15456,7 @@
    "armazenado_depois": null
   },
   {
-   "href": "https://creditoup.com.br/r/x/?gclid=",
+   "href": "https://site.exemplo/r/x/?gclid=",
    "armazenado": null,
    "utm": {
     "paid": 1
@@ -15464,7 +15464,7 @@
    "armazenado_depois": "{\"paid\":1}"
   },
   {
-   "href": "https://creditoup.com.br/r/x/?utm_campaign=24278665189",
+   "href": "https://site.exemplo/r/x/?utm_campaign=20000000011",
    "armazenado": "{\"source\":\"google\",\"medium\":\"cpc\",\"term\":\"antigo\",\"paid\":1}",
    "utm": {
     "source": "google",
@@ -15475,7 +15475,7 @@
    "armazenado_depois": "{\"source\":\"google\",\"medium\":\"cpc\",\"term\":\"antigo\",\"paid\":1}"
   },
   {
-   "href": "https://creditoup.com.br/r/x/?utm_campaign=24278665189&gclid=Y",
+   "href": "https://site.exemplo/r/x/?utm_campaign=20000000011&gclid=Y",
    "armazenado": "{\"source\":\"google\",\"medium\":\"cpc\",\"term\":\"antigo\",\"paid\":1}",
    "utm": {
     "paid": 1
@@ -15483,7 +15483,7 @@
    "armazenado_depois": "{\"paid\":1}"
   },
   {
-   "href": "https://creditoup.com.br/r/x/?utm_source=Facebook&utm_medium=paid_social&utm_campaign=Meta+Cursos",
+   "href": "https://site.exemplo/r/x/?utm_source=Facebook&utm_medium=paid_social&utm_campaign=Meta+Cursos",
    "armazenado": null,
    "utm": {
     "source": "facebook",
@@ -15494,7 +15494,7 @@
    "armazenado_depois": "{\"source\":\"facebook\",\"medium\":\"paid_social\",\"campaign\":\"meta_cursos\"}"
   },
   {
-   "href": "https://creditoup.com.br/r/x/?utm_campaign=a&utm_campaign=b",
+   "href": "https://site.exemplo/r/x/?utm_campaign=a&utm_campaign=b",
    "armazenado": null,
    "utm": {
     "campaign": "a",
@@ -15503,7 +15503,7 @@
    "armazenado_depois": "{\"campaign\":\"a\"}"
   },
   {
-   "href": "https://creditoup.com.br/r/x/?utm_campaign=Promo%C3%A7%C3%A3o%20Rel%C3%A2mpago",
+   "href": "https://site.exemplo/r/x/?utm_campaign=Promo%C3%A7%C3%A3o%20Rel%C3%A2mpago",
    "armazenado": null,
    "utm": {
     "campaign": "promocao_relampago",
@@ -15512,7 +15512,7 @@
    "armazenado_depois": "{\"campaign\":\"promocao_relampago\"}"
   },
   {
-   "href": "https://creditoup.com.br/r/x/?utm_campaign=%E0%A4%A",
+   "href": "https://site.exemplo/r/x/?utm_campaign=%E0%A4%A",
    "armazenado": null,
    "utm": {
     "campaign": "�%a",

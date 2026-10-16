@@ -67,11 +67,18 @@ def test_replay_de_linhas_reais_ponta_a_ponta(tmp_path):
     fx = fixture_padroes_reais()
     adapt, res, led = replay_de_linhas_reais(fx["v21"], fx["joinads"], politicas=catalogo_padrao(), diretorio_ledger=tmp_path)
     assert res.decisoes and verificar_cadeia(tmp_path / "ledger.jsonl") == len(res.decisoes)
-    # janela de um dia só: nada maduro → nenhuma política honesta corta; a anti-baseline cai na armadilha do zero
+    # janela de um dia só: nada maduro → nenhuma política com portão de maturidade corta; a anti-baseline cai na
+    # armadilha do zero.
+    # [thread A, D2] a leitura de D+1 06h com o MESMO payload da última D0 agora é uma versão nova (janela fechada),
+    # não um duplicado descartado: o custo de D-1 passa a existir fechado, e as baselines herdadas `equal`/`greedy`
+    # (que só exigem custo fechado > 0 em D-1, sem portão de maturidade — 06 §11) realocam por construção.
+    sem_portao = {"regra_margem_null_zero", "equal", "greedy_conservador"}
     for d in res.decisoes:
         for p in d.decisao.propostas:
-            if d.politica != "regra_margem_null_zero":
+            if d.politica not in sem_portao:
                 assert p.acao.value not in ("pausar", "reduzir_verba"), (d.politica, p.motivo)
+    assert any(p.acao.value != "insuficiente" for d in res.da_politica("equal") for p in d.decisao.propostas), \
+        "o custo fechado de D-1 deveria chegar às baselines"
     mortas = {p.entidade.campaign_id for d in res.da_politica("regra_margem_null_zero") for p in d.decisao.propostas
               if p.motivo.startswith("campanha_morta")}
     assert mortas >= set(fx["campanhas_sem_metrica"])

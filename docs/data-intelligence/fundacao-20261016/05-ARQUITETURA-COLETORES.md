@@ -1,7 +1,8 @@
 # 05 — Arquitetura de coletores (frente B)
 
 Estado (taxonomia do manifesto §7): o esqueleto de coletor seguro está **construído e testado
-hermeticamente** (`volc_dil.fundacao.capacidade.coletor`, 17 testes). O inventário abaixo é
+hermeticamente** (`volc_dil.fundacao.capacidade.coletor`, 26 testes; revisado após a R1 — F10, F11, F12,
+ver `handoffs/HANDOFF-B.md` §8). O inventário abaixo é
 **leitura de repositório**, não leitura de produção: "ativo" significa "o documento/recibo de
 15/10 diz ativo", não que esta frente viu o n8n.
 
@@ -24,9 +25,14 @@ Abreviações de evidência (toda citação é `ref:caminho:linha`, lida com `gi
 | Google Ads termos + keywords | `TFlmThr4930oPneE` | `23 */4 * * *` | `LAST_7_DAYS` (D-7..D-1) | idem | idem | J:P/collector-inventory.json:152,159; J:scripts/instalar_coleta_termos_keywords_n8n.py:166-167,193 |
 | JoinAds intraday v2 | `cpb6tNxt211UkAn2` | `15 6-22/2 * * *` | D0 | `joinads_raw_batch` / `joinads_observation` | **determinística** (janela/hora) | J:docs/audits/JOINADS-COLETA-CANONICA-2026-10-15.md:17,26-28; J:n8n/joinads_v2_intraday.json:10 |
 | JoinAds D1 v2 | `jDX397ViVcRQft4A` | `20 6 * * *` | D-7..D-1 | idem | determinística (repetição 58101 manteve 64 lotes/209 obs) | J:docs/audits/JOINADS-COLETA-CANONICA-2026-10-15.md:18,77-85; J:n8n/joinads_v2_d1.json:10 |
-| GTM VOLC Sensor v3 | container `GTM-N4KS27ZV` v35 | evento (push do navegador) | — | Edge Function `volc-ingest` → `raw_events` | upsert `onConflict sid,pid,event_name,ts_sec` | MS:docs/operations/VOLC-MEASUREMENT-V3-2026-10-15.md:16-19; MS:supabase/functions/volc-ingest/index.ts:6-7,161-163 |
+| GTM VOLC Sensor v3 | container GTM do site (ID omitido, R1 F25), versão 35 | evento (push do navegador) | — | Edge Function `volc-ingest` → `raw_events` | upsert `onConflict sid,pid,event_name,ts_sec` | MS:docs/operations/VOLC-MEASUREMENT-V3-2026-10-15.md:16-19; MS:supabase/functions/volc-ingest/index.ts:6-7,161-163 |
 
-Os três Google Ads usam API v25 e `googleAds:searchStream` (J:P/collector-inventory.json:8,118);
+Os três Google Ads usam API v25 e `googleAds:searchStream` (J:P/collector-inventory.json:8,118).
+**Consultas por execução (R1 F7)**: D0 e D-1 fazem 1 `customer_client` (listagem do MCC, não escala
+com contas) + **4 GAQL por conta** (`campaign`, `conversion_goal_campaign_config`, `campaign_budget`,
+métricas da janela) — J:P/collector-inventory.json:111-117,136-142; termos/keywords fazem 1 GAQL por
+recurso por conta (:161-163) mais a listagem de contas (inferida de `retry.account_query`, :168).
+Na 1ª versão o modelo contava 1 consulta por conta e superestimava a capacidade em ~3×.
 **nenhum tem error workflow** (J:P/collector-inventory.json:122,147,169); retry só na chamada ao
 Google (500 ms), não na RPC de ingestão, exceto termos (3×, 2 s) (J:P/collector-inventory.json:121,168).
 
@@ -59,7 +65,7 @@ Google (500 ms), não na RPC de ingestão, exceto termos (3×, 2 s) (J:P/collect
 1. **Duas autoridades por verdade** hoje: campanha-dia D0 e D-1 têm um legado latest-wins e um
    canônico append-only escrevendo o mesmo fato em tabelas diferentes (J:P/collector-overlap-map.json:7-28,
    `coauthority: true`). JoinAds idem. A reconciliação D-1 de 14/10 bateu exatamente (5 campanhas,
-   R$ 50,02 — :54-59), o que **autoriza planejar** a troca, não a faz sozinha.
+   impressões, cliques, conversões e custo idênticos — :54-59; valores omitidos), o que **autoriza planejar** a troca, não a faz sozinha.
 2. **Idempotência desigual**: JoinAds v2 tem chave determinística por janela/hora; Google Ads v21
    usa `workflow_id:execution_id` como chave do run e `UNIQUE (run_id, observation_key)`
    (J:supabase/migrations/v21_01_google_ads_coleta_canonica.sql:130). Re-executar o mesmo slot pelo
@@ -96,7 +102,7 @@ Notas 0–3 (3 = melhor). Critério de peso: o que dá prova e reversibilidade, 
  cron ── dispara run_coleta(slot) ─▶ executor seguro ─ adaptador read-only ─▶ API (Ads/JoinAds)
         (webhook/HTTP interno)        │ timeout · retry backoff · dead letter
                                       ├─ grava lote bruto (hash por linha, linhas novas em lote)
-                                      ├─ grava observações que MUDARAM (chave lógica + valor)
+                                      ├─ grava pelo Registro da frente A: versão se o estado muda, senão confirmação (D1/D2')
                                       ├─ heartbeat + recibo do run (status, contagens, erros)
                                       └─ dead letter (pedido + motivo) ──────────▶ reprocesso
  GTM (navegador) ── lote 10 s/20 ev ─▶ volc-ingest (Edge) ─▶ raw_events (append, upsert idempotente)
@@ -112,37 +118,43 @@ Regras:
    slot agendado (não o instante real) e não escreve fato de negócio.
 3. **Python fica com o contrato**: leitura read-only, normalização, idempotência, gravação. O mesmo
    normalizador roda sobre o bruto guardado (replay) — sem re-chamar a API.
-4. **Migração por vertical**: começar pelo coletor de termos (maior volume, 95,7% redundante, já
+4. **Migração por vertical**: começar pelo coletor de termos (maior volume; 89,4% redundante medido com
+   ~21 h de vida, 97,6% esperado em regime — `04-…` §3; já
    teve o defeito de RPC por linha) — não por campanha-dia, que é pequena e já reconcilia.
 
 ### 3.1 Contrato de execução `run_coleta`
 
 ```python
-run_coleta(pedido: PedidoLeitura, *, adaptador: AdaptadorFonte, sink: Sink,
-           modo="dry_run", politica=PoliticaRetry(), relogio=..., dormir=...) -> ReciboRun
+run_coleta(pedido: PedidoLeitura, *, adaptador: Adaptador, transporte: TransporteLeitura,
+           sink: SinkMemoria | None = None, modo="dry_run", politica=PoliticaRetry(),
+           relogio=None, dormir=None) -> ReciboRun
+executar_lote(pedidos, *, paralelismo=1, ...)  # leitura serial ou paralela; gravação sempre serial, por slot
 ```
 
 | Campo | Semântica |
 |---|---|
 | `PedidoLeitura(coletor, conta, janela_inicio, janela_fim, slot)` | `slot` = instante AGENDADO; `chave_execucao = sha256(coletor, conta, janela, slot)` |
-| `modo` | `dry_run` (padrão: lê, normaliza, conta, não grava) ou `gravar` (só em sink com `externo=False`) |
-| `ReciboRun.status` | `concluido` · `dry_run` · `ja_concluido` (mesmo slot repetido = no-op) · `dead_letter` |
-| contagens | `linhas_lidas`, `observacoes`, `gravadas_novas`, `repetidas`, `payloads_distintos`, `tentativas`, `erros[]` |
-| `ObservacaoColetada` | chave lógica estrita, métrica, valor inteiro (micros) ou `None` com estado `nao_informado` — nunca 0; `disponivel_em` = instante da coleta |
+| `Adaptador.ler(pedido, cliente)` | o adaptador **não guarda cliente**: recebe a cada leitura um `ClienteLeitura` cuja única operação é `consultar(ConsultaLeitura)` — GAQL `SELECT` único ou HTTP `GET` https |
+| `TransporteLeitura.executar_leitura(consulta, timeout_s)` | injetado no **executor**, nunca no adaptador; recebe o prazo restante (timeout no cliente); não há transporte real neste módulo |
+| `RespostaLeitura(linhas, contexto)` | linhas cruas + `ContextoFonte` (fonte, entidade, grão, janela, timezone, coletor, esquema, moeda só se provada) |
+| `modo` | `dry_run` (padrão: lê e normaliza, **nada é gravado em lugar nenhum**, nem heartbeat) ou `gravar` (só em `SinkMemoria`, tipo exato) |
+| `ReciboRun.status` | `concluido` · `dry_run` · `ja_concluido` (mesmo slot = no-op, nem lê) · `dead_letter` |
+| contagens | `linhas_lidas`, `observacoes`, `inseridas`, `noop`, `rejeicoes`, `payloads_distintos`, `tentativas`, `erros[]` |
+| observação | **`Observacao` canônica da frente A**, produzida por `volc_dil.fundacao.observacao.normalizar` (uma linha = um payload endereçado por conteúdo) e registrada pelo `Registro` da frente A: INSERIDO (versão) / CONFIRMADO / NOOP. Regras finais da frente A (HANDOFF-A §7.1–7.2): **D1** — vigente é a de maior `observed_at`; **D2'** — `observed_at` entra na chave da leitura; leitura com estado diferente do vigente vira versão, releitura com o mesmo estado vira **confirmação estreita** (`dil_obs.confirmacao`, 226 B medidos), retry = NOOP. `observed_at` = carimbo do transporte (`RespostaLeitura.observado_em`) ou fim da leitura — **nunca o slot** (uma execução atrasada ou de backfill lê o estado de quando roda); precisa ser ≤ `available_at`, senão dead letter `observado_em_invalido`. `available_at` = relógio monotônico do sink na gravação. Recibo: `inseridas`, `confirmadas`, `noop` |
 
 ### 3.2 Garantias do executor (todas testadas)
 
 | Garantia | Como | Teste |
 |---|---|---|
-| Trava de escrita externa | adaptador precisa declarar `somente_leitura=True` e não pode ter método `mutate/escrever/post/put/patch/delete/update/insert/upsert/publicar/ativar`; sink precisa declarar `externo=False`; modo fora de `{dry_run, gravar}` é recusado; o módulo não importa cliente HTTP nem driver de banco | `test_trava_recusa_escrita_externa` (5 casos), `test_modulo_nao_tem_cliente_de_rede_nem_banco` |
-| Timeout | leitura numa thread com `result(timeout)`; resultado tardio é descartado, nunca consumido | `test_timeout_retry_sucesso_sem_duplicar` (espera a tentativa lenta terminar e confere 1 escrita) |
-| Retry seguro | só `ErroTransitorio` (timeout, 429, 5xx); backoff exponencial com *full jitter* e teto, semente determinística por chave | `test_backoff_exponencial_com_teto_e_deterministico` |
-| Falha permanente | `ErroPermanente` ou exceção desconhecida → dead letter na 1ª tentativa (não martela a API) | `test_falha_permanente_vai_para_dead_letter_sem_retry` |
-| Esgotamento | transitório além de `max_tentativas` → dead letter `tentativas_esgotadas`; reprocessar depois dá sucesso sem duplicar | `test_transitorio_que_esgota_tentativas_vai_para_dead_letter` |
-| Idempotência | slot repetido = `ja_concluido`; reler valor igual não cria linha; valor diferente cria versão nova (append-only) | `test_mesmo_slot_repetido_e_no_op…`, `test_valor_diferente_cria_nova_versao_append_only` |
-| Ausência ≠ zero | `None` vira `nao_informado`; float é contrato inválido (dinheiro em micros) | `test_ausencia_vira_nao_informado_nunca_zero`, `test_valor_nao_inteiro_e_contrato_invalido` |
-| Heartbeat/recibo | heartbeat em início, cada retry e fim; recibo do run gravado em `gravar` e em dead letter | asserts nos testes acima |
-| Serial × paralelo | 18 pedidos (6 contas × 3 slots) com erros transitórios intercalados: conjunto final idêntico, 54 observações, 18 runs; repetir o lote em paralelo não muda nada | `test_equivalencia_serial_paralelo` |
+| Trava por capacidade | o adaptador só alcança `ClienteLeitura.consultar`; `ConsultaLeitura` recusa tudo que não seja `SELECT`/`GET` (inclusive `mutate`, `UPDATE`, `SELECT …; DELETE`, `http://`, `POST`); fachada imutável sem acesso ao transporte; consulta recusada vira dead letter sem tocar o transporte; destino de `gravar` só `SinkMemoria` exato (subclasse, `None` ou outro objeto recusados); o módulo não importa cliente HTTP, driver nem `subprocess`. Limite: Python não impede código hostil de abrir a própria conexão — a suíte bloqueia rede | `test_consulta_so_admite_leitura` (5), `test_adaptador_nao_alcanca_o_transporte…`, `test_trava_recusa_destino…` (4), `test_modulo_nao_tem_transporte_real_nem_driver` |
+| dry_run nulo | sink recebido é ignorado: 0 heartbeats, 0 runs, 0 dead letters, 0 observações, inclusive em falha permanente | `test_dry_run_e_padrao_e_nao_toca_o_sink_nem_em_falha` |
+| Timeout que não prende o processo | prazo propagado ao transporte + leitura em thread *daemon*; tentativa estourada é abandonada e seu resultado nunca é consumido | `test_timeout_retry_sucesso_sem_duplicar…`; `test_fonte_presa_nao_impede_o_processo_de_sair` (subprocesso com fonte presa 60 s e timeout 0,2 s: sai em < 10 s; a versão anterior levava 20 s, R1 `t_hang.py`) |
+| Retry seguro | só `ErroTransitorio`; backoff exponencial com *full jitter* e teto, semente por chave | `test_backoff_exponencial_com_teto_e_deterministico` |
+| Falha permanente / esgotamento | `ErroPermanente`, `TravaViolada` ou desconhecida → dead letter sem retry; transitório esgotado → dead letter; reprocesso não duplica | `test_falha_permanente…` (2), `test_transitorio_esgotado…` |
+| Idempotência | slot repetido = `ja_concluido` sem leitura; retry/reentrega da mesma leitura (mesmo carimbo) = NOOP; releitura do mesmo valor em outra hora = 9 confirmações e 0 versões (D2'; o payload bruto continua deduplicado: 3 payloads) | `test_mesmo_slot_e_no_op_e_releitura_igual_em_outra_hora_e_confirmacao_d2_linha`, `test_retry_da_mesma_leitura_e_noop` |
+| A→B→A | só o custo muda: 1 versão por leitura (10, 20, 10), impressões/conversões iguais viram confirmação ((3,0,0), (1,0,2), (1,0,2) em inseridas/noop/confirmadas); o `as_of` em cada corte mostra 10, 20, 10; gravar as mesmas leituras fora de ordem dá os mesmos estados registrados e o mesmo estado final | `test_a_b_a_e_preservado_como_leitura_nova`, `test_d1_gravacao_fora_de_ordem_nao_desfaz_a_leitura_mais_recente` |
+| Ausência ≠ zero; dinheiro | `null` → `missing` (`valor_nulo_na_fonte`); `0` → `zero_confirmed`; decimal → micros; precisão acima de micros → `invalid` | `test_ausencia_vira_missing…`, `test_precisao_acima_de_micros…` |
+| Serial × paralelo | semântica: **mesmas leituras ⇒ mesma história**. 18 pedidos embaralhados (6 contas × 3 slots, A→B→A, erros transitórios, latência aleatória), cada leitura com carimbo determinístico do transporte: conjunto de versões e de confirmações (chave, status, valor, `observed_at`), `as_of` nos 18 cortes de gravação e instantes de gravação idênticos ao serial em 8 rodadas. Sem o carimbo (observed = fim da leitura), o paralelo diverge — e é correto que divirja: leituras em instantes diferentes são leituras diferentes | `test_equivalencia_serial_paralelo_mesmas_leituras_mesma_historia` |
 
 ### 3.3 Heartbeat, dead letter e backfill no banco (proposta, não aplicada)
 

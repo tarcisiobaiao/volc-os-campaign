@@ -21,6 +21,40 @@
 -- Rollback: dil_obs_0002_observacao_particionada.OPCIONAL.down.sql (copia os dados de volta).
 
 BEGIN;
+-- Agir como dil_obs_dono SÓ nesta transação (R1-F2/F22): superusuário não precisa de membresia;
+-- quem já pode SET ROLE dil_obs_dono recebe um WARNING (membresia permanente desliga triggers);
+-- os demais se concedem a membresia (exige ADMIN OPTION no papel) e a revogam no fim do arquivo.
+DO $$
+DECLARE
+  v_super boolean;
+  v_pode boolean;
+BEGIN
+  SELECT rolsuper INTO v_super FROM pg_catalog.pg_roles WHERE rolname = current_user;
+  IF v_super THEN
+    PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'nao', true);
+    RETURN;
+  END IF;
+  IF current_setting('server_version_num')::integer >= 160000 THEN
+    EXECUTE 'SELECT pg_catalog.pg_has_role(current_user, ''dil_obs_dono'', ''SET'')' INTO v_pode;
+  ELSE
+    v_pode := pg_catalog.pg_has_role(current_user, 'dil_obs_dono', 'MEMBER');
+  END IF;
+  IF v_pode THEN
+    RAISE WARNING 'dil_obs: % já pode agir como dil_obs_dono de forma permanente (pode desligar o append-only); revise essa membresia', current_user;
+    PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'nao', true);
+    RETURN;
+  END IF;
+  BEGIN
+    EXECUTE format('GRANT dil_obs_dono TO %I', current_user);
+  EXCEPTION WHEN insufficient_privilege THEN
+    RAISE EXCEPTION 'dil_obs: % não pode administrar o papel dil_obs_dono', current_user
+      USING ERRCODE = 'insufficient_privilege',
+            HINT = 'Aplique como superusuário ou como quem criou os papéis, ou peça a um superusuário: '
+                   'GRANT dil_obs_dono TO <aplicador> WITH ADMIN OPTION, INHERIT FALSE, SET FALSE;';
+  END;
+  PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'sim', true);
+END $$;
+
 SET LOCAL ROLE dil_obs_dono;
 
 LOCK TABLE dil_obs.observacao IN ACCESS EXCLUSIVE MODE;
@@ -30,9 +64,8 @@ ALTER TABLE dil_obs.observacao RENAME TO observacao_v0;
 ALTER INDEX dil_obs.observacao_pkey RENAME TO observacao_pkey_v0;
 ALTER INDEX dil_obs.uq_obs_chave_idempotencia RENAME TO uq_obs_chave_idempotencia_v0;
 ALTER INDEX dil_obs.uq_obs_versao RENAME TO uq_obs_versao_v0;
-ALTER INDEX dil_obs.ix_obs_chave_base RENAME TO ix_obs_chave_base_v0;
+ALTER INDEX dil_obs.ix_obs_asof RENAME TO ix_obs_asof_v0;
 ALTER INDEX dil_obs.ix_obs_entidade RENAME TO ix_obs_entidade_v0;
-ALTER INDEX dil_obs.ix_obs_lote RENAME TO ix_obs_lote_v0;
 ALTER INDEX dil_obs.ix_obs_run RENAME TO ix_obs_run_v0;
 
 CREATE SEQUENCE dil_obs.observacao_id_seq AS bigint;
@@ -41,10 +74,8 @@ SELECT pg_catalog.setval('dil_obs.observacao_id_seq',
 
 CREATE TABLE dil_obs.observacao (
   observacao_id       bigint NOT NULL DEFAULT nextval('dil_obs.observacao_id_seq'),
-  chave_idempotencia  text NOT NULL,
-  chave_base          text NOT NULL,
-  chave_natural       text NOT NULL,
-  tipo_registro       text NOT NULL,
+  chave_idempotencia  bytea NOT NULL,  -- sha256 (32 bytes); hex = Observacao.chave_base no Python
+  chave_natural       bytea NOT NULL,  -- sha256 (32 bytes); hex = Observacao.chave_natural no Python
   fonte               text NOT NULL,
   conta               text NOT NULL,
   entidade_tipo       text NOT NULL,
@@ -79,17 +110,13 @@ CREATE TABLE dil_obs.observacao (
   -- dentro do hash da chave natural, então (chave, janela_inicio) único ≡ chave única
   CONSTRAINT observacao_pkey PRIMARY KEY (observacao_id, janela_inicio),
   CONSTRAINT uq_obs_chave_idempotencia UNIQUE (chave_idempotencia, janela_inicio),
-  CONSTRAINT ck_obs_chaves CHECK (
-    chave_idempotencia ~ '^[0-9a-f]{64}$' AND chave_base ~ '^[0-9a-f]{64}$' AND chave_natural ~ '^[0-9a-f]{64}$'),
-  CONSTRAINT ck_obs_tipo_registro CHECK (
-    (tipo_registro = 'leitura' AND chave_idempotencia = chave_base)
-    OR (tipo_registro = 'reafirmacao' AND chave_idempotencia <> chave_base)),
+  CONSTRAINT ck_obs_chaves CHECK (octet_length(chave_idempotencia) = 32 AND octet_length(chave_natural) = 32),
   CONSTRAINT ck_obs_fonte CHECK (fonte ~ '^[a-z][a-z0-9_]*$'),
   CONSTRAINT ck_obs_identidade CHECK (
-        conta <> '' AND conta = btrim(conta) AND conta !~ '[\x01-\x1f\x7f]'
-    AND entidade_tipo <> '' AND entidade_tipo = btrim(entidade_tipo) AND entidade_tipo !~ '[\x01-\x1f\x7f]'
-    AND entidade_id <> '' AND entidade_id = btrim(entidade_id) AND entidade_id !~ '[\x01-\x1f\x7f]'
-    AND timezone <> '' AND schema_version <> '' AND coletor_nome <> '' AND coletor_versao <> ''),
+    dil_obs._texto_ok(conta) AND dil_obs._texto_ok(entidade_tipo) AND dil_obs._texto_ok(entidade_id)
+    AND dil_obs._texto_ok(timezone) AND dil_obs._texto_ok(schema_version) AND dil_obs._texto_ok(coletor_nome)
+    AND dil_obs._texto_ok(coletor_versao) AND dil_obs._texto_ok(run_id) AND dil_obs._texto_ok(lote_id)
+    AND dil_obs._texto_ok(payload_ref) AND (request_id IS NULL OR dil_obs._texto_ok(request_id))),
   CONSTRAINT ck_obs_grao CHECK (
     cardinality(grao) >= 1
     AND grao <@ ARRAY['account', 'campaign', 'ad_group', 'keyword', 'funnel', 'url', 'ad_unit', 'country',
@@ -118,8 +145,10 @@ CREATE TABLE dil_obs.observacao (
   CONSTRAINT ck_obs_zero_confirmed CHECK (status <> 'zero_confirmed' OR (valor IS NOT NULL AND valor = 0)),
   CONSTRAINT ck_obs_sem_valor CHECK (
     status NOT IN ('missing', 'late', 'unavailable', 'unsupported', 'invalid') OR valor IS NULL),
+  -- partial: cobertura declarada (1..999999) OU desconhecida (nula, motivo com `cobertura_desconhecida`) — R1-F17
   CONSTRAINT ck_obs_partial CHECK (
     (status = 'partial' AND cobertura_ppm IS NOT NULL AND cobertura_ppm BETWEEN 1 AND 999999)
+    OR (status = 'partial' AND cobertura_ppm IS NULL AND strpos(coalesce(motivo, ''), 'cobertura_desconhecida') > 0)
     OR (status <> 'partial' AND cobertura_ppm IS NULL)),
   CONSTRAINT ck_obs_janela_fechada CHECK (status NOT IN ('observed', 'zero_confirmed') OR observed_at >= janela_fim),
 
@@ -147,9 +176,11 @@ COMMENT ON COLUMN dil_obs.observacao.available_at IS 'Relógio do replay as_of: 
 
 -- uma versão por (fato, instante de conhecimento): torna o as_of determinístico e serve o DISTINCT ON
 CREATE UNIQUE INDEX uq_obs_versao ON dil_obs.observacao (chave_natural, available_at DESC, janela_inicio);
-CREATE INDEX ix_obs_chave_base ON dil_obs.observacao (chave_base);
+-- serve o DISTINCT ON do as_of na ordem de versão (D1)
+CREATE INDEX ix_obs_asof ON dil_obs.observacao (chave_natural, observed_at DESC, available_at DESC);
 CREATE INDEX ix_obs_entidade ON dil_obs.observacao (fonte, conta, entidade_tipo, entidade_id, janela_inicio);
-CREATE INDEX ix_obs_lote ON dil_obs.observacao (lote_id);
+-- (sem índice em lote_id: nenhuma função consulta por lote e as FKs nunca precisam dele — não há DELETE;
+--  run_id fica indexado porque finalizar_run conta por run)
 CREATE INDEX ix_obs_run ON dil_obs.observacao (run_id);
 ALTER SEQUENCE dil_obs.observacao_id_seq OWNED BY dil_obs.observacao.observacao_id;
 
@@ -207,16 +238,25 @@ END $$;
 INSERT INTO dil_obs.observacao SELECT * FROM dil_obs.observacao_v0;
 DROP TABLE dil_obs.observacao_v0;
 
+-- INLINÁVEL de propósito (medição da frente B: sem inline, 8,5–17,5 s em 1e6 linhas contra 0,2–0,3 s):
+-- o planejador só expande no lugar uma função SQL de conjunto que NÃO tenha SET (search_path), NÃO seja
+-- STRICT nem SECURITY DEFINER. Por isso: sem SET, nomes e o operador totalmente qualificados (o search_path
+-- de quem chama não muda nada), SECURITY INVOKER (grants e RLS de quem chama valem) e t nulo → conjunto vazio
+-- (available_at <= NULL nunca é verdade), o mesmo efeito que o STRICT tinha.
+-- Ordem de versão (D1): maior observed_at, depois maior available_at. O UNIQUE (chave_natural, available_at)
+-- torna esse par único por fato, então a ordem é total sem desempate extra e o índice ix_obs_asof a cobre.
 CREATE FUNCTION dil_obs.observacao_as_of(t timestamptz) RETURNS SETOF dil_obs.observacao
-LANGUAGE sql STABLE STRICT SECURITY INVOKER SET search_path = ''
+LANGUAGE sql STABLE PARALLEL SAFE SECURITY INVOKER
 AS $$
   SELECT DISTINCT ON (o.chave_natural) o.*
     FROM dil_obs.observacao AS o
-   WHERE o.available_at <= t
-   ORDER BY o.chave_natural, o.available_at DESC
+   WHERE o.available_at OPERATOR(pg_catalog.<=) t
+   ORDER BY o.chave_natural, o.observed_at DESC, o.available_at DESC
 $$;
 COMMENT ON FUNCTION dil_obs.observacao_as_of(timestamptz) IS
-  'Estado conhecido em t: por chave_natural, a versão de maior available_at <= t. Status preservado.';
+  'Estado conhecido em t: por chave_natural, entre as versões com available_at <= t, a de maior observed_at '
+  '(empate: maior available_at; o UNIQUE (chave_natural, available_at) impede empate total). Status preservado. '
+  'Inlinável: sem SET, sem STRICT, nomes qualificados.';
 
 CREATE VIEW dil_obs.observacao_latest WITH (security_invoker = true) AS
   SELECT * FROM dil_obs.observacao_as_of(now());
@@ -239,4 +279,13 @@ GRANT SELECT ON dil_obs.observacao, dil_obs.observacao_latest TO dil_obs_leitor;
 GRANT EXECUTE ON FUNCTION dil_obs.observacao_as_of(timestamptz) TO dil_obs_leitor;
 
 RESET ROLE;
+-- Fim da membresia temporária (R1-F2): quem aplicou não continua podendo agir como dono.
+DO $$
+BEGIN
+  IF current_setting('dil_obs.revogar_dono', true) = 'sim'
+     AND EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'dil_obs_dono') THEN
+    EXECUTE format('REVOKE dil_obs_dono FROM %I', current_user);
+  END IF;
+END $$;
+
 COMMIT;

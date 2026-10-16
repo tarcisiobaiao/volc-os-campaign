@@ -73,21 +73,21 @@ def test_cenarios_campaign_com_sessionstorage(vetores):
 def test_campaign_id_real_e_descartado_como_pii():
     # A contradição do roadmap em uma linha: o sensor LÊ utm_campaign, mas o id de 11 dígitos
     # casa a regex de telefone/CPF e vira ''.
-    assert diagnosticar_utm_sensor_v3("24278665189") == ("", MotivoDescarte.PII)
-    assert normalizar_valor_wrapper_v2("24278665189") == ""
+    assert diagnosticar_utm_sensor_v3("20000000011") == ("", MotivoDescarte.PII)
+    assert normalizar_valor_wrapper_v2("20000000011") == ""
     # Até 9 dígitos sobrevive; 10 já cai.
-    assert normalizar_utm_sensor_v3("242786651") == "242786651"
-    assert normalizar_utm_sensor_v3("2427866518") == ""
+    assert normalizar_utm_sensor_v3("200000001") == "200000001"
+    assert normalizar_utm_sensor_v3("2000000001") == ""
     # Prefixo textual não salva: a regex não é ancorada.
-    assert normalizar_utm_sensor_v3("c24278665189") == ""
+    assert normalizar_utm_sensor_v3("c20000000011") == ""
 
 
 def test_url_real_do_template_perde_campaign_e_content():
-    url = ("https://creditoup.com.br/r/guia-cursos-senac/?utm_source=google&utm_medium=cpc"
-           "&utm_campaign=24278665189&utm_term=cursos%20senac&utm_content=165432109876"
+    url = ("https://site.exemplo/r/guia-exemplo/?utm_source=google&utm_medium=cpc"
+           "&utm_campaign=20000000011&utm_term=cursos%20tecnicos&utm_content=165432109876"
            "&utm_device=m&vc_match=e&gclid=SINTETICO")
     utm, armazenado = utm_da_pagina_sensor_v3(urlsplit(url).query)
-    assert utm == UtmSessao(source="google", medium="cpc", term="cursos_senac", paid=1)
+    assert utm == UtmSessao(source="google", medium="cpc", term="cursos_tecnicos", paid=1)
     assert utm.campaign is None and utm.content is None
     assert "SINTETICO" not in json.dumps(armazenado)  # o valor do gclid nunca sai
 
@@ -111,8 +111,8 @@ def test_espaco_do_javascript_nao_e_o_do_python():
 
 
 def test_urlsearchparams_mais_vira_espaco_e_primeiro_valor_vence():
-    q = parse_query_urlsearchparams("?utm_campaign=Cursos+Senac&utm_campaign=b&gclid=")
-    assert q == {"utm_campaign": "Cursos Senac", "gclid": ""}
+    q = parse_query_urlsearchparams("?utm_campaign=Cursos+Tecno&utm_campaign=b&gclid=")
+    assert q == {"utm_campaign": "Cursos Tecno", "gclid": ""}
 
 
 def test_gclid_vazio_ainda_marca_pago():
@@ -121,7 +121,7 @@ def test_gclid_vazio_ainda_marca_pago():
 
 
 def test_ingest_preserva_utm_normalizada_e_derruba_chave_invalida():
-    utm, _ = utm_da_pagina_sensor_v3("utm_source=google&utm_medium=cpc&utm_term=bolsa+senac&gbraid=1")
+    utm, _ = utm_da_pagina_sensor_v3("utm_source=google&utm_medium=cpc&utm_term=bolsa+tecno&gbraid=1")
     payload = dict(utm.como_payload())
     payload["9ruim"] = "x"
-    assert limpar_utm_ingest(payload) == {"source": "google", "medium": "cpc", "term": "bolsa_senac", "paid": 1}
+    assert limpar_utm_ingest(payload) == {"source": "google", "medium": "cpc", "term": "bolsa_tecno", "paid": 1}
