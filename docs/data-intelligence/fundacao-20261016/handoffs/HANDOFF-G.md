@@ -42,7 +42,7 @@ cd /Users/mac/Desktop/VOLC-OS-CAMPAIGN/worktrees/dil-fundacao-20261016-g
 OMP_NUM_THREADS=2 /Users/mac/Desktop/VOLC-OS-CAMPAIGN/worktrees/data-intelligence-overnight-20261015/experiments/data-intelligence-lab/.venv/bin/python -m pytest tests/data-intelligence -q
 ```
 
-Resultado: suíte completa verde (herdados + A + B + C mesclados + **66 novos** de G); só `-k qualidade`: 66 em ~8 s.
+Resultado: suíte completa verde; G tem **81 testes** (66 da entrega + 15 da resposta à R2, `test_qualidade_r2.py`); só `-k qualidade`: 81 em ~18 s.
 Nenhum skip (PostgreSQL 16.11 do Homebrew subiu).
 
 | Arquivo | Testes | Gate |
@@ -130,3 +130,22 @@ Nós/arestas sugeridos (curadoria, sem IDs sensíveis): `concept:data_quality_ob
 → `observa` → `concept:google_ads_collection_ledger` e `cap_revenue_ingestion`; → `mede` → `concept:tracking_control_plane`
 (cobertura de atribuição); `depende_de` → contrato de observação da thread A (`dil_obs`, para `dq_02`).
 Nada disso existe em `main`; só nesta branch/worktree — não marcar concluído na fonte compartilhada.
+
+## 8. Resposta à R2 (`REVISAO-ADVERSARIAL-R2.md`, branch da missão @ `2d403e19`)
+
+Merge local de `lab/data-foundation-20261016` (2d403e19) no worktree G. Detalhe e provas: doc 09 §10.
+
+| Achado | Estado | Arquivos |
+|---|---|---|
+| G8 reconciliação mistura universos de domínio | corrigido: domínio × dia, só earnings válido E kv (Python e SQL), estados `earnings_indisponivel`/`kv_sem_earnings`/`earnings_sem_kv` | `qualidade/reconciliacao.py`, `motor.py`, `dq_01_views_qualidade.sql` (`dq_reconciliacao_joinads` ganha `dominio`, `tem_earnings`, `earnings_valido`, `tem_kv`) |
+| G7 `dq_obs_status` conta versões | corrigido: `observacao_as_of(agora)` | `dq_02_views_dil_obs.sql` (pré-requisito agora inclui `dil_obs.observacao_as_of(timestamptz)`) |
+| G13 mutantes G4/G7 vivos | mortos por teste de comportamento que aplica a mutação | `test_qualidade_r2.py` |
+| G6 (G) taxa NULL vista como ok; dead letter tardio | corrigido na view e na ponte (contagem real da tabela) | `dq_02_views_dil_obs.sql` (`dq_obs_dead_letter` ganha `dead_letter_registrados`, `classe`), `ponte_observacao.py` |
+| G23 confirmações D2' ignoradas | corrigido: `n_inseridas + n_confirmadas` | `ponte_observacao.py` |
+| G17 (G) domínio real | corrigido: `site.exemplo`, ids fictícios | `sintetico.py` |
+
+Fora do escopo de G (registrado, não corrigido aqui): o lado A de G6 — `dil_obs` aceita dead letter depois do
+fechamento e fecha `succeeded` um run só de dead letters; G passa a ALERTAR os dois casos, mas a recusa é do schema.
+Mudança de contrato para consumidores: `dq_reconciliacao_joinads` agora tem uma linha por domínio × dia (antes, por
+dia) e o estado `sem_receita_campanha` deixou de existir. Atualizar a leitura G7 do §4: comparar por domínio; a
+referência L5 (97–100%) é do agregado do dia.
