@@ -21,6 +21,8 @@ fingerprint, não nos fatos).
 """
 from __future__ import annotations
 
+import dataclasses
+import inspect
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
@@ -56,6 +58,10 @@ ESQUEMA = "volc-dil.shadow.snapshot.v1"
 FUSO_PADRAO = "America/Sao_Paulo"
 STATUS_COM_VALOR_FECHADO = frozenset({StatusObservacao.OBSERVED.value, StatusObservacao.ZERO_CONFIRMED.value})
 FONTES_IGNORADAS = frozenset({"legado_daily_metrics", "site_analytics", "gtm_sensor"})
+
+
+class GraoMistoNoDia(ContratoViolado):
+    """Receita do mesmo dia vinda de dois endpoints/grãos diferentes (cortes do mesmo dinheiro)."""
 
 
 class SnapshotAdulterado(ContratoViolado):
@@ -340,12 +346,56 @@ def _pior_status(obs: list[Observacao]) -> tuple[Optional[str], Optional[str]]:
     return o.status.value, o.motivo
 
 
+# --------------------------------------------------------------------------- compatibilidade com a junção da C
+# A thread C endureceu `juntar_campanha_dia` depois da R1 (as_of obrigatório, identidade de linha de receita,
+# erros tipados). O shadow fala as duas versões: detecta a assinatura e só passa os campos que existem.
+_JUNCAO_PARAMS = set(inspect.signature(juntar_campanha_dia).parameters)
+_CAMPOS_RECEITA = {f.name for f in dataclasses.fields(ReceitaChaveDia)}
+_CAMPOS_CUSTO = {f.name for f in dataclasses.fields(CustoCampanhaDia)}
+_CAMPOS_DOMINIO = {f.name for f in dataclasses.fields(ReceitaDominioDia)}
+try:  # API nova (R1): recusa de entrada mal formada é tipada
+    from ..identidade.juncao import ContratoDeEntrada as _ErroEntradaJuncao  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover - API antiga
+    class _ErroEntradaJuncao(Exception):
+        pass
+
+GRAOS_RECEITA_DIM = {"campaign_day": (), "campaign_adunit_day": ("ad_unit_name",),
+                     "campaign_country_adunit_day": ("country_iso", "ad_unit_name")}
+
+
+def _so(campos: set, **kw):
+    return {k: v for k, v in kw.items() if k in campos}
+
+
+def _custo_dia(conta, cid, d, custo, cliques, estado, disponivel_em) -> CustoCampanhaDia:
+    return CustoCampanhaDia(conta, cid, d, custo, cliques, estado, **_so(_CAMPOS_CUSTO, disponivel_em=disponivel_em))
+
+
+def _receita_dia(o: Observacao, dia: date, ck, cv) -> ReceitaChaveDia:
+    d = _dims(o)
+    grao = d.get("joinads_grain", "campaign_day")
+    dimensao = tuple(d[k] for k in GRAOS_RECEITA_DIM.get(grao, ()) if k in d)
+    return ReceitaChaveDia(dia, o.conta, **_so(_CAMPOS_RECEITA, endpoint=d.get("joinads_endpoint", "key_value"), grao=grao,
+                                                   dimensao=dimensao, disponivel_em=o.available_at),
+                           custom_key=ck, custom_value=cv, receita=_dinheiro(o), estado=_estado(o))
+
+
+def _dominio_dia(o: Observacao, dia: date) -> ReceitaDominioDia:
+    return ReceitaDominioDia(dia, o.conta, _dinheiro(o), _estado(o), **_so(_CAMPOS_DOMINIO, disponivel_em=o.available_at))
+
+
+def _familia(o: Observacao) -> tuple:
+    d = _dims(o)
+    return (d.get("joinads_endpoint", "key_value"), d.get("joinads_grain", "campaign_day"))
+
+
 def _juntar_dia(custos: list[CustoCampanhaDia], receitas: list[ReceitaChaveDia], dominio: list[ReceitaDominioDia],
-                registro: RegistroCampanhas, config: ConfigCorte):
+                registro: RegistroCampanhas, config: ConfigCorte, t: Optional[datetime] = None):
     """Junção de um dia, particionada por moeda de receita. Devolve (linhas, coberturas, n_nao_atrib, bloqueio_ents)."""
     grupos: dict[str, list[ReceitaChaveDia]] = defaultdict(list)
     for r in receitas:
         grupos[r.receita.moeda if r.receita is not None else ""].append(r)
+
     dom_grupos: dict[str, list[ReceitaDominioDia]] = defaultdict(list)
     for r in dominio:
         dom_grupos[r.receita.moeda if r.receita is not None else ""].append(r)
@@ -358,8 +408,9 @@ def _juntar_dia(custos: list[CustoCampanhaDia], receitas: list[ReceitaChaveDia],
     nao_atrib = 0
     for moeda, rs in sorted(grupos.items()):
         dom = dom_grupos.get(moeda) if moeda else None
+        extra = _so(_JUNCAO_PARAMS, as_of=t, dominios_dia_kv_coletados={(r.dia, r.dominio) for r in rs} if rs else None)
         res = juntar_campanha_dia(custos, [], rs, registro, receitas_dominio=dom if dom else None,
-                                  fuso_sensor=config.fuso, fuso_receita_verificado=config.fuso_receita_verificado)
+                                  fuso_sensor=config.fuso, fuso_receita_verificado=config.fuso_receita_verificado, **extra)
         nao_atrib += len(res.receita_nao_atribuida)
         if moeda:
             coberturas.append((moeda, res.cobertura.fracao_receita_com_chave))
@@ -461,7 +512,7 @@ def construir_snapshot(fluxo: FluxoIndexado, t: datetime, config: ConfigCorte = 
                 continue
             o = itens[0].obs
             cl = cliques_obs.get((conta, cid, d))
-            custos.append(CustoCampanhaDia(conta, cid, d, _dinheiro(o), None if cl is None else cl.valor, _estado(o)))
+            custos.append(_custo_dia(conta, cid, d, _dinheiro(o), None if cl is None else cl.valor, _estado(o), o.available_at))
         bloqueios_dia: set[str] = set()
         receitas = []
         rec_por_cid: dict[str, list[Observacao]] = defaultdict(list)
@@ -471,17 +522,26 @@ def construir_snapshot(fluxo: FluxoIndexado, t: datetime, config: ConfigCorte = 
             ck, cv = _chave_receita(o)
             if (o.motivo or "").startswith("chave_substituida"):
                 bloqueios_dia.add("custom_key_substituida")
-            receitas.append(ReceitaChaveDia(dia, o.conta, ck, cv, _dinheiro(o), _estado(o)))
+            receitas.append(_receita_dia(o, dia, ck, cv))
             if ck == "utm_campaign" and cv:
                 rec_por_cid[cv].append(o)
                 if o.status.value in STATUS_COM_VALOR_FECHADO or o.status is StatusObservacao.PARTIAL:
                     validas.add(cv)
-        dominio = [ReceitaDominioDia(dia, o.conta, _dinheiro(o), _estado(o)) for o in dominio_obs.get(dia, [])]
+        dominio = [_dominio_dia(o, dia) for o in dominio_obs.get(dia, [])]
+        familias: dict[str, set] = defaultdict(set)
+        for item in receita_obs.get(dia, []):
+            familias[item.obs.moeda or ""].add(_familia(item.obs))
         try:
-            linhas, fracoes, denom, n_na, misturadas = _juntar_dia(custos, receitas, dominio, registro, config)
+            if any(len(f) > 1 for f in familias.values()):
+                raise GraoMistoNoDia("dois endpoints/grãos de receita no mesmo dia: somar duplicaria o dinheiro (R1-F5)")
+            linhas, fracoes, denom, n_na, misturadas = _juntar_dia(custos, receitas, dominio, registro, config, t)
         except MoedasDiferentes:
             bloqueios_dia.add("moeda_misturada_receita")
-            linhas, fracoes, denom, n_na, misturadas = _juntar_dia(custos, [], [], registro, config)
+            linhas, fracoes, denom, n_na, misturadas = _juntar_dia(custos, [], [], registro, config, t)
+        except (GraoMistoNoDia, _ErroEntradaJuncao) as e:
+            # a junção recusou a receita do dia (grão misto, linha duplicada…): o dia fica sem receita, com bloqueio
+            bloqueios_dia.add(f"receita_recusada_pela_juncao:{type(e).__name__}")
+            linhas, fracoes, denom, n_na, misturadas = _juntar_dia(custos, [], [], registro, config, t)
         fim_dia = datetime(dia.year, dia.month, dia.day, tzinfo=zona) + timedelta(days=1)
         idade = int((t - fim_dia).total_seconds() // 3600)
         sem_receita: list[EntidadeCampanha] = []

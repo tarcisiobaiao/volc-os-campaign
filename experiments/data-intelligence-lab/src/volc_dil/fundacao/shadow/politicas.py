@@ -129,6 +129,8 @@ class RegraMargem:
             return "custom_key_substituida"
         if cob is not None and "moeda_misturada_receita" in cob.bloqueios:
             return "moeda_misturada_receita"
+        if cob is not None and any(x.startswith("receita_recusada_pela_juncao") for x in cob.bloqueios):
+            return "receita_recusada_pela_juncao"
         if f.custo_status not in STATUS_COM_VALOR_FECHADO:
             return f"custo_{f.custo_status or 'ausente'}"
         if f.receita_status not in STATUS_COM_VALOR_FECHADO or f.receita.estado not in COM_VALOR:

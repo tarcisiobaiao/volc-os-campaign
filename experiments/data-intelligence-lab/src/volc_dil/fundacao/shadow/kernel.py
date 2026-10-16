@@ -12,6 +12,8 @@ Bloqueios:
 - `custom_key_substituida:<dia>` — num dia da janela a JoinAds trocou a chave pedida e esta
   campanha não tem linha de receita válida nesse dia (a receita dela pode estar na linha trocada);
 - `moeda_misturada_receita:<dia>` — o dia inteiro não pôde ser juntado por moeda;
+- `receita_recusada_pela_juncao:<erro>:<dia>` — a junção da C recusou a receita do dia (grão misto,
+  linha duplicada: somar duplicaria dinheiro — R1-F5);
 - `cobertura_receita_baixa:<dia>` — fração da receita com chave abaixo do mínimo num dia de evidência.
 """
 from __future__ import annotations
@@ -58,6 +60,9 @@ def bloqueios_para(p: PropostaShadow, snap: SnapshotShadow, cfg: ConfigKernel) -
             b.add(f"custom_key_substituida:{dia.isoformat()}")
         if "moeda_misturada_receita" in cob.bloqueios:
             b.add(f"moeda_misturada_receita:{dia.isoformat()}")
+        for x in cob.bloqueios:
+            if x.startswith("receita_recusada_pela_juncao"):
+                b.add(f"{x}:{dia.isoformat()}")
     for dia in _dias_evidencia(p, snap, cfg):
         cob = snap.cobertura_de(dia)
         frac = None if cob is None else cob.fracao_minima

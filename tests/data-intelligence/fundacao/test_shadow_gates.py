@@ -175,8 +175,9 @@ def test_moeda_misturada_e_sem_cambio_bloqueiam():
     fs, cortes, cfg = preparar("base", passo_horas=24, hora_inicial=7)
     alvo = _receitas_finais(fs.observacoes, _ent(2).campaign_id, {date(2026, 9, 10)})[0]
     h = _h("brl")
-    extra = dataclasses.replace(alvo, moeda="BRL", dimensoes=tuple(sorted(alvo.dimensoes + (("ad_unit_name", "topo"),))),
-                                payload_sha256=h, payload_ref=f"x:{h}")
+    # a mesma campanha com receita em BRL noutro domínio, no mesmo dia (identidade de linha diferente: sem dupla contagem)
+    extra = dataclasses.replace(alvo, moeda="BRL", conta="outro-dominio-sintetico.com.br", payload_sha256=h,
+                                payload_ref=f"x:{h}")
     snap = construir_snapshot(FluxoIndexado(list(fs.observacoes) + [extra]), cortes[-2], cfg.corte)
     assert "moeda_misturada" in snap.bloqueios_de(_ent(2))
     pol = RegraMargem()
@@ -188,6 +189,23 @@ def test_moeda_misturada_e_sem_cambio_bloqueiam():
                for p in RegraMargem().decidir(sem).propostas)
     dec2 = DecisaoShadow((propor(sem, pol, _ent(5), Acao.PAUSAR, 0, Confianca.ALTA, "teste"),))
     assert "moeda_sem_cambio:USD->BRL" in aplicar_kernel(sem, pol.nome, dec2, cfg.kernel).propostas[0].bloqueios
+
+
+def test_grao_misto_de_receita_no_dia_bloqueia_sem_somar():
+    fs, cortes, cfg = preparar("base", passo_horas=24, hora_inicial=7)
+    alvo = _receitas_finais(fs.observacoes, _ent(4).campaign_id, {date(2026, 9, 10)})[0]
+    h = _h("adunit")
+    dims = dict(alvo.dimensoes)
+    dims.update(joinads_grain="campaign_adunit_day", joinads_endpoint="key_value_campaign_adunit", ad_unit_name="topo")
+    outro_corte = dataclasses.replace(alvo, dimensoes=tuple(sorted(dims.items())), grao=tuple(sorted(set(alvo.grao) | {"ad_unit"})),
+                                      payload_sha256=h, payload_ref=f"x:{h}")
+    snap = construir_snapshot(FluxoIndexado(list(fs.observacoes) + [outro_corte]), cortes[-2], cfg.corte)
+    cob = snap.cobertura_de(date(2026, 9, 10))
+    assert any(b.startswith("receita_recusada_pela_juncao") for b in cob.bloqueios)
+    assert all(f.receita.valor is None for f in snap.fatos if f.dia == date(2026, 9, 10))  # nada somado em dobro
+    pol = RegraMargem()
+    dec = DecisaoShadow((propor(snap, pol, _ent(4), Acao.PAUSAR, 0, Confianca.ALTA, "teste"),))
+    assert any(b.startswith("receita_recusada_pela_juncao") for b in aplicar_kernel(snap, pol.nome, dec, cfg.kernel).propostas[0].bloqueios)
 
 
 def test_retrodatado_nao_vaza_porque_o_corte_e_por_available_at(base6h):
