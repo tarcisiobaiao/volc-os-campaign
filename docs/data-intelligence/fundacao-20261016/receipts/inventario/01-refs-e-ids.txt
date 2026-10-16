@@ -5,7 +5,7 @@
 main = 104bb0d089d6013c400014c443f9e79a77adbf20 2026-10-15 22:02:59 -0300 docs(control-plane): split agent work into owned lanes
 043c77f5 = 043c77f545aeb182758694544511d25152f1dcf3 2026-10-15 13:53:58 -0300 feat(economia): reconciliação de lucro por visita comprada no grão campanha-dia
 0f0bb287 = 0f0bb287f35f39274a856e69d4bb48a9c8e422bf 2026-10-15 12:23:39 -0300 feat(google-ads): ativa coleta canonica shadow
-192bc065 = 192bc06525944984d7fad9def4ce4ca34a4b0f02 2026-10-15 15:40:01 -0300 wip(historico/joinads): preservação L1 — coleta canônica JoinAds v2 de 15/10 (flows n8n, 
+192bc065 = 192bc06525944984d7fad9def4ce4ca34a4b0f02 2026-10-15 15:40:01 -0300 wip(historico/joinads): preservação L1 — coleta canônica JoinAds v2 de 15/10 (flows n8n,
 918e9571 = 918e9571b3025b32dff4ea3ec4d434e70bbfc9f0 2026-10-15 15:40:01 -0300 wip(historico/measurement): preservação L1 — VOLC Measurement v3 de 15/10 (sensor GTM, wra
 4be92dfc = 4be92dfc9fd0ca9ad233b31145b99f6fe7529526 2026-10-15 15:40:00 -0300 wip(historico/fontes-de-verdade): preservação L1 — versões NÃO integradas de Roadmap, cu
 992ff362 = 992ff362eb3967c4fc90d5026b492e44cd5e36b6 2026-10-15 15:40:00 -0300 wip(historico/desconhecido): preservação L1 — editorial v2/redator, volc_ads copy/campanha
