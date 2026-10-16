@@ -1,0 +1,340 @@
+{
+ "seed": 20261016,
+ "escalas": [
+  100000,
+  1000000
+ ],
+ "ddl": "variantes de medição próprias + réplica v21 + dil_obs_0001 REAL da frente A",
+ "amostras": {
+  "as_of_ponto": 5000,
+  "snapshot": 60,
+  "ingestao": 60,
+  "global": 5
+ },
+ "medicoes": [
+  {
+   "variante": "dil_obs_0001",
+   "particionada": false,
+   "n_alvo": 100000,
+   "dims": {
+    "contas": 10,
+    "entidades_por_conta": 20,
+    "dias": 90
+   },
+   "carga_s": 10.879338666039985,
+   "tamanho": {
+    "linhas": 99000,
+    "heap_bytes": 62439424,
+    "indices_bytes": 44507136,
+    "total_bytes": 106946560,
+    "por_indice_bytes": {
+     "pk": 2236416,
+     "unico": 26034176,
+     "btree": 16236544
+    },
+    "por_indice_nome_bytes": {
+     "observacao_pkey": 2236416,
+     "uq_obs_chave_idempotencia": 12402688,
+     "uq_obs_versao": 13631488,
+     "ix_obs_chave_base": 12402688,
+     "ix_obs_entidade": 2523136,
+     "ix_obs_lote": 655360,
+     "ix_obs_run": 655360
+    },
+    "folhas": 1,
+    "heap_por_linha": 630.7012525252525,
+    "indices_por_linha": 449.5670303030303
+   },
+   "valores_de_metrica": 99000,
+   "bytes_por_valor_total": 1080.2682828282827,
+   "bytes_por_valor_heap": 630.7012525252525,
+   "dir_cluster_bytes_apos": 382877798,
+   "as_of_global_funcao_meio": {
+    "tempos_s": [
+     0.3750117089948617,
+     0.15867754101054743,
+     0.124087915988639,
+     0.11941837501944974,
+     0.13765308301663026,
+     0.12425649998476729
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.12425649998476729,
+    "max_s": 0.15867754101054743,
+    "chaves": 44000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_meio": {
+    "tempos_s": [
+     0.028326792002189904,
+     0.029482874961104244,
+     0.04579529201146215,
+     0.03528212499804795,
+     0.0336754999589175,
+     0.036010957963299006
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.03528212499804795,
+    "max_s": 0.04579529201146215,
+    "chaves": 44000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_linha_inteira_meio": {
+    "tempos_s": [
+     0.046555207984056324,
+     0.060814541997388005,
+     0.09747295803390443,
+     0.11821433302247897,
+     0.1014414579840377,
+     0.05367283400846645
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.09747295803390443,
+    "max_s": 0.11821433302247897,
+    "chaves": 44000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_funcao_fim": {
+    "tempos_s": [
+     1.2950494579854421,
+     0.9362651670235209,
+     1.5302669999655336,
+     0.9821985409944318,
+     0.9941957910195924,
+     1.1411427090060897
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.9941957910195924,
+    "max_s": 1.5302669999655336,
+    "chaves": 90000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_fim": {
+    "tempos_s": [
+     0.027728833025321364,
+     0.020569416985381395,
+     0.021617749996948987,
+     0.020093291997909546,
+     0.021265625022351742,
+     0.019512625003699213
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.020569416985381395,
+    "max_s": 0.021617749996948987,
+    "chaves": 90000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_linha_inteira_fim": {
+    "tempos_s": [
+     0.034683333011344075,
+     0.05201887496514246,
+     0.06624000001465902,
+     0.10026720800669864,
+     0.06298074999358505,
+     0.10381379199679941
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.06624000001465902,
+    "max_s": 0.10381379199679941,
+    "chaves": 90000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "latest_view": {
+    "tempos_s": [
+     1.2139662090339698,
+     0.6938877500360832,
+     0.6466465829871595,
+     0.9578587909927592,
+     1.4323672499740496,
+     0.8637124589877203
+    ],
+    "p50_s": 0.8637124589877203,
+    "aquecimento_descartado": 1
+   },
+   "as_of_ponto": {
+    "n": 5000,
+    "min_ms": 0.016,
+    "p50_ms": 0.018,
+    "p95_ms": 0.103,
+    "p99_ms": 0.192,
+    "max_ms": 1.045,
+    "media_ms": 0.0321852,
+    "desvio_ms": 0.040046649060314646
+   },
+   "explain_as_of_global": "Unique\n  ->  Index Only Scan using uq_obs_versao on observacao\n        Index Cond: (available_at <= '2026-08-15 09:00:00-03'::timestamp with time zone)"
+  },
+  {
+   "variante": "dil_obs_0001",
+   "particionada": false,
+   "n_alvo": 1000000,
+   "dims": {
+    "contas": 10,
+    "entidades_por_conta": 202,
+    "dias": 90
+   },
+   "carga_s": 469.03034612501506,
+   "tamanho": {
+    "linhas": 999900,
+    "heap_bytes": 630300672,
+    "indices_bytes": 453296128,
+    "total_bytes": 1083596800,
+    "por_indice_bytes": {
+     "pk": 22478848,
+     "unico": 262430720,
+     "btree": 168386560
+    },
+    "por_indice_nome_bytes": {
+     "observacao_pkey": 22478848,
+     "uq_obs_chave_idempotencia": 125067264,
+     "uq_obs_versao": 137363456,
+     "ix_obs_chave_base": 125067264,
+     "ix_obs_entidade": 30310400,
+     "ix_obs_lote": 6504448,
+     "ix_obs_run": 6504448
+    },
+    "folhas": 1,
+    "heap_por_linha": 630.3637083708371,
+    "indices_por_linha": 453.3414621462146
+   },
+   "valores_de_metrica": 999900,
+   "bytes_por_valor_total": 1083.7051705170518,
+   "bytes_por_valor_heap": 630.3637083708371,
+   "dir_cluster_bytes_apos": 1376673894,
+   "as_of_global_funcao_meio": {
+    "tempos_s": [
+     16.41143233299954,
+     9.855878333037253,
+     8.498186249984428,
+     7.634481666958891,
+     9.64513908297522,
+     7.7284216249827296
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 8.498186249984428,
+    "max_s": 9.855878333037253,
+    "chaves": 444400,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_meio": {
+    "tempos_s": [
+     3.6983319579740055,
+     0.16329545801272616,
+     0.4747828329564072,
+     0.09690812503686175,
+     0.11727754102321342,
+     0.0918436250067316
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.11727754102321342,
+    "max_s": 0.4747828329564072,
+    "chaves": 444400,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_linha_inteira_meio": {
+    "tempos_s": [
+     0.18898420804180205,
+     0.18606487498618662,
+     0.17365250003058463,
+     0.16620708402479067,
+     0.18328358401777223,
+     0.1790160839445889
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.1790160839445889,
+    "max_s": 0.18606487498618662,
+    "chaves": 444400,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_funcao_fim": {
+    "tempos_s": [
+     16.192289583035745,
+     14.346355874964502,
+     24.85055208299309,
+     17.469868958054576,
+     18.25356791698141,
+     14.014134957978968
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 17.469868958054576,
+    "max_s": 24.85055208299309,
+    "chaves": 909000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_fim": {
+    "tempos_s": [
+     0.4540487919584848,
+     0.17933591699693352,
+     0.15434087498579174,
+     0.1419452500413172,
+     0.17904208303662017,
+     0.18557866697665304
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.17904208303662017,
+    "max_s": 0.18557866697665304,
+    "chaves": 909000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_linha_inteira_fim": {
+    "tempos_s": [
+     0.33032541698776186,
+     0.4363385839969851,
+     0.3157557920203544,
+     0.2684254999621771,
+     0.3299391670152545,
+     0.27935941697796807
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.3157557920203544,
+    "max_s": 0.4363385839969851,
+    "chaves": 909000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "latest_view": {
+    "tempos_s": [
+     44.83452520798892,
+     17.907130916020833,
+     20.55347287497716,
+     38.82035575003829,
+     19.00395641598152,
+     16.996188750024885
+    ],
+    "p50_s": 19.00395641598152,
+    "aquecimento_descartado": 1
+   },
+   "as_of_ponto": {
+    "n": 5000,
+    "min_ms": 0.017,
+    "p50_ms": 0.069,
+    "p95_ms": 0.701,
+    "p99_ms": 2.043,
+    "max_ms": 40.158,
+    "media_ms": 0.21687040000000002,
+    "desvio_ms": 0.8760308839326614
+   },
+   "explain_as_of_global": "Unique\n  ->  Index Only Scan using uq_obs_versao on observacao\n        Index Cond: (available_at <= '2026-08-15 09:00:00-03'::timestamp with time zone)"
+  }
+ ],
+ "inicio_epoch": 1792159080.737665,
+ "postgres": "PostgreSQL 16.11 (Homebrew) on aarch64-apple-darwin24.6.0, compiled by Apple clang version 17.0.0 (clang-1700.6.3.2), 64-bit",
+ "config": {
+  "autovacuum": "off",
+  "block_size": "8192",
+  "default_toast_compression": "pglz",
+  "fsync": "on",
+  "shared_buffers": "32768",
+  "synchronous_commit": "on",
+  "wal_level": "minimal",
+  "work_mem": "65536"
+ },
+ "payload": null,
+ "payload_s": 1.3208016753196716e-05,
+ "snapshot_pg": [],
+ "pico_amostrado_dir_cluster_bytes": 2503589990,
+ "cluster_apagado": true,
+ "pico_dir_cluster_bytes": 1376976998,
+ "disco_livre_inicio_gib": 8.890983581542969,
+ "analitico": [],
+ "fim_epoch": 1792159958.310261,
+ "duracao_s": 877.5725960731506
+}

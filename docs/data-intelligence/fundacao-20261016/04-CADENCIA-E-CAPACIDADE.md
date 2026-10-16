@@ -1,35 +1,39 @@
 # 04 — Cadência e capacidade (frente B)
 
-Estado: modelo **construído e testado hermeticamente** (43 testes de capacidade + 17 do coletor);
-bytes **medidos** num PostgreSQL 16 descartável com dados **sintéticos**; contagens de linhas e perfil
-horário **calibrados com dado real versionado no repositório** (recibos de 15/10). Nada aqui foi
-lido de produção. Abreviações de evidência como em `05-ARQUITETURA-COLETORES.md` (J, M, MS, P, EA).
+Estado: modelo **construído e testado hermeticamente** (46 testes de capacidade + 23 do coletor);
+bytes **medidos** num PostgreSQL 16 descartável com dados **sintéticos**, mais **três números reais**
+lidos read-only pelo integrador (1.140 B/linha da `google_ads_observation`, redundância real de termos,
+GIN sem uso — `receipts/leituras-externas/RECIBO-LEITURAS-20261016.md:30-33,69`). Contagens de linhas e
+perfil horário calibrados com dado real versionado no repositório (recibos de 15/10). **Revisado após a
+revisão adversarial R1** (F7, F13, F25, F26, H5 — resposta em `handoffs/HANDOFF-B.md` §8).
+Abreviações de evidência como em `05-ARQUITETURA-COLETORES.md` (J, M, MS, P, EA). Identificadores de
+conta/campanha e valores monetários reais foram retirados (R1 F25): onde importa, só razões.
 
 Artefatos (gerados, não editar à mão):
 
-- `benchmarks/capacidade/pg_medicoes.json` — medição PG (script `fundacao_capacidade_pg.py`);
-- `benchmarks/capacidade/horas_campanha_d30.json` — perfil horário real (script `fundacao_capacidade_horas.py`);
-- `benchmarks/capacidade/modelo.json` + `MODELO.md` — grade completa do modelo com manifesto
+- `benchmarks/capacidade/pg_medicoes.json` (+ `pg_medicoes_dil_obs.json`, rodada do DDL da frente A) —
+  script `fundacao_capacidade_pg.py`; **todas** as medições em `benchmarks/capacidade/MEDICOES.md`;
+- `benchmarks/capacidade/horas_campanha_d30.json` — perfil horário real, só fatias (script `fundacao_capacidade_horas.py`);
+- `benchmarks/capacidade/modelo.json` + `MODELO.md` — grade do modelo com manifesto
   (seed `20261016`, versões, sha256 de código/entradas/resultado; script `fundacao_capacidade_modelo.py`).
 
-## 1. Os oito números
+## 1. Os oito números (corrigidos na R1)
 
 | # | Número | Fonte |
 |---|---|---|
-| 1 | **95,7%** das linhas que o coletor de termos lê por dia são repetição (13.368 lidas → 579 distintas); D0 de campanha: 75,6% | modelo calibrado (`MODELO.md` §2); 2.242 linhas/run = J:docs/audits/GOOGLE-ADS-COLETA-CANONICA-2026-10-15.md:93-100 |
-| 2 | A réplica do schema v21 ocupa **851 B por linha lida** (630 heap + 220 índices); a mesma linha tipada em colunas ocupa **286 B** (3,0×) | `pg_medicoes.json`, 1e6 linhas |
-| 3 | Por valor de métrica: largo tipado **36 B**, largo JSONB 64 B, v21 106 B, longo tipado **258 B**, longo com texto 348 B | idem |
-| 4 | Payload GAQL de campanha (448 B de JSON): **718 B** gravado linha a linha (abaixo do limiar do TOAST, não comprime) × **75 B/linha** dentro de um lote jsonb de 200 linhas (pglz; termos: 1.109 × 172 B, lz4 130 B) | idem, 20.000 linhas |
-| 5 | Hoje (1 conta, agenda documentada): **13,7 MB/dia** no desenho v21 → 5,3 GB em 13 meses, 14,6 GB em 3 anos; com a política recomendada **0,53 MB/dia** → 0,20 GB / 0,28 GB | `MODELO.md` §3 |
-| 6 | A **×100, vertical completa, horária 24 h**: v21 1,38 GB/dia → **548 GB em 13 m e 1,5 TB em 3 a**; recomendada 0,07 GB/dia → **26 GB e 34 GB** | `MODELO.md` §4 |
-| 7 | Quota Google Ads: agenda atual = **32 operações/dia por conta** → cabem **468 contas** no nível Basic (15.000/dia); com D0 a cada 10 min, 158/conta → **94 contas** | quotas documentadas em J:docs/growth-engine/matriz-api/comum.md:173-181 |
-| 8 | `as_of` por chave: p50 **0,027 ms** (1e6) e **0,27 ms** (1e7); ingestão de lote de 1.000 linhas com commit: p50 **5–6,5 ms** (≈150–190 mil linhas/s) em 1e5–1e7 | `pg_medicoes.json` |
+| 1 | Termos: **89,4%** de redundância **medida** (23.891 lidas → 2.525 distintas) com ~21 h de vida do coletor; em regime estacionário (42 leituras por termo-dia) o esperado é **97,1%** (p de revisão 0,005). O modelo com p = 0 e as 13 execuções reais prevê 2.546 distintas (real 2.525, −0,8%): a diferença 10,6% × 4,3% apontada na R1 é idade do coletor (H5), não premissa errada | recibo :31,:69; `MODELO.md` §4b; `test_redundancia_de_coletor_jovem…` |
+| 2 | Linha **real** da v21: **1.140 B** (recibo, 24.141 linhas); réplica sintética **851 B** (subestimava 25%); a mesma linha tipada em colunas: **286 B** (4,0× menor que a real) | recibo :32; `MEDICOES.md` |
+| 3 | Por valor de métrica: largo tipado **36 B**, largo JSONB 64 B, réplica v21 106 B, longo tipado 258 B, longo com texto 348 B e **DDL real da frente A (`dil_obs_0001`, longo) 1.084 B** | `MEDICOES.md`, 1e6 linhas |
+| 4 | Payload GAQL de campanha (448 B de JSON): **718 B** gravado linha a linha (abaixo do limiar do TOAST) × **75 B/linha** em lote jsonb de 200 (termos: 1.109 × 172 B; lz4 130 B) — payload sintético, compressão real será pior | `MEDICOES.md` |
+| 5 | Hoje (1 conta, agenda documentada): v21 com bytes reais **≈17 MB/dia** → 6,8 GB em 13 meses, 18,8 GB em 3 anos; política recomendada **0,43 MB/dia** → 0,17 GB / 0,24 GB | `MODELO.md` §3 |
+| 6 | ×100, vertical completa, horária 24 h: v21 real **1,78 GB/dia → 704 GB em 13 m e 1,9 TB em 3 a**; recomendada (largo tipado) **0,06 GB/dia → 22 GB e 30 GB**; a mesma política sobre o DDL longo da frente A: 209 GB e 217 GB | `MODELO.md` §4 |
+| 7 | Quota Google Ads (R1 F7): a agenda atual faz **92 operações/dia por conta + 26 fixas** (D0/D-1: `customer_client` + 4 GAQL por conta) → cabem **162 contas** no Basic (15.000/dia), 31 no Explorer; com D0 a cada 10 min, **24 contas**; com termos 1×/dia, 182 | J:P/collector-inventory.json:111-117,136-142,161-168; comum.md:173-181 |
+| 8 | `as_of` por chave (EXECUTE, planejamento incluído, n = 5.000): p50 **0,058 ms** (1e6) e **0,216 ms** (1e7), p99 0,24 / 1,25 ms; ingestão de lote de 1.000 + commit: p50 **11–21 ms** (n = 60; ≈48–91 mil linhas/s nesta rodada, com a máquina disputada). `as_of` **global** na função real `dil_obs.observacao_as_of`: **10–27 s** em 1e6 linhas (consulta inline equivalente: 0,2–0,3 s) | `MEDICOES.md` |
 
-Leitura: **o problema de volume do VOLC não é o banco, é regravar o que não mudou.** A ingestão
-tem folga de três ordens de grandeza; o armazenamento cresce 20–40× mais que o necessário porque
-cada execução regrava a janela inteira (v21 tem `UNIQUE (run_id, observation_key)`,
-J:supabase/migrations/v21_01_google_ads_coleta_canonica.sql:130) em linhas largas de texto+JSONB com
-quatro índices secundários, dois deles GIN.
+Leitura: **o problema de volume do VOLC não é a ingestão, é regravar o que não mudou** em linhas
+largas de texto+JSONB com índices que ninguém usa (GIN de `metrics` e `dimensions`: 0 scans em
+produção, recibo :33). E um achado novo para a frente A: a função `observacao_as_of` do DDL candidato
+não é inlinada (tem `SET search_path`) e materializa a linha inteira de cada chave — §5.4.
 
 ## 2. Fórmula da cadência útil
 
@@ -58,33 +62,43 @@ da missão sem confirmação no repositório.
 
 | Fonte / granularidade | Atual | Proposta | Justificativa (com número) | Custo/dia por conta | Quando mudar |
 |---|---|---|---|---|---|
-| Google Ads campanha D0 | `7 6-23 * * *` (confirmado, J:P/collector-inventory.json:109) | **manter horária 06–23**; ad group D0 na mesma agenda | p(mudou) ≈ 1 por hora na campanha ativa; ninguém decide em < 1 h; cobre 92–95% da entrega antes de 23:07 (§4) | 18 operações, 90 linhas lidas, 22 distintas | estender a 24 h quando existir ator noturno (alerta com plantão ou automação aprovada) ou se o teste do §4 mostrar noite > limiar |
-| Google Ads campanha D-1 | `17 6,14 * * *` (confirmado, :134) | **manter** | 2ª passada absorve conversão atrasada (J:P/canonical-collection-plan.json:19) | 2 operações | 3ª passada (D-2) se o teste de atraso (handoff) mostrar revisão > 5% após 14h |
-| Google Ads termos + keywords | `23 */4 * * *`, janela D-7..D-1 (confirmado) | **1×/dia** (ex.: `23 7 * * *`) para D-7..D-1; se termos virarem insumo intraday, um job **separado** só de D0 | janela é toda de dias fechados: 6 leituras/dia de 7 dias = 42 leituras de cada termo-dia; 95,7% redundante; 13.452 → 2.242 linhas lidas/dia | 12 → 2 operações; 13,4 mil → 2,2 mil linhas | voltar a 4 h só com consumidor intraday real; o próprio plano pede "reduzir após revisão medida" (:20) — esta é a revisão de volume (quota é irrelevante a 1 conta) |
-| Ad group / anúncio D-1; hora, dispositivo, geo D-1 | não coletado (J:docs/audits/GOOGLE-ADS-COLETA-CANONICA-2026-10-15.md:11) | **1×/dia** às 06:37 (hora/dispositivo/geo) e junto do D-1 (grupo/anúncio) | plano canônico: "D-1 daily, hourly dimension once daily" (J:P/canonical-collection-plan.json:25); hora como segmento intraday é desperdício (J:P/coverage-matrix.json:220-229) | +25 operações na vertical completa (57 total) | — |
-| JoinAds intraday v2 | `15 6-22/2 * * *` (confirmado, J:n8n/joinads_v2_intraday.json:10) | **manter 2 h** | receita do parceiro é sinal lento e pequeno (US$ 0,32–1,31/dia, J:docs/audits/JOINADS-COLETA-CANONICA-2026-10-15.md:91-97); frescor do parceiro não documentado | 81 chamadas (premissa 9 endpoints × 9 execuções) | 1 h só se o frescor medido do parceiro for < 1 h |
+| Google Ads campanha D0 | `7 6-23 * * *` (confirmado, J:P/collector-inventory.json:109) | **manter horária 06–23**; ad group D0 na mesma agenda | p(mudou) ≈ 1 por hora na campanha ativa; ninguém decide em < 1 h; cobre 92–95% da entrega antes de 23:07 (§4) | 18 execuções × (1 `customer_client` + 4 GAQL) = 72 operações por conta + 18 fixas; 90 linhas lidas, 22 distintas | estender a 24 h quando existir ator noturno (alerta com plantão ou automação aprovada) ou se o teste do §4 mostrar noite > limiar |
+| Google Ads campanha D-1 | `17 6,14 * * *` (confirmado, :134) | **manter** | 2ª passada absorve conversão atrasada (J:P/canonical-collection-plan.json:19) | 8 operações por conta + 2 fixas | 3ª passada (D-2) se o teste de atraso (handoff) mostrar revisão > 5% após 14h |
+| Google Ads termos + keywords | `23 */4 * * *`, janela D-7..D-1 (confirmado) | **1×/dia** (ex.: `23 7 * * *`) para D-7..D-1; se termos virarem insumo intraday, um job **separado** só de D0 | janela é toda de dias fechados: 6 leituras/dia de 7 dias = 42 leituras de cada termo-dia; 97,1% redundante em regime (89,4% medido com ~21 h de vida — ver H5 abaixo); 13.452 → 2.242 linhas lidas/dia | 12 → 2 operações por conta (+6 → 1 fixa); 13,4 mil → 2,2 mil linhas | voltar a 4 h só com consumidor intraday real; o próprio plano pede "reduzir após revisão medida" (:20) — esta é a revisão de volume (quota é irrelevante a 1 conta) |
+| Ad group / anúncio D-1; hora, dispositivo, geo D-1 | não coletado (J:docs/audits/GOOGLE-ADS-COLETA-CANONICA-2026-10-15.md:11) | **1×/dia** às 06:37 (hora/dispositivo/geo) e junto do D-1 (grupo/anúncio) | plano canônico: "D-1 daily, hourly dimension once daily" (J:P/canonical-collection-plan.json:25); hora como segmento intraday é desperdício (J:P/coverage-matrix.json:220-229) | +25 operações por conta na vertical completa (117 por conta + 26 fixas) | — |
+| JoinAds intraday v2 | `15 6-22/2 * * *` (confirmado, J:n8n/joinads_v2_intraday.json:10) | **manter 2 h** | receita do parceiro é sinal lento e pequeno (ordem de grandeza de 1 dólar/dia na conta atual, J:docs/audits/JOINADS-COLETA-CANONICA-2026-10-15.md:91-97; valor omitido); frescor do parceiro não documentado | 81 chamadas (premissa 9 endpoints × 9 execuções) | 1 h só se o frescor medido do parceiro for < 1 h |
 | JoinAds fechado | `20 6 * * *`, D-7..D-1 (confirmado) | **manter** | restatement de receita; repetição 58101 não duplicou (idempotência determinística) | 64 chamadas | estender janela se houver revisão após D-7 |
-| Goal health / conversion health / políticas | **não existe coletor** (J:P/coverage-matrix.json:196,205); missão: 30–60 min (não confirmado) | **diário + sob demanda antes de revisão**, e **60 min só para contas com gasto ativo** e só `conversion_action.status` + resumo de política | o plano canônico pede "daily plus on-demand" (J:P/canonical-collection-plan.json:21); 60 min custa 24 operações/conta: 2.400 a ×100 (16% do Basic) | 1 → 24 operações | 30 min só em modo incidente |
+| Goal health / conversion health / políticas | **não existe coletor** (J:P/coverage-matrix.json:196,205); missão: 30–60 min (não confirmado) | **diário + sob demanda antes de revisão**, e **60 min só para contas com gasto ativo** e só `conversion_action.status` + resumo de política | o plano canônico pede "daily plus on-demand" (J:P/canonical-collection-plan.json:21); 60 min custa 24 operações/conta: 2.400 a ×100 (16% do Basic; somado à agenda atual de 9.226 a ×100, chega a 77%) | 1 → 24 operações | 30 min só em modo incidente |
 | Modo incidente | não existe; missão: 10–15 min temporário | **10 min no D0 da conta afetada, por no máximo 6 h, disparado por regra** | 10 min = 5 operações/h a mais que a horária por conta; 6 h ≈ 30 operações extras; teto: (15.000 − uso base)/30 incidentes de 6 h por dia | +5 operações/h | desligar automaticamente no fim da janela |
 | GTM (sensor v3) | evento; lote **10 s ou 20 eventos** (confirmado, MS:measurement/gtm/volc-sensor-v3.html:31-32; servidor MAX_BATCH 20 e 64 KB, MS:supabase/functions/volc-ingest/index.ts:6-7) | **manter** | não há cadência: o navegador empurra; volume atual 115 eventos em ~30 dias (J:EA/schema-inventory.json:116) | ~4 eventos/dia hoje; 218/dia se cada clique pago virar sessão de 8 eventos | só se o corpo de 64 KB estourar (não ocorre com 20 eventos) |
 
-**Quanto custa encurtar a cadência intraday** (escala atual, `MODELO.md` §3 e `modelo.json`):
+**Quanto custa encurtar a cadência intraday** (escala atual, `MODELO.md` §3; operações = a·contas + b):
 
-| Cadência D0/JoinAds intraday | Ops Google Ads/dia/conta | Contas no Basic | Versões distintas por campanha-dia (D0) | Redundância D0 |
-|---|---:|---:|---:|---:|
-| atual (06–23 h, JoinAds 2 h) | 32 | 468 | 4,4 | 75,6% |
-| horária 24 h | 38 | 394 | 5,5 | 77,1% |
-| 15 min | 110 | 136 | 17,3 | 82,0% |
-| 10 min | 158 | 94 | 23,9 | 83,4% |
+| Cadência D0/JoinAds intraday | Ops Google Ads/dia: por conta (a) + fixas (b) | Contas no Basic | Contas no Explorer | Versões distintas por campanha-dia (D0) | Redundância D0 |
+|---|---:|---:|---:|---:|---:|
+| atual (06–23 h, JoinAds 2 h) | 92 + 26 | 162 | 31 | 4,4 | 75,6% |
+| horária 24 h | 116 + 32 | 129 | 24 | 5,5 | 77,1% |
+| 15 min | 404 + 104 | 36 | 6 | 17,3 | 82,0% |
+| 10 min | 596 + 152 | 24 | 4 | 23,9 | 83,4% |
 
-A cadência de 10 min produz ~115 versões/dia da campanha ativa (vs ~18 na horária): é dado novo de
-verdade, mas é a mesma curva acumulada amostrada mais fino. Ela só vale se uma decisão de 10 min
-existir — hoje não existe. Com termos 1×/dia a conta cai para 22 operações/dia (681 contas no Basic).
+A 1ª versão contava 1 consulta por conta por execução (32 operações/dia, 468 contas): o coletor real
+faz 5 consultas por execução no D0/D-1 (R1 F7). Recibo de produção confirma a parte de mudança: no D0,
+`p(mudou)` = 0,20 em toda hora de 06 a 23 (1 de 5 campanhas muda; recibo :30) — o modelo usa fração
+mutável 0,2 e prevê 0,2 × (1 − e^{−λΔt}) ≈ 0,20. A cadência de 10 min produz ~115 versões/dia da
+campanha ativa (vs ~18 na horária): é dado novo, mas é a mesma curva acumulada amostrada mais fino; só
+vale com decisão de 10 min — hoje não existe.
+
+**H5 — a janela de 7 dias pode não ser regime estável.** A redundância de 89,4% foi medida com o
+coletor de termos com ~21 h de vida (13 execuções; recibo :69): cada termo-dia tinha sido lido ~9 vezes,
+não 42. Em regime, com p ≈ 0, a redundância tende a 41/42 = 97,6%. Até existir uma semana completa de
+execuções (≥ 42 leituras do termo-dia mais antigo), **nenhuma das duas razões é medida de regime**: a
+consulta (b) do handoff deve ser repetida após 7 dias de coletor contínuo, e a razão de distintas por
+termo-dia (`count(distinct metrics) / count(distinct observation_key)`) é o número a acompanhar.
 
 ## 4. Janela D0 06–23 deve cobrir 24 h?
 
 **O que dá para afirmar** (dado real, `horas_campanha_d30.json`, D30 agregado por hora da campanha
-24278665189; "ad_schedule: none configured; observed delivery spans hours 0-23",
+ativa da conta; "ad_schedule: none configured; observed delivery spans hours 0-23",
 J:P/receipts/d-live-campaign-audit.json:1034):
 
 | Fatia do dia | Impressões | Cliques | Custo | Conversões (plataforma) |
@@ -96,8 +110,8 @@ J:P/receipts/d-live-campaign-audit.json:1034):
 1. **Não há perda de dado**: a janela D0 é acumulada do dia; a execução das 06:07 já vê a
    madrugada, e o trecho 23:07–23:59 aparece no D-1 das 06:17.
 2. **Há perda de frescor**: o maior buraco sem leitura é de 7 h (23:07 → 06:07), que concentra ~7,6% do
-   gasto diário (≈ R$ 1,76/dia ao gasto atual de R$ 23/dia). Um incidente noturno é visto até 7 h depois.
-3. **Custo de cobrir 24 h**: +6 operações/dia/conta (32 → 38; Basic de 468 → 394 contas) e +6 leituras
+   gasto diário. Um incidente noturno é visto até 7 h depois.
+3. **Custo de cobrir 24 h**: +24 operações/dia por conta e +6 fixas (92 + 26 → 116 + 32; Basic de 162 → 129 contas) e +6 leituras
    da campanha por dia. Em armazenamento, irrelevante.
 4. **Não dá para afirmar** a variabilidade dia a dia da madrugada: o repositório só tem o agregado de
    30 dias por hora, não data × hora (as 65 linhas data×hora×dispositivo de 14/10 só têm a contagem
@@ -124,26 +138,30 @@ orçamento diário, **ou** se existir ator noturno. Para receita, o mesmo com o 
 
 ## 5. Medições no PostgreSQL descartável
 
-Ambiente: PostgreSQL 16.11 (Homebrew, arm64), cluster temporário em
-`experiments/data-intelligence-lab/artifacts/fundacao_capacidade_pg/` (gitignored), socket unix
-próprio em `/private/tmp/pgfb-*` (caminho curto exigido pelo limite de 104 caracteres do socket),
-`listen_addresses=''`, porta 54931, `fsync=on`, `synchronous_commit=on`, `wal_level=minimal`,
-`shared_buffers=256MB`, `autovacuum=off`, TOAST `pglz`. Duração 288 s. **Pico do diretório do
-cluster 4,08 GiB** (levemente acima do teto combinado de ~4 GB; a guarda checava o previsto, não o
-WAL); disco livre nunca abaixo de ~14 GiB; **cluster e socket apagados no fim** (`cluster_apagado: true`).
-Dados sintéticos determinísticos (sem `random()`): 10 contas × N entidades × 90 dias, 10% das chaves
-com 2ª versão.
+**Todas** as medições, com n, mín, p50, p95, p99, máx, média e desvio, estão em
+`benchmarks/capacidade/MEDICOES.md` (gerado do JSON; nenhuma linha omitida — R1 F26). Aqui, o resumo.
 
-DDL de medição (**aproximação própria**: o SQL candidato do worker A não existia quando a medição
-rodou) — cinco variantes da tabela de observação:
+Ambiente: PostgreSQL 16.11 (Homebrew, arm64), cluster temporário em
+`experiments/data-intelligence-lab/artifacts/fundacao_capacidade_pg/` (gitignored), socket unix próprio em
+`/private/tmp/pgfb-*` (caminho curto por causa do limite de 104 caracteres), `listen_addresses=''`, porta 54931,
+`fsync=on`, `synchronous_commit=on`, `wal_level=minimal`, `max_wal_size=256MB`, `shared_buffers=256MB`,
+`autovacuum=off`, TOAST `pglz`. Duas rodadas: principal (1.643 s, pico amostrado do diretório 3,20 GiB) e
+dedicada ao DDL da frente A (878 s, pico 2,33 GiB); **cluster e socket apagados nas duas**. A máquina estava
+disputada com outros workers: as latências desta rodada são piores que as da 1ª (ingestão p50 11–21 ms
+contra 5–6,5 ms) — publicadas como estão. Amostras: `as_of` pontual n = 5.000; snapshot e ingestão n = 60;
+consultas globais 5 repetições após 1 aquecimento (todas as repetições no JSON). Dados sintéticos
+determinísticos: 10 contas × N entidades × 90 dias, 10% das chaves com 2ª versão.
+
+Variantes da tabela de observação:
 
 | Variante | Desenho | Índices |
 |---|---|---|
-| `longo` | 1 linha por métrica; ids `bigint`/`smallint`, `valor bigint`, `payload_sha256 bytea` | PK `id`; único `(conta, nível, entidade, segmento, dia, métrica, disponivel_em desc)` = índice `as_of`; BRIN `disponivel_em` |
+| `longo` | 1 linha por métrica; ids `bigint`/`smallint`, `valor bigint`, `payload_sha256 bytea` | PK `id`; único `(chave lógica, disponivel_em desc)` = `as_of`; BRIN `disponivel_em` |
 | `texto` | igual, ids e códigos em `text`, valor `numeric`, sha em hex | idem |
 | `largo` | 1 linha por entidade×leitura, 8 métricas `bigint` (2 nulas) | PK; único `as_of` sem métrica; BRIN |
 | `jsonb` | igual ao largo, métricas num `jsonb` | idem |
-| `v21` | **réplica** de `google_ads_observation` (J:supabase/migrations/v21_01_google_ads_coleta_canonica.sql:94-145): `uuid`, ids `text`, `dimensions/metrics/attributes jsonb` | PK uuid; `UNIQUE (run_id, observation_key)`; 2 btree compostos; 2 GIN `jsonb_path_ops` |
+| `v21` | réplica de `google_ads_observation` (J:supabase/migrations/v21_01_google_ads_coleta_canonica.sql:94-145) | PK uuid; `UNIQUE (run_id, observation_key)`; 2 btree; 2 GIN `jsonb_path_ops` |
+| `dil_obs_0001` | **DDL real candidato da frente A** (`migrations_candidatas/dil_obs_0001_schema_observacao.sql`), formato longo, chaves sha256 em hex, inserção direta como superusuário (sem a RPC) | PK; `uq_obs_chave_idempotencia`; `uq_obs_versao (chave_natural, available_at desc)`; `ix_obs_chave_base`, `ix_obs_entidade`, `ix_obs_lote`, `ix_obs_run` |
 
 ### 5.1 Tamanho (1e6 linhas; 1e5 e 1e7 iguais a ±1% por linha)
 
@@ -155,84 +173,86 @@ rodou) — cinco variantes da tabela de observação:
 | largo | 204,9 | 81,5 | 286,4 | 35,8 |
 | jsonb | 431,3 | 81,5 | 512,8 | 64,1 |
 | v21 (réplica) | 630,4 | 220,3 | 850,7 | 106,3 |
+| **v21 real (produção, recibo :32)** | – | – | **1.140** | ~143 (8 métricas) |
+| **dil_obs_0001 (frente A)** | 630,4 | 453,3 | **1.083,7** | **1.083,7** |
 
-Índices da réplica v21 em 1e6: PK uuid 31,6 MB, único (run, key) 67,9 MB, 2 btree 66,5 MB, 2 GIN 54,4 MB.
-Partição: +3,5% no total em 1e7 (a PK passa a ser `(id, dia)`: 315 vs 225 MB).
+No DDL da frente A, os três índices sobre texto hex de 64 caracteres (`uq_obs_chave_idempotencia`,
+`ix_obs_chave_base`, `uq_obs_versao`) somam 370 MB em 1e6 linhas (370 B/linha); `ix_obs_chave_base` duplica
+`uq_obs_chave_idempotencia` em todas as linhas de tipo `leitura` (as duas chaves são iguais por CHECK).
 
-Payload bruto (20.000 linhas GAQL sintéticas, tabela `sha256 bytea pk, fonte, primeiro_visto_em, payload jsonb`):
+Payload bruto (20.000 linhas GAQL sintéticas): campanha 448 B de JSON → 718 B por linha jsonb ×
+75 B/linha em lote de 200 (pglz); termo 782 → 1.109 × 172 B (lz4 130 B). O sintético repete strings mais
+que o real; o real do lote v21 é 1.689 B por linha de `google_ads_raw_batch` (recibo :32, nº de linhas da
+API por lote não lido).
 
-| Tipo | JSON B/linha | jsonb por linha | jsonb em lote de 200 (pglz) | idem (lz4) |
-|---|---:|---:|---:|---:|
-| campanha | 448 | 718 | 75 | 75 |
-| termo de busca | 782 | 1.109 | 172 | 130 |
-
-O lote sintético repete strings mais que o real (nomes de campanha); a razão real de compressão
-deve ser menor — por isso o modelo usa a medição como está e o handoff pede a medição real.
-
-### 5.2 Latência
+### 5.2 Latência por chamada (p50 / p99, ms)
 
 | Medida (sem partição → com partição) | 1e5 | 1e6 | 1e7 |
 |---|---:|---:|---:|
-| `as_of` por chave, p50 (ms) | 0,022 → 0,032 | 0,027 → 0,038 | 0,274 → 0,401 |
-| `as_of` por chave, p99 (ms) | 0,062 → 0,308 | 0,339 → 0,452 | 2,31 → 3,39 |
-| snapshot conta×dia (`DISTINCT ON`), p50 (ms) | 0,23 → 0,11 (100 chaves) | 2,13 → 0,71 (1.010) | 23,5 → 8,6 (10.100) |
-| ingestão lote 1.000 + commit, p50 (ms) — cru / com checagem de dedup | 8,3 / 7,2 | 5,3 / 6,8 | 6,5 / 6,5 |
-| ingestão lote 5.000 + commit, p50 (ms) — cru / dedup | 42 / 41 | 31 / 33 | 41 / 34 |
-| `as_of` na réplica v21 (via `campaign_ix`), p50 (ms) | 0,023 | 0,145 | – |
+| `as_of` por chave, longo | 0,036 / 0,29 → 0,075 / 1,47 | 0,058 / 0,24 → 0,051 / 0,87 | 0,216 / 1,25 → 0,187 / 1,33 |
+| `as_of` por chave, `dil_obs_0001` | 0,018 / 0,19 | 0,069 / 2,04 | – |
+| `as_of` por chave, réplica v21 (`campaign_ix`) | 0,048 / 0,33 | 0,061 / 3,17 | – |
+| snapshot conta×dia (`DISTINCT ON`), longo | 0,56 → 0,18 | 4,8 → 2,0 | 34,4 → 14,7 |
+| ingestão 1.000 + commit, longo — cru / dedup | 13,2 / 16,3 | 14,6 / 20,7 | 13,2 / 11,0 |
+| ingestão 5.000 + commit, longo — cru / dedup | 67 / 104 | 95 / 126 | 55 / 69 |
 
-A ingestão usa o formato da RPC real (lote `jsonb` → `jsonb_to_recordset`, `on conflict do nothing`);
-a checagem de dedup (`NOT EXISTS` contra a última versão da chave) custa de 0 a 25% no p50. Mede o
-servidor, sem rede nem serialização do cliente. Índices foram construídos **depois** da carga
-(compactos); inserção incremental com PK uuid aleatória deixaria os índices ~30% maiores (não medido).
+Leitura honesta: com n maior e a máquina disputada, a cauda (p99, máx) é 5–20× a mediana; `as_of`
+pontual fica abaixo de 1 ms no p50 em todas as escalas e abaixo de 3,2 ms no p99. A ingestão continua
+com folga (≥ 48 mil linhas/s por conexão no p50, pior caso: dedup em 1e6). A partição melhora o snapshot de um dia (2,3–3×) e
+deixa o pontual igual ou pior na cauda.
 
-### 5.3 DuckDB / Polars (só leitura analítica de snapshot)
+### 5.3 `as_of` GLOBAL (todas as chaves; R1 F26) — s, mediana de 5 após 1 aquecimento
 
-Snapshot `as_of` completo (última versão ≤ corte para TODAS as chaves):
+| Consulta | 1e5 (meio / fim) | 1e6 (meio / fim) |
+|---|---:|---:|
+| `dil_obs.observacao_as_of(t)` (função real da frente A) | 0,12 / 0,99 | **8,5 / 17,5** |
+| mesma consulta inline, linha inteira (`DISTINCT ON … o.*`) | 0,10 / 0,07 | **0,18 / 0,32** |
+| inline só a chave (index-only scan em `uq_obs_versao`) | 0,035 / 0,021 | 0,12 / 0,18 |
+| `dil_obs.observacao_latest` (= `as_of(now())`) | 0,86 | **19,0** (máx 38,8) |
+| longo sintético, `DISTINCT ON` total (snapshot) | 0,071 | 0,69 |
+| Parquet: DuckDB / Polars | 0,009 / 0,013 | 0,071 / 0,112 (1e7: 0,92 / 1,54) |
 
-| Linhas | PostgreSQL (`DISTINCT ON`, índice) | DuckDB (Parquet) | Polars (Parquet) | resultados iguais |
-|---:|---:|---:|---:|---|
-| 1e5 | 0,049 s | 0,008 s | 0,010 s | sim |
-| 1e6 | 0,534 s | 0,049 s | 0,074 s | sim |
-| 1e7 | não medido | 0,518 s | 1,703 s | sim |
+### 5.4 Achado para a frente A (não corrigido aqui; fora do ownership de B)
 
-DuckDB é ~10× mais rápido que o Postgres para reconstruir um snapshot inteiro; para o replay v0
-(≤ 13 mil observações por snapshot, `results/bench/BENCH-RESULTS.md`) isso é irrelevante. Uso
-recomendado: exportar partições frias para Parquet e ler com DuckDB em replays históricos grandes,
-não trocar o banco operacional. (O tamanho do Parquet sintético — < 1 B/linha — não é representativo:
-as chaves sequenciais comprimem demais.)
+A função `dil_obs.observacao_as_of` é `LANGUAGE sql STABLE … SET search_path = ''`. Funções com
+cláusula `SET` não são inlinadas pelo planejador: o conjunto inteiro (linha completa de cada chave) é
+materializado antes do `count`/filtro de quem chama. Resultado medido: **48–55× mais lenta** que a mesma
+consulta inline em 1e6 linhas (8,5 s × 0,18 s; 17,5 s × 0,32 s), e a view `observacao_latest` herda o
+custo (19 s). Opções para a frente A, a medir: view `security_invoker` com o `DISTINCT ON` direto
+(inlinável), ou função `SECURITY INVOKER` sem `SET` com nomes totalmente qualificados. Também: o formato
+longo do DDL custa **1.084 B por valor**, 30× o largo tipado e ~7,6× a linha real da v21 por valor.
+
+### 5.5 DuckDB / Polars (só leitura analítica de snapshot)
+
+DuckDB sobre Parquet reconstrói um snapshot inteiro ~10× mais rápido que o Postgres (0,071 × 0,69 s em
+1e6); útil para replays históricos grandes sobre partições frias exportadas, irrelevante para o replay v0
+(≤ 13 mil observações por snapshot). O tamanho do Parquet sintético (< 1 B/linha) não é representativo.
 
 ## 6. Recomendações (com números)
 
-1. **Dedup de observação é a alavanca principal** (−93% das linhas de observação na vertical
-   completa ×100 horária: 1,46 M → 103 mil/dia). Gravar só a versão que mudou (chave lógica + valor),
-   com o recibo do run registrando "li N, igual M" para provar cobertura (o run prova que a leitura
-   aconteceu; a ausência de linha nova não é ausência de leitura).
-2. **Payload bruto: hash por linha, linhas novas gravadas juntas num lote jsonb** ("linha em lote").
-   Dedup por lote inteiro quase nunca acontece em janela grande (um termo que muda torna o lote
-   novo: no coletor de termos 100% dos lotes continuam "novos"; somando todos os jobs da vertical ×100 horária, 82%); dedup linha a linha sem lote paga 718–1.109 B
-   por linha. Linha-em-lote: 75–172 B + ~56 B de índice por linha. Na vertical ×100 horária:
-   payload sem dedup 0,23 GB/dia vs 0,026 GB/dia em linha-em-lote (−89%).
-3. **Colunas tipadas, não JSONB, para as métricas da observação**: largo tipado 36 B/valor vs JSONB
-   64 B e v21 106 B. JSONB fica para o bruto (comprimido em lote) e atributos raros. Formato **longo**
-   (uma linha por métrica) custa **7,2×** o largo por valor (258 vs 36 B): só usar se o contrato
-   exigir estado por métrica que não caiba em `NULL` + bitmask de estado — decisão a alinhar com o
-   contrato da frente A.
-4. **Índices**: na réplica v21 os índices são 26% do total; os dois GIN `jsonb_path_ops` (54 B/linha)
-   só servem consultas de contenção `@>` — inúteis para `as_of` e faixa numérica. Remover o GIN de
-   `metrics` é candidato direto, após confirmar `idx_scan = 0` (consulta no handoff). Para `as_of`
-   basta um btree único `(chave lógica, disponivel_em desc)` — que também é a trava de
-   "duas versões no mesmo instante".
-5. **Partição mensal**: +3,5% de espaço, `as_of` pontual +46% no p50 (0,27 → 0,40 ms em 1e7), snapshot de um
-   dia 2,7× mais rápido (23,5 → 8,6 ms) e retenção por `DROP PARTITION` sem bloat. Ligar quando a tabela
-   passar de ~10 GB ou quando a retenção começar (≈ ×10 no desenho atual; nunca no desenho
-   recomendado antes de ×100). Desenhar já com a chave de partição na PK.
-6. **Retenção + rollup**: bruto quente 13 meses; partições mais velhas exportadas para Parquet zstd
-   (frio) e removidas; rollup diário (1 linha larga por entidade-dia, ~286 B) para sempre. Na vertical
-   ×100 horária, 3 anos: 1,5 TB (v21) → 137 GB (dedup por linha) → 58 GB (linha em lote) → **34 GB**
-   (recomendada, com rollup de 12 MB/dia).
-7. **Termos 1×/dia** antes de qualquer outra otimização: é 95% do volume lido hoje.
-8. **Não otimizar ingestão**: 150–190 mil linhas/s por conexão; a vertical completa ×1000 a 10 min
-   lê ~18,9 M linhas/dia ≈ 220 linhas/s em média.
+1. **Gravar só o que mudou** (−94% das observações na vertical completa ×100 horária: 1,46 M → 83 mil
+   linhas/dia, com p de revisão de termos 0,005), mantendo no recibo do run "li N, igual M" para provar
+   cobertura. O coletor seguro já faz isso pelo `Registro` da frente A (05 §3.2).
+2. **Payload bruto: hash por linha, linhas novas gravadas juntas num lote jsonb** ("linha em lote"):
+   dedup por lote inteiro quase nunca acontece em janela grande (100% dos lotes de termos continuam
+   "novos"); dedup linha a linha sem lote paga 718–1.109 B/linha. Na vertical ×100 horária o payload cai
+   de ~0,23 para ~0,02 GB/dia.
+3. **Colunas tipadas, não JSONB nem formato longo, para as métricas**: largo tipado 36 B/valor; JSONB 64;
+   réplica v21 106; v21 real ~143; longo tipado 258; DDL longo da frente A 1.084. Se o contrato exigir
+   estado por métrica, `NULL` + bitmask de estado cabe no largo. Decisão a alinhar com a frente A: com o
+   DDL longo atual, a política recomendada a ×100 vai de 30 GB para 217 GB em 3 anos.
+4. **Índices**: em produção, os GIN de `metrics` e `dimensions` e o `campaign_ix` têm **0 scans** e a pkey
+   também (recibo :33) — remover os GIN é candidato direto (proposta, não aplicada). Para `as_of` basta um
+   btree único `(chave lógica, disponivel_em desc)`.
+5. **Partição mensal**: +3,5% de espaço, snapshot de um dia 2,3–3× mais rápido, `as_of` pontual igual no
+   p50, retenção por `DROP PARTITION`. Ligar quando a tabela passar de ~10 GB (≈ ×10 no desenho v21
+   real; não antes de ×100 no recomendado). Desenhar já com a chave de partição na PK.
+6. **Retenção + rollup**: bruto quente 13 meses; partições velhas em Parquet zstd; rollup diário largo
+   (~286 B por entidade-dia) para sempre. Vertical ×100 horária, 3 anos: 1,9 TB (v21 real) → 109 GB
+   (dedup por linha) → 48 GB (linha em lote) → **30 GB** (recomendada).
+7. **Termos 1×/dia** antes de qualquer outra otimização: 95% do volume lido hoje e 12 → 2 operações/dia por conta.
+8. **Não otimizar ingestão**: ≥ 48 mil linhas/s por conexão no p50 mesmo com a máquina disputada; a vertical
+   completa ×1000 a 10 min lê ~18,9 M linhas/dia ≈ 220 linhas/s em média.
 
 ## 7. Quotas e chamadas
 
@@ -254,17 +274,22 @@ Limites com fonte (`quotas.py`, `quotas.LIMITES`):
 
 A quota é **por developer token**, compartilhada com tudo que usa o mesmo token (MCP, scripts,
 sincronizador; "a quota do Google Ads é por credencial", J:backend/app/trafego/sincronizador.py:1092-1094).
-Os números do modelo são **piso**: sem retries que chegam ao serviço, sem consultas ad hoc.
+Os números do modelo são **piso**: sem retries que chegam ao serviço, sem consultas ad hoc. Com as
+consultas reais do coletor v21 (R1 F7), a agenda atual consome 92 operações/dia por conta + 26 fixas:
+**162 contas** no Basic e **31** no Explorer (se o token for Explorer, 1 conta já usa 4% do teto e o D0 a 15 min cabe em no
+máximo 6 contas).
 JoinAds: 145 chamadas/dia por conta hoje (premissa de 9 endpoints no intraday), 1.360 a 10 min;
 sem limite conhecido, qualquer cadência abaixo de 2 h é risco não quantificado.
 
 ## 8. Limitações
 
-- Bytes vêm de dados sintéticos com DDL aproximado; a réplica v21 segue o DDL real mas não o
-  conteúdo real de `dimensions/attributes`. Compressão do payload real será pior.
-- λ, fração mutável e p de revisão são premissas calibradas por um único agregado D30 de uma conta;
-  a sensibilidade (`MODELO.md` §5) mostra que GB/dia da política recomendada varia só ±5% em
-  λ ×0,25–4 e p ×0,25–3, porque o rollup e o payload dominam — mas a contagem de observações varia 2,5×.
+- Bytes vêm de dados sintéticos; a réplica v21 e o `dil_obs_0001` seguem DDLs reais, mas não o conteúdo
+  real. Só a linha da v21 (1.140 B) é medida em produção. Compressão do payload real será pior.
+- A redundância de termos medida (89,4%) não é de regime (H5, §3); a de regime (97,1%) é modelada.
+- λ, fração mutável e p de revisão são premissas calibradas por um agregado D30 de uma conta e pelo
+  recibo de produção; a sensibilidade (`MODELO.md` §5) mostra que o acumulado de 3 anos da política
+  recomendada varia de 26,5 a 33,8 GB (−12% / +12%) com λ ×0,25–4 e p ×0,25–3, porque rollup e payload
+  dominam — mas a contagem de observações varia 1,7×.
 - JoinAds: consultas por execução intraday (9) é premissa; endpoints reais são 10 (J:docs/audits/JOINADS-COLETA-CANONICA-2026-10-15.md:33-42).
 - GTM: bytes por evento (600 B) são premissa; `raw_events` não foi medido.
 - Crescimento modelado como "mais contas iguais"; contas maiores (mais campanhas) aumentam linhas
