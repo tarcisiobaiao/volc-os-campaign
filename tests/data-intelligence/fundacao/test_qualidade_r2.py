@@ -225,6 +225,9 @@ def test_g13_mutantes_de_dq_obs_status_sao_mortos_por_comportamento(cluster_pg, 
 
 
 def test_g6_dead_letter_sem_linhas_lidas_e_apos_fechamento(cluster_pg):
+    """[integrador, R2-G6] Depois da correção da frente A, o próprio schema recusa os dois cenários
+    (run só de dead letters fechando `succeeded` e dead letter em run fechado); a view continua
+    classificando o run limpo como ok, e a regra em Python (defesa em profundidade) segue testada abaixo."""
     db = cluster_pg.novo_banco("dq_r2_dl")
     cluster_pg.aplicar("dil_obs_0001_schema_observacao.sql", db=db)
     cluster_pg.psql((DIR_VIEWS / "dq_02_views_dil_obs.sql").read_text(encoding="utf-8"), db=db)
@@ -232,26 +235,18 @@ def test_g6_dead_letter_sem_linhas_lidas_e_apos_fechamento(cluster_pg):
     cluster_pg.psql("\n".join([
         f"SELECT dil_obs.registrar_run('so_dl','google_ads','c','1',{ini});",
         "SELECT dil_obs.registrar_dead_letter('so_dl',NULL,NULL,'esquema_desconhecido','{}'::jsonb);",
-        "SELECT dil_obs.registrar_dead_letter('so_dl',NULL,NULL,'esquema_desconhecido','{}'::jsonb);",
-        "SELECT dil_obs.finalizar_run('so_dl','succeeded',0,NULL,0,NULL,NULL);",
         f"SELECT dil_obs.registrar_run('limpo','google_ads','c','1',{ini});",
         "SELECT dil_obs.finalizar_run('limpo','succeeded',0,NULL,0,NULL,NULL);",
-        f"SELECT dil_obs.registrar_run('tardio','google_ads','c','1',{ini});",
-        "SELECT dil_obs.finalizar_run('tardio','succeeded',0,NULL,0,NULL,NULL);",
-        "SELECT dil_obs.registrar_dead_letter('tardio',NULL,NULL,'linha_sem_identidade','{}'::jsonb);",
     ]), db=db, papel="dil_obs_escritor")
-    r = {x["run_id"]: x for x in _json(cluster_pg, db, "SELECT run_id, n_lidas, n_dead_letter, dead_letter_registrados, "
-                                       "taxa, classe, severidade FROM dil_qualidade.dq_obs_dead_letter",
-                                       papel="dil_obs_leitor")}
-    assert (r["so_dl"]["taxa"], r["so_dl"]["classe"], r["so_dl"]["severidade"]) == (None, "so_dead_letter", "alto")
-    assert (r["tardio"]["classe"], r["tardio"]["severidade"], r["tardio"]["dead_letter_registrados"]) == \
-        ("dead_letter_apos_fechamento", "alto", 1)
+    with pytest.raises(Exception, match="contagem_incoerente|dead_letter"):
+        cluster_pg.psql("SELECT dil_obs.finalizar_run('so_dl','succeeded',0,NULL,0,NULL,NULL);",
+                        db=db, papel="dil_obs_escritor")
+    with pytest.raises(Exception):
+        cluster_pg.psql("SELECT dil_obs.registrar_dead_letter('limpo',NULL,NULL,'linha_sem_identidade','{}'::jsonb);",
+                        db=db, papel="dil_obs_escritor")
+    r = {x["run_id"]: x for x in _json(cluster_pg, db, "SELECT run_id, classe, severidade "
+                                       "FROM dil_qualidade.dq_obs_dead_letter", papel="dil_obs_leitor")}
     assert (r["limpo"]["classe"], r["limpo"]["severidade"]) == ("ok", "ok")
-    # Python sobre as mesmas linhas de run_coleta + contagem real: mesma decisão
-    linhas = _json(cluster_pg, db, "SELECT r.*, (SELECT count(*) FROM dil_obs.dead_letter d WHERE d.run_id = r.run_id)"
-                   "::int AS dead_letter_registrados FROM dil_obs.run_coleta r")
-    assert {a.chave: a.regra for a in checar_dead_letter(linhas)} == \
-        {"so_dl": "dead_letter_sem_linhas_lidas", "tardio": "dead_letter_apos_fechamento"}
 
 
 def test_g6_python_taxa_nula_nao_e_ok():
