@@ -71,8 +71,9 @@ Google (500 ms), não na RPC de ingestão, exceto termos (3×, 2 s) (J:P/collect
    (J:supabase/migrations/v21_01_google_ads_coleta_canonica.sql:130). Re-executar o mesmo slot pelo
    n8n gera **outro run e outra cópia** de todas as observações. Não perde dado, mas infla volume e
    obriga o leitor a escolher entre cópias.
-3. **Sem dedup entre leituras**: cada execução regrava tudo da janela. No modelo calibrado, 95,7% das
-   linhas lidas pelo coletor de termos e 75,6% das do D0 são repetição (`04-…` §2).
+3. **Sem dedup entre leituras**: cada execução regrava tudo da janela. Medido read-only em 16/10: 89,4% das
+   linhas lidas pelo coletor de termos (~21 h de vida, não é regime) e ~80% das do D0 repetem a leitura
+   anterior; o modelo prevê 97,6% em regime para termos (`04-…` §2–§3).
 4. **Sem error workflow nem dead letter**: falha antes do primeiro lote só aparece no histórico do
    n8n (J:docs/audits/GOOGLE-ADS-COLETA-CANONICA-2026-10-15.md, "Limites e próxima vertical").
 

@@ -55,3 +55,13 @@ repositório local.
   `current: false`.
 - L6 (GTM API), L7/L8 (n8n API) e L13 (hash da Edge Function) não foram lidas: exigem credencial de API que esta
   missão não lê. O mecanismo que leva o id numérico à JoinAds apesar do filtro do wrapper segue não identificado.
+
+## 5. Riscos acrescentados pela revisão R2
+
+- **H2/G19 (fora do código da missão):** `volc-ingest` corta strings com `.slice(0, max)`
+  (`918e9571:supabase/functions/volc-ingest/index.ts:51`), o que pode partir um par substituto UTF-16; o
+  PostgreSQL recusa o jsonb ("Unicode low surrogate must follow a high surrogate") e o lote de até 20 eventos se
+  perde com HTTP 500. Reproduzido no PG pela R2; correção é cortar por ponto de código (exige deploy autorizado
+  da Edge Function).
+- **G22:** a fixture "formato real" do shadow assume que o coletor já grava a moeda no payload; com os brutos de
+  hoje, custo v21 e receita JoinAds saem `invalid` (`moeda_nao_provada`) até o coletor ser endurecido (P3).
