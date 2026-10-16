@@ -34,17 +34,19 @@ ver DAT-01 em `10-BACKLOG-OUROS.md`.
 
 ## 0. Veredito em uma tela
 
-O resultado é misto, e a maior parte dele é negativa ou parcial — o que é útil. Três técnicas passaram
-seus critérios pré-registrados em simulação **e** resolvem um problema concreto do VOLC; elas viram
-candidatas a shadow (não a política):
+O resultado é misto, e a maior parte dele é negativa ou parcial — o que é útil. **Duas** técnicas
+passaram todos os seus critérios pré-registrados em simulação **e** resolvem um problema concreto do VOLC;
+uma terceira passou só em parte. Viram candidatas a shadow (não a política). (Errata R2, 2026-10-16: a
+versão anterior contava M10 como aprovada, mas H10b foi refutada — ver §16.)
 
 1. **Nowcast intradiário do custo D0** (M1-B): a razão de somas por hora reduz o erro sobre o custo
    final para ~15% do erro de "D0 é o final" (wMAPE 6–11% contra 40–70% até 18h).
 2. **e-BH/e-processos para testes múltiplos com outcome limitado** (M4): FDR ≤ q mesmo com 50 olhadas,
    onde o BH com peeking vai a 0,28 (q = 0,10).
-3. **Alocação sob resposta côncava estimada** (M10): regret 11–23× menor que `equal`/`proporcional`
-   herdado — mas a análise mostra que o ganho vem quase todo de **cortar campanhas com ROAS < 1**
-   (efeito de primeira ordem), não da curvatura: a elasticidade estimada fica no teto (b = 0,95) em 32–40% das campanhas.
+3. **Alocação sob resposta côncava estimada** (M10) — **parcial**: H10a suportada (regret 11–23× menor
+   que `equal`/`proporcional` herdado, com histórico de decisão lido do painel `as_of` maduro), mas **H10b
+   refutada**: supera mesmo sem variação exógena, porque o ganho vem quase todo de **cortar campanhas com
+   ROAS < 1** (primeira ordem), não da curvatura — a elasticidade fica no teto (b = 0,95) em 30–40% das campanhas.
 
 Duas são infraestrutura de método que já se pagam: **OPE só com propensão logada** (IPS não-viesado;
 propensão inventada depois do fato erra por 2,1 unidades de escala; sem propensão a função recusa) e
@@ -195,14 +197,17 @@ mesmo no mundo sintético com 50×90.
   - H5a: ATT verdadeiro custo +8,91, lucro −1,91. Viés do DiD: custo −0,13 [−2,10; +1,80] ✓; lucro −0,67
     [−1,37; −0,02] ✗ (exclui 0 por pouco). Antes/depois: custo +3,80 (pior que DiD), lucro −0,72 (igual
     ao DiD). Controle sintético: custo +2,31 [+0,72; +3,85] (enviesado). **H5a refutada** como formulada.
-  - H5b: ATT custo +6,55, lucro +1,15. Viés DiD: custo −3,99, receita −3,21, lucro +0,78 [+0,01; +1,69] →
-    **H5b suportada**. Corte transversal: lucro +15,65 (atribui à verba o que é seleção). Controle sintético
+  - H5b: ATT custo +6,55, lucro +1,15. Viés DiD: custo −3,99, receita −3,21, lucro +0,78 [+0,01; +1,69]
+    (condição 1 ✓). Antes/depois no lucro: +0,42 [−0,20; +1,34] — **menos** enviesado que o DiD
+    (|antes/depois| − |DiD| = −0,38 [−0,71; −0,09]; condição 2 ✗) → **H5b refutada** (errata R2/G9: a
+    versão anterior testava só a condição 1 e declarava "suportada"). Corte transversal: lucro +15,65 (atribui à verba o que é seleção). Controle sintético
     com intercepto foi o menos enviesado em H5b (custo −0,26 [−0,93; +0,39]). Os diagnósticos **não
     pegam** a seleção: tendências paralelas passam em 70–95% e o placebo em 85–95% dos mundos enviesados.
 - **Quando a atribuição observacional erra (resumo).** (i) Comparar campeões escolhidos contra o resto
   (corte transversal) erra por uma ordem de grandeza; (ii) antes/depois erra no custo porque o mercado
   muda; (iii) DiD erra quando a escolha usou o próprio resultado recente (regressão à média) — e os
-  testes de pré-tendência não avisam.
+  testes de pré-tendência não avisam; nesse caso o antes/depois do lucro errou menos que o DiD, o que
+  não o torna confiável (no custo ele erra +0,88 e na receita +1,30).
 - **Limites.** 15 tratados por mundo; o ruído do lucro é grande frente ao efeito. O simulador não tem
   interferência entre campanhas (DiD favorecido).
 - **Custo.** Trivial (bootstrap). Dado mínimo: log de decisão (quem mudou, quando, por quê) + painel
@@ -321,17 +326,20 @@ mesmo no mundo sintético com 50×90.
 - **Implementação.** `modelos/alocacao.py`: `ajustar_resposta` (log-log com prior em b, incerteza na
   extrapolação), `alocar_orcamento` (KKT exato por bisseção; igual ao SLSQP no teste), `limites` (mínimo,
   máximo, passo máximo), `projetar`, `verificar_restricoes` (0 violações em todas as políticas e seeds).
-- **Teste sintético (40 campanhas, 16 seeds; decisão no dia 30 para os dias 30–44; avaliação por
-  re-simulação CRN; oráculo = MILP na grade 0,5–1,5×).** `mudanca_orcamento`: regret côncava 120 [84; 158],
-  côncava sem aversão 84, guloso 334, proporcional 1379, equal 1865, status quo 2064 (R$ em 15 dias) →
-  **H10a suportada** (côncava − equal −1745; − proporcional −1260; − guloso −215 [−312; −114]).
-  `estavel`: côncava 93 contra equal 2141 → **H10b refutada**: supera mesmo sem variação exógena.
-  Investigação (não é vazamento: a política só vê os dias 0–29 do mundo status quo): a variação
-  natural de gasto (choques de demanda) já passa o critério de identificabilidade (desvio de log gasto
-  ~0,17), b mediano 0,86–0,92 e b no teto (0,95) em 0,32 [0,28; 0,37] (`mudanca_orcamento`) e 0,40 [0,36; 0,44]
-  (`estavel`) das campanhas — o alocador degenera em "ordenar por ROAS e
+- **Teste sintético (40 campanhas, 16 seeds; decisão no dia 30, 12h, para os dias 30–44; avaliação por
+  re-simulação CRN; oráculo = MILP na grade 0,5–1,5×).** Histórico de decisão = registros observados lidos
+  como painel `as_of` no instante da decisão, só dias com custo **e** receita em maturidade `final`
+  (último dia maduro: 27; 86–92% das células do histórico maduras; o resto NaN). `mudanca_orcamento`:
+  regret côncava 116 [84; 151], côncava sem aversão 85, guloso 370, proporcional 1385, equal 1865, status
+  quo 2064 (R$ em 15 dias) → **H10a suportada** (côncava − equal −1749 [−1968; −1529]; − proporcional −1270
+  [−1547; −1005]; − guloso −255 [−380; −136]). `estavel`: côncava 92 contra equal 2141 → **H10b
+  refutada**: supera mesmo sem variação exógena. A variação natural de gasto (choques de demanda) já passa
+  o critério de identificabilidade (desvio de log gasto ~0,17), b mediano 0,86–0,91 e b no teto (0,95) em
+  0,30 (`mudanca_orcamento`) e 0,40 (`estavel`) das campanhas — o alocador degenera em "ordenar por ROAS e
   cortar quem tem ROAS < 1", que é onde está o dinheiro. A aversão à incerteza não mostrou ganho (côncava sem
-  aversão teve regret pontual menor em `mudanca_orcamento`, 84 × 120, sem teste pareado).
+  aversão teve regret pontual menor, 85 × 116, sem teste pareado). (Errata R2/G10: a versão anterior usava a
+  verdade diária do mundo, inclusive os dias ainda imaturos no instante da decisão; com o painel maduro os
+  números mudam pouco — 120 → 116 — e os vereditos não mudam.)
 - **Limites.** Grade do oráculo é discreta; 15 dias; campanhas independentes; sem interferência de
   leilão entre campanhas; curvatura não identificada (o ganho é de primeira ordem). O `proporcional`
   herdado gasta o total inclusive em campanhas que perdem dinheiro — confirma a herança (pior que
@@ -415,14 +423,25 @@ Nenhuma dependência nova pedida.
 | 2 | EB (CTR, RPM) em campanha nova | **refutado** como um todo; ganha só CTR dia 1 e RPM dia 3 | testado com sintético | ≥ 20 lançamentos reais | EB-01..04 |
 | 3 | CUSUM / BOCPD × média móvel | **refutado** (CUSUM +2 p.p.; BOCPD pior, mais rápido) | testado com sintético | quebras anotadas em dado real | CP-01..03 |
 | 4 | e-BH / CS em outcome limitado | **suportado** (FDR ≤ q com 50 olhadas; CS cobre; receita recusada) | testado com sintético | experimento real com outcome limitado | SEQ-01..04 |
-| 5 | DiD / controle sintético | H5a **refutada** por pouco (lucro); H5b **suportada** (seleção engana DiD e diagnósticos) | testado com sintético | mudanças aleatorizadas | CAU-01..04 |
+| 5 | DiD / controle sintético | H5a **refutada** por pouco (lucro); H5b **refutada** (errata R2: DiD enviesado ✓, mas antes/depois menos enviesado ✗); seleção engana DiD e diagnósticos | testado com sintético | mudanças aleatorizadas | CAU-01..04 |
 | 6 | Surrogate (portão) | veredito não muda: `dados_insuficientes` (50×90 ainda insuficiente; 50×100 viável no sintético); R2 invisível ao portão | hold | ≥ 50×~100 maduros com feature no grão campanha (R2 corrigido) | SUR-01, SUR-02 |
 | 7 | Bandits + OPE | H7a **refutada** (LinUCB supera; Thompson não supera guloso); H7b **refutada** na variância (SNIPS/DR não reduzem para alvo uniforme); viés e recusa ✓ | testado com sintético; OPE real impossível | propensão logada + ≥ 10⁴ decisões | BAN-01..04 |
 | 8 | Conformal split / ACI | H8a **suportada**; H8b **refutada** na degradação (ACI recupera) | testado com sintético | previsões imutáveis + 8 semanas | CNF-01, CNF-02 |
 | 9 | Anomalia / lacuna / zero | H9a **refutada**; H9b **suportada**; H9c **refutada** (precisão 0,76) | testado com sintético | rótulo real de incidente | ANO-01..04 |
-| 10 | Alocação côncava com incerteza | H10a **suportada**; H10b **refutada** (ganho é de primeira ordem: cortar ROAS < 1) | testado com sintético | replay real vs guloso | ALO-01..04 |
+| 10 | Alocação côncava com incerteza | **parcial**: H10a **suportada**; H10b **refutada** (ganho é de primeira ordem: cortar ROAS < 1); histórico as_of maduro (errata R2) | testado com sintético | replay real vs guloso | ALO-01..04 |
 | 11 | SH/ASHA | não reaberto; nenhuma premissa mudou a favor | resultado negativo preservado | dado novo sem saturação/maturação heterogênea | SWM-01..04 |
 | 12 | Ridge × HGB (rolling origin) + vazamento | H12 **suportada** (Ridge ≈ média dos maduros; HGB pior); vazamento detectado 100%, 0 falso alarme | testado com sintético | ganho fora do tempo com IC em dado real | TAB-01..03 |
 | 13 | DuckDB / Polars | só referência (B: ~10× PG em snapshot grande) | adotar no lab, provisório | replay ≥ 1e5–1e6 obs/corte | DAT-02, DAT-03 |
 | 14 | Bibliotecas | nenhuma dependência nova | decisão proposta | técnica que scipy/sklearn não cubram | LIB-01 |
 
+## 16. Errata — 2026-10-16 (revisão adversarial R2, `handoffs/REVISAO-ADVERSARIAL-R2.md`)
+
+O pré-registro não foi alterado. Os resultados antigos estão preservados em
+`results/fundacao/modelos/errata_20261016/` (`m5_causal_pre_errata.json`, `m10_alocacao_pre_errata.json`);
+a tabela "antes × depois" é gerada no fim do `RESUMO.md`.
+
+| achado | correção | veredito antes | veredito depois |
+|---|---|---|---|
+| G9 | `fundacao_modelos_causal.py` passa a exigir as **duas** condições pré-registradas de H5b (DiD do lucro com IC excluindo 0 **e** antes/depois mais enviesado que o DiD, por diferença pareada de \|viés\|) e o veredito sai do critério (`H5b_criterios`) | H5b suportada | **H5b refutada** (cond. 1 ✓; cond. 2 ✗: −0,38 [−0,71; −0,09]) |
+| G10 | `fundacao_modelos_alocacao.py` alimenta as políticas com o painel `as_of` maduro observado no instante da decisão (dias com custo e receita `final`; atraso declarado ~3 dias), não com a verdade diária; §0 deixou de contar M10 como aprovada | H10a sim; H10b não; §0 "três aprovadas" | H10a sim (côncava 116 vs equal 1865); H10b não; §0: duas aprovadas + M10 parcial |
+| G13 (parte F, mutante F4) | dois testes de comportamento em `test_modelos_dados.py`: preliminar medida antes e entregue depois da final não a substitui (caso hermético) e equivalência com `visao_as_of` num cenário com coletas atrasadas; ambos falham com o painel ordenado por chegada | mutante sobrevivia (só a guarda de hash o pegava) | mutante morto pelos dois testes |

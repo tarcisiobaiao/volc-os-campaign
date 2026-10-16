@@ -32,7 +32,7 @@
    20261619,
    20261620
   ],
-  "sha256_codigo": "6872168463e89e4bf180ec1fe0c165099a2cdf035e8b0c40fe021cb60c1dbe38",
+  "sha256_codigo": "6d30b424d28ae41bf320d0aa55034e598fa349e9792d7c9103342a297931eca0",
   "teto_de_estado": "testado com sintético",
   "versoes": {
    "catalogo": "1.0.0",
@@ -49,7 +49,11 @@
  },
  "resultados": {
   "H5a_suportada": false,
-  "H5b_suportada": true,
+  "H5b_criterios": {
+   "antes_depois_mais_enviesado_que_did": false,
+   "did_lucro_enviesado_ic_exclui_0": true
+  },
+  "H5b_suportada": false,
   "a": {
    "custo": {
     "abs_vies_antes_depois_menos_did": {

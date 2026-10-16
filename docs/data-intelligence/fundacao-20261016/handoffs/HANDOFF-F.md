@@ -49,12 +49,12 @@ Não toquei `fundacao/__init__.py`, conftest, `pyproject.toml`/`uv.lock`, roadma
 | EB em campanha nova | **H2 refutada** (só CTR dia 1: MSE 0,70; RPM dia 3: 0,84; sorte sem diferença) | testado com sintético |
 | CUSUM/BOCPD × média móvel | **H3 refutada** (CUSUM +0,023 [+0,005; +0,040]; BOCPD −0,10, mas avisa 1,5 dia antes) | testado com sintético |
 | e-BH / CS | **H4a e H4b suportadas** (FDR e-BH ≤ 0,009 vs BH 0,28 com 50 olhadas; custo de poder com efeito fraco: 0,06–0,09 vs 0,55–0,66) | testado com sintético |
-| DiD / controle sintético | **H5a refutada** por pouco (lucro −0,67 [−1,37; −0,02]); **H5b suportada**; diagnósticos não pegam seleção | testado com sintético |
+| DiD / controle sintético | **H5a refutada** por pouco (lucro −0,67 [−1,37; −0,02]); **H5b refutada** (errata R2/G9: DiD enviesado ✓, antes/depois menos enviesado ✗, −0,38 [−0,71; −0,09]); diagnósticos não pegam seleção | testado com sintético |
 | Surrogate | veredito herdado não muda; 50×90 ainda insuficiente, 50×100 viável; portão não vê R2 | hold |
 | Bandits + OPE | **H7a refutada** (LinUCB supera equal e guloso; Thompson não supera guloso); **H7b refutada** na variância (alvo uniforme); IPS não-viesado, inventada enviesa, sem propensão recusa | testado com sintético; OPE real impossível |
 | Conformal | **H8a suportada** (0,895); **H8b refutada** na degradação (split 0,866); ACI 0,901 | testado com sintético |
 | Anomalias | **H9a refutada**; **H9b suportada** (0 anomalias em lacuna; null→0: 31,8 falsos/janela); **H9c refutada** (precisão 0,76) | testado com sintético |
-| Alocação | **H10a suportada** (regret 120 vs equal 1865, proporcional 1379, guloso 334); **H10b refutada**: ganho de primeira ordem (cortar ROAS < 1), b no teto em 32–40% | testado com sintético |
+| Alocação | **parcial**: **H10a suportada** (histórico as_of maduro após errata R2/G10: regret 116 vs equal 1865, proporcional 1385, guloso 370); **H10b refutada**: ganho de primeira ordem (cortar ROAS < 1), b no teto em 30–40% | testado com sintético |
 | SH/ASHA | não reaberto; nenhuma premissa mudou a favor | negativo preservado |
 | Ridge × HGB | **H12 suportada** (Ridge 1,006× a média dos maduros; HGB 1,027×); vazamento 100% detectado | testado com sintético |
 | DuckDB/Polars, bibliotecas | só referência; nenhuma dependência nova | — |
@@ -122,3 +122,16 @@ Nós do grafo sugeridos: `volc_dil.fundacao.modelos` (cluster decisão/dados, es
 `modelos → statlab` (reuso), `modelos → simulador` (avaliação), `modelos → shadow (D)` (API),
 `modelos → qualidade (G)` (lacuna ≠ anomalia, zero implausível, `calibrar_limiar`), `modelos → P14-T07/T08`,
 `modelos → P09-T11`.
+
+## 9. Errata — 2026-10-16 (revisão adversarial R2)
+
+Correções pedidas pelo integrador sobre `2d403e19` (merge local `462ac499`); pré-registro intacto; resultados
+antigos preservados em `results/fundacao/modelos/errata_20261016/`; errata datada em `08` §16 e no fim do `RESUMO.md`.
+
+| achado | correção | antes | depois |
+|---|---|---|---|
+| G9 | H5b avaliada pelas duas condições pré-registradas; veredito sai de `H5b_criterios` | suportada | **refutada** (DiD enviesado ✓; antes/depois mais enviesado ✗) |
+| G10 | M10 decide com o painel `as_of` maduro observado (dias com custo e receita `final` no instante da decisão), não com a verdade diária; `08` §0 deixa de contar M10 como aprovada | H10a sim / H10b não | H10a sim (116 vs 1865) / H10b não; M10 = parcial |
+| G13 (F4) | testes de comportamento que matam o painel ordenado por chegada (regra pré-D1) sem depender da guarda de hash | mutante sobrevivia | morto por 2 testes |
+
+Tempos da reexecução: M5 40 s, M10 268 s (`OMP_NUM_THREADS=2`, um por vez).

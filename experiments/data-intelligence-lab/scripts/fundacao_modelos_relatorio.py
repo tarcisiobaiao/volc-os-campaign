@@ -146,7 +146,9 @@ def gerar() -> str:
                          f"{_ic(v['did'], 2)} | {_ic(v['controle_sintetico'], 2)} | {_f(b['frac_did_ic_cobre_verdade'], 2)} | "
                          f"{_f(b['frac_tendencias_paralelas_passou'], 2)} | {_f(b['frac_placebo_temporal_passou'], 2)} |")
             L.append("")
-        L += [f"- H5a: {_f(r['H5a_suportada'])}; H5b: {_f(r['H5b_suportada'])}", ""]
+        L += [f"- |viés antes/depois| − |viés DiD| no lucro (H5b, cond. 2): {_ic(r['b']['lucro']['abs_vies_antes_depois_menos_did'], 2)}",
+              f"- H5b critérios: {r.get('H5b_criterios')}",
+              f"- H5a: {_f(r['H5a_suportada'])}; H5b: {_f(r['H5b_suportada'])}", ""]
     m6 = _carregar("m6_surrogate.json")
     if m6:
         r = m6["resultados"]
@@ -207,7 +209,9 @@ def gerar() -> str:
             b = r[cen]
             L += [f"### {cen}", "", f"curvas identificáveis: {_ic(b['frac_curvas_identificaveis'], 2)}; desvio de log gasto mediano: "
                                    f"{_ic(b['desvio_log_gasto_mediano'], 3)}; b mediano: {_ic(b.get('b_mediano'), 2)}; fração de b no teto (0,95): "
-                                   f"{_ic(b.get('frac_b_no_teto'), 2)}; violações de restrição: {b['violacoes_de_restricao']}", "",
+                                   f"{_ic(b.get('frac_b_no_teto'), 2)}; violações de restrição: {b['violacoes_de_restricao']}; "
+                                   f"histórico as_of: último dia maduro (mediana) {b.get('ultimo_dia_maduro_mediano', '—')}, "
+                                   f"células maduras {_ic(b.get('frac_celulas_maduras_hist'), 2)}", "",
                   "| política | regret |", "|---|---|"]
             for n, v in b["regret"].items():
                 L.append(f"| {n} | {_ic(v, 0)} |")
@@ -229,7 +233,34 @@ def gerar() -> str:
                      f"{_f(b['deteccao_vazamento_empirica'], 2)} (ganho de MAE com a feature do futuro {_ic(b['ganho_mae_com_vazamento'], 2)}); "
                      f"alarme falso empírico no modelo honesto {_f(b['alarme_falso_empirico_modelo_honesto'], 2)}")
         L += [f"- H12: {_f(r['H12_suportada'])}", ""]
+    L += _errata()
     return "\n".join(L) + "\n"
+
+
+def _errata() -> list:
+    """Errata datada (revisão adversarial R2): resultado antigo preservado em errata_20261016/."""
+    d = RES / "errata_20261016"
+    m5o, m10o = (json.loads((d / n).read_text(encoding="utf-8")) if (d / n).exists() else None
+                 for n in ("m5_causal_pre_errata.json", "m10_alocacao_pre_errata.json"))
+    m5n, m10n = _carregar("m5_causal.json"), _carregar("m10_alocacao.json")
+    if not (m5o and m10o and m5n and m10n):
+        return []
+    L = ["## Errata 2026-10-16 (revisão adversarial R2) — resultado antigo preservado em `errata_20261016/`", "",
+         "| achado | o que estava errado | antes | depois |", "|---|---|---|---|"]
+    o, n = m5o["resultados"], m5n["resultados"]
+    L.append(f"| G9 (M5/H5b) | o script testava só a condição 1 do pré-registro (DiD enviesado); faltava a condição 2 "
+             f"(antes/depois mais enviesado que o DiD) | H5b suportada: {_f(o['H5b_suportada'])} | H5b suportada: "
+             f"{_f(n['H5b_suportada'])} (critérios {n['H5b_criterios']}) |")
+    o, n = m10o["resultados"], m10n["resultados"]
+    fmt = lambda r, c: f"regret côncava {_ic(r[c]['regret']['concava'], 0)}, equal {_ic(r[c]['regret']['equal'], 0)}"  # noqa: E731
+    L.append(f"| G10 (M10) | histórico de decisão era a verdade diária do mundo, inclusive dias imaturos | "
+             f"`mudanca_orcamento`: {fmt(o, 'mudanca_orcamento')}; H10a {_f(o['H10a_suportada'])}, H10b "
+             f"{_f(o['H10b_suportada_nao_supera_equal_sem_variacao'])} | painel as_of maduro: {fmt(n, 'mudanca_orcamento')}; "
+             f"H10a {_f(n['H10a_suportada'])}, H10b {_f(n['H10b_suportada_nao_supera_equal_sem_variacao'])} |")
+    L.append("| G13-F4 | `TabelaVersoes` ordenada pela chegada (regra pré-D1) sobrevivia aos testes de comportamento | — | "
+             "testes `test_preliminar_atrasada_nao_substitui_a_final_r2_g13_f4` e "
+             "`test_equivalencia_com_coletas_atrasadas_e_recuperacao_tardia` matam o mutante |")
+    return L + [""]
 
 
 def main() -> None:

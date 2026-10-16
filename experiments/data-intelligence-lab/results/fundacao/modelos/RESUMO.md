@@ -141,7 +141,9 @@ Descritivo adicional (efeito fraco, lift 1,10; não é hipótese pré-registrada
 | lucro | 1.15 [0.66; 1.76] | 0.42 [-0.20; 1.34] | 15.65 [12.91; 18.83] | 0.78 [0.01; 1.69] | 0.49 [-0.43; 1.58] | 1.00 | 0.80 | 0.85 |
 | receita | 7.71 [6.20; 9.42] | 1.30 [0.25; 2.77] | 1.36 [-4.53; 7.57] | -3.21 [-4.71; -1.55] | -0.72 [-1.73; 0.41] | 0.85 | 0.95 | 0.95 |
 
-- H5a: não; H5b: sim
+- |viés antes/depois| − |viés DiD| no lucro (H5b, cond. 2): -0.38 [-0.71; -0.09]
+- H5b critérios: {'antes_depois_mais_enviesado_que_did': False, 'did_lucro_enviesado_ic_exclui_0': True}
+- H5a: não; H5b: não
 
 ## M6 — Surrogate (portão herdado reaberto com o simulador)
 
@@ -219,33 +221,33 @@ Descritivo adicional (efeito fraco, lift 1,10; não é hipótese pré-registrada
 
 ### mudanca_orcamento
 
-curvas identificáveis: 0.85 [0.81; 0.88]; desvio de log gasto mediano: 0.170 [0.162; 0.181]; b mediano: 0.86 [0.84; 0.88]; fração de b no teto (0,95): 0.32 [0.28; 0.37]; violações de restrição: 0
+curvas identificáveis: 0.86 [0.83; 0.89]; desvio de log gasto mediano: 0.168 [0.161; 0.177]; b mediano: 0.86 [0.83; 0.88]; fração de b no teto (0,95): 0.30 [0.25; 0.34]; violações de restrição: 0; histórico as_of: último dia maduro (mediana) 27.0, células maduras 0.86 [0.85; 0.87]
 
 | política | regret |
 |---|---|
-| concava | 120 [84; 158] |
-| concava_sem_aversao | 84 [61; 106] |
+| concava | 116 [84; 151] |
+| concava_sem_aversao | 85 [62; 110] |
 | equal | 1865 [1626; 2110] |
-| greedy | 334 [231; 443] |
-| proporcional_herdado | 1379 [1109; 1652] |
+| greedy | 370 [261; 488] |
+| proporcional_herdado | 1385 [1103; 1670] |
 | status_quo | 2064 [1729; 2444] |
 
-- côncava − equal: -1745 [-1971; -1521]; proporcional_herdado: -1260 [-1533; -1000]; greedy: -215 [-312; -114]; status_quo: -1944 [-2305; -1614]
+- côncava − equal: -1749 [-1968; -1529]; proporcional_herdado: -1270 [-1547; -1005]; greedy: -255 [-380; -136]; status_quo: -1948 [-2304; -1631]
 
 ### estavel
 
-curvas identificáveis: 0.89 [0.88; 0.91]; desvio de log gasto mediano: 0.176 [0.170; 0.181]; b mediano: 0.92 [0.91; 0.93]; fração de b no teto (0,95): 0.40 [0.36; 0.44]; violações de restrição: 0
+curvas identificáveis: 0.90 [0.88; 0.91]; desvio de log gasto mediano: 0.176 [0.170; 0.182]; b mediano: 0.91 [0.90; 0.93]; fração de b no teto (0,95): 0.40 [0.36; 0.44]; violações de restrição: 0; histórico as_of: último dia maduro (mediana) 27.0, células maduras 0.92 [0.92; 0.93]
 
 | política | regret |
 |---|---|
-| concava | 93 [66; 119] |
-| concava_sem_aversao | 91 [66; 114] |
+| concava | 92 [66; 118] |
+| concava_sem_aversao | 86 [65; 108] |
 | equal | 2141 [1829; 2472] |
-| greedy | 329 [232; 434] |
-| proporcional_herdado | 1657 [1386; 1956] |
+| greedy | 310 [211; 423] |
+| proporcional_herdado | 1656 [1377; 1962] |
 | status_quo | 2291 [1978; 2605] |
 
-- côncava − equal: -2048 [-2374; -1737]; proporcional_herdado: -1564 [-1871; -1288]; greedy: -237 [-350; -136]; status_quo: -2198 [-2512; -1888]
+- côncava − equal: -2049 [-2374; -1737]; proporcional_herdado: -1564 [-1882; -1276]; greedy: -218 [-336; -114]; status_quo: -2198 [-2515; -1886]
 
 - H10a: sim; H10b (não supera equal sem variação): não
 
@@ -266,4 +268,12 @@ curvas identificáveis: 0.89 [0.88; 0.91]; desvio de log gasto mediano: 0.176 [0
 - estavel: vazamento detectado por metadado 1.00, empírico 1.00 (ganho de MAE com a feature do futuro 0.63 [0.57; 0.68]); alarme falso empírico no modelo honesto 0.00
 - quebra_regime_rpm: vazamento detectado por metadado 1.00, empírico 1.00 (ganho de MAE com a feature do futuro 0.61 [0.56; 0.65]); alarme falso empírico no modelo honesto 0.00
 - H12: sim
+
+## Errata 2026-10-16 (revisão adversarial R2) — resultado antigo preservado em `errata_20261016/`
+
+| achado | o que estava errado | antes | depois |
+|---|---|---|---|
+| G9 (M5/H5b) | o script testava só a condição 1 do pré-registro (DiD enviesado); faltava a condição 2 (antes/depois mais enviesado que o DiD) | H5b suportada: sim | H5b suportada: não (critérios {'antes_depois_mais_enviesado_que_did': False, 'did_lucro_enviesado_ic_exclui_0': True}) |
+| G10 (M10) | histórico de decisão era a verdade diária do mundo, inclusive dias imaturos | `mudanca_orcamento`: regret côncava 120 [84; 158], equal 1865 [1626; 2110]; H10a sim, H10b não | painel as_of maduro: regret côncava 116 [84; 151], equal 1865 [1626; 2110]; H10a sim, H10b não |
+| G13-F4 | `TabelaVersoes` ordenada pela chegada (regra pré-D1) sobrevivia aos testes de comportamento | — | testes `test_preliminar_atrasada_nao_substitui_a_final_r2_g13_f4` e `test_equivalencia_com_coletas_atrasadas_e_recuperacao_tardia` matam o mutante |
 

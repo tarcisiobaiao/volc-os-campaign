@@ -109,8 +109,13 @@ def main() -> None:
     res["H5a_suportada"] = bool(all(va[k]["vies"]["did"]["ic95"][0] <= 0 <= va[k]["vies"]["did"]["ic95"][1]
                                     for k in ("custo", "lucro"))
                                 and all(va[k]["abs_vies_antes_depois_menos_did"]["ic95"][0] > 0 for k in ("custo", "lucro")))
-    vb = res["b"]["lucro"]["vies"]
-    res["H5b_suportada"] = bool(not (vb["did"]["ic95"][0] <= 0 <= vb["did"]["ic95"][1]))
+    # H5b pré-registrada tem DUAS condições (errata R2/G9, 2026-10-16): (1) viés do DiD do lucro com IC95
+    # excluindo 0 E (2) antes/depois ingênuo MAIS enviesado que o DiD (|viés| pareado, IC95 > 0).
+    vb = res["b"]["lucro"]
+    c1 = bool(not (vb["vies"]["did"]["ic95"][0] <= 0 <= vb["vies"]["did"]["ic95"][1]))
+    c2 = bool(vb["abs_vies_antes_depois_menos_did"]["ic95"][0] > 0)
+    res["H5b_criterios"] = {"did_lucro_enviesado_ic_exclui_0": c1, "antes_depois_mais_enviesado_que_did": c2}
+    res["H5b_suportada"] = bool(c1 and c2)
     res["n_tratados"] = {"a": float(np.mean([w["n_tratados_a"] for w in mundos])),
                          "b": float(np.mean([w["n_tratados_b"] for w in mundos]))}
     obj = {"manifesto": manifesto(__file__, seeds=seeds, parametros={"C": C, "D": D, "selecao_b": "top 30% ROAS 7d",
