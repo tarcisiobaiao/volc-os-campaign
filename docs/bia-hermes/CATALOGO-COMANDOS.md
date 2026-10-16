@@ -21,7 +21,7 @@ e 48 comandos de skill do profile `default`). **Não edite à mão.**
 | requires_tool — exige ferramenta | 63 |
 | external_mutation — muda algo fora | 38 |
 | telegram_only — só no Telegram | 10 |
-| **Total** | **137** |
+| **Total** | **139** |
 
 ## Comandos da web (disponíveis)
 
@@ -34,6 +34,8 @@ e 48 comandos de skill do profile `default`). **Não edite à mão.**
 | `/contexto <id da campanha>` | volc | local_ui | sim | local | Incluir o contexto somente leitura de uma campanha |
 | `/status` (aliases: /status, /usage, /version) | volc | hermes_safe | sim | backend | Ver o estado da conversa: mensagens, tokens, custo e versão do Hermes |
 | `/ajuda` (aliases: /help, /commands) | volc | local_ui | sim | local | Listar os comandos disponíveis e indisponíveis |
+| `/cerebro` | volc | hermes_safe | sim | backend | Status dos três cérebros (só leitura: git, sem sincronizar) |
+| `/salvar` | volc | local_ui | sim | local | Preparar uma captura desta conversa para o cérebro, com prévia antes de gravar |
 
 ## Registro do Hermes (82)
 
@@ -132,7 +134,7 @@ e 48 comandos de skill do profile `default`). **Não edite à mão.**
 | `/arxiv` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
 | `/brainaudit` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
 | `/brainstorming` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
-| `/cerebro` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
+| `/cerebro` | hermes_skill | requires_tool | não | — | No Telegram a skill escreve e faz git com ferramentas. Na web: /cerebro, sem ferramenta para a Bia. |
 | `/claude-code` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
 | `/claude-design` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
 | `/codebase-inspection` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
@@ -164,7 +166,7 @@ e 48 comandos de skill do profile `default`). **Não edite à mão.**
 | `/requesting-code-review` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
 | `/research-to-operational-assets` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
 | `/rotina` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
-| `/salve` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
+| `/salve` | hermes_skill | requires_tool | não | — | No Telegram a skill escreve e faz git com ferramentas. Na web: /salvar, sem ferramenta para a Bia. |
 | `/sketch` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
 | `/systematic-debugging` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |
 | `/test-driven-development` | hermes_skill | requires_tool | não | — | Skill do Hermes: na web não roda — a superfície web não carrega skills nem tem ferramentas. Use pelo Telegram. |

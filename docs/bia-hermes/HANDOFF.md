@@ -155,3 +155,10 @@ App: **http://localhost:8091** (Vite da worktree; FastAPI em `:8031` e túnel em
 4. Digite `/` e use as setas e o Enter. Experimente um comando bloqueado, como `/model`.
 5. Celular: no DevTools, ative o modo dispositivo (375 px). O painel deve ocupar a tela. Pelo telefone, via rede local, a origem é recusada pelo CORS exato, que só aceita `http://localhost:8091`; para testar no aparelho, inclua a origem da rede em `BIA_ALLOWED_ORIGINS` e em `ALLOWED_ORIGINS`.
 6. No Telegram, mande uma mensagem à Bia e confira que ela responde normalmente.
+
+## Adendo de 16/10/2026: atalhos do cérebro (`e808330c`)
+
+- **Fase A, ligada.** "Salvar no cérebro" pede à Bia, sem ferramenta e por intenção tipada, um rascunho que vira prévia editável. "Cérebro" pede o status dos três cérebros. `/cerebro` e `/salvar` entraram no catálogo como equivalentes seguros das skills `cerebro` e `salve`. O total de comandos subiu de 137 para 139.
+- **Fase B, com código pronto e NÃO instalada.** O executor fica em `deploy/cerebro-web/volc_cerebro_web.py` e é chamado por SSH com comando forçado. As operações no VPS, o diff, o rollback e a prova estão em `CEREBRO-WEB.md`. Sem executor, `/api/agent/cerebro/*` responde 503 com o motivo.
+- **Arquivo compartilhado tocado:** `backend/app/config.py`, no mesmo bloco `bia_*` que esta branch já criara. Entraram dois campos opcionais: `bia_cerebro_ssh_destino` e `bia_cerebro_ssh_chave`.
+- **Testes:** backend 176 (inclui 17 do cérebro com o executor real em repositórios temporários); front 50.
