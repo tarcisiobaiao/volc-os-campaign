@@ -7,6 +7,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { ErroDeApi } from '@/lib/secureApi';
+
 import { biaApi, type BiaApi } from './api';
 import type { AnexoDaBia } from './tipos';
 import { mensagemDe } from './useBia';
@@ -43,6 +45,8 @@ export interface ItemDeAnexo {
   progresso: number;
   anexo: AnexoDaBia | null;
   erro: string | null;
+  /** Falha de rede/servidor: repetir pode dar certo. Recusa (4xx) não se repete. */
+  repetivel: boolean;
 }
 
 export function formatarTamanho(bytes: number): string {
@@ -80,7 +84,11 @@ export function useAnexos(api: BiaApi = biaApi) {
       cancelamentos.current.set(item.chave, envio.cancelar);
       envio.promessa
         .then((anexo) => vivo.current && mudar(item.chave, { estado: 'pronto', anexo, progresso: 1, erro: null }))
-        .catch((e) => vivo.current && mudar(item.chave, { estado: 'falhou', erro: mensagemDe(e) }))
+        .catch((e) => vivo.current && mudar(item.chave, {
+          estado: 'falhou',
+          erro: mensagemDe(e),
+          repetivel: !(e instanceof ErroDeApi) || e.status === 0 || e.status >= 500,
+        }))
         .finally(() => cancelamentos.current.delete(item.chave));
     },
     [api],
@@ -124,6 +132,7 @@ export function useAnexos(api: BiaApi = biaApi) {
           progresso: 0,
           anexo: null,
           erro: null,
+          repetivel: false,
         });
       }
       if (recusas.length) setAviso(recusas.join(' '));

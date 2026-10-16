@@ -119,7 +119,7 @@ export const Compositor: React.FC<Props> = ({ userId, bia, anexos, comandos, cam
         : anexos.enviandoAlgum
           ? 'Aguarde os arquivos terminarem de subir.'
           : anexos.falhouAlgum
-            ? 'Remova ou envie de novo os arquivos com falha.'
+            ? 'Remova os arquivos recusados (ou envie de novo os que falharam por rede) para enviar.'
             : !bia.online
               ? 'Sem conexão com a internet.'
               : null;

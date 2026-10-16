@@ -503,13 +503,13 @@ describe('anexos', () => {
 
   it('falha no upload: erro perto do arquivo, repetir sobe de novo, remover tira da fila', async () => {
     api.enviarAnexo
-      .mockImplementationOnce(() => ({ promessa: Promise.reject(new ErroDeApi('Tipo divergente.', 422, 'tipo_divergente')), cancelar: vi.fn() }))
+      .mockImplementationOnce(() => ({ promessa: Promise.reject(new ErroDeApi('Armazenamento indisponível.', 503, 'anexo_indisponivel')), cancelar: vi.fn() }))
       .mockReturnValueOnce({ promessa: Promise.resolve(anexo({ nome: 'nota.txt', tipo: 'txt', familia: 'documento' })), cancelar: vi.fn() });
     const { seletor } = await prepararComAnexo();
     await act(async () => {
       fireEvent.change(seletor, { target: { files: [arquivo('nota.txt', 'text/plain')] } });
     });
-    expect(await screen.findByText('Tipo divergente.')).toBeTruthy();
+    expect(await screen.findByText('Armazenamento indisponível.')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Enviar mensagem' }) as HTMLButtonElement).disabled).toBe(true);
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Enviar de novo nota.txt/ }));
@@ -521,6 +521,18 @@ describe('anexos', () => {
     });
     expect(api.removerAnexo).toHaveBeenCalledWith(anexo().id);
     expect(screen.queryByText('nota.txt')).toBeNull();
+  });
+
+  it('recusa definitiva (4xx) não oferece repetir; só remover', async () => {
+    api.enviarAnexo.mockImplementation(() => ({
+      promessa: Promise.reject(new ErroDeApi('Arquivo recusado: executável Windows.', 422, 'tipo_proibido')), cancelar: vi.fn() }));
+    const { seletor } = await prepararComAnexo();
+    await act(async () => {
+      fireEvent.change(seletor, { target: { files: [arquivo('falso.png', 'image/png')] } });
+    });
+    expect(await screen.findByText('Arquivo recusado: executável Windows.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Enviar de novo/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Remover falso.png/ })).toBeTruthy();
   });
 
   it('enquanto sobe: progresso acessível e envio segurado', async () => {

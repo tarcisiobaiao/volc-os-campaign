@@ -72,7 +72,7 @@ export const FilaDeAnexos: React.FC<Props> = ({ itens, onRemover, onRepetir }) =
               </p>
             )}
           </div>
-          {i.estado === 'falhou' ? (
+          {i.estado === 'falhou' && i.repetivel ? (
             <Button
               type="button"
               variant="ghost"
