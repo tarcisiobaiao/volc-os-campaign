@@ -5,9 +5,24 @@
   "branch": "lab/dil-fundacao-20261016-c",
   "rede_ou_producao_acessada": false,
   "fontes_lidas": {
-    "sensor_v3": {"ref": "wip/historico-measurement-20261015", "commit": "918e9571", "caminho": "measurement/gtm/volc-sensor-v3.html", "sha256": "cb01822420e22b41066632510269376899da20653d7ace5c3b50d91507ca41e4", "igual_ao_arquivo_nao_rastreado_do_checkout_historico": true},
-    "wrapper_v2": {"ref": "wip/historico-measurement-20261015", "caminho": "measurement/gtm/webs-wrapper-v2.html", "sha256": "bbd4c82193fe9c8883a1cec93cf88d4e273aa53dfae4324aa9c37cba7aded699", "igual_ao_arquivo_nao_rastreado_do_checkout_historico": true},
-    "volc_ingest": {"ref": "wip/historico-measurement-20261015", "caminho": "supabase/functions/volc-ingest/index.ts", "sha256": "3739594b0fd30d963b0dd08fbc4527cacb1fde129fed5b43d48f8d94fc28a0ca"},
+    "sensor_v3": {
+      "ref": "wip/historico-measurement-20261015",
+      "commit": "918e9571",
+      "caminho": "measurement/gtm/volc-sensor-v3.html",
+      "sha256": "cb01822420e22b41066632510269376899da20653d7ace5c3b50d91507ca41e4",
+      "igual_ao_arquivo_nao_rastreado_do_checkout_historico": true
+    },
+    "wrapper_v2": {
+      "ref": "wip/historico-measurement-20261015",
+      "caminho": "measurement/gtm/webs-wrapper-v2.html",
+      "sha256": "bbd4c82193fe9c8883a1cec93cf88d4e273aa53dfae4324aa9c37cba7aded699",
+      "igual_ao_arquivo_nao_rastreado_do_checkout_historico": true
+    },
+    "volc_ingest": {
+      "ref": "wip/historico-measurement-20261015",
+      "caminho": "supabase/functions/volc-ingest/index.ts",
+      "sha256": "3739594b0fd30d963b0dd08fbc4527cacb1fde129fed5b43d48f8d94fc28a0ca"
+    },
     "leituras_de_producao_citadas": "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md (integrador; L3, L4, L5)"
   },
   "comandos": [
@@ -16,25 +31,79 @@
     "node gerar_vetores_sensor.mjs sensor.html wrapper.html > vetores_utm_sensor_v3.json  # node v26.5.0, sem rede",
     "OMP_NUM_THREADS=2 .venv/bin/python -m pytest tests/data-intelligence -q"
   ],
-  "vetores_ouro": {"nomeados": 65, "pseudoaleatorios": 3000, "cenarios_campaign": 11, "divergencias_python_x_js": 0, "sensor_x_wrapper_divergem": 11},
+  "vetores_ouro": {
+    "nomeados": 65,
+    "pseudoaleatorios": 3000,
+    "cenarios_campaign": 11,
+    "divergencias_python_x_js": 0,
+    "sensor_x_wrapper_divergem": 11,
+    "nota": "regenerados após R1-F25 com entradas sintéticas; 0 divergências Python × JS"
+  },
   "testes": {
     "novos": 68,
     "herdados": 172,
-    "total_com_fixtures_completas": "240 passed (cópia do worktree em scratchpad + backend/app/trafego/shadow_experimentos/senac-shadow-20261015 e backend/tests/goldens/atribuicao-meta-adset-v1.json)",
+    "total_com_fixtures_completas": "240 passed (cópia do worktree em scratchpad + backend/app/trafego/shadow_experimentos/<experimento-shadow> e backend/tests/goldens/atribuicao-meta-adset-v1.json)",
     "total_no_worktree_esparso": "237 passed, 3 failed — test_surrogate.py lê backend/... ausente do checkout esparso (herdado, independente desta thread)"
   },
   "mutantes": {
     "aplicados": 10,
     "mortos": 10,
     "nota": "1 mutante (teto 200 → 10**9) morreu por falhas e depois foi abortado porque o teste passa a construir string de 1e9; 1 mutante de espaço foi distorcido pelo shell e trocou dois espaços por um — também morto",
-    "lista": ["regex telefone {8,}→{9,}", "corte UTF-16 → code points", "teto PII 200 → infinito", "espaço JS", "ausente→zero na receita", "receita probabilística entra na linha", "sem recusa de grão", "id em duas contas resolve", "sessão paga sem campanha = orgânico", "renomeação não detectada"]
+    "lista": [
+      "regex telefone {8,}→{9,}",
+      "corte UTF-16 → code points",
+      "teto PII 200 → infinito",
+      "espaço JS",
+      "ausente→zero na receita",
+      "receita probabilística entra na linha",
+      "sem recusa de grão",
+      "id em duas contas resolve",
+      "sessão paga sem campanha = orgânico",
+      "renomeação não detectada"
+    ]
   },
   "achados": {
-    "utm_campaign_numerico_descartado_pelo_sensor": "utmValue('24278665189') === '' (JS real); 0/28 sessões pagas com campaign em produção 15–16/10 (L4)",
+    "utm_campaign_numerico_descartado_pelo_sensor": "utmValue('<campanha-ativa>') === '' (JS real); 0/28 sessões pagas com campaign em produção 15–16/10 (L4)",
     "utm_content_adgroupid_descartado": "mesma regex; vetor 165432109876 → descartado",
-    "wrapper_v2_tambem_descarta": "safeValue('24278665189') === ''",
+    "wrapper_v2_tambem_descarta": "safeValue('<campanha-ativa>') === ''",
     "ponte_custo_receita_intacta": "JoinAds kv numérico = 97–100% do earnings 08–16/10 (L5); setter não identificado",
     "gclid_valor_nunca_sai": true,
     "lote": "flush 10 s / 20 eventos + clique interno, pagehide, aba oculta; split > 60000 bytes; ingest corta em 20"
+  },
+  "resposta_r1": {
+    "base_merge": "lab/data-foundation-20261016 @ 413395a5 (merge local, sem push)",
+    "achados": [
+      "F5",
+      "F6",
+      "F18",
+      "F19",
+      "F23",
+      "F20/M13",
+      "F24",
+      "F25"
+    ],
+    "antes": {
+      "F5": "receita 2x a verdade (t_dup.py)",
+      "F6a": "cliques None -> zero_confirmado 0",
+      "F6b": "zero de sessão sem sensor no site",
+      "F19": "fração 1/10 sem aviso",
+      "F23": "custon_key ignorado",
+      "F18": "UnicodeEncodeError"
+    },
+    "testes_novos": {
+      "test_identidade_r1.py": 18,
+      "test_identidade_sem_sensiveis.py": 3
+    },
+    "testes_identidade_total": 89,
+    "suite": {
+      "worktree_esparso": "668 passed, 3 failed (test_surrogate.py: fixtures de backend/ ausentes no esparso)",
+      "copia_com_fixtures": "670 passed, 1 skipped (test_qualidade_pg_views: precisa de .git; a cópia não é repositório). Numa execução anterior, test_capacidade_coletor::test_equivalencia_serial_paralelo (thread B) falhou de forma intermitente (1 em 3 isolado) — instabilidade herdada, ligada à R1-F10"
+    },
+    "mutantes_nas_correcoes": {
+      "aplicados": 11,
+      "mortos": 11
+    },
+    "sanitizacao": "ids/domínio/cliente/valores reais trocados por sintéticos; vetores regenerados (fonte sha256 cb018224…/bbd4c821… inalterada)",
+    "contestados": []
   }
 }

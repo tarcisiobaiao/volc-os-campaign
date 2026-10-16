@@ -1,6 +1,6 @@
 """Parser da chave de campanha: valor de UTM/key-value → `campaign.id` do Google Ads.
 
-O template vivo (Final URL suffix da campanha 24278665189, recibo
+O template vivo (Final URL suffix da campanha <campanha-ativa>, recibo
 `043c77f5:.claude-ads/runs/google-ads-recovery-20261015T125729-0300/receipts/d-live-campaign-audit.json:37`)
 põe `utm_campaign={campaignid}`. Logo, um valor só de dígitos É o id — desde que a fonte
 não o tenha mutilado. O parser recusa explicitamente tudo o que não permite essa leitura,
@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-from .normalizacao import LIMITE_VALOR_UTM, MotivoDescarte, diagnosticar_utm_sensor_v3
+from .normalizacao import LIMITE_VALOR_UTM, MotivoDescarte, _js_len, diagnosticar_utm_sensor_v3
 
 _ID = re.compile(r"[0-9]{1,20}")
 _MACRO = re.compile(r"^\{\{?[^{}]+\}?\}$")
@@ -82,7 +82,8 @@ def interpretar_chave_campanha(
     if bruto.startswith("/") or "://" in bruto:
         return ChaveCampanha(valor, origem, recusa=MotivoRecusa.CHAVE_TROCADA)
     textual = diagnosticar_utm_sensor_v3(bruto)[0] if origem is not OrigemValor.SENSOR_V3 else bruto
-    if len(textual.encode("utf-16-le")) // 2 >= LIMITE_VALOR_UTM:
+    # _js_len usa surrogatepass: o sensor pode gravar meio par substituto no corte de 40 (R1-F18).
+    if _js_len(textual) >= LIMITE_VALOR_UTM:
         return ChaveCampanha(valor, origem, recusa=MotivoRecusa.POSSIVELMENTE_TRUNCADO,
                              valor_textual=textual or None)
     return ChaveCampanha(valor, origem, recusa=MotivoRecusa.TEXTUAL_AMBIGUO,

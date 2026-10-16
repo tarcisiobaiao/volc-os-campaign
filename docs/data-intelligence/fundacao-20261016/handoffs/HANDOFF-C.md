@@ -16,7 +16,7 @@ Rede, produção, GTM, n8n, JoinAds, Google Ads: **não acessados** por esta thr
 | `…/identidade/graos.py` | matriz de grão como dado; `exigir_grao`, `receita_por_sessao`, `GraoNaoSuportado` |
 | `…/identidade/colisao.py` | mesma UTM/duas campanhas, id em duas contas, renomeação, custom_key substituída, truncamento |
 | `…/identidade/juncao.py` | `juntar_campanha_dia` custo × tráfego × receita com cobertura, null ≠ zero, sem rateio |
-| `tests/data-intelligence/fundacao/test_identidade_{normalizacao,chave_e_resolvedor,colisao,ponta_a_ponta}.py` | 68 testes |
+| `tests/data-intelligence/fundacao/test_identidade_{normalizacao,chave_e_resolvedor,colisao,ponta_a_ponta,r1,sem_sensiveis}.py` | 89 testes |
 | `docs/data-intelligence/fundacao-20261016/03-MATRIZ-DE-ATRIBUICAO.md` | matriz, contradição, leituras externas, plano |
 | `docs/data-intelligence/fundacao-20261016/receipts/identidade/gerar_vetores_sensor.mjs` | gera vetores executando o JS real (extraído do HTML) em Node |
 | `…/receipts/identidade/vetores_utm_sensor_v3.json` | 65 nomeados + 3000 pseudoaleatórios (semente 20261016) + 11 cenários de `campaign()` |
@@ -51,7 +51,7 @@ Rede, produção, GTM, n8n, JoinAds, Google Ads: **não acessados** por esta thr
 - **Privacidade/PII:** o módulo não lê nem grava dado pessoal; os testes usam `sid` e `gclid` sintéticos
   (`CLIQUE_SINTETICO_NAO_REAL`) e um teste prova que o valor do gclid não chega ao `raw_events`. Os vetores incluem
   e-mails/CPF/telefone **fictícios** (`fulano@example.com`, `123.456.789-01`) para exercitar o filtro. O id de campanha
-  `24278665189` e de conta `5478096539` aparecem (já públicos nos recibos do repositório; não são PII).
+  ativa e a conta reais **não** aparecem mais nos arquivos da thread C (R1-F25): testes e vetores usam `20000000011`/`1000000001`, `site.exemplo`.
 - **Proposta do passo 1 do plano** (isentar ids numéricos do filtro): 11 dígitos podem coincidir com um CPF; a isenção deve
   valer só para `utm_campaign`/`utm_content` e só para `^\d{6,20}$`, nunca para texto livre. Exige publicação de GTM
   (autorização do dono).
@@ -68,10 +68,33 @@ from volc_dil.fundacao.identidade import (
     RegistroCampanhas, CampanhaRegistrada, TemplateCampanha, Resolucao,
     Confianca, Fonte, Grao, GraoTempo, MATRIZ, exigir_grao, receita_por_sessao, GraoNaoSuportado,
     detectar_colisoes_registro, detectar_custom_key_substituida, colisoes_de_normalizacao,
-    CustoCampanhaDia, EventoSensorReady, ReceitaChaveDia, ReceitaDominioDia,
-    juntar_campanha_dia, ResultadoJuncao, Cobertura, para_json,
+    CustoCampanhaDia, EventoSensorReady, ReceitaChaveDia, ReceitaDominioDia, GRAOS_RECEITA_CAMPANHA,
+    juntar_campanha_dia, ResultadoJuncao, Cobertura, para_json, normalizar_host,
+    ContratoDeEntrada, LinhaDuplicada, GraoMistoNaReceita, FuturoNaJuncao,
 )
 ```
+
+## Resposta à R1 (revisão adversarial, 2026-10-16)
+
+Base: merge local de `lab/data-foundation-20261016` (`413395a5`) nesta branch. Detalhe e tabela em
+`03-MATRIZ-DE-ATRIBUICAO.md` §8.1 (contrato de entrada) e §9.
+
+- **F5** — `ReceitaChaveDia` ganhou identidade (`endpoint`, `grao`, `dimensao`, `disponivel_em`); `juntar_campanha_dia`
+  exige `as_of` e recusa grão misto (`GraoMistoNaReceita`), identidade repetida (`LinhaDuplicada`, também para custo e
+  earnings) e futuro (`FuturoNaJuncao`). **Quebra de API**: chamadores passam `as_of=` e os campos novos.
+- **F6** — cliques `None` → `nao_coletado`; sessões por campanha × dia seguem `graos.MATRIZ` (hoje `nao_atribuivel`;
+  `trafego_campanha_comprovado=True` só com a condição `requer` provada); zero só com sensor no host declarado
+  (`CampanhaRegistrada.hosts`, `EventoSensorReady.host`).
+- **F18** — `_js_len` no parser; surrogate partido não derruba a junção.
+- **F19** — denominador = earnings ∩ /key-value coletado; baldes `receita_earnings_sem_kv` e `receita_kv_sem_earnings`.
+- **F23** — semântica `??` para `custon_key`. **F20/M13** — teste com chave cercada de espaços mata o mutante.
+- **F24** — ressalva Unicode 15.1 × 17 no docstring e no doc 03.
+- **F25** — arquivos da thread C sem conta, campanha, GTM, domínio, cliente ou valor monetário reais; vetores
+  regenerados do mesmo JS (sha256 da fonte inalterado); varredura nova `test_identidade_sem_sensiveis.py`.
+- Testes: +21 (`test_identidade_r1.py` 18, `test_identidade_sem_sensiveis.py` 3); identidade 89; suíte 671
+  (668 no esparso + as 3 de `test_surrogate.py` que dependem de `backend/`). Mutantes nas correções: 11/11 mortos.
+- Cópia com fixtures de `backend/`: 670 passed, 1 skipped (exige `.git`). Instável e herdado: `test_capacidade_coletor::test_equivalencia_serial_paralelo` (thread B, R1-F10) falhou 1 em 3 isolado.
+- Nada contestado.
 
 ## Delta de curadoria proposto (só proposta — o integrador aplica)
 
