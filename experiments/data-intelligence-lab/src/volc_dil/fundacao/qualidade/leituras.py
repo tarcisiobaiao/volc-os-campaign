@@ -150,6 +150,8 @@ def checar_duplicacao(
 # --------------------------------------------------------------------------- zero sintetizado
 
 METRICAS_ZERO_PADRAO = ("cost_micros", "impressions")
+# motivos do adaptador v21 da thread A (`volc_dil.fundacao.observacao.adaptadores`) para 0 sem prova
+MOTIVOS_ZERO_SEM_PROVA = frozenset({"zero_sem_linha_de_metrica", "zero_sem_prova_de_linha"})
 
 
 def classificar_zero(o: ObservacaoDQ, metricas: Sequence[str] = METRICAS_ZERO_PADRAO) -> str:
@@ -158,11 +160,18 @@ def classificar_zero(o: ObservacaoDQ, metricas: Sequence[str] = METRICAS_ZERO_PA
     Zero só é prova quando há linha de métrica na resposta da API (ou status `zero_confirmed`).
     Zero sem linha de métrica é o zero sintetizado do Code node (risco R3). Valor ausente ou não
     numérico é `nulo` — nunca zero."""
+    motivos = o.atributos.get("motivos_por_metrica") or {}
     valores = [numero(o.metricas.get(m)) for m in metricas]
-    if any(v is None for v in valores):
+    # contrato A: o adaptador v21 troca o 0 sem prova por `missing` + motivo; recupera-se aqui a forma
+    sem_linha = [motivos.get(m) for m, v in zip(metricas, valores) if v is None]
+    if any(mot not in MOTIVOS_ZERO_SEM_PROVA for mot in sem_linha):
         return "nulo"
-    if any(v != 0 for v in valores):
+    if any(v is not None and v != 0 for v in valores):
         return "com_valor"
+    if "zero_sem_linha_de_metrica" in sem_linha:
+        return "sintetizado"
+    if "zero_sem_prova_de_linha" in sem_linha:
+        return "ambiguo"
     if o.status is StatusDado.ZERO_CONFIRMED:
         return "zero_com_linha"
     linha = o.atributos.get("linha_metrica_presente")

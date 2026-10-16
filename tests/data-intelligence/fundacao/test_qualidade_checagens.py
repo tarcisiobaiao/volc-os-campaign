@@ -395,3 +395,31 @@ def test_ponte_run_coleta_latencia_e_dead_letter():
     sem = [obs("s", available_at=None, ingested_at=t, coletor="z")]
     regras = {a.chave: a.regra for a in checar_latencia_ingestao(lento + rapido + sem)}
     assert regras == {"x": "latencia_ingestao_p95", "z": "latencia_sem_relogio"}
+
+
+@pytest.mark.parametrize("cenario", ["limpo", "producao_conhecida"])
+def test_zero_sintetizado_caminho_contrato_a_igual_ao_direto(cenario):
+    """Linhas v21 sintéticas -> `adaptar_google_ads_v21` (A) -> ponte -> medição == medição direta das linhas."""
+    from volc_dil.fundacao.observacao import adaptar_google_ads_v21
+    from volc_dil.fundacao.qualidade.adaptadores import observacoes_de_tabelas
+    from volc_dil.fundacao.qualidade.leituras import medir_zero_sintetizado
+    from volc_dil.fundacao.qualidade.sintetico import AGORA_PADRAO, gerar_tabelas
+
+    t = gerar_tabelas(20261016, cenario)
+    runs = {r["run_id"]: r for r in t["google_ads_collection_run"]}
+    lotes = {b["batch_id"]: b for b in t["google_ads_raw_batch"]}
+    obs_a = []
+    for o in t["google_ads_observation"]:
+        if o["grain"] != "campaign_day":
+            continue
+        b, r = lotes[o["batch_id"]], runs[o["run_id"]]
+        linha = dict(o, batch_payload_sha256=b["payload_sha256"], batch_payload=b["payload"], batch_request_id=None,
+                     run_collector=r["collector"], run_collector_version=r["collector_version"],
+                     run_api_version=r["api_version"], run_timezone=r["timezone"])
+        obs_a.extend(adaptar_google_ads_v21(linha))
+    via_a = medir_zero_sintetizado(de_observacoes(obs_a), AGORA_PADRAO)
+    direto = medir_zero_sintetizado([x for x in observacoes_de_tabelas(t) if x.fonte == "google_ads"], AGORA_PADRAO)
+    chave = lambda z: (z.coletor, z.metric_date, z.total, z.sintetizados, z.zeros_com_linha, z.ambiguos, z.nulos)  # noqa: E731
+    assert via_a and sorted(map(chave, via_a)) == sorted(map(chave, direto))
+    soma = sum(z.sintetizados for z in via_a), sum(z.zeros_com_linha for z in via_a)
+    assert soma == ((108, 0) if cenario == "producao_conhecida" else (0, soma[1])) and (cenario != "limpo" or soma[1] > 0)

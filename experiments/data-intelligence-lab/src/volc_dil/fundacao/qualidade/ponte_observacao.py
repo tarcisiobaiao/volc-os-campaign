@@ -17,9 +17,11 @@ métricas):
 | coletor.nome / coletor.versao                      | coletor / versao_coletor                    |
 | janela_inicio (no fuso da observação)              | metric_date                                 |
 
-Zero sintetizado com o contrato A: `zero_confirmed` conta como zero com prova; `observed` exige
-valor ≠ 0 no contrato A, logo o caso "zero sem prova" do v21 legado chega aqui como `missing` (se o
-adaptador de A provar ausência) ou não chega — ver HANDOFF-G.
+Zero sintetizado com o contrato A: o adaptador v21 de A só deixa passar 0 com prova de linha de
+métrica (vira `zero_confirmed`/`partial` com valor 0 -> aqui `linha_metrica_presente=True`); o 0 sem
+prova chega como `missing` + motivo `zero_sem_linha_de_metrica` (-> `sintetizado`) ou
+`zero_sem_prova_de_linha` (-> `ambiguo`), via `atributos["motivos_por_metrica"]`. Teste de
+equivalência: caminho direto (linhas v21) × caminho A (`adaptar_google_ads_v21` + esta ponte).
 
 Checagens novas a partir dos insumos sugeridos por A: latência `ingested_at − available_at`,
 taxa de `dead_letter` por run e distribuição de status/motivo.
@@ -56,6 +58,7 @@ def de_observacoes(observacoes: Iterable[Any]) -> list[ObservacaoDQ]:
         metricas = {NOME_METRICA.get(_m(o), _m(o)): o.valor for o in obs}
         motivos = sorted({o.motivo for o in obs if o.motivo})
         moedas = sorted({o.moeda for o in obs if o.moeda})
+        zero_da_fonte = any(o.valor == 0 for o in obs)  # contrato A: 0 só sobrevive com prova da fonte
         saida.append(ObservacaoDQ(
             fonte=fonte, grao="_".join(grao), run_id=run, lote_id=lote, payload_sha256=sha,
             chave="|".join([fonte, conta, f"{tipo}:{ent}", "_".join(grao),
@@ -65,6 +68,8 @@ def de_observacoes(observacoes: Iterable[Any]) -> list[ObservacaoDQ]:
             observed_at=para_datetime(obs_at), available_at=max(para_datetime(o.available_at) for o in obs),
             ingested_at=max(para_datetime(o.ingested_at) for o in obs), metricas=metricas,
             atributos={"motivo": motivos[0] if len(motivos) == 1 else (motivos or None),
+                       "motivos_por_metrica": {NOME_METRICA.get(_m(o), _m(o)): o.motivo for o in obs if o.motivo},
+                       "linha_metrica_presente": True if zero_da_fonte else None,
                        "schema_version": obs[0].schema_version},
             moeda=moedas[0] if len(moedas) == 1 else None,
         ))
