@@ -105,7 +105,9 @@ class Job:
     fracao_ativa: float = 1.0
     fracao_mutavel: float = 1.0
     p_revisao_fechado: float = 0.05
-    consultas_por_execucao: int = 1  # requisições por conta por execução (GAQL searchStream/endpoint)
+    consultas_por_execucao: int = 1  # requisições POR CONTA por execução (GAQL searchStream/endpoint)
+    consultas_fixas_por_execucao: int = 0  # requisições por execução que não escalam com contas (ex.: customer_client do MCC)
+    lotes_por_execucao: int | None = None  # lotes com linhas de fato por conta por execução (None = consultas)
     tipo_payload: str = "campanha"
     perfil_horario: tuple[float, ...] | None = None  # 24 pesos, média 1
     confirmacao: str = "documentado na missão, não confirmado"
@@ -119,6 +121,8 @@ class Job:
                 raise ParametroInvalido(f"{nome} deve estar em [0,1]")
         if self.lambda_mudanca_h < 0 or self.metricas_por_linha < 1 or self.consultas_por_execucao < 1:
             raise ParametroInvalido("λ>=0, métricas>=1, consultas>=1")
+        if self.consultas_fixas_por_execucao < 0 or (self.lotes_por_execucao is not None and self.lotes_por_execucao < 1):
+            raise ParametroInvalido("consultas fixas >= 0, lotes >= 1")
         if self.perfil_horario is not None:
             if len(self.perfil_horario) != 24 or any(w < 0 for w in self.perfil_horario):
                 raise ParametroInvalido("perfil horário: 24 pesos >= 0")
@@ -137,6 +141,10 @@ class Job:
     @property
     def inclui_d0(self) -> bool:
         return self.janela[0] == 0
+
+    @property
+    def lotes(self) -> int:
+        return self.lotes_por_execucao if self.lotes_por_execucao is not None else self.consultas_por_execucao
 
     def com_cron(self, cron: str) -> "Job":
         return replace(self, cron=cron)
@@ -166,6 +174,7 @@ class PerfilBytes:
     payload_linha_individual: dict[str, float]  # bytes/linha quando cada linha é um payload (dedup por linha)
     manifesto_por_lote: float = 250.0  # linha do lote (chaves, sha256, contagem) sem o payload
     hash_por_linha: float = 56.0  # entrada de índice sha256(linha) → lote, no modo "linha_em_lote"
+    confirmacao_por_observacao: float = 0.0  # D2' da frente A: releitura idêntica = linha estreita (heap + PK)
     rollup_por_linha: float = 300.0  # linha larga de rollup diário (heap + índices)
     sobrecarga_particao_bytes: float = 49_152.0  # fixa por partição (heap + 3 índices vazios, ~6 páginas)
     fator_particao: float = 1.0  # multiplicador em observação+índices (PK passa a incluir a chave de partição)
@@ -217,10 +226,11 @@ def calcular_job(job: Job, escala: Escala) -> ResultadoJob:
         versoes = 1.0 + (n * dias_fechados - 1) * job.p_revisao_fechado
         p_d0_media = None
     versoes = min(versoes, float(n * job.dias_janela))
-    lotes = escala.contas * job.consultas_por_execucao * n
-    # Lote = resposta de uma consulta, de uma conta, numa execução. Só repete o anterior se NENHUMA
-    # linha mudou: P = Π(1 − p_i). Por isso dedup por lote rende pouco em janela grande.
-    linhas_lote = linhas_por_exec / escala.contas / job.consultas_por_execucao
+    chamadas = n * (escala.contas * job.consultas_por_execucao + job.consultas_fixas_por_execucao)
+    lotes = escala.contas * job.lotes * n
+    # Lote = resposta de uma consulta de fato, de uma conta, numa execução. Só repete o anterior se
+    # NENHUMA linha mudou: P = Π(1 − p_i). Por isso dedup por lote rende pouco em janela grande.
+    linhas_lote = linhas_por_exec / escala.contas / job.lotes
     r_d0 = linhas_lote / job.dias_janela if job.inclui_d0 else 0.0
     r_f = linhas_lote - r_d0
     iguais = 0.0
@@ -228,7 +238,7 @@ def calcular_job(job: Job, escala: Escala) -> ResultadoJob:
         p0 = ps_d0[i - 1] if job.inclui_d0 else 0.0
         iguais += ((1.0 - p0) ** r_d0) * ((1.0 - job.p_revisao_fechado) ** r_f)
     return ResultadoJob(
-        nome=job.nome, fonte=job.fonte, execucoes_dia=n, chamadas_dia=float(lotes),
+        nome=job.nome, fonte=job.fonte, execucoes_dia=n, chamadas_dia=float(chamadas),
         linhas_logicas_novas_dia=e_ret, linhas_lidas_dia=linhas_por_exec * n, versoes_por_linha=versoes,
         lotes_dia=float(lotes), lotes_distintos_dia=lotes * (1.0 - iguais / n), p_mudanca_d0_media=p_d0_media,
         metricas_por_linha=job.metricas_por_linha, tipo_payload=job.tipo_payload,
@@ -245,6 +255,7 @@ class Politica:
     particao_mensal: bool = False
     retencao_bruto_dias: int | None = None  # None = guarda tudo; senão o rollup diário guarda o resto
     rollup_diario: bool = False
+    confirmacoes: bool = False  # D2': cada releitura redundante grava 1 confirmação estreita por observação
     rotulo: str = ""
 
     def __post_init__(self) -> None:
@@ -252,6 +263,8 @@ class Politica:
             raise ParametroInvalido(f"dedup_payload ∈ {DEDUP_PAYLOAD}")
         if self.retencao_bruto_dias is not None and not self.rollup_diario:
             raise ParametroInvalido("retenção do bruto exige rollup diário (senão é perda de dado)")
+        if self.confirmacoes and not self.dedup_observacao:
+            raise ParametroInvalido("confirmação só existe quando a releitura igual não vira versão")
 
 
 @dataclass
@@ -265,11 +278,14 @@ class ResultadoCenario:
     bytes_indices_dia: float
     bytes_payload_dia: float
     bytes_rollup_dia: float
+    bytes_confirmacao_dia: float = 0.0
+    confirmacoes_dia: float = 0.0
     acumulado_gb: dict[str, float] = field(default_factory=dict)
 
     @property
     def bytes_dia(self) -> float:
-        return self.bytes_observacao_dia + self.bytes_indices_dia + self.bytes_payload_dia + self.bytes_rollup_dia
+        return (self.bytes_observacao_dia + self.bytes_indices_dia + self.bytes_payload_dia + self.bytes_rollup_dia
+                + self.bytes_confirmacao_dia)
 
     @property
     def gb_dia(self) -> float:
@@ -279,8 +295,10 @@ class ResultadoCenario:
         return {
             "chamadas_dia": self.chamadas_dia, "lotes_dia": self.lotes_dia, "observacoes_dia": self.observacoes_dia,
             "linhas_payload_dia": self.linhas_payload_dia, "gb_dia": self.gb_dia,
+            "confirmacoes_dia": self.confirmacoes_dia,
             "bytes_dia": {"observacao": self.bytes_observacao_dia, "indices": self.bytes_indices_dia,
-                          "payload": self.bytes_payload_dia, "rollup": self.bytes_rollup_dia},
+                          "payload": self.bytes_payload_dia, "rollup": self.bytes_rollup_dia,
+                          "confirmacao": self.bytes_confirmacao_dia},
             "acumulado_gb": dict(self.acumulado_gb),
         }
 
@@ -309,10 +327,15 @@ def calcular_cenario(jobs: list[Job], escala: Escala, perfil: PerfilBytes, polit
     b_obs = obs * perfil.heap_por_observacao * fp
     b_idx = obs * perfil.indices_por_observacao * fp if politica.com_indices else 0.0
     b_roll = sum(r.linhas_logicas_novas_dia for r in rs) * perfil.rollup_por_linha if politica.rollup_diario else 0.0
+    # D2': cada releitura que não mudou nada grava uma confirmação por observação (conservador: a mudança é
+    # contada por LINHA — se uma métrica da linha muda, todas contam como versão)
+    conf = (sum((r.linhas_lidas_dia - r.linhas_distintas_dia) * fator(r) for r in rs) if politica.confirmacoes else 0.0)
+    b_conf = conf * perfil.confirmacao_por_observacao
     res = ResultadoCenario(jobs=rs, observacoes_dia=obs, linhas_payload_dia=linhas_payload, lotes_dia=lotes,
                            chamadas_dia=sum(r.chamadas_dia for r in rs), bytes_observacao_dia=b_obs,
-                           bytes_indices_dia=b_idx, bytes_payload_dia=b_pay, bytes_rollup_dia=b_roll)
-    bruto_dia = b_obs + b_idx + b_pay
+                           bytes_indices_dia=b_idx, bytes_payload_dia=b_pay, bytes_rollup_dia=b_roll,
+                           bytes_confirmacao_dia=b_conf, confirmacoes_dia=conf)
+    bruto_dia = b_obs + b_idx + b_pay + b_conf
     for nome, dias in HORIZONTES.items():
         dias_bruto = dias if politica.retencao_bruto_dias is None else min(dias, politica.retencao_bruto_dias)
         total = bruto_dia * dias_bruto + b_roll * dias
@@ -354,3 +377,24 @@ def calcular_gtm(p: PerfilGTM, horizontes: dict[str, int] = HORIZONTES) -> dict:
         "eventos_por_requisicao": (e / req_sessao) if req_sessao else 0.0, "gb_dia": b / GB,
         "acumulado_gb": {k: b * d / GB for k, d in horizontes.items()}, "perfil": asdict(p),
     }
+
+
+def redundancia_observada(janelas_por_execucao: list[tuple[int, int]], linhas_por_dia: float,
+                          p_revisao: float = 0.0) -> dict:
+    """Redundância esperada de um coletor de janela rolante JOVEM (R1 H5), dada a lista de execuções.
+
+    Cada execução lê os dias absolutos [ini, fim] (inclusive). Uma linha lógica (termo-dia) lida k
+    vezes rende 1 + (k − 1)·p versões distintas. Em regime estacionário de `23 */4` com janela de 7
+    dias, k = 42; num coletor com um dia de vida, k ≈ número de execuções — e a redundância medida
+    fica bem abaixo da do regime estacionário, sem que nenhuma premissa esteja errada.
+    """
+    leituras: dict[int, int] = {}
+    for ini, fim in janelas_por_execucao:
+        if fim < ini:
+            raise ParametroInvalido("janela invertida")
+        for d in range(ini, fim + 1):
+            leituras[d] = leituras.get(d, 0) + 1
+    lidas = sum(k * linhas_por_dia for k in leituras.values())
+    distintas = sum((1 + (k - 1) * p_revisao) * linhas_por_dia for k in leituras.values())
+    return {"lidas": lidas, "distintas": distintas, "redundancia": 1 - distintas / lidas if lidas else 0.0,
+            "razao_distintas": distintas / lidas if lidas else 0.0, "leituras_por_dia_logico": dict(sorted(leituras.items()))}

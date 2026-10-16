@@ -13,11 +13,13 @@ payload (nunca retroativo: backfill de hoje sobre dia antigo tem `available_at` 
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Mapping, Optional
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from functools import lru_cache
+from zoneinfo import available_timezones
 
 from ...contracts.observation import GRAOS_CONHECIDOS, ContratoViolado
 from ...contracts.vocab import Metrica, ValueKind
@@ -38,6 +40,16 @@ from .vocab import (
 _FONTE = re.compile(r"^[a-z][a-z0-9_]*$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _MOEDA = re.compile(r"^[A-Z]{3}$")
+# Instante na fronteira JSON: offset explícito obrigatório (espelho SQL em registrar_observacao) (R1-F9)
+_INSTANTE_ISO = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2}(\.[0-9]{1,6})?)?(Z|[+-][0-9]{2}:[0-9]{2})$")
+# partial sem cobertura conhecida: cobertura_ppm nulo e este marcador no motivo (R1-F17)
+COBERTURA_DESCONHECIDA = "cobertura_desconhecida"
+
+
+@lru_cache(maxsize=1)
+def _fusos() -> frozenset[str]:
+    # nome exato da base IANA: no macOS o sistema de arquivos aceita "america/sao_paulo" (R1-F9)
+    return frozenset(available_timezones())
 
 
 class ObservacaoInvalida(ContratoViolado):
@@ -145,6 +157,7 @@ class Observacao:
         for nome in ("run_id", "lote_id", "payload_ref", "schema_version"):
             _texto(nome, getattr(self, nome))
         _texto("request_id", self.request_id, obrigatorio=False)
+        _texto("timezone", self.timezone)
         self._validar_grao_dimensoes()
         self._validar_relogios()
         self._validar_payload()
@@ -173,10 +186,8 @@ class Observacao:
         for nome in ("janela_inicio", "janela_fim", "observed_at", "available_at", "ingested_at"):
             _instante(nome, getattr(self, nome))
         _instante("source_updated_at", self.source_updated_at, obrigatorio=False)
-        try:
-            ZoneInfo(self.timezone)
-        except (ZoneInfoNotFoundError, ValueError, TypeError) as exc:
-            raise ObservacaoInvalida(f"timezone inválido: {self.timezone!r}") from exc
+        if self.timezone not in _fusos():
+            raise ObservacaoInvalida(f"timezone inválido: {self.timezone!r}")
         if self.janela_fim <= self.janela_inicio:
             raise ObservacaoInvalida("janela vazia ou invertida")
         if self.observed_at < self.janela_inicio:
@@ -218,7 +229,11 @@ class Observacao:
                 raise ObservacaoInvalida(f"{st.value} não carrega valor (null != 0; bruto fica no payload)")
         if st is StatusObservacao.PARTIAL:
             c = self.cobertura_ppm
-            if c is None or isinstance(c, bool) or not isinstance(c, int) or not (COBERTURA_PPM_MIN <= c <= COBERTURA_PPM_MAX):
+            if c is None:
+                if COBERTURA_DESCONHECIDA not in (self.motivo or ""):
+                    raise ObservacaoInvalida(
+                        f"partial exige cobertura_ppm declarada em 1..999999 ou motivo com '{COBERTURA_DESCONHECIDA}'")
+            elif isinstance(c, bool) or not isinstance(c, int) or not (COBERTURA_PPM_MIN <= c <= COBERTURA_PPM_MAX):
                 raise ObservacaoInvalida("partial exige cobertura_ppm declarada em 1..999999")
         elif self.cobertura_ppm is not None:
             raise ObservacaoInvalida("cobertura_ppm só existe em partial")
@@ -269,19 +284,26 @@ class Observacao:
 
     @property
     def chave_base(self) -> str:
-        """Chave de idempotência da leitura (identidade + payload + esquema + coletor)."""
+        """Chave de idempotência da leitura (identidade + payload + esquema + coletor + observed_at)."""
         return chaves.chave_base(
             chave_natural_hex=self.chave_natural,
             payload_sha256=self.payload_sha256,
             schema_version=self.schema_version,
             coletor_nome=self.coletor.nome,
             coletor_versao=self.coletor.versao,
+            observed_at=self.observed_at,
         )
 
     @property
     def conteudo(self) -> tuple:
         """O que uma mesma leitura TEM de repetir. Diferença aqui com a mesma chave = coletor não determinístico."""
         return (self.status.value, self.valor, self.unidade.value, self.moeda, self.cobertura_ppm)
+
+    @property
+    def estado_negocio(self) -> tuple:
+        """Estado de negócio da leitura (D2'): o que precisa mudar para uma releitura virar VERSÃO.
+        Valor, status (inclui o fechamento da janela: partial → observed), unidade/moeda, cobertura e motivo."""
+        return (self.status.value, self.valor, self.unidade.value, self.moeda, self.cobertura_ppm, self.motivo)
 
     @property
     def tem_valor(self) -> bool:
@@ -323,6 +345,26 @@ class Observacao:
         }
 
     @classmethod
+    def de_json_texto(cls, texto: str) -> "Observacao":
+        """Lê o texto JSON como o banco: chave repetida, NaN/Infinity e número não inteiro são recusados."""
+        def sem_repeticao(pares):
+            nomes = [k for k, _ in pares]
+            if len(nomes) != len(set(nomes)):
+                raise ObservacaoInvalida("JSON com chave repetida")
+            return dict(pares)
+
+        def constante(nome):
+            raise ObservacaoInvalida(f"constante JSON não aceita: {nome}")
+
+        try:
+            d = json.loads(texto, object_pairs_hook=sem_repeticao, parse_constant=constante)
+        except json.JSONDecodeError as exc:
+            raise ObservacaoInvalida("JSON malformado") from exc
+        if not isinstance(d, dict):
+            raise ObservacaoInvalida("observação precisa ser objeto JSON")
+        return cls.de_json(d)
+
+    @classmethod
     def de_json(cls, d: Mapping[str, Any]) -> "Observacao":
         conhecidos = set(CAMPOS_JSON)
         extras = set(d) - conhecidos
@@ -335,6 +377,8 @@ class Observacao:
                 if obrigatorio:
                     raise ObservacaoInvalida(f"{nome} é obrigatório")
                 return None
+            if not isinstance(bruto, str) or not _INSTANTE_ISO.match(bruto):
+                raise ObservacaoInvalida(f"{nome} precisa ser ISO-8601 com offset explícito")
             try:
                 return datetime.fromisoformat(bruto)
             except (TypeError, ValueError) as exc:

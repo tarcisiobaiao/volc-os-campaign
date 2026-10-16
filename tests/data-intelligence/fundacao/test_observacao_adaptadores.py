@@ -41,7 +41,9 @@ def v21(**kw):
         metrics={"cost_micros": 1_234_567, "impressions": 0, "clicks": 3, "conversions": Decimal("1")},
         collected_at=datetime(2026, 10, 15, 6, 0, tzinfo=BRT), created_at=datetime(2026, 10, 15, 6, 0, 2, tzinfo=BRT),
         batch_payload_sha256=_sha("lote-1"), batch_request_id="req-1",
-        batch_payload={"campaign": {"campaign": {"id": "23100000001"}}, "metrics": {"metrics": {"costMicros": "1234567", "clicks": "3"}}},
+        # `customer.currencyCode` no payload é a PROVA de moeda (hoje o v21 campanha-dia não a coleta: grava 'BRL' fixo)
+        batch_payload={"campaign": {"campaign": {"id": "23100000001"}}, "metrics": {"metrics": {"costMicros": "1234567", "clicks": "3"}},
+                       "customer": {"currencyCode": "BRL"}},
         run_collector="n8n-google-ads-d1", run_collector_version=1, run_api_version="v25", run_timezone="America/Sao_Paulo",
     )
     linha.update(kw)
@@ -57,6 +59,7 @@ def joinads(**kw):
         revenue_gross=Decimal("0.200000"), impressions=8, clicks=0, data_status="observed",
         collected_at="2026-10-15T06:00:00-03:00", created_at="2026-10-15T06:00:01-03:00",
         batch_payload_sha256=_sha("ja-lote-1"), batch_request_meta={"custom_key": "utm_campaign"},
+        batch_payload={"currency": "USD", "data": []},  # hipotético: a JoinAds v2 hoje NÃO devolve moeda
         run_collector="n8n_joinads_v2", run_collector_version=4, run_timezone="America/Sao_Paulo",
     )
     linha.update(kw)
@@ -101,10 +104,13 @@ def test_v21_sem_payload_na_juncao_zero_nao_tem_prova_mas_valor_nao_zero_vale():
     assert (m["impressions"].status, m["impressions"].valor) == (StatusObservacao.OBSERVED, 15)
 
 
-def test_v21_intradiario_vira_partial_com_cobertura():
-    linha = v21(collected_at=datetime(2026, 10, 14, 12, 0, tzinfo=BRT), created_at=datetime(2026, 10, 14, 12, 0, tzinfo=BRT))
-    c = _m(adaptar_google_ads_v21(linha))["cost"]
-    assert (c.status, c.valor, c.cobertura_ppm, c.motivo) == (StatusObservacao.PARTIAL, 1_234_567, 500_000, "janela_aberta")
+def test_v21_intradiario_vira_partial_sem_cobertura_fabricada():
+    """R1-F17: o meio do dia não é 50% de cobertura; a tabela não diz quanto foi contado."""
+    for hora in (1, 12, 23):
+        t = datetime(2026, 10, 14, hora, 0, tzinfo=BRT)
+        c = _m(adaptar_google_ads_v21(v21(collected_at=t, created_at=t)))["cost"]
+        assert (c.status, c.valor, c.cobertura_ppm) == (StatusObservacao.PARTIAL, 1_234_567, None)
+        assert c.motivo == "janela_aberta;cobertura_desconhecida"
 
 
 def test_v21_relogio_do_n8n_adiantado_nao_antecipa_conhecimento():
@@ -223,9 +229,51 @@ def test_joinads_entidades_por_grao():
                                       endpoint="earnings", grain="domain_day", ad_unit_name="topo", country_iso="BR"))[0]
     assert (dom.entidade.tipo, dom.grao) == ("domain", ("account", "ad_unit", "country", "day"))
     hora = adaptar_joinads_v2(joinads(metric_hour=13, collected_at="2026-10-14T13:30:00-03:00", created_at="2026-10-14T13:30:00-03:00"))[0]
-    assert hora.grao == ("campaign", "hour") and hora.status is StatusObservacao.PARTIAL and hora.cobertura_ppm == 500_000
+    assert hora.grao == ("campaign", "hour") and hora.status is StatusObservacao.PARTIAL and hora.cobertura_ppm is None
 
 
 def test_joinads_sem_dominio_e_adaptacao_impossivel():
     with pytest.raises(AdaptacaoImpossivel, match="domain"):
         adaptar_joinads_v2(joinads(domain=None))
+
+
+# ============================================================== R1: moeda com prova, chave JoinAds sem prova
+def test_r1_f4_moeda_da_coluna_sem_prova_vira_invalid():
+    """v21 campanha-dia grava currency_code='BRL' fixo; JoinAds v2 grava cfg.CURRENCY || 'USD' (DEFAULT 'USD')."""
+    m = _m(adaptar_google_ads_v21(v21(batch_payload={"metrics": {"metrics": {"costMicros": "1"}}})))
+    assert (m["cost"].status, m["cost"].valor, m["cost"].moeda, m["cost"].motivo) == (StatusObservacao.INVALID, None, None, "moeda_nao_provada")
+    assert m["clicks"].status is StatusObservacao.OBSERVED  # contagem não depende de moeda
+    rec = [o for o in adaptar_joinads_v2(joinads(batch_payload=None)) if o.metrica.value == "revenue"]
+    assert {(o.status.value, o.motivo, o.moeda) for o in rec} == {("invalid", "moeda_nao_provada", None)}
+    # moeda sem prova também não é gravada em linha sem valor
+    falta = _m(adaptar_google_ads_v21(v21(batch_payload=None, metrics={"impressions": 1, "clicks": 1, "conversions": 1})))["cost"]
+    assert (falta.status, falta.moeda) == (StatusObservacao.MISSING, None)
+
+
+def test_r1_f4_moeda_divergente_e_atestada():
+    m = _m(adaptar_google_ads_v21(v21(batch_payload={"metrics": {"metrics": {"costMicros": "1"}}, "customer": {"currencyCode": "USD"}})))
+    assert (m["cost"].status, m["cost"].motivo) == (StatusObservacao.INVALID, "moeda_divergente")
+    sem_prova = v21(batch_payload={"metrics": {"metrics": {"costMicros": "1"}}})
+    assert _m(adaptar_google_ads_v21(sem_prova, moeda_atestada="BRL"))["cost"].status is StatusObservacao.OBSERVED
+    assert _m(adaptar_google_ads_v21(sem_prova, moeda_atestada="USD"))["cost"].motivo == "moeda_divergente"
+    rec = [o for o in adaptar_joinads_v2(joinads(batch_payload=None), moeda_atestada="USD") if o.metrica.value == "revenue"]
+    assert {o.status.value for o in rec} == {"observed"}
+
+
+def test_r1_f15_custom_key_ausente_forcado_e_com_espaco():
+    # (j) pediu utm_campaign e a linha veio sem custom_key: antes virava 'domain' observed
+    obs = adaptar_joinads_v2(joinads(custom_key=None, custom_value=None, campaign_id=None))
+    assert {(o.status.value, o.motivo) for o in obs} == {("invalid", "custom_key_ausente:utm_campaign")}
+    # pedido inferido do endpoint quando o request_meta não traz a chave
+    obs = adaptar_joinads_v2(joinads(custom_key=None, custom_value=None, campaign_id=None, batch_request_meta={}))
+    assert {o.motivo for o in obs} == {"custom_key_ausente:utm_campaign"}
+    # (k) endpoint em que o normalizador força custom_key='utm_campaign': identidade sem prova
+    obs = adaptar_joinads_v2(joinads(endpoint="key_value_country_adunit", custom_value="991", campaign_id="991"))
+    assert {(o.status.value, o.motivo) for o in obs} == {("invalid", "custom_key_forcado_upstream")}
+    # M13: espaço em volta da chave devolvida não é substituição
+    ok = adaptar_joinads_v2(joinads(custom_key=" utm_campaign "))
+    assert {o.status.value for o in ok} <= {"observed", "zero_confirmed"}
+    # endpoint sem chave (earnings) continua válido sem custom_key
+    dom = adaptar_joinads_v2(joinads(campaign_id=None, custom_key=None, custom_value=None, batch_request_meta={},
+                                      endpoint="earnings", grain="domain_day"))
+    assert {o.status.value for o in dom} <= {"observed", "zero_confirmed"}

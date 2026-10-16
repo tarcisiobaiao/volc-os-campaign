@@ -94,7 +94,11 @@ def detectar_custom_key_substituida(linhas: Iterable[Mapping], esperada: str = "
     """Linhas da JoinAds cuja `custom_key` (ou a grafia `custon_key`) difere da pedida."""
     out = []
     for i, r in enumerate(linhas):
-        veio: Optional[str] = r.get("custom_key", r.get("custon_key"))
+        # Semântica do `??` do JS (`r.custom_key ?? r.custon_key`): null/ausente cai para a grafia
+        # `custon_key` da documentação da JoinAds (R1-F23); depois `.trim()` (R1-M13).
+        veio: Optional[object] = r.get("custom_key")
+        if veio is None:
+            veio = r.get("custon_key")
         veio = (str(veio).strip() if veio is not None else "")
         if veio and veio != esperada:
             out.append(Colisao(TipoColisao.CUSTOM_KEY_SUBSTITUIDA, Gravidade.BLOQUEIA, esperada,

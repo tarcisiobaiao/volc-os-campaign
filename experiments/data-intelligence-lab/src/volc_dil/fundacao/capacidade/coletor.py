@@ -1,44 +1,63 @@
 """Esqueleto de "coletor seguro": contrato `run_coleta` + executor com timeout, retry, idempotência,
-heartbeat, recibo de run e dead letter.
+heartbeat, recibo de run e dead letter — gravando pelas regras do contrato canônico da frente A.
 
-TRAVA (explícita e testada):
-- este módulo NÃO contém implementação de escrita externa — nenhum cliente HTTP, nenhum
-  `mutate`, nenhum Supabase/Postgres. A fonte é um adaptador INJETADO que precisa declarar
-  ``somente_leitura = True`` e não pode expor métodos de escrita (`mutate`, `escrever`, `post`…);
-- o destino é um sink INJETADO que precisa declarar ``externo = False``; os únicos sinks daqui
-  são em memória;
-- o modo padrão é ``dry_run``: lê, normaliza, calcula hashes e contagens, e não grava nada.
+Revisado após a revisão adversarial R1 (F10, F11, F12):
 
-Semântica:
-- chave de execução determinística = sha256(coletor, conta, janela, slot da agenda). Repetir o
-  mesmo slot é no-op (`ja_concluido`); retry dentro do run nunca duplica observação;
-- observação idempotente por (chave lógica, métrica, sha256 do valor): reler valor igual não
-  cria linha; valor diferente cria NOVA versão (append-only), nunca sobrescreve;
-- ausência ≠ zero: métrica sem valor na resposta vira estado ``nao_informado`` com valor None;
-- erro transitório (timeout, 429, 5xx) → retry com backoff exponencial e jitter determinístico;
-  erro permanente ou desconhecido → dead letter imediata (não martela a API); transitório que
-  esgota tentativas → dead letter com motivo ``tentativas_esgotadas``;
-- resposta atrasada de uma tentativa que estourou o timeout é descartada (nunca consumida).
+- **Trava por capacidade (F11)**: o adaptador NÃO recebe nem guarda cliente de API. Em cada leitura
+  o executor lhe entrega um `ClienteLeitura`, fachada cuja única operação é `consultar(ConsultaLeitura)`;
+  `ConsultaLeitura` só admite GAQL `SELECT` ou HTTP `GET`. O transporte (o que fala com a rede) é
+  injetado no executor, nunca no adaptador, e este módulo não contém transporte real. O destino em
+  modo `gravar` precisa ser exatamente `SinkMemoria` (tipo exato, não subclasse nem declaração).
+  Limite honesto: Python não impede código hostil de abrir a própria conexão; a trava fecha os
+  caminhos que o executor oferece, e a suíte bloqueia rede (conftest).
+- **dry_run com sink nulo (F11)**: no modo padrão nada é gravado em lugar nenhum — nem heartbeat,
+  nem recibo, nem dead letter; o sink recebido é ignorado. O recibo volta só para o chamador.
+- **Timeout que não prende o processo (F12)**: o transporte recebe o prazo restante (timeout no
+  cliente) e a leitura roda numa thread *daemon* como contenção: se a fonte travar, a tentativa é
+  abandonada, o resultado tardio nunca é consumido e o interpretador sai sem esperar a thread.
+- **A→B→A e equivalência serial × paralela (F10)**: o executor não tem regra própria de dedup. Cada
+  linha devolvida vira um payload endereçado por conteúdo; o normalizador da frente A
+  (`volc_dil.fundacao.observacao.normalizar`) produz `Observacao` canônicas e o `Registro` da frente A
+  decide INSERIDO / NOOP. Regras da frente A após D1/D2: `observed_at` entra na chave da leitura (reler
+  o mesmo valor em outra hora é versão nova; retry da mesma leitura é NOOP) e a versão vigente no `as_of`
+  é a de maior `observed_at` (empate → maior `available_at`). `observed_at` = instante REAL da leitura
+  (carimbo do transporte, ou fim da leitura) — nunca o slot (ver `_observado_em`). `available_at` = relógio
+  monotônico do sink na gravação ("relógio do banco"; o coletor não declara quando o VOLC soube, cf. F1).
+  Em lote, a leitura pode ser paralela e a gravação é serial por (slot, conta, coletor) — sob D1 a ordem
+  de gravação não muda o estado final (vence a medição mais recente); ela só fixa o `available_at`, o que
+  deixa o `as_of` por instante de conhecimento determinístico entre serial e paralelo.
+
+Semântica preservada: chave de execução determinística = sha256(coletor, conta, janela, slot); slot
+repetido = `ja_concluido`; erro transitório → retry com backoff exponencial e *full jitter*
+determinístico; permanente/desconhecido → dead letter sem retry; transitório esgotado → dead letter.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import random
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FuturoTimeout
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Callable, Protocol, runtime_checkable
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, Mapping, Optional, Protocol
+
+from ..observacao import (
+    Coletor,
+    ContextoLeitura,
+    EsquemaPayload,
+    PayloadBruto,
+    Registro,
+    ResultadoRegistro,
+    normalizar,
+)
 
 MODOS = ("dry_run", "gravar")
-NOMES_DE_ESCRITA_PROIBIDOS = ("mutate", "escrever", "write", "post", "put", "patch", "delete", "apagar",
-                              "atualizar", "update", "insert", "upsert", "publicar", "ativar")
 
 
 class TravaViolada(RuntimeError):
-    """Tentativa de usar adaptador com escrita, sink externo ou modo desconhecido."""
+    """Modo desconhecido, sink que não é o de memória, consulta que não é leitura."""
 
 
 class ErroTransitorio(Exception):
@@ -49,13 +68,69 @@ class ErroPermanente(Exception):
     """Falha que não passa com retry: 400, credencial, contrato/schema, permissão."""
 
 
+class _TempoEsgotado(Exception):
+    pass
+
+
+# --------------------------------------------------------------------------- capacidade de leitura
+_GAQL_SELECT = re.compile(r"^\s*SELECT\s", re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class ConsultaLeitura:
+    """Única forma de pedir dado a uma fonte: GAQL `SELECT` (searchStream) ou HTTP `GET`."""
+
+    tipo: str  # "gaql" | "http_get"
+    texto: str  # GAQL ou URL https
+
+    def __post_init__(self) -> None:
+        if self.tipo == "gaql":
+            if not _GAQL_SELECT.match(self.texto) or ";" in self.texto:
+                raise TravaViolada("GAQL precisa ser um único SELECT")
+        elif self.tipo == "http_get":
+            if not self.texto.startswith("https://"):
+                raise TravaViolada("leitura HTTP só por https GET")
+        else:
+            raise TravaViolada(f"tipo de consulta não é leitura: {self.tipo!r}")
+
+
+class TransporteLeitura(Protocol):
+    """O que fala com a rede (injetado no EXECUTOR). Não existe implementação real neste módulo."""
+
+    def executar_leitura(self, consulta: ConsultaLeitura, timeout_s: float) -> list[Mapping[str, Any]]: ...
+
+
+class ClienteLeitura:
+    """Fachada entregue ao adaptador a cada leitura. Só sabe `consultar`; prazo propagado ao transporte."""
+
+    __slots__ = ("_consultar",)
+
+    def __init__(self, transporte: TransporteLeitura, prazo: Callable[[], float]) -> None:
+        def _consultar(consulta: ConsultaLeitura) -> list[Mapping[str, Any]]:
+            if not isinstance(consulta, ConsultaLeitura):
+                raise TravaViolada("consultar recebe ConsultaLeitura")
+            restante = prazo()
+            if restante <= 0:
+                raise ErroTransitorio("prazo da tentativa esgotado antes da consulta")
+            return list(transporte.executar_leitura(consulta, restante))
+
+        object.__setattr__(self, "_consultar", _consultar)
+
+    def consultar(self, consulta: ConsultaLeitura) -> list[Mapping[str, Any]]:
+        return self._consultar(consulta)
+
+    def __setattr__(self, *_a) -> None:  # pragma: no cover - imutável
+        raise AttributeError("ClienteLeitura é imutável")
+
+
+# --------------------------------------------------------------------------- contrato
 @dataclass(frozen=True)
 class PedidoLeitura:
     coletor: str
     conta: str
     janela_inicio: str  # ISO date
     janela_fim: str
-    slot: str  # instante agendado (ISO), não o instante real de execução
+    slot: str  # instante AGENDADO (ISO), não o instante real de execução
 
     def chave_execucao(self) -> str:
         return _sha256({"coletor": self.coletor, "conta": self.conta, "janela": [self.janela_inicio, self.janela_fim],
@@ -63,50 +138,33 @@ class PedidoLeitura:
 
 
 @dataclass(frozen=True)
-class LinhaFonte:
-    chave: tuple[str, ...]  # identidade estrita: (conta, nível, entidade, segmento, dia)
-    valores: dict[str, int | None]  # micros/contagens; None = não informado (≠ 0)
+class ContextoFonte:
+    """O que o adaptador declara sobre a resposta (identidade, janela, moeda provada, esquema)."""
+
+    fonte: str
+    entidade_tipo: str
+    grao: tuple[str, ...]
+    janela_inicio: datetime
+    janela_fim: datetime
+    timezone: str
+    coletor: Coletor
+    esquema: EsquemaPayload
+    moeda: Optional[str] = None  # só quando a resposta prova a moeda (ex.: customer.currency_code)
 
 
 @dataclass(frozen=True)
 class RespostaLeitura:
-    linhas: tuple[LinhaFonte, ...]
-    versao_contrato: str = "v0"
+    linhas: tuple[Mapping[str, Any], ...]
+    contexto: ContextoFonte
+    # instante em que a fonte foi lida, carimbado pelo transporte (ex.: início da requisição). Se None, o
+    # executor usa o instante em que a leitura terminou. NUNCA o slot agendado: ver `_observado_em`.
+    observado_em: Optional[datetime] = None
 
 
-@runtime_checkable
-class AdaptadorFonte(Protocol):
+class Adaptador(Protocol):
     nome: str
-    somente_leitura: bool
 
-    def ler(self, pedido: PedidoLeitura) -> RespostaLeitura: ...
-
-
-@runtime_checkable
-class Sink(Protocol):
-    externo: bool
-
-    def run_concluido(self, chave_execucao: str) -> bool: ...
-    def registrar_run(self, recibo: "ReciboRun") -> None: ...
-    def heartbeat(self, coletor: str, instante: datetime, estado: str) -> None: ...
-    def gravar(self, chave_execucao: str, observacoes: list["ObservacaoColetada"],
-               payloads: dict[str, str]) -> tuple[int, int]: ...
-    def dead_letter(self, item: "ItemDeadLetter") -> None: ...
-
-
-@dataclass(frozen=True)
-class ObservacaoColetada:
-    fonte: str
-    chave: tuple[str, ...]
-    metrica: str
-    valor: int | None
-    estado: str  # "medido" | "nao_informado"
-    disponivel_em: datetime  # instante em que a coleta passou a conhecer o valor
-    chave_execucao: str
-    payload_sha256: str
-
-    def chave_idempotencia(self) -> str:
-        return _sha256({"f": self.fonte, "k": list(self.chave), "m": self.metrica, "v": self.valor, "e": self.estado})
+    def ler(self, pedido: PedidoLeitura, cliente: ClienteLeitura) -> RespostaLeitura: ...
 
 
 @dataclass
@@ -128,12 +186,19 @@ class ReciboRun:
     tentativas: int
     linhas_lidas: int = 0
     observacoes: int = 0
-    gravadas_novas: int = 0
-    repetidas: int = 0
+    inseridas: int = 0
+    noop: int = 0
+    confirmadas: int = 0  # [thread A, D2'] releitura com o mesmo estado: confirmação estreita, não versão
+    rejeicoes: int = 0
     payloads_distintos: int = 0
-    iniciado_em: datetime | None = None
-    finalizado_em: datetime | None = None
+    lido_em: Optional[datetime] = None
+    gravado_em: Optional[datetime] = None
     erros: list[str] = field(default_factory=list)
+    motivo_dead_letter: Optional[str] = None
+
+    @property
+    def gravadas_novas(self) -> int:
+        return self.inseridas
 
 
 @dataclass(frozen=True)
@@ -153,29 +218,32 @@ def _sha256(obj) -> str:
     return hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
 
 
-def verificar_trava(adaptador: object, sink: object, modo: str) -> None:
-    if modo not in MODOS:
-        raise TravaViolada(f"modo desconhecido {modo!r}; permitidos: {MODOS}")
-    if getattr(adaptador, "somente_leitura", None) is not True:
-        raise TravaViolada("adaptador precisa declarar somente_leitura = True")
-    for nome in dir(adaptador):
-        baixo = nome.lower()
-        if any(baixo == p or baixo.startswith(p + "_") or baixo.endswith("_" + p) for p in NOMES_DE_ESCRITA_PROIBIDOS):
-            if callable(getattr(adaptador, nome, None)):
-                raise TravaViolada(f"adaptador expõe método de escrita {nome!r}")
-    if getattr(sink, "externo", None) is not False:
-        raise TravaViolada("sink precisa declarar externo = False (não há sink externo neste módulo)")
+# --------------------------------------------------------------------------- sink
+class RelogioMonotonico:
+    """Relógio do sink: UTC real, estritamente crescente (empates viram +1 µs)."""
+
+    def __init__(self, fonte: Callable[[], datetime] | None = None) -> None:
+        self._fonte = fonte or (lambda: datetime.now(timezone.utc))
+        self._ultimo: datetime | None = None
+        self._lock = threading.Lock()
+
+    def __call__(self) -> datetime:
+        with self._lock:
+            t = self._fonte()
+            if self._ultimo is not None and t <= self._ultimo:
+                t = self._ultimo + timedelta(microseconds=1)
+            self._ultimo = t
+            return t
 
 
 class SinkMemoria:
-    """Sink em memória, thread-safe. Observação idempotente; payload deduplicado por sha256 da linha."""
+    """Único destino de gravação aceito. Observações pelo `Registro` da frente A (append-only)."""
 
-    externo = False
-
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self.observacoes: dict[str, ObservacaoColetada] = {}
-        self.payloads: dict[str, str] = {}
+    def __init__(self, relogio: Callable[[], datetime] | None = None) -> None:
+        self._lock = threading.RLock()
+        self.agora = RelogioMonotonico(relogio)
+        self.registro = Registro()
+        self.payloads: dict[str, bytes] = {}
         self.runs: dict[str, ReciboRun] = {}
         self.heartbeats: list[tuple[str, datetime, str]] = []
         self.dead_letters: list[ItemDeadLetter] = []
@@ -190,155 +258,266 @@ class SinkMemoria:
         with self._lock:
             self.runs[recibo.chave_execucao] = recibo
 
-    def heartbeat(self, coletor: str, instante: datetime, estado: str) -> None:
+    def heartbeat(self, coletor: str, estado: str) -> None:
         with self._lock:
-            self.heartbeats.append((coletor, instante, estado))
-
-    def gravar(self, chave_execucao, observacoes, payloads):
-        with self._lock:
-            self.chamadas_gravar += 1
-            novas = 0
-            for o in observacoes:
-                k = o.chave_idempotencia()
-                if k not in self.observacoes:
-                    self.observacoes[k] = o
-                    novas += 1
-            for h, p in payloads.items():
-                self.payloads.setdefault(h, p)
-            return novas, len(observacoes) - novas
+            self.heartbeats.append((coletor, self.agora(), estado))
 
     def dead_letter(self, item: ItemDeadLetter) -> None:
         with self._lock:
             self.dead_letters.append(item)
 
-    def conjunto_final(self) -> frozenset:
-        """Conteúdo de negócio (sem instantes nem chaves de execução) — para provar equivalência."""
-        return frozenset((o.fonte, o.chave, o.metrica, o.valor, o.estado) for o in self.observacoes.values())
+    def gravar(self, observacoes, payloads: Mapping[str, bytes]) -> dict[str, int]:
+        with self._lock:
+            self.chamadas_gravar += 1
+            cont = {r.value: 0 for r in ResultadoRegistro}
+            for o in observacoes:
+                cont[self.registro.registrar(o).value] += 1
+            for h, p in payloads.items():
+                self.payloads.setdefault(h, p)
+            return cont
+
+    def as_of(self, t: datetime) -> dict[str, tuple]:
+        """Conteúdo de negócio conhecido em t, por chave natural (sem relógios nem chaves de run)."""
+        return {k: (o.metrica.value, o.entidade.id, o.status.value, o.valor) for k, o in self.registro.as_of(t).items()}
+
+    def instantes_de_gravacao(self) -> list[datetime]:
+        return sorted({v.observacao.available_at for v in self.registro.versoes})
+
+
+class _SinkNulo:
+    """dry_run: não grava nada, em lugar nenhum."""
+
+    def run_concluido(self, chave_execucao: str) -> bool:
+        return False
+
+    def heartbeat(self, coletor: str, estado: str) -> None:
+        return None
+
+
+def verificar_trava(adaptador: object, sink: object, modo: str) -> None:
+    if modo not in MODOS:
+        raise TravaViolada(f"modo desconhecido {modo!r}; permitidos: {MODOS}")
+    if not callable(getattr(adaptador, "ler", None)):
+        raise TravaViolada("adaptador precisa ter ler(pedido, cliente)")
+    if modo == "gravar" and type(sink) is not SinkMemoria:
+        raise TravaViolada("em 'gravar' o único destino aceito é SinkMemoria (não há sink externo neste módulo)")
+
+
+# --------------------------------------------------------------------------- fase 1: leitura
+@dataclass
+class _Leitura:
+    pedido: PedidoLeitura
+    recibo: ReciboRun
+    resposta: Optional[RespostaLeitura] = None
+    motivo_falha: Optional[str] = None
+
+
+def _com_prazo(fn: Callable[[], Any], timeout_s: float) -> Any:
+    """Roda `fn` numa thread daemon; estourado o prazo, abandona (o processo pode sair)."""
+    caixa: dict[str, Any] = {}
+    pronto = threading.Event()
+
+    def alvo() -> None:
+        try:
+            caixa["r"] = fn()
+        except BaseException as e:  # noqa: BLE001 - repassado ao chamador
+            caixa["e"] = e
+        finally:
+            pronto.set()
+
+    threading.Thread(target=alvo, daemon=True, name="coleta-leitura").start()
+    if not pronto.wait(timeout_s):
+        raise _TempoEsgotado()
+    if "e" in caixa:
+        raise caixa["e"]
+    return caixa["r"]
+
+
+def _ler(pedido, adaptador, transporte, sink, modo, politica, relogio, dormir) -> _Leitura:
+    import time
+
+    chave = pedido.chave_execucao()
+    rec = ReciboRun(chave_execucao=chave, pedido=pedido, modo=modo, status="em_andamento", tentativas=0)
+    leitura = _Leitura(pedido, rec)
+    if sink.run_concluido(chave):
+        rec.status = "ja_concluido"
+        sink.heartbeat(pedido.coletor, "ja_concluido")
+        return leitura
+    sink.heartbeat(pedido.coletor, "iniciado")
+    rng = random.Random(f"{politica.seed}:{chave}")
+    for tentativa in range(1, politica.max_tentativas + 1):
+        rec.tentativas = tentativa
+        limite = time.monotonic() + politica.timeout_s
+        cliente = ClienteLeitura(transporte, lambda limite=limite: limite - time.monotonic())
+        try:
+            leitura.resposta = _com_prazo(lambda: adaptador.ler(pedido, cliente), politica.timeout_s)
+            rec.lido_em = relogio()
+            break
+        except _TempoEsgotado:
+            rec.erros.append(f"t{tentativa}: timeout>{politica.timeout_s}s")
+            leitura.motivo_falha = "tentativas_esgotadas"
+        except ErroTransitorio as e:
+            rec.erros.append(f"t{tentativa}: transitorio: {e}")
+            leitura.motivo_falha = "tentativas_esgotadas"
+        except (ErroPermanente, TravaViolada) as e:
+            rec.erros.append(f"t{tentativa}: permanente: {e}")
+            leitura.motivo_falha = "erro_permanente"
+            break
+        except Exception as e:  # desconhecido = permanente: não martelar a fonte
+            rec.erros.append(f"t{tentativa}: desconhecido: {type(e).__name__}: {e}")
+            leitura.motivo_falha = "erro_desconhecido"
+            break
+        sink.heartbeat(pedido.coletor, f"retry_{tentativa}")
+        if tentativa < politica.max_tentativas:
+            dormir(politica.espera(tentativa, rng))
+    return leitura
+
+
+# --------------------------------------------------------------------------- fase 2: gravação
+def _normalizar(leitura: _Leitura, instante: datetime) -> tuple[list, dict[str, bytes], list[str]]:
+    resp, ped, rec = leitura.resposta, leitura.pedido, leitura.recibo
+    ctx_f = resp.contexto
+    observed = _observado_em(resp, rec, instante)
+    obs: list = []
+    payloads: dict[str, bytes] = {}
+    rejeicoes: list[str] = []
+    esquemas = {ctx_f.esquema.schema_version: ctx_f.esquema}
+    for i, linha in enumerate(resp.linhas):
+        # uma linha = um payload endereçado por conteúdo: reler a mesma linha dá o MESMO sha256 e,
+        # portanto, a mesma chave de leitura no Registro (é o que permite NOOP e A→B→A)
+        corpo = json.dumps([linha], sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
+        pb = PayloadBruto(ctx_f.esquema.schema_version, corpo)
+        payloads[pb.sha256] = corpo
+        ctx = ContextoLeitura(fonte=ctx_f.fonte, conta=ped.conta, entidade_tipo=ctx_f.entidade_tipo, grao=ctx_f.grao,
+                              janela_inicio=ctx_f.janela_inicio, janela_fim=ctx_f.janela_fim, timezone=ctx_f.timezone,
+                              observed_at=observed, available_at=instante, ingested_at=instante,
+                              run_id=rec.chave_execucao, lote_id=f"{rec.chave_execucao}:{i}", coletor=ctx_f.coletor,
+                              moeda=ctx_f.moeda)
+        r = normalizar(pb, esquemas, ctx)
+        obs.extend(r.observacoes)
+        rejeicoes.extend(x.motivo for x in r.rejeicoes)
+    return obs, payloads, rejeicoes
+
+
+class _ObservadoInvalido(Exception):
+    pass
+
+
+def _observado_em(resp: RespostaLeitura, rec: ReciboRun, instante: datetime) -> datetime:
+    """`observed_at` = instante REAL da leitura (regra D1 da frente A: a medição mais recente vence).
+
+    Não se usa o slot agendado: uma execução atrasada (fila, retry, backfill) lê o estado da fonte no
+    instante em que roda; carimbá-la com o slot antigo diria que o estado das 09h era o das 06h e, sob
+    D1, poderia perder para uma leitura que de fato é mais velha. O contrato exige observed ≤ available
+    (o instante da gravação); violação é erro do transporte, não algo a corrigir em silêncio.
+    """
+    obs = resp.observado_em if resp.observado_em is not None else (rec.lido_em or instante)
+    if obs.tzinfo is None:
+        raise _ObservadoInvalido("observado_em sem timezone")
+    if obs > instante:
+        raise _ObservadoInvalido("observado_em posterior à gravação (available_at)")
+    return obs
+
+
+def _concluir(leitura: _Leitura, sink, modo: str, relogio: Callable[[], datetime]) -> ReciboRun:
+    rec, ped = leitura.recibo, leitura.pedido
+    if rec.status == "ja_concluido":
+        return rec
+    if leitura.resposta is None:
+        rec.status = "dead_letter"
+        rec.motivo_dead_letter = leitura.motivo_falha or "tentativas_esgotadas"
+        if modo == "gravar":
+            sink.dead_letter(ItemDeadLetter(ped, rec.chave_execucao, rec.motivo_dead_letter,
+                                            rec.erros[-1] if rec.erros else rec.motivo_dead_letter, rec.tentativas,
+                                            sink.agora()))
+            sink.registrar_run(rec)
+            sink.heartbeat(ped.coletor, "dead_letter")
+        return rec
+    instante = sink.agora() if modo == "gravar" else relogio()
+    try:
+        obs, payloads, rejeicoes = _normalizar(leitura, instante)
+    except _ObservadoInvalido as e:
+        rec.erros.append(f"contrato: {e}")
+        leitura.resposta, leitura.motivo_falha = None, "observado_em_invalido"
+        return _concluir(leitura, sink, modo, relogio)
+    rec.linhas_lidas = len(leitura.resposta.linhas)
+    rec.observacoes = len(obs)
+    rec.payloads_distintos = len(payloads)
+    rec.rejeicoes = len(rejeicoes)
+    if modo == "dry_run":
+        rec.status = "dry_run"
+        return rec
+    cont = sink.gravar(obs, payloads)
+    rec.inseridas, rec.noop = cont["inserido"], cont["noop"]
+    rec.confirmadas = cont.get("confirmado", 0)  # [thread A, D2']
+    rec.gravado_em = instante
+    for motivo in rejeicoes:
+        sink.dead_letter(ItemDeadLetter(ped, rec.chave_execucao, f"linha_rejeitada:{motivo}", motivo, rec.tentativas,
+                                        instante))
+    rec.status = "concluido"
+    sink.registrar_run(rec)
+    sink.heartbeat(ped.coletor, "concluido")
+    return rec
 
 
 def _agora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def normalizar(fonte: str, resposta: RespostaLeitura, chave_execucao: str,
-               disponivel_em: datetime) -> tuple[list[ObservacaoColetada], dict[str, str]]:
-    obs: list[ObservacaoColetada] = []
-    payloads: dict[str, str] = {}
-    for linha in resposta.linhas:
-        bruto = json.dumps({"chave": list(linha.chave), "valores": linha.valores}, sort_keys=True, ensure_ascii=False)
-        h = hashlib.sha256(bruto.encode()).hexdigest()
-        payloads[h] = bruto
-        for metrica in sorted(linha.valores):
-            v = linha.valores[metrica]
-            if v is not None and (not isinstance(v, int) or isinstance(v, bool)):
-                raise ErroPermanente(f"valor não inteiro em {metrica}: {v!r} (use micros)")
-            obs.append(ObservacaoColetada(fonte=fonte, chave=tuple(linha.chave), metrica=metrica, valor=v,
-                                          estado="medido" if v is not None else "nao_informado",
-                                          disponivel_em=disponivel_em, chave_execucao=chave_execucao,
-                                          payload_sha256=h))
-    return obs, payloads
+def _preparar(adaptador, sink, modo, relogio):
+    verificar_trava(adaptador, sink, modo)
+    destino = sink if modo == "gravar" else _SinkNulo()
+    rel = sink.agora if modo == "gravar" else (relogio or _agora)
+    return destino, rel
 
 
 def run_coleta(
     pedido: PedidoLeitura,
     *,
-    adaptador: AdaptadorFonte,
-    sink: Sink,
+    adaptador: Adaptador,
+    transporte: TransporteLeitura,
+    sink: Optional[SinkMemoria] = None,
     modo: str = "dry_run",
     politica: PoliticaRetry = PoliticaRetry(),
-    relogio: Callable[[], datetime] = _agora,
-    dormir: Callable[[float], None] | None = None,
+    relogio: Optional[Callable[[], datetime]] = None,
+    dormir: Optional[Callable[[float], None]] = None,
 ) -> ReciboRun:
     """Contrato de execução de UMA coleta (um coletor × conta × janela × slot)."""
-    verificar_trava(adaptador, sink, modo)
+    destino, rel = _preparar(adaptador, sink, modo, relogio)
     if dormir is None:
         import time
 
         dormir = time.sleep
-    chave = pedido.chave_execucao()
-    inicio = relogio()
-    recibo = ReciboRun(chave_execucao=chave, pedido=pedido, modo=modo, status="em_andamento", tentativas=0,
-                       iniciado_em=inicio)
-    if sink.run_concluido(chave):
-        recibo.status = "ja_concluido"
-        recibo.finalizado_em = relogio()
-        sink.heartbeat(pedido.coletor, recibo.finalizado_em, "ja_concluido")
-        return recibo
-    sink.heartbeat(pedido.coletor, inicio, "iniciado")
-    rng = random.Random(f"{politica.seed}:{chave}")
-    resposta: RespostaLeitura | None = None
-    motivo_falha = None
-    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"coleta-{pedido.coletor}")
-    try:
-        for tentativa in range(1, politica.max_tentativas + 1):
-            recibo.tentativas = tentativa
-            futuro = executor.submit(adaptador.ler, pedido)
-            try:
-                resposta = futuro.result(timeout=politica.timeout_s)
-                break
-            except FuturoTimeout:
-                futuro.cancel()  # se ainda rodar, o resultado tardio nunca é consumido
-                recibo.erros.append(f"t{tentativa}: timeout>{politica.timeout_s}s")
-                motivo_falha = "tentativas_esgotadas"
-                # executor novo: a thread presa não bloqueia a próxima tentativa
-                executor.shutdown(wait=False, cancel_futures=True)
-                executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"coleta-{pedido.coletor}")
-            except ErroTransitorio as e:
-                recibo.erros.append(f"t{tentativa}: transitorio: {e}")
-                motivo_falha = "tentativas_esgotadas"
-            except ErroPermanente as e:
-                recibo.erros.append(f"t{tentativa}: permanente: {e}")
-                motivo_falha = "erro_permanente"
-                break
-            except Exception as e:  # desconhecido = permanente: não martelar a fonte
-                recibo.erros.append(f"t{tentativa}: desconhecido: {type(e).__name__}: {e}")
-                motivo_falha = "erro_desconhecido"
-                break
-            sink.heartbeat(pedido.coletor, relogio(), f"retry_{tentativa}")
-            if tentativa < politica.max_tentativas:
-                dormir(politica.espera(tentativa, rng))
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
-
-    if resposta is None:
-        return _para_dead_letter(recibo, sink, pedido, motivo_falha or "tentativas_esgotadas", relogio)
-
-    try:
-        observacoes, payloads = normalizar(adaptador.nome, resposta, chave, disponivel_em=relogio())
-    except ErroPermanente as e:
-        recibo.erros.append(f"normalizacao: {e}")
-        return _para_dead_letter(recibo, sink, pedido, "contrato_invalido", relogio)
-    recibo.linhas_lidas = len(resposta.linhas)
-    recibo.observacoes = len(observacoes)
-    recibo.payloads_distintos = len(payloads)
-    if modo == "dry_run":
-        recibo.status = "dry_run"
-    else:
-        recibo.gravadas_novas, recibo.repetidas = sink.gravar(chave, observacoes, payloads)
-        recibo.status = "concluido"
-    recibo.finalizado_em = relogio()
-    if modo == "gravar":
-        sink.registrar_run(recibo)
-    sink.heartbeat(pedido.coletor, recibo.finalizado_em, recibo.status)
-    return recibo
+    leitura = _ler(pedido, adaptador, transporte, destino, modo, politica, rel, dormir)
+    return _concluir(leitura, destino, modo, rel)
 
 
-def _para_dead_letter(recibo, sink, pedido, motivo, relogio) -> ReciboRun:
-    recibo.status = "dead_letter"
-    recibo.finalizado_em = relogio()
-    sink.dead_letter(ItemDeadLetter(pedido=pedido, chave_execucao=recibo.chave_execucao, motivo=motivo,
-                                    erro=recibo.erros[-1] if recibo.erros else motivo, tentativas=recibo.tentativas,
-                                    instante=recibo.finalizado_em))
-    sink.registrar_run(recibo)
-    sink.heartbeat(pedido.coletor, recibo.finalizado_em, "dead_letter")
-    return recibo
+def _ordem(p: PedidoLeitura) -> tuple:
+    return (p.slot, p.conta, p.coletor, p.janela_inicio, p.janela_fim)
 
 
-def executar_lote(pedidos: list[PedidoLeitura], *, paralelismo: int = 1, **kwargs) -> list[ReciboRun]:
-    """Executa vários pedidos (serial ou em paralelo). Resultado na ordem dos pedidos."""
+def executar_lote(pedidos: list[PedidoLeitura], *, paralelismo: int = 1, adaptador: Adaptador,
+                  transporte: TransporteLeitura, sink: Optional[SinkMemoria] = None, modo: str = "dry_run",
+                  politica: PoliticaRetry = PoliticaRetry(), relogio: Optional[Callable[[], datetime]] = None,
+                  dormir: Optional[Callable[[float], None]] = None) -> list[ReciboRun]:
+    """Leitura serial ou paralela; gravação SEMPRE serial, na ordem (slot, conta, coletor).
+
+    Devolve os recibos na ordem dos pedidos recebidos.
+    """
     if paralelismo < 1:
         raise ValueError("paralelismo >= 1")
+    destino, rel = _preparar(adaptador, sink, modo, relogio)
+    if dormir is None:
+        import time
+
+        dormir = time.sleep
+    ler = lambda p: _ler(p, adaptador, transporte, destino, modo, politica, rel, dormir)  # noqa: E731
     if paralelismo == 1:
-        return [run_coleta(p, **kwargs) for p in pedidos]
-    with ThreadPoolExecutor(max_workers=paralelismo, thread_name_prefix="lote") as ex:
-        return list(ex.map(lambda p: run_coleta(p, **kwargs), pedidos))
+        leituras = [ler(p) for p in pedidos]
+    else:
+        with ThreadPoolExecutor(max_workers=paralelismo, thread_name_prefix="lote") as ex:
+            leituras = list(ex.map(ler, pedidos))
+    recibos: dict[int, ReciboRun] = {}
+    for i in sorted(range(len(pedidos)), key=lambda i: _ordem(pedidos[i])):
+        recibos[i] = _concluir(leituras[i], destino, modo, rel)
+    return [recibos[i] for i in range(len(pedidos))]

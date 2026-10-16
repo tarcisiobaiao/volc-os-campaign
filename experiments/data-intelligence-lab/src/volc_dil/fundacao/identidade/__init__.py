@@ -33,7 +33,12 @@ from .graos import (
     suportados_hoje,
 )
 from .juncao import (
+    GRAOS_RECEITA_CAMPANHA,
     Cobertura,
+    ContratoDeEntrada,
+    FuturoNaJuncao,
+    GraoMistoNaReceita,
+    LinhaDuplicada,
     CustoCampanhaDia,
     EventoSensorReady,
     LinhaCampanhaDia,
@@ -59,9 +64,18 @@ from .normalizacao import (
     parse_query_urlsearchparams,
     utm_da_pagina_sensor_v3,
 )
-from .resolvedor import CampanhaRegistrada, RegistroCampanhas, Resolucao, TemplateCampanha, registro_de
+from .resolvedor import (
+    CampanhaRegistrada,
+    RegistroCampanhas,
+    Resolucao,
+    TemplateCampanha,
+    normalizar_host,
+    registro_de,
+)
 
 __all__ = [
+    "ContratoDeEntrada", "FuturoNaJuncao", "GRAOS_RECEITA_CAMPANHA", "GraoMistoNaReceita", "LinhaDuplicada",
+    "normalizar_host",
     "CampanhaRegistrada", "Capacidade", "ChaveCampanha", "Cobertura", "Colisao", "Confianca",
     "CustoCampanhaDia", "EventoSensorReady", "Fonte", "Grao", "GraoNaoSuportado", "GraoTempo",
     "Gravidade", "LIMITE_CHECAGEM_PII", "LIMITE_VALOR_UTM", "LinhaCampanhaDia", "MATRIZ", "Medida",

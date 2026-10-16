@@ -13,6 +13,12 @@ Origem (lida, não importada; nenhuma das duas existe em `main`):
 A equivalência é provada contra vetores-ouro gerados executando o JavaScript real
 em Node (`docs/data-intelligence/fundacao-20261016/receipts/identidade/`).
 
+Ressalva Unicode (R1-F24): "idêntica" vale até o Unicode 15.1 do `unicodedata` do CPython 3.13.
+O Node 26 usa Unicode 17; para caracteres atribuídos no Unicode 16/17, `toLowerCase`/`NFD` podem
+divergir (o revisor mediu 3.536 de 4.000 vetores desse recorte divergentes; 0 de 6.003 até 15.1).
+O navegador do visitante usa o Unicode do seu próprio motor — nenhuma réplica é exata para todos.
+UTMs de campanha são ASCII na prática; para um valor fora do 15.1, trate a chave como probabilística.
+
 Fidelidade a JavaScript que o Python não dá de graça (e que os vetores cobrem):
 
 - `\\s` do JS ≠ `\\s` do Python (JS inclui U+FEFF; Python inclui U+001C–U+001F e U+0085);
