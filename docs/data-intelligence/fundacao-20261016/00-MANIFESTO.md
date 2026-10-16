@@ -46,7 +46,7 @@ A "fonte de verdade" está fragmentada em três lugares que não compartilham hi
 
 - `main` (`104bb0d0`): não contém os IDs documentados dos workflows Google Ads
   (`Ps9yLfQkHeaAbyZZ`, `7yxs1aOlzWkkkSf9`, `TFlmThr4930oPneE`) nem JoinAds
-  (`cpb6tNxt211UkAn2`, `jDX397ViVcRQft4A`); contém `GTM-N4KS27ZV` em 3 arquivos.
+  (`cpb6tNxt211UkAn2`, `jDX397ViVcRQft4A`); contém `<container-gtm>` em 3 arquivos.
 - `043c77f5` (checkout oficial, wip): contém os três workflows Google Ads (18 arquivos) e o GTM (16).
 - Branches `wip/historico-*-20261015` e os 302 arquivos sujos do checkout oficial: contratos
   de atribuição econômica e, provavelmente, os IDs JoinAds (a confirmar pela thread A-inv).

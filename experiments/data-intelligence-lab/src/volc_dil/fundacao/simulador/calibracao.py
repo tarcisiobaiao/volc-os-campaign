@@ -1,6 +1,6 @@
 """Origem declarada de cada parâmetro: forma calibrada, documentação da fonte, literatura ou arbitrário.
 
-Regra: dado real versionado no repositório tem n minúsculo (Senac shadow: 1 campanha Google,
+Regra: dado real versionado no repositório tem n minúsculo (shadow de 15/10: 1 campanha Google,
 16 dias maduros; golden Meta×GAM: 64 campanha-dias, 7 campanhas, tráfego Meta). Ele só escolhe
 FORMA e FAIXA (dispersão adimensional, quantização, moeda, cadência), nunca nível monetário.
 Literatura citada não foi reverificada nesta execução (sem rede): é "faixa da literatura

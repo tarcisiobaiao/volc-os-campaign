@@ -230,7 +230,7 @@ Origem de cada parâmetro: `calibracao.FONTES_PARAMETROS` (classes `forma_real`,
 
 - **Forma real (n minúsculo, só dispersão/forma):** ROAS campanha-dia do golden Meta×GAM
   (84 linhas com gasto e receita; p10≈0,48, p50≈0,99, p90≈1,47 ⇒ mediana 1, σ_log≈0,32; é tráfego
-  Meta, não Search); quantização da receita a 2 casas e dias 0,00 ambíguos (JoinAds/Senac); receita
+  Meta, não Search); quantização da receita a 2 casas e dias 0,00 ambíguos (JoinAds/shadow de 15/10); receita
   em USD (JoinAds). O mundo default mede ROAS p10/p50/p90 ≈ 0,64/1,06/1,71 (3 seeds), dentro das
   faixas de forma de `FAIXAS_FORMA` (teste). Nenhum valor monetário de cliente é parâmetro.
 - **Documentação da fonte:** cadências D0 (4 passadas/dia), D-1, intraday JoinAds 06/12/18/23 + relê 3 dias,
