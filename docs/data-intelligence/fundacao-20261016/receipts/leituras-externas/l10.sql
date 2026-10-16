@@ -1,0 +1,5 @@
+SELECT (ts AT TIME ZONE 'America/Sao_Paulo')::date dia, payload->'utm'->>'paid' paid, (payload->'utm' ? 'campaign') tem_campanha, (payload->'utm' ? 'source') tem_source, count(*) FROM public.raw_events WHERE event_name='volc_sensor_ready' AND ts >= '2026-10-01' GROUP BY 1,2,3,4 ORDER BY 1,2,3,4;
+SELECT metric_date, count(*) leituras, count(DISTINCT metrics->>'cost_micros') valores_distintos, count(DISTINCT run_id) runs FROM public.google_ads_observation WHERE resource_type='campaign' AND grain='campaign_day' GROUP BY 1 ORDER BY 1 DESC LIMIT 10;
+SELECT grain, resource_type, count(*) FROM public.google_ads_observation GROUP BY 1,2 ORDER BY 1,2;
+SELECT count(*) FILTER (WHERE (metrics->>'cost_micros')::numeric=0) zeros, count(*) total, count(*) FILTER (WHERE (metrics->>'cost_micros')::numeric=0 AND (metrics->>'impressions')::numeric=0) zeros_imp FROM public.google_ads_observation WHERE grain='campaign_day';
+SELECT jsonb_object_keys(attributes) k, count(*) FROM public.google_ads_observation WHERE grain='campaign_day' GROUP BY 1;
