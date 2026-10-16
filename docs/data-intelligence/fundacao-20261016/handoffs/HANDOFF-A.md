@@ -66,7 +66,9 @@ class ObservacaoInvalida(ContratoViolado); class ConflitoIdempotencia(ContratoVi
 
 class Registro:
     def __init__(self, observacoes=()): ...
-    def registrar(self, obs) -> ResultadoRegistro          # INSERIDO | NOOP  (REAFIRMADO removido em D1/D2)
+    def registrar(self, obs) -> ResultadoRegistro          # INSERIDO | NOOP | CONFIRMADO (D2')
+    confirmacoes: tuple[Confirmacao, ...]; def ultima_confirmacao(self, chave_natural) -> datetime | None
+# Observacao.estado_negocio -> (status, valor, unidade, moeda, cobertura_ppm, motivo)   # D2': o que precisa mudar para virar versão
     def registrar_todas(self, obs) -> list[ResultadoRegistro]
     versoes: tuple[VersaoRegistrada, ...]; observacoes: tuple[Observacao, ...]
     def vigente(self, chave_natural) -> VersaoRegistrada | None
@@ -207,3 +209,98 @@ Efeitos em outras threads (mudança mínima, marcada `[thread A, D*]`/`[thread A
   saíram do conjunto "não corta" e ganharam uma asserção de que recebem o custo.
 - G: `finalizar_run` com 7 argumentos em `test_qualidade_pg_views.py`.
 - Contagem de "repetição" muda de natureza: quem precisa de pontos de mudança deduplica por conteúdo na leitura.
+
+### 7.2 Medições da frente B: `as_of` inlinável, chaves compactas e D2' (versão só quando o estado muda)
+
+Base: merges locais de `lab/data-foundation-20261016` em `d62bf0c0` e `7b3e9834`. Commits: `cb47ecac`
+(as_of inlinável + bytea + 0002 corrigido), `a5b6e4fb` (D2'), e o commit de docs.
+Suíte: **878 passed, 1 skipped** (o skip é a medição grande, com motivo explícito; roda com `DIL_BENCH_N`).
+
+**(1) `observacao_as_of` não era inlinada.** A função tinha `SET search_path` e `STRICT` — qualquer um dos dois
+impede o planejador de expandir uma função SQL de conjunto. Agora: sem `SET`, sem `STRICT`, nomes e o operador
+qualificados (`OPERATOR(pg_catalog.<=)`), SECURITY INVOKER; `t` nulo → conjunto vazio como antes. A ordem do D1
+ficou com 3 colunas (o UNIQUE `(chave_natural, available_at)` torna o desempate extra inalcançável), coberta
+pelo índice `ix_obs_asof`. Prova na suíte: `test_schema_pg_desempenho.py::test_as_of_e_latest_sao_inlinados_e_chaves_compactas`
+(nenhum "Function Scan" para função, ponto e view; resultado = consulta escrita à mão).
+
+Medição (cluster descartável, `test_medicao_grande`, tempo no servidor = Planning + Execution do
+`EXPLAIN ANALYZE`, 3 repetições; máquina compartilhada com outros workers, há ruído):
+
+| 1e6 linhas (10 contas × 100 entidades × 250 dias × 4 versões) | antes (`HEAD` de então) | depois |
+|---|---|---|
+| inlinada? | não | **sim** |
+| `as_of` de um ponto (uma chave) | 1,51–1,58 s | **0,001 s** |
+| `as_of` global no meio do histórico | 0,72–3,41 s | **0,30–0,41 s** |
+| `as_of` global no fim (1e6 versões visíveis) | 1,52–2,12 s | 1,23–3,70 s |
+| `observacao_latest` | 1,68–2,44 s | 1,48–2,17 s |
+| 1e5: ponto / meio / fim / latest | 0,97–2,31 / 0,41–0,51 / 0,71–0,98 / 0,71–0,91 s | 0,001 / 0,026–0,044 / 0,05–0,10 / 0,045–0,10 s |
+
+Leitura honesta: o ganho grande é em toda consulta seletiva (ponto, filtro por conta, corte no meio), que agora
+empurra o predicado para dentro do `as_of`. O `as_of` global no fim do histórico continua custando ~1–4 s em 1e6
+porque percorre todas as versões (DISTINCT ON sobre 1e6 linhas com acesso ao heap). Não reproduzi os 8,5–17,5 s
+que a B mediu para a função não inlinada (aqui: 1,5–3,4 s); a diferença provável é a forma de medir (B: cliente,
+EXECUTE e outra carga). Disco: pico do cluster 2,1 GiB; todos os clusters apagados.
+
+**(2) Formato longo caro.** `ix_obs_chave_base` já não existia (saiu com o D2). Mudanças: `chave_natural` e
+`chave_idempotencia` como **digest bytea de 32 bytes** (paridade Python × SQL = `encode(chave, 'hex')`, provada no
+teste de chaves) e sem índice em `lote_id`.
+
+| 1e6 linhas | antes | depois |
+|---|---|---|
+| heap B/linha | 512 | **455** |
+| índices B/linha | 483 | **332** |
+| total B/valor | 995 | **787** (−21%) |
+| `uq_obs_chave_idempotencia` / `uq_obs_versao` / `ix_obs_asof` (MB) | 124 / 141 / 148 | **77 / 90 / 102** |
+
+**Achado colateral (corrigido):** o `0002` (particionamento opcional) tinha o corpo do `as_of` congelado na
+1ª geração — com a ordem pré-D1 (maior `available_at`). Aplicar o 0002 desfaria o D1 em silêncio. O gerador agora
+copia também esse bloco de 0001, e `test_schema_pg_particionamento.py` compara o corpo da função depois do 0002 com
+o de 0001 e inclui uma leitura antiga entregue atrasada.
+
+**(3) D2' — decisão do integrador sobre o custo do D2.** Uma leitura só vira **versão** quando o `estado_negocio`
+(status — inclui o fechamento da janela —, valor, unidade, moeda, cobertura, motivo) difere do vigente no instante
+dela. Releitura igual → **confirmação** estreita em `dil_obs.confirmacao`. Retry (mesmo fato, mesmo
+`observed_at`, já conhecido) → `noop`. Para ser independente da ordem de chegada:
+
+- a redundância compara com a versão vigente no instante da leitura **e** com toda versão de ordem menor que,
+  conhecida depois, venceria antes dela;
+- ao inserir uma versão, todo corte posterior é conferido; a confirmação que passaria a vencer com outro estado
+  é **materializada** como versão (a própria leitura, com seus relógios; no banco a linha é reconstruída da versão
+  confirmada + lote + run, e a chave é recalculada).
+
+Escolha da forma da confirmação (bytes medidos, 1e6): **tabela estreita, 211 B por confirmação** contra 787 B por
+observação (3,7×). A alternativa "só contagem no recibo do run" custaria 0 B por leitura, mas foi rejeitada:
+perde o frescor e, principalmente, impede o reparo — sem a confirmação guardada, uma leitura antiga e diferente
+chegando atrasada passaria à frente de uma confirmação mais nova, e o estado ficaria dependente da ordem
+(a propriedade com permutações falharia). Estimativa sobre o modelo da B (HANDOFF-B §8.6: D2 = 70,7 MB/dia e
+7,9 TB em 3 anos a ×100, com 1.043 B/valor e ~94% de releituras iguais): com D2' e o DDL novo, cada leitura custa
+~0,06 × 787 + 0,94 × 211 ≈ 245 B (contra 1.043) → **~17 MB/dia e ~1,9 TB em 3 anos a ×100** (estimativa
+proporcional, não remedida pelo modelo da B; a confirmação passa a dominar o custo — trocar `run_id`/`lote_id`
+textuais por referências inteiras a reduziria mais).
+
+| Prova | Teste |
+|---|---|
+| releitura igual atrasada vira confirmação; A→B→A preservado | `test_observacao_ordem_versao.py::test_d2_linha_igual_atrasada_nao_cria_versao_e_aba_continua` |
+| leitura diferente atrasada materializa a confirmação mais nova (todas as permutações) | `test_d2_leitura_diferente_atrasada_materializa_a_confirmacao_mais_nova` |
+| estado do `as_of` em todo corte independe da ordem (400 conjuntos × 8 permutações) | `test_d2_propriedade_estado_independe_da_ordem_de_chegada` |
+| padrão real D0 (5 campanhas, 1 muda por hora): 32 versões, 88 confirmações, retry `noop`, janela fecha (D+1 com o mesmo payload vira versão) | `test_d2_releitura_d0_do_padrao_real_nao_conflita_e_fecha_a_janela` |
+| banco = Registro em 8 permutações e estado = dado bruto em 6 cortes | `test_schema_pg_r1.py::test_d2_linha_banco_igual_ao_registro_em_permutacoes_e_estado_independe_da_ordem` |
+| banco: releitura D0 confirma, fechamento é versão | `test_schema_pg_r1.py::test_d2_releitura_d0_no_banco_igual_ao_registro` |
+| bytes da confirmação < metade da observação | `test_schema_pg_desempenho.py` |
+
+Os testes novos de D2' falham no código anterior (`cb47ecac`). A exceção é o de permutações no banco, que é uma
+propriedade (Registro = banco e estado = bruto) e também valia sob D2; ganhou a asserção de que a confirmação foi
+exercitada, que falha antes.
+
+Mudanças fora da A (mínimas e marcadas `[thread A, D2']`):
+- `capacidade/coletor.py`: `ReciboRun.confirmadas`, preenchido com o resultado CONFIRMADO do `Registro`.
+- `test_capacidade_coletor.py`:
+  - releitura igual às 07h agora é 0 inseridas e 9 confirmadas;
+  - no A→B→A, cada leitura gera 1 versão (custo) e 2 confirmações (métricas que não mudam);
+  - serial × paralelo passa a contar versões + confirmações;
+  - fora de ordem passa a comparar os ESTADOS registrados — as linhas dependem da ordem de chegada, e devem.
+
+Limites: confirmações não entram no `as_of` (só frescor e reparo). Uma reentrega que chegue com `available_at`
+anterior ao de uma confirmação já registrada vira outra confirmação (não `noop`), para não descartar conhecimento
+mais cedo. Uma confirmação a materializar com o mesmo `available_at` de outra versão do fato levanta
+`versao_ambigua`.

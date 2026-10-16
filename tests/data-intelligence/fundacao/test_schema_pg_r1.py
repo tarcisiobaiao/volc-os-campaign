@@ -264,6 +264,7 @@ def test_d2_linha_banco_igual_ao_registro_em_permutacoes_e_estado_independe_da_o
     perms = list(itertools.permutations(range(len(base))))
     random.Random(7).shuffle(perms)
     c = cluster_pg
+    vistos = set()
     for n, perm in enumerate(perms[:8]):
         conta = f"perm{n}"
         leituras = []
@@ -280,11 +281,14 @@ def test_d2_linha_banco_igual_ao_registro_em_permutacoes_e_estado_independe_da_o
         reg = Registro()
         esperado = [reg.registrar(Observacao.de_json(j)).value for _, _, j, _, _ in leituras]
         assert res == esperado, (perm, res, esperado)
+        vistos.update(res)
         brutas = [Observacao.de_json(j) for _, _, j, _, _ in leituras]
         for h in (32, 42, 47, 52, 56, 80):
             t = BASE + timedelta(hours=h)
             bruto = [f"{o.valor}:{o.status.value}" for o in as_of(brutas, t).values()]
             assert _asof_banco(c, banco, t, conta) == bruto, (perm, h)
+    assert {"inserido", "confirmado"} <= vistos  # D2': a amostra exercitou a confirmação (e materializações)
+    assert int(c.psql("SELECT count(*) FROM dil_obs.confirmacao;", db=banco)) > 0
 
 
 # ============================================================== relógio do banco

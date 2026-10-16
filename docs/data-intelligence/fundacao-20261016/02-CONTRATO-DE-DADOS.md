@@ -136,7 +136,9 @@ coletor exige run e lote novos (o payload é compartilhado por conteúdo).
 |---|---|
 | `chave_base` nova | `inserido` |
 | mesma `chave_base`, conteúdo (status, valor, unidade, moeda, cobertura) diferente | erro `conflito_idempotencia` (coletor não determinístico) |
-| mesma `chave_base`, mesmo conteúdo | `noop` (retry, reentrega, reentrega fora de ordem) |
+| mesma `chave_base`, mesmo conteúdo (já registrada como versão OU como confirmação) | `noop` (retry, reentrega, reentrega fora de ordem) |
+| leitura nova com o mesmo `estado_negocio` da versão vigente no instante dela (e de toda versão que venceria antes dela nos cortes seguintes) | `confirmado`: linha estreita em `dil_obs.confirmacao`, não versão (D2') |
+| leitura nova com estado diferente | `inserido`, seguido do **reparo**: confirmação que passaria a vencer com outro estado depois dessa versão é materializada como versão (D2') |
 | outra leitura do mesmo fato com o mesmo `available_at` | erro `versao_ambigua` (UNIQUE `(chave_natural, available_at)`) |
 
 - Restatement é **sempre linha nova**. UPDATE/DELETE/TRUNCATE não existem (§10).
@@ -146,14 +148,22 @@ coletor exige run e lote novos (o payload é compartilhado por conteúdo).
   observação em voo entra na contagem ou é recusada, nunca grava num run já fechado. Provado com duas
   sessões psql paralelas.
 - Reentrega fora de ordem é conservadora: pode atrasar conhecimento, nunca antecipá-lo.
-- **Releitura (D2, decisão):** o cron que relê o mesmo payload em outra hora é uma leitura nova (outro
-  `observed_at`) e vira versão. Duas alternativas foram rejeitadas: (a) tirar a cobertura do conteúdo e dar
-  `noop` à releitura — perde-se que a janela fechou (o último D0 e o D+1 06h têm o mesmo payload no padrão
-  real) e a ordem por `observed_at` (D1) deixa de ser exata quando uma leitura intermediária chega atrasada;
-  (b) cobertura/estado da janela na chave sem `observed_at` — resolve o conflito mas mantém o problema da
-  ordem. Custo: no padrão real (5 campanhas, 1 muda por hora, ~80% de repetição) o D0 grava 5 linhas/hora
-  em vez de ~1; para o volume do VOLC isso é irrelevante, e quem quer só pontos de mudança deduplica por
-  conteúdo na leitura (o replay da D já faz). Prova: `test_d2_*` (Python e banco).
+- **Releitura (D2 → D2', decisão do integrador sobre a medição da B):** o cron que relê o mesmo payload em outra
+  hora continua sendo uma leitura nova (`observed_at` na chave — retry com o mesmo `observed_at` é `noop`),
+  mas só vira **versão** se o `estado_negocio` (status — inclui o fechamento da janela —, valor, unidade, moeda,
+  cobertura, motivo) difere do vigente no instante dela. Igual → **confirmação** (`chave_idempotencia`,
+  `chave_natural`, `observed_at`, `available_at`, run, lote, versão confirmada; sem payload nem textos de linhagem),
+  útil para frescor ("ainda era verdade às 09h": `Registro.ultima_confirmacao`). Comparar só com a vigente não
+  basta quando a chegada é fora de ordem: (1) a redundância exige o mesmo estado também de toda versão de
+  ordem menor que venha a vencer depois (conhecida mais tarde); (2) ao inserir uma versão, todo corte posterior é
+  conferido e a confirmação que passaria a vencer com outro estado é **materializada** (a própria leitura vira
+  versão, com seus relógios). Com isso o **estado** do `as_of` em qualquer corte é o mesmo para qualquer ordem
+  de chegada (as LINHAS podem diferir: em ordem, a releitura igual vira confirmação; invertida, não há com que
+  comparar). A→B→A e o fechamento D+1 com o mesmo payload continuam virando versão (o estado muda).
+  Por que tabela e não só contagem no recibo do run: a contagem perde o frescor e, pior, impede o reparo — sem a
+  confirmação guardada, uma leitura antiga e diferente chegando atrasada passaria à frente de uma confirmação
+  mais nova e o estado ficaria dependente da ordem. Bytes medidos no HANDOFF-A §7.2. Prova: `test_d2_*`
+  (Python, banco, permutações).
 
 ## 7. `as_of` e `latest`
 
@@ -330,6 +340,9 @@ consumidor. Os 3 runs v21 presos em `running` (recibo L9) não mudam o status da
   `ix_obs_asof`, `ix_obs_entidade`, `ix_obs_run` (finalizar_run conta por run). Sem índice em `lote_id` (nenhuma
   função consulta por lote e não há DELETE para a FK precisar dele). O índice duplicado sobre `chave_base`
   medido pela B já tinha saído com o D2 (a coluna deixou de existir).
+- `confirmacao` (D2'): releitura de mesmo estado — `chave_natural`, `observed_at`, `available_at`, run, lote e a
+  versão confirmada (PK `(chave_natural, observed_at, available_at)`, sem payload); append-only, RLS forçado,
+  leitor só SELECT. Medido: **211 B por confirmação** contra **787 B por observação** (1e6 linhas).
 - Tabelas: `run_coleta` (única com UPDATE: `running` → final, uma vez; contagens nulas até fechar),
   `payload_bruto` (`sha256` = `encode(sha256(corpo_bruto),'hex')` por CHECK; corpo não-JSON guardado com
   `corpo` nulo), `lote` (pedido + payload + `recebido_em`), `observacao` (PK surrogate, UNIQUE na chave de
@@ -344,7 +357,8 @@ consumidor. Os 3 runs v21 presos em `running` (recibo L9) não mudam o status da
   dimensões fora de ordem, lote inexistente, linhagem divergente (run/fonte/coletor/schema/payload), run
   finalizado, `available_at` anterior ao recebimento dos bytes pelo banco, isolamento diferente de READ COMMITTED.
 - `finalizar_run` (R1-F8): inseridas e dead letters são contadas pelo banco; o chamador informa
-  `n_lidas` e `n_noop` (obrigatórios, `n_lidas >= inseridas + noop`); valor informado que não
+  `n_lidas` e `n_noop` (obrigatórios, `n_lidas >= inseridas + noop + confirmadas`; `n_confirmadas` também é
+  contada pelo banco — confirmações ainda não materializadas); valor informado que não
   bate é erro; repetir o mesmo fechamento é `noop`. CHECK com `IS NOT NULL` explícito nas contagens de run fechado.
 - Quem aplica (R1-F2/F22): superusuário aplica sem virar membro de nada; não-superusuário com CREATEROLE se
   concede `dil_obs_dono` só durante a transação e a revoga no fim (se já for membro permanente, WARNING).
