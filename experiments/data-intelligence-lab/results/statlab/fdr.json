@@ -1,0 +1,1075 @@
+{
+ "conclusoes": [],
+ "n_simulacoes": 500,
+ "natureza": "simulacao_com_seed_sem_dado_real",
+ "parametros": {
+  "declaracao": "célula declarada na 1ª olhada em que é rejeitada; para de ser testada",
+  "falso_vencedor": "célula nula declarada com B > A",
+  "fdr_realizado": "média de V/max(R,1)",
+  "lift": 0.3,
+  "m": 1000,
+  "nota": "m, p_base, lift, n e nº de olhadas são parâmetros de cenário, não defaults",
+  "p_base": 0.03,
+  "q": 0.05,
+  "teste": "z de duas proporções bicaudal (pooled) por célula"
+ },
+ "resultados": {
+  "cenarios": {
+   "nulo_global_10_olhadas": {
+    "frac_verdadeiras": 0.0,
+    "metodos": {
+     "bh": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 0.298,
+       "ic95": [
+        0.250168,
+        0.345832
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.136,
+       "ic95": [
+        0.103465,
+        0.168535
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.258,
+       "ic95": [
+        0.219611,
+        0.296389
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.258,
+       "ic95": [
+        0.221596,
+        0.298094
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": null,
+       "ic95": [
+        null,
+        null
+       ],
+       "n": 0,
+       "n_excluidos_nao_finitos": 500
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 0.298,
+       "ic95": [
+        0.250168,
+        0.345832
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "bonferroni": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 0.284,
+       "ic95": [
+        0.238634,
+        0.329366
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.13,
+       "ic95": [
+        0.0989668,
+        0.161033
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.254,
+       "ic95": [
+        0.215807,
+        0.292193
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.254,
+       "ic95": [
+        0.21782,
+        0.293931
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": null,
+       "ic95": [
+        null,
+        null
+       ],
+       "n": 0,
+       "n_excluidos_nao_finitos": 500
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 0.284,
+       "ic95": [
+        0.238634,
+        0.329366
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "nenhuma": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 192.976,
+       "ic95": [
+        191.902,
+        194.05
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 96.844,
+       "ic95": [
+        96.0563,
+        97.6317
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 1.0,
+       "ic95": [
+        0.992376,
+        1.0
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": null,
+       "ic95": [
+        null,
+        null
+       ],
+       "n": 0,
+       "n_excluidos_nao_finitos": 500
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 192.976,
+       "ic95": [
+        191.902,
+        194.05
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "n_olhadas": 10,
+    "n_por_braco": 5000,
+    "seed_cenario": 20261515
+   },
+   "nulo_global_uma_olhada": {
+    "frac_verdadeiras": 0.0,
+    "metodos": {
+     "bh": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 0.054,
+       "ic95": [
+        0.0326729,
+        0.0753271
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.03,
+       "ic95": [
+        0.0150327,
+        0.0449673
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.05,
+       "ic95": [
+        0.0308775,
+        0.0691225
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.05,
+       "ic95": [
+        0.0340937,
+        0.0727682
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": null,
+       "ic95": [
+        null,
+        null
+       ],
+       "n": 0,
+       "n_excluidos_nao_finitos": 500
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 0.054,
+       "ic95": [
+        0.0326729,
+        0.0753271
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "bonferroni": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 0.05,
+       "ic95": [
+        0.0308775,
+        0.0691225
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.03,
+       "ic95": [
+        0.0150327,
+        0.0449673
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.05,
+       "ic95": [
+        0.0308775,
+        0.0691225
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.05,
+       "ic95": [
+        0.0340937,
+        0.0727682
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": null,
+       "ic95": [
+        null,
+        null
+       ],
+       "n": 0,
+       "n_excluidos_nao_finitos": 500
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 0.05,
+       "ic95": [
+        0.0308775,
+        0.0691225
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "nenhuma": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 50.014,
+       "ic95": [
+        49.3897,
+        50.6383
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 25.284,
+       "ic95": [
+        24.8377,
+        25.7303
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 1.0,
+       "ic95": [
+        0.992376,
+        1.0
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": null,
+       "ic95": [
+        null,
+        null
+       ],
+       "n": 0,
+       "n_excluidos_nao_finitos": 500
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 50.014,
+       "ic95": [
+        49.3897,
+        50.6383
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "n_olhadas": 1,
+    "n_por_braco": 5000,
+    "seed_cenario": 20261415
+   },
+   "pi1_20pct_n20000_uma_olhada": {
+    "frac_verdadeiras": 0.2,
+    "metodos": {
+     "bh": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 8.224,
+       "ic95": [
+        7.95606,
+        8.49194
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 4.196,
+       "ic95": [
+        4.01217,
+        4.37983
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.0396551,
+       "ic95": [
+        0.0384236,
+        0.0408867
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 1.0,
+       "ic95": [
+        0.992376,
+        1.0
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.991337,
+       "ic95": [
+        0.990727,
+        0.991947
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 206.478,
+       "ic95": [
+        205.299,
+        207.657
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "bonferroni": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 0.038,
+       "ic95": [
+        0.0203305,
+        0.0556695
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.022,
+       "ic95": [
+        0.00913,
+        0.03487
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.000245892,
+       "ic95": [
+        0.000128096,
+        0.000363688
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.036,
+       "ic95": [
+        0.0228911,
+        0.0561843
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.811675,
+       "ic95": [
+        0.809233,
+        0.814116
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 162.36,
+       "ic95": [
+        161.339,
+        163.381
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "nenhuma": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 39.578,
+       "ic95": [
+        39.0182,
+        40.1378
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 20.126,
+       "ic95": [
+        19.7089,
+        20.5431
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.165409,
+       "ic95": [
+        0.163186,
+        0.167632
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 1.0,
+       "ic95": [
+        0.992376,
+        1.0
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.998614,
+       "ic95": [
+        0.998383,
+        0.998845
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 239.276,
+       "ic95": [
+        238.126,
+        240.426
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "n_olhadas": 1,
+    "n_por_braco": 20000,
+    "seed_cenario": 20261615
+   },
+   "pi1_5pct_n5000_10_olhadas": {
+    "frac_verdadeiras": 0.05,
+    "metodos": {
+     "bh": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 0.87,
+       "ic95": [
+        0.778267,
+        0.961733
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.418,
+       "ic95": [
+        0.355018,
+        0.480982
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.0920902,
+       "ic95": [
+        0.0820136,
+        0.102167
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.546,
+       "ic95": [
+        0.502174,
+        0.589124
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.164331,
+       "ic95": [
+        0.157199,
+        0.171462
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 9.098,
+       "ic95": [
+        8.67422,
+        9.52178
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "bonferroni": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 0.248,
+       "ic95": [
+        0.206243,
+        0.289757
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.118,
+       "ic95": [
+        0.088107,
+        0.147893
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.0647127,
+       "ic95": [
+        0.0524075,
+        0.0770179
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.228,
+       "ic95": [
+        0.193382,
+        0.266766
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.0740165,
+       "ic95": [
+        0.0707535,
+        0.0772794
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 3.914,
+       "ic95": [
+        3.74453,
+        4.08347
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "nenhuma": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 183.494,
+       "ic95": [
+        182.417,
+        184.571
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 91.858,
+       "ic95": [
+        91.0404,
+        92.6756
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.824521,
+       "ic95": [
+        0.822385,
+        0.826658
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 1.0,
+       "ic95": [
+        0.992376,
+        1.0
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.78921,
+       "ic95": [
+        0.783982,
+        0.794439
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 222.54,
+       "ic95": [
+        221.38,
+        223.7
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "n_olhadas": 10,
+    "n_por_braco": 5000,
+    "seed_cenario": 20261215
+   },
+   "pi1_5pct_n5000_50_olhadas": {
+    "frac_verdadeiras": 0.05,
+    "metodos": {
+     "bh": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 1.552,
+       "ic95": [
+        1.42869,
+        1.67531
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.82,
+       "ic95": [
+        0.735496,
+        0.904504
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.138218,
+       "ic95": [
+        0.127572,
+        0.148864
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.748,
+       "ic95": [
+        0.708152,
+        0.784066
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.188261,
+       "ic95": [
+        0.181229,
+        0.195293
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 10.91,
+       "ic95": [
+        10.4746,
+        11.3454
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "bonferroni": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 0.524,
+       "ic95": [
+        0.462118,
+        0.585882
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.268,
+       "ic95": [
+        0.223939,
+        0.312061
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.109106,
+       "ic95": [
+        0.0951206,
+        0.123091
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.418,
+       "ic95": [
+        0.375553,
+        0.461697
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.0888076,
+       "ic95": [
+        0.0853398,
+        0.0922755
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 4.906,
+       "ic95": [
+        4.72193,
+        5.09007
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "nenhuma": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 303.956,
+       "ic95": [
+        302.68,
+        305.232
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 152.122,
+       "ic95": [
+        151.153,
+        153.091
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.879461,
+       "ic95": [
+        0.877973,
+        0.880949
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 1.0,
+       "ic95": [
+        0.992376,
+        1.0
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.843313,
+       "ic95": [
+        0.838621,
+        0.848005
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 345.608,
+       "ic95": [
+        344.296,
+        346.92
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "n_olhadas": 50,
+    "n_por_braco": 5000,
+    "seed_cenario": 20261315
+   },
+   "pi1_5pct_n5000_uma_olhada": {
+    "frac_verdadeiras": 0.05,
+    "metodos": {
+     "bh": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 0.412,
+       "ic95": [
+        0.34835,
+        0.47565
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.202,
+       "ic95": [
+        0.160735,
+        0.243265
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.0490989,
+       "ic95": [
+        0.0402208,
+        0.0579771
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.304,
+       "ic95": [
+        0.265302,
+        0.345687
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.136823,
+       "ic95": [
+        0.130089,
+        0.143557
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 7.276,
+       "ic95": [
+        6.89488,
+        7.65712
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "bonferroni": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 0.046,
+       "ic95": [
+        0.0252584,
+        0.0667416
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 0.02,
+       "ic95": [
+        0.00652112,
+        0.0334789
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.0164714,
+       "ic95": [
+        0.00810537,
+        0.0248375
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 0.04,
+       "ic95": [
+        0.0260408,
+        0.0609736
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.0522422,
+       "ic95": [
+        0.0494108,
+        0.0550735
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 2.632,
+       "ic95": [
+        2.49007,
+        2.77393
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "nenhuma": {
+      "falsas_descobertas_por_replica": {
+       "estimativa": 47.494,
+       "ic95": [
+        46.8898,
+        48.0982
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "falsos_vencedores_por_replica": {
+       "estimativa": 23.524,
+       "ic95": [
+        23.1066,
+        23.9414
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fdr_realizado": {
+       "estimativa": 0.578029,
+       "ic95": [
+        0.573263,
+        0.582794
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "fwer": {
+       "estimativa": 1.0,
+       "ic95": [
+        0.992376,
+        1.0
+       ],
+       "n": 500
+      },
+      "poder": {
+       "estimativa": 0.696139,
+       "ic95": [
+        0.690587,
+        0.701691
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      },
+      "rejeicoes_por_replica": {
+       "estimativa": 82.13,
+       "ic95": [
+        81.3484,
+        82.9116
+       ],
+       "n": 500,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "n_olhadas": 1,
+    "n_por_braco": 5000,
+    "seed_cenario": 20261115
+   }
+  },
+  "conferencia_bh_propria_vs_statsmodels": {
+   "divergencias_fora_da_fronteira": 0,
+   "divergencias_por_empate_exato_na_fronteira": 1,
+   "n_casos": 3000,
+   "nota": "na fronteira exata a regra BH rejeita; a implementação própria usa tolerância 1e-12 e o statsmodels compara p/ecdf <= q, então o arredondamento pode divergir",
+   "seed": 20261015
+  }
+ },
+ "schema": "volc_dil.statlab.fdr/v1",
+ "seed": 20261015,
+ "versoes": {
+  "implementacao": "CPython",
+  "numpy": "2.5.3",
+  "python": "3.13.0",
+  "scipy": "1.18.1",
+  "statlab": "0.1.0",
+  "statsmodels": "0.15.0"
+ }
+}

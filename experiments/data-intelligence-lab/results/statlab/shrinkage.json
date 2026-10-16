@@ -1,0 +1,3151 @@
+{
+ "conclusoes": [],
+ "n_simulacoes": 300,
+ "natureza": "simulacao_com_seed_sem_dado_real",
+ "parametros": {
+  "K_unidades": 300,
+  "metricas": {
+   "cobertura": "fração das unidades cuja verdade cai no intervalo 90%",
+   "inclinacao_calibracao": "cov(est, verdade)/var(est); 1 = calibrado, <1 = estimativas dispersas demais",
+   "mse_relativo_ao_cru": "MSE / MSE do estimador cru na mesma réplica (unidades com n > 0)",
+   "regret_topk": "1 - média verdadeira do top-k escolhido / média do top-k verdadeiro",
+   "vencedores_por_sorte_topk": "unidades no top-k estimado que não estão no top-k verdadeiro"
+  },
+  "nivel_intervalo": 0.9,
+  "nota": "n, CVR, valores e top-k são parâmetros de cenário, não defaults operacionais",
+  "top_k": 10
+ },
+ "resultados": {
+  "contagens_gamma_poisson": {
+   "contagem_gamma_heterogenea": {
+    "estimadores": {
+     "cru": {
+      "cobertura": {
+       "estimativa": 0.937786,
+       "ic95": [
+        0.936208,
+        0.939365
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.399,
+       "ic95": [
+        0.381998,
+        0.416002
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.736909,
+       "ic95": [
+        0.731425,
+        0.742393
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.0449986,
+       "ic95": [
+        0.0439376,
+        0.0460595
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.109855,
+       "ic95": [
+        0.104092,
+        0.115618
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 3.92333,
+       "ic95": [
+        3.78067,
+        4.06599
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_mle": {
+      "cobertura": {
+       "estimativa": 0.897311,
+       "ic95": [
+        0.895169,
+        0.899453
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.168667,
+       "ic95": [
+        0.155119,
+        0.182214
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.00162,
+       "ic95": [
+        0.996857,
+        1.00639
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.0267884,
+       "ic95": [
+        0.0262987,
+        0.0272781
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.60939,
+       "ic95": [
+        0.597696,
+        0.621084
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.0750598,
+       "ic95": [
+        0.0706243,
+        0.0794954
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 3.48,
+       "ic95": [
+        3.3318,
+        3.6282
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_momentos": {
+      "cobertura": {
+       "estimativa": 0.897089,
+       "ic95": [
+        0.894928,
+        0.89925
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.167667,
+       "ic95": [
+        0.154165,
+        0.181168
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.00428,
+       "ic95": [
+        0.9994,
+        1.00915
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.0268549,
+       "ic95": [
+        0.0263679,
+        0.027342
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.61118,
+       "ic95": [
+        0.599349,
+        0.623011
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.0750514,
+       "ic95": [
+        0.0706425,
+        0.0794604
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 3.50333,
+       "ic95": [
+        3.35598,
+        3.65068
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "media_grupo": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.252,
+       "ic95": [
+        0.236474,
+        0.267526
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": -0.0794157,
+       "ic95": [
+        -0.182738,
+        0.023907
+       ],
+       "n": 193,
+       "n_excluidos_nao_finitos": 107
+      },
+      "mse": {
+       "estimativa": 0.124498,
+       "ic95": [
+        0.122728,
+        0.126267
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 2.87356,
+       "ic95": [
+        2.80073,
+        2.94639
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.681954,
+       "ic95": [
+        0.674039,
+        0.68987
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.67,
+       "ic95": [
+        9.60511,
+        9.73489
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "forma": 2.0,
+    "media_taxa": 0.5,
+    "mediana_e": 20,
+    "seed_cenario": 20271015,
+    "sigma_e": 1.0
+   },
+   "contagem_gamma_quase_homogenea": {
+    "estimadores": {
+     "cru": {
+      "cobertura": {
+       "estimativa": 0.932879,
+       "ic95": [
+        0.931292,
+        0.934465
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.806333,
+       "ic95": [
+        0.790494,
+        0.822172
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.0275437,
+       "ic95": [
+        0.0264492,
+        0.0286382
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.0452587,
+       "ic95": [
+        0.04428,
+        0.0462374
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.124198,
+       "ic95": [
+        0.121829,
+        0.126567
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.36,
+       "ic95": [
+        9.27096,
+        9.44904
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_mle": {
+      "cobertura": {
+       "estimativa": 0.673378,
+       "ic95": [
+        0.63357,
+        0.713185
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.00733333,
+       "ic95": [
+        0.00423701,
+        0.0104297
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 82.6483,
+       "ic95": [
+        63.6241,
+        101.672
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.00125775,
+       "ic95": [
+        0.00124366,
+        0.00127183
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.0286982,
+       "ic95": [
+        0.0280535,
+        0.0293429
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.0991893,
+       "ic95": [
+        0.0971359,
+        0.101243
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 8.96667,
+       "ic95": [
+        8.8662,
+        9.06713
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_momentos": {
+      "cobertura": {
+       "estimativa": 0.690433,
+       "ic95": [
+        0.648794,
+        0.732073
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.00833333,
+       "ic95": [
+        0.00506673,
+        0.0115999
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 3973.37,
+       "ic95": [
+        3020.78,
+        4925.96
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.00127154,
+       "ic95": [
+        0.00125656,
+        0.00128651
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.0289599,
+       "ic95": [
+        0.0283309,
+        0.0295889
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.0991391,
+       "ic95": [
+        0.0970582,
+        0.10122
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 8.94667,
+       "ic95": [
+        8.84504,
+        9.04829
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "media_grupo": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.268333,
+       "ic95": [
+        0.254012,
+        0.282655
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": -0.052326,
+       "ic95": [
+        -0.141898,
+        0.0372458
+       ],
+       "n": 174,
+       "n_excluidos_nao_finitos": 126
+      },
+      "mse": {
+       "estimativa": 0.00130249,
+       "ic95": [
+        0.00128875,
+        0.00131624
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.0297078,
+       "ic95": [
+        0.0290578,
+        0.0303578
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.139672,
+       "ic95": [
+        0.137263,
+        0.142082
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.63667,
+       "ic95": [
+        9.5741,
+        9.69923
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "forma": 200.0,
+    "media_taxa": 0.5,
+    "mediana_e": 20,
+    "seed_cenario": 20271115,
+    "sigma_e": 1.0
+   }
+  },
+  "receita_monetaria": {
+   "receita_cauda_pesada_sigma2": {
+    "K": 300,
+    "conc_cvr": 60,
+    "estimadores": {
+     "cru": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.281,
+       "ic95": [
+        0.265932,
+        0.296068
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.0999275,
+       "ic95": [
+        0.0914128,
+        0.108442
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 1702.33,
+       "ic95": [
+        1290.53,
+        2114.13
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.502118,
+       "ic95": [
+        0.49028,
+        0.513956
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 8.23667,
+       "ic95": [
+        8.1051,
+        8.36823
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_normal_var_empirica": {
+      "cobertura": {
+       "estimativa": 0.435656,
+       "ic95": [
+        0.383747,
+        0.487564
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.172333,
+       "ic95": [
+        0.157353,
+        0.187314
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 3.43994,
+       "ic95": [
+        0.416206,
+        6.46367
+       ],
+       "n": 225,
+       "n_excluidos_nao_finitos": 75
+      },
+      "mse": {
+       "estimativa": 160.466,
+       "ic95": [
+        107.066,
+        213.865
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.146661,
+       "ic95": [
+        0.133247,
+        0.160076
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.605807,
+       "ic95": [
+        0.588294,
+        0.62332
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 8.81333,
+       "ic95": [
+        8.68285,
+        8.94381
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "gamma_poisson_centavos": {
+      "cobertura": {
+       "estimativa": 0.00216667,
+       "ic95": [
+        0.0018854,
+        0.00244793
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.281,
+       "ic95": [
+        0.265932,
+        0.296068
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.0999281,
+       "ic95": [
+        0.0914132,
+        0.108443
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 1702.32,
+       "ic95": [
+        1290.52,
+        2114.12
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.999992,
+       "ic95": [
+        0.999991,
+        0.999993
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.502118,
+       "ic95": [
+        0.49028,
+        0.513956
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 8.23667,
+       "ic95": [
+        8.1051,
+        8.36823
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "gamma_poisson_reais": {
+      "cobertura": {
+       "estimativa": 0.0201,
+       "ic95": [
+        0.0192143,
+        0.0209857
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.281,
+       "ic95": [
+        0.265932,
+        0.296068
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.0999975,
+       "ic95": [
+        0.0914772,
+        0.108518
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 1700.94,
+       "ic95": [
+        1289.3,
+        2112.57
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.998913,
+       "ic95": [
+        0.998825,
+        0.999001
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.502118,
+       "ic95": [
+        0.49028,
+        0.513956
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 8.23667,
+       "ic95": [
+        8.1051,
+        8.36823
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "hurdle_beta_lognormal": {
+      "cobertura": {
+       "estimativa": 0.876156,
+       "ic95": [
+        0.871104,
+        0.881207
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.092,
+       "ic95": [
+        0.0812852,
+        0.102715
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.998315,
+       "ic95": [
+        0.979445,
+        1.01718
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 44.5107,
+       "ic95": [
+        43.4213,
+        45.6
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.0812937,
+       "ic95": [
+        0.0731662,
+        0.0894211
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.285564,
+       "ic95": [
+        0.275038,
+        0.29609
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.31333,
+       "ic95": [
+        6.14849,
+        6.47818
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "media_grupo": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.241,
+       "ic95": [
+        0.226624,
+        0.255376
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.0154751,
+       "ic95": [
+        -0.0718901,
+        0.10284
+       ],
+       "n": 152,
+       "n_excluidos_nao_finitos": 148
+      },
+      "mse": {
+       "estimativa": 76.3471,
+       "ic95": [
+        74.5777,
+        78.1165
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.14026,
+       "ic95": [
+        0.125882,
+        0.154637
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.744474,
+       "ic95": [
+        0.736796,
+        0.752152
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.63,
+       "ic95": [
+        9.56794,
+        9.69206
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "gamma_poisson_peso_do_prior_mediano": {
+     "centavos": 1.99111e-06,
+     "reais": 0.000263226
+    },
+    "media_cvr": 0.03,
+    "mediana_n": 80,
+    "mediana_valor": 40.0,
+    "seed_cenario": 20281115,
+    "sigma_log_valor": 2.0,
+    "sigma_n": 1.0,
+    "tau_log_valor": 0.4
+   },
+   "receita_lognormal_zero_inflada": {
+    "K": 300,
+    "conc_cvr": 60,
+    "estimadores": {
+     "cru": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.398333,
+       "ic95": [
+        0.379976,
+        0.416691
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.319302,
+       "ic95": [
+        0.309148,
+        0.329456
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 9.10467,
+       "ic95": [
+        8.29342,
+        9.91592
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.352367,
+       "ic95": [
+        0.34171,
+        0.363025
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.83333,
+       "ic95": [
+        6.68444,
+        6.98223
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_normal_var_empirica": {
+      "cobertura": {
+       "estimativa": 0.908667,
+       "ic95": [
+        0.901695,
+        0.915638
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.0903333,
+       "ic95": [
+        0.0797368,
+        0.10093
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.10268,
+       "ic95": [
+        1.06726,
+        1.13809
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 2.34289,
+       "ic95": [
+        2.25397,
+        2.43181
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.313485,
+       "ic95": [
+        0.299531,
+        0.327439
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.293143,
+       "ic95": [
+        0.282493,
+        0.303793
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.32667,
+       "ic95": [
+        6.17573,
+        6.47761
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "gamma_poisson_centavos": {
+      "cobertura": {
+       "estimativa": 0.00912222,
+       "ic95": [
+        0.00849068,
+        0.00975377
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.398333,
+       "ic95": [
+        0.379976,
+        0.416691
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.319314,
+       "ic95": [
+        0.30916,
+        0.329468
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 9.10396,
+       "ic95": [
+        8.29282,
+        9.9151
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.999933,
+       "ic95": [
+        0.999928,
+        0.999938
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.352367,
+       "ic95": [
+        0.34171,
+        0.363025
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.83333,
+       "ic95": [
+        6.68444,
+        6.98223
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "gamma_poisson_reais": {
+      "cobertura": {
+       "estimativa": 0.0920111,
+       "ic95": [
+        0.0901392,
+        0.093883
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.396667,
+       "ic95": [
+        0.378394,
+        0.41494
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.321308,
+       "ic95": [
+        0.31113,
+        0.331487
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 8.99086,
+       "ic95": [
+        8.19715,
+        9.78458
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.989211,
+       "ic95": [
+        0.988429,
+        0.989993
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.35153,
+       "ic95": [
+        0.340923,
+        0.362137
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.82333,
+       "ic95": [
+        6.67502,
+        6.97165
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "hurdle_beta_lognormal": {
+      "cobertura": {
+       "estimativa": 0.8926,
+       "ic95": [
+        0.889936,
+        0.895264
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.0973333,
+       "ic95": [
+        0.0866645,
+        0.108002
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.00694,
+       "ic95": [
+        0.993115,
+        1.02077
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 1.92205,
+       "ic95": [
+        1.8752,
+        1.96889
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.264682,
+       "ic95": [
+        0.252396,
+        0.276968
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.232222,
+       "ic95": [
+        0.223427,
+        0.241016
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 5.76333,
+       "ic95": [
+        5.60872,
+        5.91795
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "media_grupo": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.26,
+       "ic95": [
+        0.24502,
+        0.27498
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.0268987,
+       "ic95": [
+        -0.0581594,
+        0.111957
+       ],
+       "n": 162,
+       "n_excluidos_nao_finitos": 138
+      },
+      "mse": {
+       "estimativa": 3.68258,
+       "ic95": [
+        3.59222,
+        3.77294
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.504734,
+       "ic95": [
+        0.481835,
+        0.527632
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.75149,
+       "ic95": [
+        0.743304,
+        0.759675
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.64333,
+       "ic95": [
+        9.57444,
+        9.71223
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "gamma_poisson_peso_do_prior_mediano": {
+     "centavos": 1.09662e-05,
+     "reais": 0.00180773
+    },
+    "media_cvr": 0.03,
+    "mediana_n": 80,
+    "mediana_valor": 40.0,
+    "seed_cenario": 20281015,
+    "sigma_log_valor": 1.0,
+    "sigma_n": 1.0,
+    "tau_log_valor": 0.4
+   },
+   "receita_valor_pareto_hurdle_mal_especificado": {
+    "K": 300,
+    "alpha_pareto": 1.8,
+    "conc_cvr": 60,
+    "estimadores": {
+     "cru": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.378,
+       "ic95": [
+        0.361529,
+        0.394471
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.32095,
+       "ic95": [
+        0.307418,
+        0.334483
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 25.9841,
+       "ic95": [
+        18.0339,
+        33.9343
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.342143,
+       "ic95": [
+        0.330298,
+        0.353987
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.63667,
+       "ic95": [
+        6.47618,
+        6.79715
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_normal_var_empirica": {
+      "cobertura": {
+       "estimativa": 0.825578,
+       "ic95": [
+        0.796538,
+        0.854618
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.0943333,
+       "ic95": [
+        0.0821951,
+        0.106472
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.25137,
+       "ic95": [
+        1.07179,
+        1.43096
+       ],
+       "n": 295,
+       "n_excluidos_nao_finitos": 5
+      },
+      "mse": {
+       "estimativa": 5.50601,
+       "ic95": [
+        4.75316,
+        6.25886
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.34871,
+       "ic95": [
+        0.328931,
+        0.368489
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.338417,
+       "ic95": [
+        0.321267,
+        0.355568
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.6,
+       "ic95": [
+        6.41421,
+        6.78579
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "gamma_poisson_centavos": {
+      "cobertura": {
+       "estimativa": 0.00948889,
+       "ic95": [
+        0.00882547,
+        0.0101523
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.378,
+       "ic95": [
+        0.361529,
+        0.394471
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.320959,
+       "ic95": [
+        0.307427,
+        0.334492
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 25.9831,
+       "ic95": [
+        18.033,
+        33.9332
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.999952,
+       "ic95": [
+        0.999947,
+        0.999956
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.342143,
+       "ic95": [
+        0.330298,
+        0.353987
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.63667,
+       "ic95": [
+        6.47618,
+        6.79715
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "gamma_poisson_reais": {
+      "cobertura": {
+       "estimativa": 0.0975889,
+       "ic95": [
+        0.0957051,
+        0.0994727
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.376,
+       "ic95": [
+        0.359384,
+        0.392616
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.322437,
+       "ic95": [
+        0.308859,
+        0.336015
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 25.8234,
+       "ic95": [
+        17.8878,
+        33.7591
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.992195,
+       "ic95": [
+        0.991498,
+        0.992892
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.341893,
+       "ic95": [
+        0.32997,
+        0.353815
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.63,
+       "ic95": [
+        6.46865,
+        6.79135
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "hurdle_beta_lognormal": {
+      "cobertura": {
+       "estimativa": 0.880667,
+       "ic95": [
+        0.877715,
+        0.883619
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.126667,
+       "ic95": [
+        0.115433,
+        0.1379
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.08491,
+       "ic95": [
+        1.07159,
+        1.09823
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 3.29881,
+       "ic95": [
+        3.22568,
+        3.37193
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.249771,
+       "ic95": [
+        0.235467,
+        0.264075
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.206371,
+       "ic95": [
+        0.198003,
+        0.214739
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 5.26333,
+       "ic95": [
+        5.10194,
+        5.42472
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "media_grupo": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.255,
+       "ic95": [
+        0.239959,
+        0.270041
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.00478647,
+       "ic95": [
+        -0.0685098,
+        0.0780828
+       ],
+       "n": 196,
+       "n_excluidos_nao_finitos": 104
+      },
+      "mse": {
+       "estimativa": 6.90822,
+       "ic95": [
+        6.75509,
+        7.06135
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.52635,
+       "ic95": [
+        0.495165,
+        0.557534
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.75245,
+       "ic95": [
+        0.744883,
+        0.760018
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.71333,
+       "ic95": [
+        9.65217,
+        9.77449
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "gamma_poisson_peso_do_prior_mediano": {
+     "centavos": 8.04363e-06,
+     "reais": 0.00130932
+    },
+    "media_cvr": 0.03,
+    "mediana_n": 80,
+    "mediana_valor": 40.0,
+    "seed_cenario": 20281215,
+    "sigma_log_valor": 1.0,
+    "sigma_n": 1.0,
+    "tau_log_valor": 0.4
+   }
+  },
+  "taxas_beta_binomial": {
+   "cvr_beta_unimodal": {
+    "estimadores": {
+     "cru": {
+      "cobertura": {
+       "estimativa": 0.91782,
+       "ic95": [
+        0.916039,
+        0.9196
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "cobertura_top10pct_verdadeiro": {
+       "estimativa": 0.912444,
+       "ic95": [
+        0.906806,
+        0.918083
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.573333,
+       "ic95": [
+        0.555475,
+        0.591191
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.333434,
+       "ic95": [
+        0.327112,
+        0.339756
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.000974063,
+       "ic95": [
+        0.000941622,
+        0.0010065
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.326923,
+       "ic95": [
+        0.31718,
+        0.336667
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.99667,
+       "ic95": [
+        6.85555,
+        7.13778
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_mle": {
+      "cobertura": {
+       "estimativa": 0.899022,
+       "ic95": [
+        0.896131,
+        0.901914
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "cobertura_top10pct_verdadeiro": {
+       "estimativa": 0.678889,
+       "ic95": [
+        0.66586,
+        0.691918
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.0786667,
+       "ic95": [
+        0.0691305,
+        0.0882029
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.995159,
+       "ic95": [
+        0.98156,
+        1.00876
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.000256405,
+       "ic95": [
+        0.00025285,
+        0.00025996
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.279809,
+       "ic95": [
+        0.27208,
+        0.287538
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.201573,
+       "ic95": [
+        0.194505,
+        0.208641
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 5.91333,
+       "ic95": [
+        5.76472,
+        6.06195
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_momentos": {
+      "cobertura": {
+       "estimativa": 0.8944,
+       "ic95": [
+        0.89097,
+        0.89783
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.078,
+       "ic95": [
+        0.0681733,
+        0.0878267
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.00775,
+       "ic95": [
+        0.992319,
+        1.02319
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.000257915,
+       "ic95": [
+        0.000254317,
+        0.000261513
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.281504,
+       "ic95": [
+        0.27368,
+        0.289328
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.20153,
+       "ic95": [
+        0.194195,
+        0.208864
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 5.93,
+       "ic95": [
+        5.77715,
+        6.08285
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "media_grupo": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.257333,
+       "ic95": [
+        0.242305,
+        0.272362
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": -0.0148737,
+       "ic95": [
+        -0.12363,
+        0.0938827
+       ],
+       "n": 195,
+       "n_excluidos_nao_finitos": 105
+      },
+      "mse": {
+       "estimativa": 0.000469693,
+       "ic95": [
+        0.000463515,
+        0.000475871
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.513933,
+       "ic95": [
+        0.499418,
+        0.528449
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.689052,
+       "ic95": [
+        0.680831,
+        0.697273
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.66,
+       "ic95": [
+        9.59478,
+        9.72522
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "mediana_n": 50,
+    "seed_cenario": 20261015,
+    "sigma_n": 1.0,
+    "status_prior_contagem": {
+     "mle": {
+      "estimado": 300
+     },
+     "momentos": {
+      "estimado": 300
+     }
+    },
+    "unidades_sem_dados_media": 0.01
+   },
+   "cvr_bimodal_vencedores_raros": {
+    "estimadores": {
+     "cru": {
+      "cobertura": {
+       "estimativa": 0.92053,
+       "ic95": [
+        0.91885,
+        0.92221
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "cobertura_top10pct_verdadeiro": {
+       "estimativa": 0.914766,
+       "ic95": [
+        0.90888,
+        0.920653
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.544667,
+       "ic95": [
+        0.525834,
+        0.563499
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.276439,
+       "ic95": [
+        0.269583,
+        0.283294
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.000755942,
+       "ic95": [
+        0.000728652,
+        0.000783232
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.36879,
+       "ic95": [
+        0.357187,
+        0.380394
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 6.27,
+       "ic95": [
+        6.12263,
+        6.41737
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_mle": {
+      "cobertura": {
+       "estimativa": 0.916778,
+       "ic95": [
+        0.913906,
+        0.919649
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "cobertura_top10pct_verdadeiro": {
+       "estimativa": 0.573222,
+       "ic95": [
+        0.558688,
+        0.587756
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.0666667,
+       "ic95": [
+        0.0576779,
+        0.0756554
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.14925,
+       "ic95": [
+        1.12676,
+        1.17174
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.000170083,
+       "ic95": [
+        0.00016664,
+        0.000173525
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.24052,
+       "ic95": [
+        0.232853,
+        0.248186
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.233935,
+       "ic95": [
+        0.224014,
+        0.243856
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 5.06333,
+       "ic95": [
+        4.89963,
+        5.22704
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_momentos": {
+      "cobertura": {
+       "estimativa": 0.926189,
+       "ic95": [
+        0.923586,
+        0.928792
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.0766667,
+       "ic95": [
+        0.0667925,
+        0.0865409
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.04346,
+       "ic95": [
+        1.0226,
+        1.06432
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.000170124,
+       "ic95": [
+        0.000166687,
+        0.000173561
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.240335,
+       "ic95": [
+        0.23281,
+        0.24786
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.233698,
+       "ic95": [
+        0.223792,
+        0.243605
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 5.03,
+       "ic95": [
+        4.86801,
+        5.19199
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "media_grupo": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.264333,
+       "ic95": [
+        0.249284,
+        0.279383
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.0307094,
+       "ic95": [
+        -0.0399926,
+        0.101411
+       ],
+       "n": 183,
+       "n_excluidos_nao_finitos": 117
+      },
+      "mse": {
+       "estimativa": 0.000280526,
+       "ic95": [
+        0.000274479,
+        0.000286572
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.397251,
+       "ic95": [
+        0.383829,
+        0.410673
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.744005,
+       "ic95": [
+        0.737348,
+        0.750662
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.72667,
+       "ic95": [
+        9.66977,
+        9.78356
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "mediana_n": 50,
+    "seed_cenario": 20261115,
+    "sigma_n": 1.0,
+    "status_prior_contagem": {
+     "mle": {
+      "estimado": 300
+     },
+     "momentos": {
+      "estimado": 300
+     }
+    },
+    "unidades_sem_dados_media": 0.0133333
+   },
+   "cvr_n_grande_pouco_ganho": {
+    "estimadores": {
+     "cru": {
+      "cobertura": {
+       "estimativa": 0.898878,
+       "ic95": [
+        0.896942,
+        0.900814
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "cobertura_top10pct_verdadeiro": {
+       "estimativa": 0.895778,
+       "ic95": [
+        0.889542,
+        0.902014
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.269,
+       "ic95": [
+        0.252624,
+        0.285376
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.987215,
+       "ic95": [
+        0.986204,
+        0.988227
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 6.05164e-06,
+       "ic95": [
+        5.97163e-06,
+        6.13165e-06
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.00424,
+       "ic95": [
+        0.0037614,
+        0.00471861
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 0.986667,
+       "ic95": [
+        0.900855,
+        1.07248
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_mle": {
+      "cobertura": {
+       "estimativa": 0.897878,
+       "ic95": [
+        0.895846,
+        0.899909
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "cobertura_top10pct_verdadeiro": {
+       "estimativa": 0.891222,
+       "ic95": [
+        0.884591,
+        0.897854
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.266667,
+       "ic95": [
+        0.250363,
+        0.28297
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.999728,
+       "ic95": [
+        0.998698,
+        1.00076
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 5.96582e-06,
+       "ic95": [
+        5.88696e-06,
+        6.04467e-06
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.986033,
+       "ic95": [
+        0.983781,
+        0.988284
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.00418658,
+       "ic95": [
+        0.00370504,
+        0.00466812
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 0.98,
+       "ic95": [
+        0.893707,
+        1.06629
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_momentos": {
+      "cobertura": {
+       "estimativa": 0.897789,
+       "ic95": [
+        0.895771,
+        0.899807
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.266667,
+       "ic95": [
+        0.250363,
+        0.28297
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.999818,
+       "ic95": [
+        0.998776,
+        1.00086
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 5.96695e-06,
+       "ic95": [
+        5.88806e-06,
+        6.04585e-06
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.98622,
+       "ic95": [
+        0.983952,
+        0.988488
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.00418658,
+       "ic95": [
+        0.00370504,
+        0.00466812
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 0.98,
+       "ic95": [
+        0.893707,
+        1.06629
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "media_grupo": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.243667,
+       "ic95": [
+        0.229513,
+        0.257821
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.0348225,
+       "ic95": [
+        -0.0634662,
+        0.133111
+       ],
+       "n": 192,
+       "n_excluidos_nao_finitos": 108
+      },
+      "mse": {
+       "estimativa": 0.000476797,
+       "ic95": [
+        0.00046973,
+        0.000483863
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 79.5576,
+       "ic95": [
+        78.209,
+        80.9063
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.69489,
+       "ic95": [
+        0.686644,
+        0.703136
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.72,
+       "ic95": [
+        9.66429,
+        9.77571
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "mediana_n": 5000,
+    "seed_cenario": 20261315,
+    "sigma_n": 0.3,
+    "status_prior_contagem": {
+     "mle": {
+      "estimado": 300
+     },
+     "momentos": {
+      "estimado": 300
+     }
+    },
+    "unidades_sem_dados_media": 0.0
+   },
+   "cvr_n_informativo": {
+    "estimadores": {
+     "cru": {
+      "cobertura": {
+       "estimativa": 0.917697,
+       "ic95": [
+        0.915876,
+        0.919518
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "cobertura_top10pct_verdadeiro": {
+       "estimativa": 0.904667,
+       "ic95": [
+        0.898716,
+        0.910617
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.282667,
+       "ic95": [
+        0.266812,
+        0.298522
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.500865,
+       "ic95": [
+        0.493646,
+        0.508083
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.00071418,
+       "ic95": [
+        0.000693103,
+        0.000735257
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.257916,
+       "ic95": [
+        0.247917,
+        0.267915
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 5.61,
+       "ic95": [
+        5.45248,
+        5.76752
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_mle": {
+      "cobertura": {
+       "estimativa": 0.852844,
+       "ic95": [
+        0.849071,
+        0.856618
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "cobertura_top10pct_verdadeiro": {
+       "estimativa": 0.802444,
+       "ic95": [
+        0.792481,
+        0.812408
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.0136667,
+       "ic95": [
+        0.00966475,
+        0.0176686
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.03756,
+       "ic95": [
+        1.02727,
+        1.04784
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.000320018,
+       "ic95": [
+        0.000315888,
+        0.000324147
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.468662,
+       "ic95": [
+        0.458158,
+        0.479167
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.099646,
+       "ic95": [
+        0.09423,
+        0.105062
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 3.90333,
+       "ic95": [
+        3.75815,
+        4.04852
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_momentos": {
+      "cobertura": {
+       "estimativa": 0.789144,
+       "ic95": [
+        0.783024,
+        0.795265
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.0213333,
+       "ic95": [
+        0.0161661,
+        0.0265006
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 1.03787,
+       "ic95": [
+        1.02229,
+        1.05345
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.000440686,
+       "ic95": [
+        0.0004335,
+        0.000447872
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.646939,
+       "ic95": [
+        0.630164,
+        0.663713
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.1052,
+       "ic95": [
+        0.0996597,
+        0.110741
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 3.97,
+       "ic95": [
+        3.83199,
+        4.10801
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "media_grupo": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.264667,
+       "ic95": [
+        0.248683,
+        0.28065
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": -0.0267362,
+       "ic95": [
+        -0.0870504,
+        0.0335779
+       ],
+       "n": 185,
+       "n_excluidos_nao_finitos": 115
+      },
+      "mse": {
+       "estimativa": 0.000967475,
+       "ic95": [
+        0.00094441,
+        0.00099054
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.42803,
+       "ic95": [
+        1.37992,
+        1.47614
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.715447,
+       "ic95": [
+        0.707629,
+        0.723266
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.7,
+       "ic95": [
+        9.64183,
+        9.75817
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "mediana_n": 50,
+    "seed_cenario": 20261215,
+    "sigma_n": 1.0,
+    "status_prior_contagem": {
+     "mle": {
+      "estimado": 300
+     },
+     "momentos": {
+      "estimado": 300
+     }
+    },
+    "unidades_sem_dados_media": 0.01
+   },
+   "cvr_sem_heterogeneidade": {
+    "estimadores": {
+     "cru": {
+      "cobertura": {
+       "estimativa": 0.919441,
+       "ic95": [
+        0.917634,
+        0.921248
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "cobertura_top10pct_verdadeiro": {
+       "estimativa": 0.922333,
+       "ic95": [
+        0.91643,
+        0.928236
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.744333,
+       "ic95": [
+        0.729324,
+        0.759343
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": -1.74876e-05,
+       "ic95": [
+        -5.10923e-05,
+        1.61171e-05
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 0.00100786,
+       "ic95": [
+        0.00096692,
+        0.00104879
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 1.0,
+       "ic95": [
+        1.0,
+        1.0
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.0126045,
+       "ic95": [
+        0.0123924,
+        0.0128166
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.65667,
+       "ic95": [
+        9.59267,
+        9.72066
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_mle": {
+      "cobertura": {
+       "estimativa": 0.851367,
+       "ic95": [
+        0.814047,
+        0.888687
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "cobertura_top10pct_verdadeiro": {
+       "estimativa": 0.855444,
+       "ic95": [
+        0.816621,
+        0.894267
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.013,
+       "ic95": [
+        0.00918808,
+        0.0168119
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 0.591043,
+       "ic95": [
+        -0.638468,
+        1.82055
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 1.64556e-06,
+       "ic95": [
+        1.39683e-06,
+        1.89429e-06
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.00172621,
+       "ic95": [
+        0.00144413,
+        0.0020083
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.0122527,
+       "ic95": [
+        0.0120377,
+        0.0124677
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.62667,
+       "ic95": [
+        9.56662,
+        9.68671
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "eb_momentos": {
+      "cobertura": {
+       "estimativa": 0.543311,
+       "ic95": [
+        0.490035,
+        0.596587
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "frac_topk_n_baixo": {
+       "estimativa": 0.0176667,
+       "ic95": [
+        0.01315,
+        0.0221834
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": 2.29687,
+       "ic95": [
+        -2.9105,
+        7.50423
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse": {
+       "estimativa": 2.50505e-06,
+       "ic95": [
+        2.08025e-06,
+        2.92985e-06
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.00234547,
+       "ic95": [
+        0.00196898,
+        0.00272195
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.0123032,
+       "ic95": [
+        0.0120894,
+        0.0125171
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.64333,
+       "ic95": [
+        9.58377,
+        9.70289
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     },
+     "media_grupo": {
+      "frac_topk_n_baixo": {
+       "estimativa": 0.257,
+       "ic95": [
+        0.242141,
+        0.271859
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "inclinacao_calibracao": {
+       "estimativa": -0.0260888,
+       "ic95": [
+        -0.134966,
+        0.0827882
+       ],
+       "n": 187,
+       "n_excluidos_nao_finitos": 113
+      },
+      "mse": {
+       "estimativa": 1.17896e-06,
+       "ic95": [
+        9.63691e-07,
+        1.39422e-06
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "mse_relativo_ao_cru": {
+       "estimativa": 0.00124568,
+       "ic95": [
+        0.000997803,
+        0.00149357
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "regret_topk": {
+       "estimativa": 0.0124569,
+       "ic95": [
+        0.0122351,
+        0.0126787
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      },
+      "vencedores_por_sorte_topk": {
+       "estimativa": 9.69333,
+       "ic95": [
+        9.63343,
+        9.75324
+       ],
+       "n": 300,
+       "n_excluidos_nao_finitos": 0
+      }
+     }
+    },
+    "mediana_n": 50,
+    "seed_cenario": 20261415,
+    "sigma_n": 1.0,
+    "status_prior_contagem": {
+     "mle": {
+      "estimado": 294,
+      "fronteira_mle": 6
+     },
+     "momentos": {
+      "estimado": 154,
+      "sem_heterogeneidade_detectada": 146
+     }
+    },
+    "unidades_sem_dados_media": 0.0133333
+   }
+  }
+ },
+ "schema": "volc_dil.statlab.shrinkage/v1",
+ "seed": 20261015,
+ "versoes": {
+  "implementacao": "CPython",
+  "numpy": "2.5.3",
+  "python": "3.13.0",
+  "scipy": "1.18.1",
+  "statlab": "0.1.0",
+  "statsmodels": "0.15.0"
+ }
+}
