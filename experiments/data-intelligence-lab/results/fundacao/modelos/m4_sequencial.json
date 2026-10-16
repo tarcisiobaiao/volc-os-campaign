@@ -1,0 +1,152 @@
+{
+ "manifesto": {
+  "catalogo_sha256": "d449d43f12ee20fdff245663329e8779aaa96faa39a4e71617cf746ec8601600",
+  "natureza": "simulacao_com_seed_sem_dado_real",
+  "parametros": {
+   "T_cs": 1500,
+   "alpha": 0.05,
+   "janela_limite": 200,
+   "lift": 1.25,
+   "lift_fraco_descritivo": 1.1,
+   "m": 50,
+   "n": 2000,
+   "n_alt": 10,
+   "q": 0.1
+  },
+  "pre_registro": "results/fundacao/modelos/PRE-REGISTRO.md",
+  "script": "fundacao_modelos_sequencial.py",
+  "seeds": [
+   20261501,
+   20261502,
+   20261503,
+   20261504
+  ],
+  "sha256_codigo": "987de29a7f93cf7ddfb0c28b43fa1952df23f8bb18b7473c66e7643703be7f2e",
+  "teto_de_estado": "testado com sintético",
+  "versoes": {
+   "catalogo": "1.0.0",
+   "implementacao": "CPython",
+   "modelos": "0.1.0",
+   "numpy": "2.5.3",
+   "python": "3.13.0",
+   "scipy": "1.18.1",
+   "simulador": "1.0.0",
+   "sklearn": "1.9.1",
+   "statlab": "0.1.0",
+   "statsmodels": "0.15.0"
+  }
+ },
+ "resultados": {
+  "H4b_suportada": true,
+  "cs": {
+   "T": 1500,
+   "alpha": 0.05,
+   "n_trajetorias": 225,
+   "receita_limite_violado_recusa": {
+    "estimativa": 0.702222,
+    "ic95": [
+     0.639484,
+     0.758171
+    ],
+    "n": 225
+   },
+   "receita_recortada_erro_uniforme": {
+    "estimativa": 0.0133333,
+    "ic95": [
+     0.00454471,
+     0.0384609
+    ],
+    "n": 225
+   },
+   "taxa_destino_erro_uniforme": {
+    "estimativa": 0.00444444,
+    "ic95": [
+     0.000784985,
+     0.0247412
+    ],
+    "n": 225
+   }
+  },
+  "fdr": {
+   "H4a_ebh_controla": true,
+   "bh_infla_com_peeking": true,
+   "olhadas_10": {
+    "bh": {
+     "ep_mc": 0.00490254,
+     "fdr": 0.214963,
+     "poder": 1.0
+    },
+    "ebh": {
+     "ep_mc": 0.00102013,
+     "fdr": 0.00479545,
+     "poder": 0.995
+    }
+   },
+   "olhadas_50": {
+    "bh": {
+     "ep_mc": 0.00488713,
+     "fdr": 0.276991,
+     "poder": 1.0
+    },
+    "ebh": {
+     "ep_mc": 0.00136485,
+     "fdr": 0.00862121,
+     "poder": 0.99575
+    }
+   },
+   "uma_olhada": {
+    "bh": {
+     "ep_mc": 0.00373385,
+     "fdr": 0.0729937,
+     "poder": 1.0
+    },
+    "ebh": {
+     "ep_mc": 0.000596769,
+     "fdr": 0.00159091,
+     "poder": 0.994
+    }
+   }
+  },
+  "fdr_efeito_fraco_descritivo": {
+   "H4a_ebh_controla": true,
+   "bh_infla_com_peeking": true,
+   "olhadas_10": {
+    "bh": {
+     "ep_mc": 0.00927425,
+     "fdr": 0.158926,
+     "poder": 0.6195
+    },
+    "ebh": {
+     "ep_mc": 0.005,
+     "fdr": 0.005,
+     "poder": 0.075
+    }
+   },
+   "olhadas_50": {
+    "bh": {
+     "ep_mc": 0.00929272,
+     "fdr": 0.209375,
+     "poder": 0.657
+    },
+    "ebh": {
+     "ep_mc": 0.005,
+     "fdr": 0.005,
+     "poder": 0.094
+    }
+   },
+   "uma_olhada": {
+    "bh": {
+     "ep_mc": 0.00759439,
+     "fdr": 0.0771315,
+     "poder": 0.551
+    },
+    "ebh": {
+     "ep_mc": 0.0,
+     "fdr": 0.0,
+     "poder": 0.0625
+    }
+   }
+  },
+  "mu0_taxa_destino_derivada_do_simulador": 0.23505
+ }
+}

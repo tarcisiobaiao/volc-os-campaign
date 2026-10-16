@@ -46,13 +46,17 @@ def _uma_observacao_sql() -> str:
         '"schema_version":"google_ads.gaql.campaign_day.v1","coletor_nome":"c","coletor_versao":"1",'
         '"status":"observed","motivo":null,"cobertura_ppm":null}'
     )
+    relogio = ("RESET ROLE; CREATE OR REPLACE FUNCTION dil_obs._agora() RETURNS timestamptz LANGUAGE sql STABLE PARALLEL SAFE "
+               "SET search_path = '' AS $$ SELECT {} $$;")
     return (
+        relogio.format("'2026-08-02T04:05:00-03:00'::timestamptz") +  # relógio do banco simulado (R1-F1)
         "SET ROLE dil_obs_escritor;"
         "SELECT dil_obs.registrar_run('run-rb','google_ads','c','1','2026-08-01T00:00:00-03:00');"
         f"SELECT dil_obs.registrar_payload('{h}', decode('{corpo.hex()}','hex'), 'application/json');"
-        f"SELECT dil_obs.registrar_lote('lote-rb','run-rb','{h}','google_ads.gaql.campaign_day.v1','{{}}','2026-08-02T04:00:00-03:00');"
-        f"SELECT dil_obs.registrar_observacao('{obs}'::jsonb);"
-        f"SELECT dil_obs.registrar_observacao('{obs}'::jsonb);"
+        f"SELECT dil_obs.registrar_lote('lote-rb','run-rb','{h}','google_ads.gaql.campaign_day.v1','{{}}',NULL);"
+        f"SELECT dil_obs.registrar_observacao('{obs}'::json);"
+        f"SELECT dil_obs.registrar_observacao('{obs}'::json);"
+        + relogio.format("pg_catalog.now()")
     )
 
 

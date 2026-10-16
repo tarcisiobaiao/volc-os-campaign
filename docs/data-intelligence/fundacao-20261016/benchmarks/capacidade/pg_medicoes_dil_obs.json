@@ -1,0 +1,372 @@
+{
+ "seed": 20261016,
+ "escalas": [
+  100000,
+  1000000
+ ],
+ "ddl": "variantes de medição próprias + réplica v21 + dil_obs_0001 REAL da frente A",
+ "amostras": {
+  "as_of_ponto": 5000,
+  "snapshot": 60,
+  "ingestao": 60,
+  "global": 5
+ },
+ "medicoes": [
+  {
+   "variante": "dil_obs_0001",
+   "particionada": false,
+   "n_alvo": 100000,
+   "dims": {
+    "contas": 10,
+    "entidades_por_conta": 20,
+    "dias": 90
+   },
+   "carga_s": 5.5687687920290045,
+   "tamanho": {
+    "linhas": 99000,
+    "heap_bytes": 49545216,
+    "indices_bytes": 31940608,
+    "total_bytes": 81485824,
+    "por_indice_bytes": {
+     "pk": 2236416,
+     "unico": 16605184,
+     "btree": 13099008
+    },
+    "por_indice_nome_bytes": {
+     "observacao_pkey": 2236416,
+     "uq_obs_chave_idempotencia": 7798784,
+     "uq_obs_versao": 8806400,
+     "ix_obs_asof": 9920512,
+     "ix_obs_entidade": 2523136,
+     "ix_obs_run": 655360
+    },
+    "folhas": 1,
+    "heap_por_linha": 500.4567272727273,
+    "indices_por_linha": 322.632404040404
+   },
+   "valores_de_metrica": 99000,
+   "bytes_por_valor_total": 823.0891313131314,
+   "bytes_por_valor_heap": 500.4567272727273,
+   "dir_cluster_bytes_apos": 240009318,
+   "as_of_global_funcao_meio": {
+    "tempos_s": [
+     0.036307625006884336,
+     0.039888166007585824,
+     0.04765583301195875,
+     0.044992290961090475,
+     0.028323917009402066,
+     0.027240583032835275
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.039888166007585824,
+    "max_s": 0.04765583301195875,
+    "chaves": 44000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_meio": {
+    "tempos_s": [
+     0.017763583979103714,
+     0.02091216598637402,
+     0.01822195900604129,
+     0.017253333004191518,
+     0.01788616698468104,
+     0.023063375032506883
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.01822195900604129,
+    "max_s": 0.023063375032506883,
+    "chaves": 44000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_linha_inteira_meio": {
+    "tempos_s": [
+     0.027364625013433397,
+     0.025802083022426814,
+     0.027235625020693988,
+     0.03853749996051192,
+     0.028427665994968265,
+     0.03018320898991078
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.028427665994968265,
+    "max_s": 0.03853749996051192,
+    "chaves": 44000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_funcao_fim": {
+    "tempos_s": [
+     0.039932249987032264,
+     0.05456104100449011,
+     0.04484820901416242,
+     0.03889883303781971,
+     0.045228416041936725,
+     0.036482458002865314
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.04484820901416242,
+    "max_s": 0.05456104100449011,
+    "chaves": 90000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_fim": {
+    "tempos_s": [
+     0.022460042033344507,
+     0.02341024996712804,
+     0.021165041020140052,
+     0.03198083397001028,
+     0.023501292045693845,
+     0.023960083024576306
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.023501292045693845,
+    "max_s": 0.03198083397001028,
+    "chaves": 90000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_linha_inteira_fim": {
+    "tempos_s": [
+     0.03992295800708234,
+     0.04312579199904576,
+     0.037073667044751346,
+     0.03488666599150747,
+     0.042362125008367,
+     0.05339079105760902
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.042362125008367,
+    "max_s": 0.05339079105760902,
+    "chaves": 90000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "latest_view": {
+    "tempos_s": [
+     0.04932116699637845,
+     0.04001962498296052,
+     0.03888050001114607,
+     0.04309083300177008,
+     0.04029941698536277,
+     0.04571879096329212
+    ],
+    "p50_s": 0.04029941698536277,
+    "aquecimento_descartado": 1
+   },
+   "as_of_ponto": {
+    "n": 5000,
+    "min_ms": 0.017,
+    "p50_ms": 0.019,
+    "p95_ms": 0.03,
+    "p99_ms": 0.094,
+    "max_ms": 0.808,
+    "media_ms": 0.0223324,
+    "desvio_ms": 0.018170126863618758
+   },
+   "confirmacao_carga_s": 0.9364947500289418,
+   "confirmacao": {
+    "linhas": 99000,
+    "heap_bytes": 12525568,
+    "indices_bytes": 9920512,
+    "total_bytes": 22446080,
+    "por_indice_bytes": {
+     "pk": 9920512
+    },
+    "por_indice_nome_bytes": {
+     "pk_confirmacao": 9920512
+    },
+    "folhas": 1,
+    "heap_por_linha": 126.52088888888889,
+    "indices_por_linha": 100.20719191919191,
+    "bytes_por_confirmacao": 226.72808080808082
+   },
+   "explain_as_of_global": "Unique\n  ->  Index Only Scan using ix_obs_asof on observacao\n        Index Cond: (available_at <= '2026-08-15 09:00:00-03'::timestamp with time zone)"
+  },
+  {
+   "variante": "dil_obs_0001",
+   "particionada": false,
+   "n_alvo": 1000000,
+   "dims": {
+    "contas": 10,
+    "entidades_por_conta": 202,
+    "dias": 90
+   },
+   "carga_s": 108.24112333299126,
+   "tamanho": {
+    "linhas": 999900,
+    "heap_bytes": 500072448,
+    "indices_bytes": 322904064,
+    "total_bytes": 822976512,
+    "por_indice_bytes": {
+     "pk": 22478848,
+     "unico": 163323904,
+     "btree": 137101312
+    },
+    "por_indice_nome_bytes": {
+     "observacao_pkey": 22478848,
+     "uq_obs_chave_idempotencia": 75718656,
+     "uq_obs_versao": 87605248,
+     "ix_obs_asof": 100286464,
+     "ix_obs_entidade": 30310400,
+     "ix_obs_run": 6504448
+    },
+    "folhas": 1,
+    "heap_por_linha": 500.1224602460246,
+    "indices_por_linha": 322.93635763576356
+   },
+   "valores_de_metrica": 999900,
+   "bytes_por_valor_total": 823.0588178817882,
+   "bytes_por_valor_heap": 500.1224602460246,
+   "dir_cluster_bytes_apos": 1116110950,
+   "as_of_global_funcao_meio": {
+    "tempos_s": [
+     1.5859581250115298,
+     0.16380070900777355,
+     0.1831277500023134,
+     0.2260005830321461,
+     0.1453178750234656,
+     0.15105316700646654
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.16380070900777355,
+    "max_s": 0.2260005830321461,
+    "chaves": 444400,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_meio": {
+    "tempos_s": [
+     0.08683991699945182,
+     0.08701766701415181,
+     0.08530079195043072,
+     0.09667774999979883,
+     0.08765820896951482,
+     0.09113579196855426
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.08765820896951482,
+    "max_s": 0.09667774999979883,
+    "chaves": 444400,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_linha_inteira_meio": {
+    "tempos_s": [
+     0.17049145803321153,
+     0.18933391699101776,
+     0.24064491700846702,
+     0.21298108401242644,
+     0.17713645799085498,
+     0.18751454103039578
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.18933391699101776,
+    "max_s": 0.24064491700846702,
+    "chaves": 444400,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_funcao_fim": {
+    "tempos_s": [
+     0.31712208403041586,
+     0.2747130420175381,
+     0.296046249975916,
+     0.36269808298675343,
+     0.37796075001824647,
+     0.556855084025301
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.36269808298675343,
+    "max_s": 0.556855084025301,
+    "chaves": 909000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_fim": {
+    "tempos_s": [
+     0.16277470800559968,
+     0.2328477919800207,
+     0.1556772500043735,
+     0.13383479102049023,
+     0.13026145804906264,
+     0.13214929099194705
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.13383479102049023,
+    "max_s": 0.2328477919800207,
+    "chaves": 909000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "as_of_global_consulta_linha_inteira_fim": {
+    "tempos_s": [
+     0.2518977090367116,
+     0.2900188750354573,
+     0.3041803750093095,
+     0.2600597499986179,
+     0.28594416700070724,
+     0.3675212090020068
+    ],
+    "aquecimento_descartado": 1,
+    "p50_s": 0.2900188750354573,
+    "max_s": 0.3675212090020068,
+    "chaves": 909000,
+    "nota": "inclui ~10-20 ms de processo psql"
+   },
+   "latest_view": {
+    "tempos_s": [
+     0.42365554202115163,
+     0.3455405000131577,
+     0.38099791697459295,
+     0.3993171249749139,
+     0.6547417910187505,
+     0.43081891699694097
+    ],
+    "p50_s": 0.3993171249749139,
+    "aquecimento_descartado": 1
+   },
+   "as_of_ponto": {
+    "n": 5000,
+    "min_ms": 0.017,
+    "p50_ms": 0.02,
+    "p95_ms": 0.085,
+    "p99_ms": 0.186,
+    "max_ms": 2.185,
+    "media_ms": 0.029755399999999998,
+    "desvio_ms": 0.053464380393304846
+   },
+   "confirmacao_carga_s": 14.633030791999772,
+   "confirmacao": {
+    "linhas": 999900,
+    "heap_bytes": 126091264,
+    "indices_bytes": 100286464,
+    "total_bytes": 226377728,
+    "por_indice_bytes": {
+     "pk": 100286464
+    },
+    "por_indice_nome_bytes": {
+     "pk_confirmacao": 100286464
+    },
+    "folhas": 1,
+    "heap_por_linha": 126.10387438743875,
+    "indices_por_linha": 100.29649364936493,
+    "bytes_por_confirmacao": 226.40036803680368
+   },
+   "explain_as_of_global": "Unique\n  ->  Index Only Scan using ix_obs_asof on observacao\n        Index Cond: (available_at <= '2026-08-15 09:00:00-03'::timestamp with time zone)"
+  }
+ ],
+ "inicio_epoch": 1792164574.2342982,
+ "postgres": "PostgreSQL 16.11 (Homebrew) on aarch64-apple-darwin24.6.0, compiled by Apple clang version 17.0.0 (clang-1700.6.3.2), 64-bit",
+ "config": {
+  "autovacuum": "off",
+  "block_size": "8192",
+  "default_toast_compression": "pglz",
+  "fsync": "on",
+  "shared_buffers": "32768",
+  "synchronous_commit": "on",
+  "wal_level": "minimal",
+  "work_mem": "65536"
+ },
+ "payload": null,
+ "payload_s": 2.125045284628868e-06,
+ "snapshot_pg": [],
+ "pico_amostrado_dir_cluster_bytes": 1342775398,
+ "cluster_apagado": true,
+ "pico_dir_cluster_bytes": 1116430438,
+ "disco_livre_inicio_gib": 21.89730453491211,
+ "analitico": [],
+ "fim_epoch": 1792164728.954821,
+ "duracao_s": 154.7205228805542
+}

@@ -11,7 +11,7 @@ caracteres de controle ASCII que o contrato proíbe dentro dos campos:
 - grão: elementos ordenados por ponto de código, unidos por vírgula (vocabulário fechado, sem vírgula);
 - instantes: UTC, `YYYY-MM-DDTHH:MM:SS.ffffffZ` (microssegundos, como o `timestamptz`).
 
-Espelho SQL: `dil_obs._chave_natural`, `dil_obs._chave_base`, `dil_obs._chave_reafirmacao`
+Espelho SQL: `dil_obs._chave_natural`, `dil_obs._chave_base`
 em `migrations_candidatas/dil_obs_0001_schema_observacao.sql`. O teste
 `test_schema_pg_observacao.py::test_chaves_python_iguais_as_do_postgres` prova a igualdade.
 """
@@ -26,8 +26,7 @@ RS = "\x1e"
 GS = "\x1d"
 
 PREFIXO_NATURAL = "dil_obs.chave_natural.v1"
-PREFIXO_BASE = "dil_obs.chave_idempotencia.v1"
-PREFIXO_REAFIRMACAO = "dil_obs.reafirmacao.v1"
+PREFIXO_BASE = "dil_obs.chave_idempotencia.v2"
 
 
 def sha256_texto(s: str) -> str:
@@ -78,17 +77,17 @@ def chave_natural(
 
 
 def chave_base(
-    *, chave_natural_hex: str, payload_sha256: str, schema_version: str, coletor_nome: str, coletor_versao: str
+    *, chave_natural_hex: str, payload_sha256: str, schema_version: str, coletor_nome: str, coletor_versao: str,
+    observed_at: datetime,
 ) -> str:
-    """Chave de idempotência de uma LEITURA: o mesmo fato, lido do mesmo payload pelo mesmo coletor.
+    """Chave de idempotência de uma LEITURA: o mesmo fato, lido do mesmo payload, pelo mesmo coletor e
+    esquema, no mesmo instante de medição (`observed_at`).
 
-    Repetir a leitura (retry, cron que relê o mesmo dado) dá a mesma chave → no-op.
-    Payload diferente para a mesma janela → outra chave → nova versão (restatement).
+    Retry ou reentrega da mesma leitura → mesma chave → no-op.
+    Payload diferente → outra chave → nova versão (restatement).
     Reprocessar o mesmo payload com outra versão do coletor/esquema → outra chave → nova versão.
+    O mesmo payload relido em outra hora (cron D0, janela que fechou, cobertura que mudou) → outra chave →
+    nova versão, nunca conflito (D2), e a ordem do as_of por `observed_at` fica exata (D1).
     """
-    return sha256_texto(US.join([PREFIXO_BASE, chave_natural_hex, payload_sha256, schema_version, coletor_nome, coletor_versao]))
-
-
-def chave_reafirmacao(*, chave_base_hex: str, available_at: datetime) -> str:
-    """Chave de uma reafirmação: uma leitura antiga volta a ser verdade depois de outra versão (A→B→A)."""
-    return sha256_texto(US.join([PREFIXO_REAFIRMACAO, chave_base_hex, instante_canonico(available_at)]))
+    return sha256_texto(US.join([PREFIXO_BASE, chave_natural_hex, payload_sha256, schema_version, coletor_nome,
+                                 coletor_versao, instante_canonico(observed_at)]))
