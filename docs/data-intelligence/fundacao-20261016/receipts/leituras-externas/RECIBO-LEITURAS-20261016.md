@@ -40,3 +40,23 @@ A exportação de um snapshot read-only sanitizado (campaign_day v21, runs, subc
 permissões da sessão (manipulação de dados)**. Não houve tentativa de contorno. Consequência: o replay
 `as_of` desta missão fica em sintético + fixtures no formato real; "testado em replay com dado real"
 exige autorização explícita do operador (item na lista de autorizações).
+
+## Terceira rodada — health contracts da thread G em produção (16/10 ~13:04 UTC, `lg_selects_qualidade.sql`)
+
+SELECTs gerados das views candidatas (`migrations_candidatas/views_qualidade/selects_somente_leitura.sql`),
+envolvidos em subconsulta com `LIMIT`/agregação, mesma trava read-only. Nenhuma view foi criada em produção.
+É a primeira vez que os health contracts rodam sobre dado real: estado **rodando read-only sob demanda**, não agendado.
+
+| Checagem | Resultado real |
+|---|---|
+| `dq_freshness` | 5 coletores canônicos (Google D0, D-1, termos; JoinAds intraday, D-1) **frescos**, 0 slots perdidos |
+| `dq_completude_hora` | últimos 25 slots esperados: todos `ok` (1 run por slot; termos 12:23 de 15/10 com 2 runs) |
+| `dq_runs_orfaos` | **3 runs `alto`**: coletor de termos, iniciados 15/10 11:46–11:48, último lote ~24 min depois, 2.242 lotes cada, nunca finalizados (22 h) |
+| `dq_falha_silenciosa` | 0 |
+| `dq_duplicacao` | só classe `info` (releituras esperadas): termos 2.525 chaves relidas idênticas; JoinAds e Google com poucas `releitura_com_revisao` (restatement legítimo); nenhum conflito no mesmo run |
+| `dq_zero_sintetizado` | **80% `alto`** em todos os dias/coletores (D0 15/10 60/75; 16/10 16/20; D-1 14/10 8/10; 15/10 4/5): 4 das 5 campanhas da conta aparecem como 0 sem linha de métrica |
+| `dq_reconciliacao_joinads` | cobertura kv/earnings 0,968–1,000 em 08–16/10, todos `ok` (confirma a refutação de H1) |
+| `dq_reconciliacao_custo_d0_d1` | campanha ativa: diferença D0 final × D-1 = 0,78% em 15/10 (`ok`); demais campanhas 0 = 0; 16/10 `aguardando_d1` |
+| `dq_cobertura_atribuicao_sensor` | **0,0 `alto`**: 15/10 0/19 sessões pagas com campanha; 16/10 0/14 |
+| `dq_esquema_joinads` | fingerprints de payload estáveis por versão do coletor (v2, v3, v4) |
+| `dq_substituicao_fonte` | sem ocorrência (só cabeçalho) |
