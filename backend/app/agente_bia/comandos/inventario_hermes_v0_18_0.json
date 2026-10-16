@@ -1,0 +1,1273 @@
+{
+ "fonte": "Hermes Agent v0.18.0 (2026.7.1), /usr/local/lib/hermes-agent, profile default, lido em 15/10/2026 (somente leitura)",
+ "registro": [
+  {
+   "name": "start",
+   "description": "Acknowledge platform start pings without a reply",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": true,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "new",
+   "description": "Start a new session (fresh session ID + history)",
+   "category": "Session",
+   "aliases": [
+    "reset"
+   ],
+   "args_hint": "[name]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "topic",
+   "description": "Enable or inspect Telegram DM topic sessions",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "[off|help|session-id]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": true,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "clear",
+   "description": "Clear screen and start a new session",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "redraw",
+   "description": "Force a full UI repaint (recovers from terminal drift)",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "history",
+   "description": "Show conversation history",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "save",
+   "description": "Save the current conversation",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "retry",
+   "description": "Retry the last message (resend to agent)",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "prompt",
+   "description": "Compose your next prompt in $EDITOR (markdown), then send it",
+   "category": "Session",
+   "aliases": [
+    "compose"
+   ],
+   "args_hint": "[initial text]",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "undo",
+   "description": "Back up N user turns and re-prompt (default 1)",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "[N]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "title",
+   "description": "Set a title for the current session",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "[name]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "handoff",
+   "description": "Hand off this session to a messaging platform (Telegram, Discord, etc.)",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "<platform>",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "branch",
+   "description": "Branch the current session (explore a different path)",
+   "category": "Session",
+   "aliases": [
+    "fork"
+   ],
+   "args_hint": "[name]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "compress",
+   "description": "Compress conversation context (add 'here [N]' to keep recent N turns; --preview shows what would happen)",
+   "category": "Session",
+   "aliases": [
+    "compact"
+   ],
+   "args_hint": "[here [N] | focus topic | --preview|--dry-run]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "rollback",
+   "description": "List or restore filesystem checkpoints",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "[number]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "snapshot",
+   "description": "Create or restore state snapshots of Hermes config/state",
+   "category": "Session",
+   "aliases": [
+    "snap"
+   ],
+   "args_hint": "[create|restore <id>|prune]",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "stop",
+   "description": "Kill all running background processes",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "approve",
+   "description": "Approve a pending dangerous command",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "[session|always]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": true,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "deny",
+   "description": "Deny a pending dangerous command (optionally with a reason)",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "[all] [reason]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": true,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "background",
+   "description": "Run a prompt in the background",
+   "category": "Session",
+   "aliases": [
+    "bg",
+    "btw"
+   ],
+   "args_hint": "<prompt>",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "agents",
+   "description": "Show active agents and running tasks",
+   "category": "Session",
+   "aliases": [
+    "tasks"
+   ],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "journey",
+   "description": "Open the learning journey timeline",
+   "category": "Session",
+   "aliases": [
+    "learning",
+    "memory-graph"
+   ],
+   "args_hint": "[list|delete <id>|edit <id>]",
+   "subcommands": [
+    "list",
+    "delete",
+    "edit"
+   ],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "queue",
+   "description": "Queue a prompt for the next turn (doesn't interrupt)",
+   "category": "Session",
+   "aliases": [
+    "q"
+   ],
+   "args_hint": "<prompt>",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "steer",
+   "description": "Inject a message after the next tool call without interrupting",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "<prompt>",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "goal",
+   "description": "Set a standing goal Hermes works on across turns until achieved",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "[text | draft <text> | show | pause | resume | clear | status | wait <pid> | unwait]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "moa",
+   "description": "Run one prompt through the default Mixture of Agents preset, then restore your model",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "<prompt>",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "subgoal",
+   "description": "Add or manage extra criteria on the active goal",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "[text | remove N | clear]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "status",
+   "description": "Show session, model, token, and context info",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "whoami",
+   "description": "Show your slash command access (admin / user)",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "profile",
+   "description": "Show active profile name and home directory",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "sethome",
+   "description": "Set this chat as the home channel",
+   "category": "Session",
+   "aliases": [
+    "set-home"
+   ],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": true,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "resume",
+   "description": "Resume a previously-named session",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "[name]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "sessions",
+   "description": "Browse and resume previous sessions",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "config",
+   "description": "Show current configuration",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "model",
+   "description": "Switch model (persists by default)",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "[model] [--provider name] [--global|--session] [--refresh]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "codex-runtime",
+   "description": "Toggle codex app-server runtime for OpenAI/Codex models",
+   "category": "Configuration",
+   "aliases": [
+    "codex_runtime"
+   ],
+   "args_hint": "[auto|codex_app_server]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "personality",
+   "description": "Set a predefined personality",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "[name]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "statusbar",
+   "description": "Toggle the context/model status bar",
+   "category": "Configuration",
+   "aliases": [
+    "sb"
+   ],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "timestamps",
+   "description": "Toggle [HH:MM] timestamps on messages and /history",
+   "category": "Configuration",
+   "aliases": [
+    "ts"
+   ],
+   "args_hint": "[on|off|status]",
+   "subcommands": [
+    "on",
+    "off",
+    "status"
+   ],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "verbose",
+   "description": "Cycle tool progress display: off -> new -> all -> verbose -> log",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": "display.tool_progress_command"
+  },
+  {
+   "name": "footer",
+   "description": "Toggle gateway runtime-metadata footer on final replies",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "[on|off|status]",
+   "subcommands": [
+    "on",
+    "off",
+    "status"
+   ],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "yolo",
+   "description": "Toggle YOLO mode (skip all dangerous command approvals)",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "reasoning",
+   "description": "Manage reasoning effort and display",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "[level|show|hide|full|clamp]",
+   "subcommands": [
+    "none",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "show",
+    "hide",
+    "on",
+    "off",
+    "full",
+    "clamp"
+   ],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "fast",
+   "description": "Toggle fast mode — OpenAI Priority Processing / Anthropic Fast Mode (Normal/Fast)",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "[normal|fast|status]",
+   "subcommands": [
+    "normal",
+    "fast",
+    "status",
+    "on",
+    "off"
+   ],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "skin",
+   "description": "Show or change the display skin/theme",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "[name]",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "indicator",
+   "description": "Pick the TUI busy-indicator style",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "[kaomoji|emoji|unicode|ascii]",
+   "subcommands": [
+    "kaomoji",
+    "emoji",
+    "unicode",
+    "ascii"
+   ],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "voice",
+   "description": "Toggle voice mode",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "[on|off|tts|status]",
+   "subcommands": [
+    "on",
+    "off",
+    "tts",
+    "status"
+   ],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "busy",
+   "description": "Control what Enter does while Hermes is working",
+   "category": "Configuration",
+   "aliases": [],
+   "args_hint": "[queue|steer|interrupt|status]",
+   "subcommands": [
+    "queue",
+    "steer",
+    "interrupt",
+    "status"
+   ],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "tools",
+   "description": "Manage tools: /tools [list|disable|enable] [name...]",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "[list|disable|enable] [name...]",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "toolsets",
+   "description": "List available toolsets",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "skills",
+   "description": "Search, install, inspect, or manage skills",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [
+    "search",
+    "browse",
+    "inspect",
+    "install",
+    "audit",
+    "pending",
+    "approve",
+    "reject",
+    "diff",
+    "approval"
+   ],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": "skills.write_approval"
+  },
+  {
+   "name": "memory",
+   "description": "Review pending memory writes / toggle the approval gate",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "[pending|approve|reject|approval] [id|on|off]",
+   "subcommands": [
+    "pending",
+    "approve",
+    "reject",
+    "approval"
+   ],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "bundles",
+   "description": "List skill bundles (aliases /<name> for multiple skills)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "pet",
+   "description": "Toggle or adopt a petdex mascot (/pet, /pet list, /pet <slug>)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "[toggle|list|scale <n>|<slug>]",
+   "subcommands": [
+    "toggle",
+    "list",
+    "scale",
+    "off"
+   ],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "hatch",
+   "description": "Generate a new petdex pet from a description",
+   "category": "Tools & Skills",
+   "aliases": [
+    "generate-pet"
+   ],
+   "args_hint": "[description]",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "learn",
+   "description": "Learn a reusable skill from anything you describe (dirs, URLs, this chat, notes)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "<what to learn from>",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "cron",
+   "description": "Manage scheduled tasks",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "[subcommand]",
+   "subcommands": [
+    "list",
+    "add",
+    "create",
+    "edit",
+    "pause",
+    "resume",
+    "run",
+    "remove"
+   ],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "suggestions",
+   "description": "Review suggested automations (accept/dismiss)",
+   "category": "Tools & Skills",
+   "aliases": [
+    "suggest"
+   ],
+   "args_hint": "[accept|dismiss N | catalog]",
+   "subcommands": [
+    "accept",
+    "dismiss",
+    "catalog",
+    "clear"
+   ],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "blueprint",
+   "description": "Set up an automation from a blueprint template",
+   "category": "Tools & Skills",
+   "aliases": [
+    "bp"
+   ],
+   "args_hint": "[name] [slot=value ...]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "curator",
+   "description": "Background skill maintenance (status, run, pin, archive, list-archived)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "[subcommand]",
+   "subcommands": [
+    "status",
+    "run",
+    "pause",
+    "resume",
+    "pin",
+    "unpin",
+    "restore",
+    "list-archived"
+   ],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "kanban",
+   "description": "Multi-profile collaboration board (tasks, links, comments)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "[subcommand]",
+   "subcommands": [
+    "init",
+    "boards",
+    "create",
+    "list",
+    "ls",
+    "show",
+    "assign",
+    "reclaim",
+    "reassign",
+    "diagnostics",
+    "diag",
+    "link",
+    "unlink",
+    "claim",
+    "comment",
+    "complete",
+    "edit",
+    "block",
+    "unblock",
+    "archive",
+    "tail",
+    "dispatch",
+    "stats",
+    "notify-subscribe",
+    "notify-list",
+    "notify-unsubscribe",
+    "log",
+    "runs",
+    "heartbeat",
+    "assignees",
+    "context",
+    "specify",
+    "gc"
+   ],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "reload",
+   "description": "Reload .env variables into the running session",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "reload-mcp",
+   "description": "Reload MCP servers from config",
+   "category": "Tools & Skills",
+   "aliases": [
+    "reload_mcp"
+   ],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "reload-skills",
+   "description": "Re-scan ~/.hermes/skills/ for newly installed or removed skills",
+   "category": "Tools & Skills",
+   "aliases": [
+    "reload_skills"
+   ],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "browser",
+   "description": "Connect browser tools to your live Chromium-family browser via CDP",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "[connect|disconnect|status]",
+   "subcommands": [
+    "connect",
+    "disconnect",
+    "status"
+   ],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "plugins",
+   "description": "List installed plugins and their status",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "commands",
+   "description": "Browse all commands and skills (paginated)",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "[page]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": true,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "help",
+   "description": "Show available commands",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "restart",
+   "description": "Gracefully restart the gateway after draining active runs",
+   "category": "Session",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": true,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "usage",
+   "description": "Show token usage and rate limits for the current session",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "credits",
+   "description": "Show Nous credit balance and top up",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "billing",
+   "description": "Manage Nous terminal billing — buy credits, auto-reload, limits",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "insights",
+   "description": "Show usage insights and analytics",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "[days]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "platforms",
+   "description": "Show gateway/messaging platform status",
+   "category": "Info",
+   "aliases": [
+    "gateway"
+   ],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "platform",
+   "description": "Pause, resume, or list a failing gateway platform",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "<pause|resume|list> [name]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": true,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "copy",
+   "description": "Copy the last assistant response to clipboard",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "[number]",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "paste",
+   "description": "Attach clipboard image from your clipboard",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "image",
+   "description": "Attach a local image file for your next prompt",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "<path>",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "update",
+   "description": "Update Hermes Agent to the latest version",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "version",
+   "description": "Show Hermes Agent version",
+   "category": "Info",
+   "aliases": [
+    "v"
+   ],
+   "args_hint": "",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "debug",
+   "description": "Upload debug report (system info + logs) and get shareable links",
+   "category": "Info",
+   "aliases": [],
+   "args_hint": "[nous|local]",
+   "subcommands": [],
+   "cli_only": false,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  },
+  {
+   "name": "quit",
+   "description": "Exit the CLI (use --delete to also remove session history)",
+   "category": "Exit",
+   "aliases": [
+    "exit"
+   ],
+   "args_hint": "[--delete]",
+   "subcommands": [],
+   "cli_only": true,
+   "gateway_only": false,
+   "gateway_config_gate": null
+  }
+ ],
+ "skills": [
+  {
+   "name": "agent-setup-migration",
+   "description": "Adapt starter kits, second-brain setups, and agent operating systems from one agent runtime to another without copying runtime-specific baggage."
+  },
+  {
+   "name": "architecture-audit",
+   "description": "Read-only AS-IS architecture/codebase audits with path/line/symbol/evidence/impact, authority boundaries, legacy coupling, reusable surfaces, and capability-state classification."
+  },
+  {
+   "name": "architecture-diagram",
+   "description": "Dark-themed SVG architecture/cloud/infra diagrams as HTML."
+  },
+  {
+   "name": "arxiv",
+   "description": "Search arXiv papers by keyword, author, category, or ID."
+  },
+  {
+   "name": "brainaudit",
+   "description": "Use when Tarcisio invokes /brainaudit or asks Hermes/Bia to audit the three VOLC brain repositories. Performs a read-only inspection of git sync, tracked/untracked changes, secret-looking files/conten"
+  },
+  {
+   "name": "brainstorming",
+   "description": "Use BEFORE any creative or design work — features novas, mudanças de comportamento do agente, decisões de arquitetura. Explores user intent, requirements, and design BEFORE implementation. Adapted fro"
+  },
+  {
+   "name": "cerebro",
+   "description": "Use when Tarcisio invokes /cerebro or asks Hermes/Bia to sync, load, inspect, or operate the three GitHub-versioned VOLC brains. Loads /root/cerebros/cerebro-pessoal, cerebro-volc, and cerebro-arbitra"
+  },
+  {
+   "name": "claude-code",
+   "description": "Delegate coding to Claude Code CLI (features, PRs)."
+  },
+  {
+   "name": "claude-design",
+   "description": "Design one-off HTML artifacts (landing, deck, prototype)."
+  },
+  {
+   "name": "codebase-inspection",
+   "description": "Inspect codebases w/ pygount: LOC, languages, ratios."
+  },
+  {
+   "name": "codex",
+   "description": "Delegate coding to OpenAI Codex CLI (features, PRs)."
+  },
+  {
+   "name": "coding-agent-process-orchestration",
+   "description": "Coordinate long-running external coding agents from Hermes: canonical process tracking, non-destructive recovery, heartbeats, and handoff hygiene."
+  },
+  {
+   "name": "community-intelligence-reports",
+   "description": "Analyze exported community/chat/forum archives (WhatsApp, Telegram, Discord, Slack, email groups) to mine practical 'ouros', chronological insights, clusters, risks, and action items for the user's op"
+  },
+  {
+   "name": "dev-agent-dispatcher",
+   "description": "Coordinate remote/local coding agents as a development dispatcher: GitHub SHA preflight, worktrees, Claude Code/Codex execution, heartbeats, gates, and handoff without direct unsafe edits."
+  },
+  {
+   "name": "dogfood",
+   "description": "Exploratory QA of web apps: find bugs, evidence, reports."
+  },
+  {
+   "name": "executing-plans",
+   "description": "Use to execute a plan written by writing-plans skill. Walks through tasks one by one, marks progress in real-time, surfaces blockers, asks for review at checkpoints. Adapted from obra/superpowers (exe"
+  },
+  {
+   "name": "flush",
+   "description": "Use when context is getting long, before /compress or automatic compaction, at end of a long session, or when Tarcisio asks to flush/sync memory. Extracts durable decisions, lessons, pending items, pr"
+  },
+  {
+   "name": "git-checkpoint-transport",
+   "description": "Safely publish exact git checkpoint commits or bundles without continuing implementation, changing remotes, or rewriting history."
+  },
+  {
+   "name": "github-auth",
+   "description": "GitHub auth setup: HTTPS tokens, SSH keys, gh CLI login."
+  },
+  {
+   "name": "github-code-review",
+   "description": "Review PRs: diffs, inline comments via gh or REST."
+  },
+  {
+   "name": "github-pr-workflow",
+   "description": "GitHub PR lifecycle: branch, commit, open, CI, merge."
+  },
+  {
+   "name": "github-repo-management",
+   "description": "Clone/create/fork repos; manage remotes, releases."
+  },
+  {
+   "name": "google-marketing-oss-recon",
+   "description": "Discover and triage Google / Google Marketing Solutions open-source repositories for VOLC OS, publisher arbitrage, Google Ads/GAM measurement, creative automation, agent/MCP opportunities, and Bia Wid"
+  },
+  {
+   "name": "hermes-agent",
+   "description": "Configure, extend, or contribute to Hermes Agent."
+  },
+  {
+   "name": "hermes-agent-skill-authoring",
+   "description": "Author in-repo SKILL.md: frontmatter, validator, structure, and writing-quality principles."
+  },
+  {
+   "name": "hermes-executor-missions",
+   "description": "Coordinate bounded executor-agent missions in existing git repos with non-destructive preflight, canonical process tracking, fallback reviews, gates, and safe publication."
+  },
+  {
+   "name": "hermes-operationalization",
+   "description": "Turn a working Hermes install into an operational agent with gateway, memory, skills, second brain, cron routines, and governance."
+  },
+  {
+   "name": "hermes-second-brain-ops",
+   "description": "Operate GitHub-versioned second-brain repositories with Hermes: load brain context, save notes, create routines, audit structure/security, and migrate patterns from other agent runtimes without copyin"
+  },
+  {
+   "name": "hermes-second-brain-setup",
+   "description": "Set up and govern Hermes-native second brains backed by GitHub, adapting external agent starter kits into Hermes skills, cron jobs, maps, and safe workflows without blindly copying tool-specific instr"
+  },
+  {
+   "name": "jupyter-live-kernel",
+   "description": "Iterative Python via live Jupyter kernel (hamelnb)."
+  },
+  {
+   "name": "ocr-and-documents",
+   "description": "Extract text from PDFs/scans (pymupdf, marker-pdf)."
+  },
+  {
+   "name": "operational-intelligence-dashboard-design",
+   "description": "Design and prompt UX for operational intelligence dashboards/radars (global attention maps, signal cockpits, publisher-arbitrage radars) with clear hierarchy, calm motion, and progressive disclosure."
+  },
+  {
+   "name": "plan",
+   "description": "Plan mode: write an actionable markdown plan to .hermes/plans/, no execution. Bite-sized tasks, exact paths, complete code."
+  },
+  {
+   "name": "popular-web-designs",
+   "description": "54 real design systems (Stripe, Linear, Vercel) as HTML/CSS."
+  },
+  {
+   "name": "public-evidence-governance",
+   "description": "Govern public-repo branches that contain operational/incident evidence: private preservation, aggregate-only public artifacts, sanitization scanners, and safe force-with-lease rewrites."
+  },
+  {
+   "name": "requesting-code-review",
+   "description": "Pre-commit review: security scan, quality gates, auto-fix."
+  },
+  {
+   "name": "research-to-operational-assets",
+   "description": "Turn papers, API docs, and technical research into operational asset intelligence for VOLC OS/arbitragem: fit, algorithms, implementation routes, risks, and reusable blueprints."
+  },
+  {
+   "name": "rotina",
+   "description": "Use when Tarcisio invokes /rotina or asks Hermes/Bia to create, list, run, pause, resume, or design recurring routines for the three VOLC brains. Translates OpenClaw-style heartbeat ideas into Hermes "
+  },
+  {
+   "name": "salve",
+   "description": "Use when Tarcisio invokes /salve or asks Hermes/Bia to save, update, register, capture, consolidate, or remember information inside the three GitHub-versioned VOLC brains. Routes content to cerebro-pe"
+  },
+  {
+   "name": "sketch",
+   "description": "Throwaway HTML mockups: 2-3 design variants to compare."
+  },
+  {
+   "name": "systematic-debugging",
+   "description": "4-phase root cause debugging: understand bugs before fixing."
+  },
+  {
+   "name": "test-driven-development",
+   "description": "TDD: enforce RED-GREEN-REFACTOR, tests before code."
+  },
+  {
+   "name": "verification-before-completion",
+   "description": "Use BEFORE declaring task/project complete. Forces evidence-based verification — runs tests, checks output, confirms each success criterion before marking done. Adapted from obra/superpowers (verifica"
+  },
+  {
+   "name": "volc-agentic-ecosystem-orchestration",
+   "description": "Design and operate VOLC OS as an agentic ecosystem with Bia/Hermes as command center, VOLC APIs/engines as capabilities, and GitHub/n8n/Grok/Cursor/Claude/Codex as coordinated execution surfaces."
+  },
+  {
+   "name": "volc-agentic-orchestration",
+   "description": "Coordinate VOLC OS as a multiagent operating ecosystem: Bia/Hermes command center, VOLC APIs/engines as callable capabilities, skills/procedures, subagents, n8n/Grok sensors, GitHub lanes, human gates"
+  },
+  {
+   "name": "writing-plans",
+   "description": "Use AFTER brainstorming, BEFORE coding/building. Transforms a brainstorm output into an executable plan with concrete tasks, dependencies, and verification criteria. Adapted from obra/superpowers (wri"
+  },
+  {
+   "name": "xurl",
+   "description": "X/Twitter via xurl CLI: post, search, DM, media, v2 API."
+  },
+  {
+   "name": "youtube-content",
+   "description": "YouTube transcripts to summaries, threads, blogs."
+  }
+ ]
+}

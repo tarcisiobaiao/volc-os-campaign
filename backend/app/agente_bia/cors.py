@@ -21,7 +21,7 @@ from app.agente_bia import configuracao
 
 PREFIXO = "/api/agent"
 METODOS = "GET, POST"
-CABECALHOS = "Authorization, Content-Type"
+CABECALHOS = "Authorization, Content-Type, X-Bia-Nome"
 
 
 def _origens() -> Tuple[str, ...]:

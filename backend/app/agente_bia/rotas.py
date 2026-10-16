@@ -26,12 +26,17 @@ tools, URL, SQL, tabela, tenant, user/dono. Não há campo para nenhum deles:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import re
+import time
 import uuid
-from typing import Any, Dict, Literal, Optional, Type, TypeVar
+from typing import Any, Dict, List, Literal, Optional, Type, TypeVar
+from urllib.parse import unquote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.agente_bia import configuracao, dominio as dom
@@ -40,8 +45,12 @@ from app.agente_bia.aplicacao import (
     ContextoLido,
     ConversaNaoEncontrada,
     EnvioRecusado,
+    FLUXOS,
     prazo_de_expiracao,
 )
+from app.agente_bia.anexos import dominio as anexos_dm
+from app.agente_bia.anexos.armazem import Armazem
+from app.agente_bia.comandos import catalogo as comandos
 from app.agente_bia.gateway import contexto_campanha as ctxc
 from app.agente_bia.gateway.catalogo import (
     Catalogo,
@@ -79,8 +88,20 @@ def exigir_bia_ligada(settings: Settings = Depends(get_settings)) -> None:
         raise HTTPException(status_code=404, detail="Not Found")
 
 
+_ARMAZEM: Optional[Armazem] = None
+
+
+def armazem() -> Armazem:
+    """Armazém privado dos anexos (diretório do host do backend; ver anexos/armazem.py)."""
+    global _ARMAZEM
+    if _ARMAZEM is None:
+        _ARMAZEM = Armazem()
+    return _ARMAZEM
+
+
 def casos_de_uso(cfg: configuracao.ConfiguracaoDaBia = Depends(configuracao_da_bia),
-                 settings: Settings = Depends(get_settings)) -> CasosDeUso:
+                 settings: Settings = Depends(get_settings),
+                 arm: Armazem = Depends(armazem)) -> CasosDeUso:
     if not (settings.supabase_url and settings.supabase_service_role_key):
         raise HTTPException(status_code=503, detail={
             "codigo": "ledger_indisponivel", "mensagem": "Ledger da Bia sem configuração."})
@@ -88,7 +109,7 @@ def casos_de_uso(cfg: configuracao.ConfiguracaoDaBia = Depends(configuracao_da_b
              if cfg.motor_configurado else None)
     return CasosDeUso(LedgerSupabase(settings.supabase_url, settings.supabase_service_role_key),
                       motor, limite_por_minuto=cfg.limite_por_minuto,
-                      max_caracteres=cfg.max_caracteres, timeout_motor_s=cfg.timeout_s)
+                      max_caracteres=cfg.max_caracteres, timeout_motor_s=cfg.timeout_s, armazem=arm)
 
 
 def _fonte_real():
@@ -137,8 +158,19 @@ class ContextoPedido(_Estrito):
 
 class CorpoMensagem(_Estrito):
     request_id: uuid.UUID
-    texto: str = Field(min_length=1, max_length=dom.MAX_ENTRADA_ABSOLUTO)
+    texto: str = Field(default="", max_length=dom.MAX_ENTRADA_ABSOLUTO)
     contexto: Optional[ContextoPedido] = None
+    anexos: List[uuid.UUID] = Field(default_factory=list, max_length=anexos_dm.MAX_ANEXOS_POR_MENSAGEM)
+
+
+class CorpoComando(_Estrito):
+    conversa_id: Optional[uuid.UUID] = None
+
+
+#: Texto que começa com comando. A superfície do Hermes não interpreta `/`; ele
+#: iria ao modelo como prompt. Comando passa por `POST /comandos/{nome}`.
+_COMANDO_NO_TEXTO = re.compile(r"^\s*/[A-Za-z]")
+TEXTO_PADRAO_ANEXOS = "Veja os anexos."
 
 
 M = TypeVar("M", bound=BaseModel)
@@ -191,6 +223,17 @@ def _indisponivel(exc: Exception) -> HTTPException:
 
 # ── projeções de saída ──────────────────────────────────────────────────────
 
+def _contexto_publico(contexto: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """`{campanha, anexos}` para a interface; execuções antigas gravaram só a campanha."""
+    if not contexto:
+        return None
+    if "campanha" in contexto or "anexos" in contexto:
+        anexos = [{k: a.get(k) for k in ("id", "nome", "tipo", "familia", "tamanho")}
+                  for a in contexto.get("anexos") or [] if isinstance(a, dict)]
+        return {"campanha": contexto.get("campanha"), "anexos": anexos}
+    return {"campanha": contexto, "anexos": []}
+
+
 def _recibo(e: Execucao) -> Dict[str, Any]:
     return {
         "id": e.id,
@@ -201,7 +244,7 @@ def _recibo(e: Execucao) -> Dict[str, Any]:
         "resposta": e.resposta,
         "erro": ({"codigo": e.erro_codigo, "mensagem": dom.mensagem_de_erro(e.erro_codigo)}
                  if e.erro_codigo else None),
-        "contexto": e.contexto,
+        "contexto": _contexto_publico(e.contexto),
         "criada_em": e.criada_em,
         "terminada_em": e.terminada_em,
     }
@@ -245,9 +288,21 @@ async def conversas(identidade: Identidade = Depends(exigir_admin),
                     casos: CasosDeUso = Depends(casos_de_uso)) -> Dict[str, Any]:
     try:
         lista = await casos.listar_conversas(identidade.sub)
+        saida = []
+        for c in lista[:20]:
+            # Título legível: a 1ª pergunta da conversa. Nunca o id.
+            h = await casos.historico(identidade.sub, c.id)
+            primeira = h.execucoes[0].entrada if h.execucoes else ""
+            item = _conversa(c)
+            item["titulo"] = c.titulo or (" ".join(primeira.split())[:72] or None)
+            item["mensagens"] = len(h.execucoes)
+            saida.append(item)
     except LedgerIndisponivel as exc:
         raise _indisponivel(exc)
-    return {"conversas": [_conversa(c) for c in lista]}
+    except ConversaNaoEncontrada:
+        raise HTTPException(status_code=404, detail={"codigo": "nao_encontrado",
+                                                     "mensagem": "Conversa não encontrada."})
+    return {"conversas": saida}
 
 
 @router.get("/conversations/{conversa_id}/messages")
@@ -282,24 +337,34 @@ async def enviar(conversa_id: str, request: Request, response: Response,
                  identidade: Identidade = Depends(exigir_admin),
                  cfg: configuracao.ConfiguracaoDaBia = Depends(configuracao_da_bia),
                  casos: CasosDeUso = Depends(casos_de_uso),
-                 cat: Catalogo = Depends(catalogo)) -> Dict[str, Any]:
+                 cat: Catalogo = Depends(catalogo),
+                 arm: Armazem = Depends(armazem)) -> Dict[str, Any]:
     cid = _uuid_ou_404(conversa_id)
     corpo = await _corpo(request, CorpoMensagem)
     if not cfg.motor_configurado:
         # Antes de reservar: sem motor, nada entra no ledger como se fosse sair.
         raise HTTPException(status_code=503, detail={"codigo": "hermes_indisponivel",
                                                      "mensagem": dom.mensagem_de_erro("hermes_indisponivel")})
-    contexto = None
+    if _COMANDO_NO_TEXTO.match(corpo.texto):
+        raise HTTPException(status_code=422, detail={
+            "codigo": "comando_no_texto",
+            "mensagem": "Comandos com / não são enviados à Bia como texto. Use a lista de comandos."})
+    campanha = None
     if corpo.contexto is not None:
         try:
-            contexto = cat.validar_entrada(ctxc.NOME, corpo.contexto.model_dump()).model_dump()
+            campanha = cat.validar_entrada(ctxc.NOME, corpo.contexto.model_dump()).model_dump()
         except EntradaRecusada as exc:
             raise HTTPException(status_code=422, detail={"codigo": "contexto_invalido",
                                                          "mensagem": "Contexto recusado.",
                                                          "erros": exc.erros})
+    refs = _anexos_da_mensagem(identidade.sub, corpo.anexos, arm)
+    texto = corpo.texto if corpo.texto.strip() or not refs else TEXTO_PADRAO_ANEXOS
+    contexto = None
+    if campanha or refs:
+        contexto = {k: v for k, v in (("campanha", campanha), ("anexos", refs)) if v}
     try:
         reserva = await casos.reservar_envio(identidade.sub, cid, str(corpo.request_id),
-                                             corpo.texto, contexto)
+                                             texto, contexto)
     except dom.EntradaInvalida as exc:
         raise HTTPException(status_code=422, detail={"codigo": "mensagem_invalida",
                                                      "mensagem": str(exc), "erros": []})
@@ -320,14 +385,40 @@ async def enviar(conversa_id: str, request: Request, response: Response,
         dados = await cat.invocar(identidade, ctxc.NOME, ref)
         return ContextoLido(ferramenta=ctxc.NOME, dados=dados, resumo=ctxc.resumo_para_recibo(dados))
 
-    tarefas.add_task(_executar_em_fundo, casos, identidade.sub, reserva.execucao.id, ler_contexto)
+    tarefas.add_task(_executar_em_fundo, casos, identidade.sub, reserva.execucao.id, ler_contexto, cid)
     response.status_code = 202
     return {"execucao": _recibo(reserva.execucao), "aviso": dom.AVISO_MODO_CONSULTA}
 
 
-async def _executar_em_fundo(casos: CasosDeUso, dono: str, execucao_id: str, leitor) -> None:
+def _anexos_da_mensagem(dono: str, ids: List[uuid.UUID], arm: Armazem) -> List[Dict[str, Any]]:
+    """Referências dos anexos do PRÓPRIO dono, nos limites por mensagem. Ou 422."""
+    if not ids:
+        return []
+    if len(set(ids)) != len(ids):
+        raise HTTPException(status_code=422, detail={"codigo": "anexo_repetido",
+                                                     "mensagem": "O mesmo anexo foi incluído duas vezes."})
+    refs, imagens, bytes_imagens = [], 0, 0
+    for i in ids:
+        a = arm.obter(dono, str(i))
+        if a is None:
+            raise HTTPException(status_code=422, detail={
+                "codigo": "anexo_invalido", "mensagem": "Um anexo não existe, expirou ou não é seu. Anexe de novo."})
+        if a.familia == "imagem":
+            imagens += 1
+            bytes_imagens += a.tamanho
+        refs.append(a.referencia())
+    if imagens > anexos_dm.MAX_IMAGENS_POR_MENSAGEM or bytes_imagens > anexos_dm.MAX_BYTES_IMAGENS_POR_MENSAGEM:
+        raise HTTPException(status_code=422, detail={
+            "codigo": "imagens_demais",
+            "mensagem": f"Até {anexos_dm.MAX_IMAGENS_POR_MENSAGEM} imagens e "
+                        f"{anexos_dm.MAX_BYTES_IMAGENS_POR_MENSAGEM // anexos_dm.MB} MB de imagem por mensagem."})
+    return refs
+
+
+async def _executar_em_fundo(casos: CasosDeUso, dono: str, execucao_id: str, leitor,
+                             conversa_id: Optional[str] = None) -> None:
     try:
-        await casos.executar(dono, execucao_id, leitor)
+        await casos.executar(dono, execucao_id, leitor, conversa_id)
     except Exception as exc:  # noqa: BLE001
         # O ledger caiu no meio. A execução fica onde estava (queued/running) e
         # `expirar` a rebaixa depois — para cancelled ou uncertain, nunca replay.
@@ -409,3 +500,173 @@ async def invocar_ferramenta(nome: str, request: Request,
         log.warning("capacidade %s indisponível: %s", nome, type(exc).__name__)
         raise HTTPException(status_code=503, detail={"codigo": "contexto_indisponivel",
                                                      "mensagem": dom.mensagem_de_erro("contexto_indisponivel")})
+
+
+# ── anexos ──────────────────────────────────────────────────────────────────
+
+MAX_UPLOAD_BYTES = max(t.max_bytes for t in anexos_dm.TIPOS.values())
+
+
+@router.post("/anexos", status_code=201)
+async def enviar_anexo(request: Request, identidade: Identidade = Depends(exigir_admin),
+                       arm: Armazem = Depends(armazem)) -> Dict[str, Any]:
+    """Corpo BRUTO (o arquivo), nome em `X-Bia-Nome` (URL-encoded). Nenhum caminho do navegador.
+
+    O limite é aplicado lendo em blocos: um upload grande é cortado no meio, sem
+    gravar nada. O tipo é decidido pelos bytes (`anexos/dominio.identificar`).
+    """
+    declarado = request.headers.get("content-length")
+    if declarado and declarado.isdigit() and int(declarado) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail={"codigo": "arquivo_grande",
+                                                     "mensagem": "Arquivo acima do limite de 10 MB."})
+    nome = unquote(request.headers.get("x-bia-nome") or "")[:300]
+    partes, total = [], 0
+    async for bloco in request.stream():
+        total += len(bloco)
+        if total > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail={"codigo": "arquivo_grande",
+                                                         "mensagem": "Arquivo acima do limite de 10 MB."})
+        partes.append(bloco)
+    try:
+        anexo = await asyncio.to_thread(arm.guardar, identidade.sub, b"".join(partes), nome,
+                                        request.headers.get("content-type"))
+    except anexos_dm.AnexoRecusado as exc:
+        status = 413 if exc.codigo in ("arquivo_grande", "imagem_grande") else \
+            429 if exc.codigo == "cota_excedida" else 422
+        raise HTTPException(status_code=status, detail={"codigo": exc.codigo, "mensagem": exc.mensagem})
+    log.info("bia anexo guardado tipo=%s tamanho=%s", anexo.tipo, anexo.tamanho)
+    return {"anexo": anexo.publico()}
+
+
+@router.get("/anexos/{anexo_id}")
+async def baixar_anexo(anexo_id: str, identidade: Identidade = Depends(exigir_admin),
+                       arm: Armazem = Depends(armazem)) -> Response:
+    """Bytes do PRÓPRIO anexo (miniatura ou download), por stream autenticado."""
+    aid = _uuid_ou_404(anexo_id)
+    a = arm.obter(identidade.sub, aid)
+    dados = arm.bytes_de(identidade.sub, aid) if a else None
+    if a is None or dados is None:
+        raise HTTPException(status_code=404, detail={"codigo": "nao_encontrado",
+                                                     "mensagem": "Anexo não encontrado."})
+    disposicao = "inline" if a.familia == "imagem" else "attachment"
+    nome_ascii = re.sub(r"[^A-Za-z0-9._-]", "_", a.nome)[:100]
+    return Response(content=dados, media_type=a.mime, headers={
+        "Content-Disposition": f'{disposicao}; filename="{nome_ascii}"',
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+    })
+
+
+@router.post("/anexos/{anexo_id}/remover")
+async def remover_anexo(anexo_id: str, identidade: Identidade = Depends(exigir_admin),
+                        arm: Armazem = Depends(armazem)) -> Dict[str, Any]:
+    aid = _uuid_ou_404(anexo_id)
+    if not arm.remover(identidade.sub, aid):
+        raise HTTPException(status_code=404, detail={"codigo": "nao_encontrado",
+                                                     "mensagem": "Anexo não encontrado."})
+    return {"removido": True}
+
+
+# ── progresso de uma execução (SSE) ─────────────────────────────────────────
+
+_TERMINAIS_E_INCERTO = {"succeeded", "failed", "cancelled", "uncertain"}
+
+
+@router.get("/runs/{execucao_id}/fluxo")
+async def fluxo_da_execucao(execucao_id: str, identidade: Identidade = Depends(exigir_admin),
+                            casos: CasosDeUso = Depends(casos_de_uso),
+                            cfg: configuracao.ConfiguracaoDaBia = Depends(configuracao_da_bia)) -> StreamingResponse:
+    """Estado e texto parcial de UMA execução do dono, como `text/event-stream`.
+
+    Eventos: `estado` (recibo do ledger, quando muda) e `parcial` (texto
+    acumulado e filtrado, só quando o Hermes mandou deltas — é isso que sustenta
+    "digitando"). Termina no estado final ou incerto. Só leitura: assinar,
+    cair e assinar de novo nunca reenvia nada.
+    """
+    eid = _uuid_ou_404(execucao_id)
+    try:
+        inicial = await casos.execucao(identidade.sub, eid)
+    except ConversaNaoEncontrada:
+        raise HTTPException(status_code=404, detail={"codigo": "nao_encontrado",
+                                                     "mensagem": "Execução não encontrada."})
+    except LedgerIndisponivel as exc:
+        raise _indisponivel(exc)
+    dono = identidade.sub
+    prazo = time.monotonic() + prazo_de_expiracao(cfg.timeout_s) + 30
+
+    async def eventos():
+        def sse(nome: str, dados: Dict[str, Any]) -> bytes:
+            return f"event: {nome}\ndata: {json.dumps(dados, ensure_ascii=False)}\n\n".encode()
+
+        ultimo_estado = inicial.estado
+        yield sse("estado", {"execucao": _recibo(inicial)})
+        if ultimo_estado in _TERMINAIS_E_INCERTO:
+            return
+        ultimo_texto, ultima_leitura, ultimo_envio = None, 0.0, time.monotonic()
+        while time.monotonic() < prazo:
+            parcial = FLUXOS.ler(eid, dono)
+            if parcial and parcial["deltas"] and parcial["texto"] != ultimo_texto:
+                ultimo_texto = parcial["texto"]
+                yield sse("parcial", {"texto": ultimo_texto, "digitando": True})
+                ultimo_envio = time.monotonic()
+            agora = time.monotonic()
+            if agora - ultima_leitura >= (0.6 if (parcial and parcial["fim"]) else 2.0):
+                ultima_leitura = agora
+                try:
+                    e = await casos.execucao(dono, eid)
+                except Exception:  # noqa: BLE001 — leitura falhou: o cliente reconsulta
+                    yield sse("aviso", {"codigo": "ledger_indisponivel"})
+                    return
+                if e.estado != ultimo_estado:
+                    ultimo_estado = e.estado
+                    yield sse("estado", {"execucao": _recibo(e)})
+                    ultimo_envio = agora
+                    if e.estado in _TERMINAIS_E_INCERTO:
+                        return
+            if agora - ultimo_envio > 15:
+                yield b": keepalive\n\n"
+                ultimo_envio = agora
+            await asyncio.sleep(0.25)
+
+    return StreamingResponse(eventos(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
+# ── comandos / ──────────────────────────────────────────────────────────────
+
+@router.get("/comandos")
+async def listar_comandos() -> Dict[str, Any]:
+    return {"versao_hermes": comandos.VERSAO_HERMES,
+            "classes": comandos.classes_contagem(),
+            "comandos": [e.publico() for e in comandos.catalogo()]}
+
+
+@router.post("/comandos/{nome}")
+async def executar_comando(nome: str, request: Request, identidade: Identidade = Depends(exigir_admin),
+                           casos: CasosDeUso = Depends(casos_de_uso)) -> Dict[str, Any]:
+    """Executa SÓ comando `disponivel` com `execucao == "backend"`. Recibo estruturado."""
+    corpo = await _corpo(request, CorpoComando, vazio_permitido=True)
+    entrada = comandos.procurar(nome)
+    if entrada is None:
+        raise HTTPException(status_code=404, detail={"codigo": "comando_desconhecido",
+                                                     "mensagem": f"Comando /{nome[:40]} não existe."})
+    if not entrada.disponivel:
+        raise HTTPException(status_code=403, detail={"codigo": "comando_indisponivel_na_web",
+                                                     "mensagem": entrada.motivo, "classe": entrada.classe})
+    if entrada.execucao != "backend":
+        raise HTTPException(status_code=409, detail={"codigo": "comando_local",
+                                                     "mensagem": f"/{entrada.nome} roda na interface."})
+    inicio = time.monotonic()
+    try:
+        resultado = await casos.status(identidade.sub, str(corpo.conversa_id) if corpo.conversa_id else None)
+    except ConversaNaoEncontrada:
+        raise HTTPException(status_code=404, detail={"codigo": "nao_encontrado",
+                                                     "mensagem": "Conversa não encontrada."})
+    except LedgerIndisponivel as exc:
+        raise _indisponivel(exc)
+    log.info("bia comando=%s duracao_ms=%s", entrada.nome, int((time.monotonic() - inicio) * 1000))
+    return {"comando": entrada.nome, "resultado": resultado,
+            "recibo": {"executado_em": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                       "origem": "backend", "somente_leitura": True,
+                       "duracao_ms": int((time.monotonic() - inicio) * 1000)}}

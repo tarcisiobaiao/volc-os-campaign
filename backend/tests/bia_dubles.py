@@ -201,11 +201,39 @@ class HermesFalso:
     ferramentas: List[str] = field(default_factory=list)  # toolsets habilitados no profile
     sessoes: Dict[str, List[Dict[str, str]]] = field(default_factory=dict)
     titulos: Dict[str, Any] = field(default_factory=dict)
+    #: SSE de sessão (v0.18.0). Desligado = 404 na rota de stream (o adaptador
+    #: cai no /chat), que é o que os testes antigos exercitam.
+    streaming: bool = False
+    modo_stream: str = "ok"  # ok | ferramenta | erro | sem_fim
+    conteudos: List[Any] = field(default_factory=list)  # o `input` exato de cada turno
     pedidos: List[httpx.Request] = field(default_factory=list)
 
     @property
     def chats(self) -> List[httpx.Request]:
-        return [r for r in self.pedidos if r.url.path.endswith("/chat")]
+        return [r for r in self.pedidos if r.url.path.endswith(("/chat", "/chat/stream"))
+                and not (r.url.path.endswith("/chat/stream") and not self.streaming)]
+
+    def _sse(self, sid: str, texto: Any) -> httpx.Response:
+        self.conteudos.append(texto)
+        so_texto = texto if isinstance(texto, str) else " ".join(
+            p.get("text", "") for p in texto if isinstance(p, dict) and p.get("type") == "text")
+        self.sessoes[sid].append({"role": "user", "content": texto})
+        resposta = self.resposta
+        linhas = ['event: run.started\ndata: {"seq":1}\n', 'event: message.started\ndata: {"seq":2}\n',
+                  'event: tool.progress\ndata: ' + json.dumps({"tool_name": "_thinking", "delta": "RACIOCINIO-SECRETO"}) + "\n"]
+        for i, palavra in enumerate(resposta.split(" ")):
+            linhas.append("event: assistant.delta\ndata: " + json.dumps({"delta": (" " if i else "") + palavra}) + "\n")
+            if self.modo_stream == "ferramenta" and i == 0:
+                linhas.append("event: tool.started\ndata: " + json.dumps({"tool_name": "terminal", "args": {"cmd": "ls"}}) + "\n")
+        if self.modo_stream == "erro":
+            linhas.append("event: error\ndata: " + json.dumps({"message": "Traceback /root/.hermes SEGREDO"}) + "\n")
+        elif self.modo_stream != "sem_fim":
+            self.sessoes[sid].append({"role": "assistant", "content": resposta})
+            linhas.append("event: assistant.completed\ndata: " + json.dumps({"content": resposta, "completed": True}) + "\n")
+            linhas.append("event: run.completed\ndata: " + json.dumps({"usage": {"input_tokens": 30, "output_tokens": 4}}) + "\n")
+        linhas.append("event: done\ndata: {}\n")
+        return httpx.Response(200, content="\n".join(linhas).encode(),
+                              headers={"Content-Type": "text/event-stream"})
 
     def transporte(self) -> httpx.MockTransport:
         return httpx.MockTransport(self._responder)
@@ -241,6 +269,24 @@ class HermesFalso:
                 return httpx.Response(404, json={})
             return httpx.Response(200, json={"object": "list", "session_id": sid,
                                              "data": self.sessoes[sid]})
+        if caminho.startswith("/api/sessions/") and caminho.endswith("/chat/stream"):
+            sid = caminho.split("/")[3]
+            if not self.streaming:
+                return httpx.Response(404, json={"error": {"code": "not_found"}})
+            if sid not in self.sessoes:
+                return httpx.Response(404, json={"error": {"code": "session_not_found"}})
+            return self._sse(sid, json.loads(request.content)["input"])
+        if caminho == "/health/detailed":
+            return httpx.Response(200, json={"status": "ok", "version": "0.18.0", "gateway_state": "running",
+                                             "platforms": {"telegram": {"state": "connected"}}, "pid": 1})
+        if caminho.startswith("/api/sessions/") and caminho.count("/") == 3 and request.method == "GET":
+            sid = caminho.split("/")[3]
+            if sid not in self.sessoes:
+                return httpx.Response(404, json={})
+            n = len(self.sessoes[sid])
+            return httpx.Response(200, json={"object": "hermes.session", "session": {
+                "id": sid, "message_count": n, "tool_call_count": 0, "input_tokens": 10 * n,
+                "output_tokens": 2 * n, "estimated_cost_usd": 0.0, "system_prompt": "NAO-SAI"}})
         if caminho.startswith("/api/sessions/") and caminho.endswith("/chat"):
             sid = caminho.split("/")[3]
             if self.modo == "conexao_recusada":

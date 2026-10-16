@@ -12,7 +12,7 @@ Duas portas, e nenhuma delas conhece HTTP do navegador:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Protocol, Sequence
+from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Protocol, Sequence
 
 
 # ── registros ───────────────────────────────────────────────────────────────
@@ -139,6 +139,11 @@ class MotorIncerto(FalhaDoMotor):
     """Pode ter rodado: timeout, conexão caída no meio, 5xx, resposta ilegível."""
 
 
+class MotorUsouFerramenta(FalhaDoMotor):
+    """O Hermes sinalizou ferramenta no turno. A conexão foi fechada (o Hermes
+    cancela o turno); a resposta é descartada e o turno vira falha."""
+
+
 class Motor(Protocol):
     async def verificar_sem_ferramentas(self) -> None:
         """Portão de cada envio: Hermes vivo e NENHUM toolset habilitado. Levanta MotorRecusou."""
@@ -146,7 +151,14 @@ class Motor(Protocol):
     async def garantir_sessao(self, sessao_motor: str, titulo: str) -> None:
         """Cria a sessão se não existir. Idempotente pelo id."""
 
-    async def conversar(self, sessao_motor: str, texto: str) -> RespostaDoMotor: ...
+    async def conversar(self, sessao_motor: str, conteudo: Any,
+                        ao_delta: Optional[Callable[[str], Awaitable[None]]] = None) -> RespostaDoMotor: ...
+
+    async def sessao(self, sessao_motor: str) -> Dict[str, Any]:
+        """Contagens e custo da sessão web. Só leitura."""
+
+    async def saude(self) -> Dict[str, Any]:
+        """Versão e estado do gateway. Só leitura."""
 
     async def mensagens(self, sessao_motor: str) -> List[MensagemDoMotor]:
         """Read-back da sessão. Não chama o modelo."""

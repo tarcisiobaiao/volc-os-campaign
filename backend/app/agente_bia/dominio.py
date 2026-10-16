@@ -162,6 +162,8 @@ CODIGOS_DE_ERRO: Mapping[str, str] = {
     "contexto_indisponivel": "O contexto VOLC pedido não pôde ser lido.",
     "hermes_com_ferramentas": "A superfície API do Hermes expõe ferramentas; a Bia V1 recusa enviar.",
     "hermes_usou_ferramenta": "O Hermes usou ferramenta neste turno; a resposta foi descartada.",
+    "hermes_erro_no_turno": "O Hermes interrompeu o turno com erro. O resultado é incerto.",
+    "anexo_indisponivel": "Um anexo desta mensagem expirou ou não está mais disponível.",
     "auditoria_indisponivel": "A resposta chegou, mas não foi possível auditar o turno. O resultado é incerto.",
 }
 
