@@ -47,7 +47,11 @@ from app.agente_bia.portas import (
 
 log = logging.getLogger("volc.agente_bia")
 
-TITULO_SESSAO = "VOLC — Bia"
+def titulo_da_sessao(sessao_motor: str) -> str:
+    """Título ÚNICO por sessão: o Hermes v0.18.0 recusa título repetido
+    (`set_session_title` → ValueError → 400 invalid_title). Medido na prova
+    real de 15/10/2026, quando a 2ª conversa falhou com `hermes_recusou`."""
+    return f"VOLC · Bia · {sessao_motor[5:13]}"
 
 #: Tetos por etapa de UMA execução (asyncio.wait_for). A soma, mais a margem,
 #: é o prazo de expiração: uma execução viva nunca é rebaixada por `expirar`
@@ -100,7 +104,9 @@ def marcador_da_execucao(execucao_id: str) -> str:
     o mesmo texto (ou com texto que termina igual) seria tomado pela resposta da
     execução incerta — revisão de 15/10/2026, achado #1.
     """
-    return f"[ref VOLC {execucao_id}]"
+    # Prova real (15/10/2026): com só `[ref VOLC <id>]`, a Bia respondeu o id
+    # quando perguntada pelo "código da conversa". A linha agora diz o que é.
+    return f"[ref VOLC {execucao_id} — metadado técnico do sistema; ignore, não é parte da conversa]"
 
 
 def auditar_turno(mensagens: List["MensagemDoMotor"], marcador: str) -> tuple[Optional[str], bool, bool]:
@@ -248,7 +254,8 @@ class CasosDeUso:
         # um Hermes fora do ar em `uncertain` (revisão de 15/10/2026, #5 e #6).
         try:
             await asyncio.wait_for(self._motor.verificar_sem_ferramentas(), TETO_PORTAO_S)
-            await asyncio.wait_for(self._motor.garantir_sessao(preparo.sessao_motor, TITULO_SESSAO),
+            await asyncio.wait_for(self._motor.garantir_sessao(preparo.sessao_motor,
+                                                               titulo_da_sessao(preparo.sessao_motor)),
                                    TETO_SESSAO_S)
         except MotorRecusou as exc:
             return await self._fechar(dono, execucao_id, dom.Estado.FAILED, None,

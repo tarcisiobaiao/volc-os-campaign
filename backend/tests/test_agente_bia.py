@@ -474,7 +474,8 @@ def test_o_corpo_ao_hermes_e_so_input_sem_instrucao_modelo_ou_escopo_de_memoria(
     banca.enviar(cid, "oi")
     [chat] = banca.hermes.chats
     eid = banca.historico(cid).json()["execucoes"][0]["id"]
-    assert json.loads(chat.content) == {"input": f"[ref VOLC {eid}]\noi"}
+    assert json.loads(chat.content) == {"input": f"{aplicacao.marcador_da_execucao(eid)}\noi"}
+    assert "ignore" in aplicacao.marcador_da_execucao(eid)
     assert "x-hermes-session-key" not in {k.lower() for k in chat.headers}
     criar = [r for r in banca.hermes.pedidos if r.url.path == "/api/sessions"][0]
     assert set(json.loads(criar.content)) == {"id", "title"}
@@ -944,3 +945,14 @@ def test_adaptador_recusa_sessao_que_nao_e_do_volc():
 def test_deteccao_de_ferramenta_no_read_back(tool_calls, esperado):
     from app.agente_bia.infra_hermes import _tem_ferramenta
     assert _tem_ferramenta({"role": "assistant", "content": "x", "tool_calls": tool_calls}) is esperado
+
+
+def test_segunda_conversa_nao_colide_no_titulo_unico_do_hermes(banca):
+    """Regressão da prova real (15/10/2026): o Hermes exige título único; a 2ª
+    conversa falhava com hermes_recusou porque todas nasciam 'VOLC — Bia'."""
+    for _ in range(3):
+        cid = banca.nova()
+        banca.enviar(cid)
+        [e] = banca.historico(cid).json()["execucoes"]
+        assert e["estado"] == "succeeded", e
+    assert len(set(banca.hermes.titulos.values())) == 3

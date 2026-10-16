@@ -200,6 +200,7 @@ class HermesFalso:
     modo: str = "ok"  # ok | timeout | conexao_recusada | http500 | http401 | ilegivel | fora_do_ar | usa_ferramenta | sem_readback
     ferramentas: List[str] = field(default_factory=list)  # toolsets habilitados no profile
     sessoes: Dict[str, List[Dict[str, str]]] = field(default_factory=dict)
+    titulos: Dict[str, Any] = field(default_factory=dict)
     pedidos: List[httpx.Request] = field(default_factory=list)
 
     @property
@@ -226,6 +227,10 @@ class HermesFalso:
             sid = corpo["id"]
             if sid in self.sessoes:
                 return httpx.Response(409, json={"error": {"code": "session_exists"}})
+            # Como o Hermes v0.18.0: título é único entre sessões (400 invalid_title).
+            if corpo.get("title") in self.titulos.values():
+                return httpx.Response(400, json={"error": {"code": "invalid_title"}})
+            self.titulos[sid] = corpo.get("title")
             self.sessoes[sid] = []
             return httpx.Response(201, json={"object": "hermes.session", "session": {"id": sid}})
         if caminho.startswith("/api/sessions/") and caminho.endswith("/messages"):

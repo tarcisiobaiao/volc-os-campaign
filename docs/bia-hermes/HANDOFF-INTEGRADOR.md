@@ -8,7 +8,7 @@ Esta branch **não** editou `volc-os-workbook/ROADMAP-VIVO.json`, `docs/volc-os-
 
 | Tarefa | Estado hoje | Estado proposto | Prova a registrar | Lacuna |
 |---|---|---|---|---|
-| P09-T04 "Integrar Bia em modo leitura e sugestão" | todo | **partial** | rotas `/api/agent/*` no FastAPI com flag + ADMIN; widget no Layout; ledger v27_01 provado no lab (66/66, garantido) e pelo protocolo; 85 testes herméticos backend + 4 adaptador↔SQL real; 21 front + bundle real sem Hermes | prova real: v27_01 não aplicada; profile `volcweb` inexistente; nenhuma inferência real feita |
+| P09-T04 "Integrar Bia em modo leitura e sugestão" | todo | **partial** (provada em ambiente local; falta FastAPI em produção) | rotas `/api/agent/*` no FastAPI com flag + ADMIN; widget no Layout; ledger v27_01 provado no lab (66/66, garantido) e pelo protocolo; 85 testes herméticos backend + 4 adaptador↔SQL real; 21 front + bundle real sem Hermes | **prova real feita em 15/10/2026** (provas/PROVA-REAL-20261015.md): mesma Bia do Telegram (profile `default`), sessão web separada, 0 ferramentas, 0 mutação; falta o FastAPI implantado fora do Mac (ADR-RUNTIME) para uso além do operador local |
 | P09-T06 "Provar um gateway agêntico Google Ads somente leitura" | todo | **partial** | catálogo tipado só leitura; `volc_get_campaign_context` sobre o snapshot do inventário e o fato canônico campanha-dia (ledger antes do fato), com receita e lucro nulos e frescor obrigatório; prova estática de zero caminho de mutação | sem leitura contra o Supabase real; o Hermes não consome a capacidade como ferramenta (decisão da V1: injeção pelo servidor) |
 | P09-T05 "Permitir confirmação humana contextual" | todo | todo | interfaces `PropostaDeAcao`/`Aprovacao`/`Recibo`/`PlanoDeExecucao` declaradas e desabilitadas | tudo |
 
@@ -19,8 +19,8 @@ Não promover nada a `done`: os critérios de aceite exigem a prova real (RUNBOO
 | Nó | Campo | De → Para |
 |---|---|---|
 | `cap_bia_copilot` | `state` | `todo` → `partial` |
-| `cap_bia_copilot` | `evidence` | acrescentar: "15/10/2026: V1 implementada no FastAPI (/api/agent/*, ADMIN, flag), ledger agente_bia v27_01 candidato, widget no Layout. Prova hermética e de laboratório; prova real pendente de aplicar v27_01 e criar o profile volcweb." |
-| `system:hermes` | `evidence` | **corrigir**: "127.0.0.1:8642 declarado em 26/08; em 15/10/2026 nenhuma API Server escutava (só o painel em 127.0.0.1:9119). v0.18.0 (2026.7.1), único profile default (Telegram, hermes-gateway.service, root)." |
+| `cap_bia_copilot` | `evidence` | acrescentar: "15/10/2026: V1 no FastAPI (/api/agent/*, ADMIN, flag) e widget no Layout; v27_01 aplicada; mesma Bia do Telegram (profile default, sessão web separada, superfície api_server sem ferramentas). Prova real local: inferência, continuidade, reload, isolamento, 0 ferramentas, 0 mutação." |
+| `system:hermes` | `evidence` | **corrigir**: "v0.18.0 (2026.7.1), único profile default (Telegram, hermes-gateway.service, root). Até 15/10/2026 nenhuma API Server escutava; desde 16/10 00:40Z, API Server do default em 127.0.0.1:8642 com platform_toolsets.api_server=[] (zero ferramentas), acessada só por túnel SSH pelo backend VOLC." |
 | `concept:ads_agent_gateway` | `state` | `todo` → `partial`; evidência: o catálogo só leitura e a capacidade `volc_get_campaign_context` |
 | novo `doc:adr-bia-hermes-v1` | — | `documenta: cap_bia_copilot`, path `docs/architecture/ADR-BIA-HERMES-VOLC-V1.md` |
 
@@ -63,11 +63,16 @@ Nós esperados na camada técnica: `backend/app/agente_bia/*`, `src/features/bia
 
 ## 6. O que continua pendente (fora desta branch)
 
-1. CP1: aplicar a v27_01 (e decidir a v20_01, o ledger de migrations, que também não está em produção).
-2. CP2: ligar a superfície API do profile `default` (`api_default.py aplicar`).
-3. CP3/CP4: túnel, `.env.local` e `scripts/bia_prova_real.py`.
+1. ~~CP1~~, ~~CP2~~, ~~CP3/CP4~~: feitos em 15/10/2026 (ver provas/).
+2. Implantar o FastAPI fora do Mac (ADR-RUNTIME), com túnel persistente ou Tailscale Serve até o Hermes; até lá o widget só funciona no ambiente do operador.
+3. Migration v27_02 para a reconciliação gravar `hermes_usou_ferramenta` (R8).
+4. A v20_02 (linha de base do ledger) continua NÃO aplicada; a âncora dela (695e913a…) já não bate com produção (58e2c430… antes da v27, dfe4bc0c… depois) e precisa ser remedida.
 4. Endurecimento do túnel (chave SSH dedicada com `permitopen`).
 5. Fase 2: expor o catálogo ao Hermes como MCP, com token por execução, e `registrar_proposta`.
+
+## 6.1 Conflito novo a observar
+
+- `origin/mission/w15-meta-g0y5xz` usa a `v26_01_*`; esta branch usa a v27_01, **já aplicada em produção**. Quem integrar a w15 depois deve conferir a ordem no ledger `volc_ops`, onde só a v27_01 está registrada.
 
 ## 7. Nota de secret scan
 

@@ -4,7 +4,13 @@ Ordem obrigatória: **CP0** (local) → **CP1** (banco) → **CP2** (superfície
 
 CP1 e CP2 são **checkpoints externos**: nenhum deles foi executado nesta branch. Cada um precisa de autorização explícita do Tarcisio, e este documento descreve, para cada um, a operação exata, o alvo, o diff, o rollback e a evidência de que o Telegram não é afetado.
 
-## Fatos de produção lidos em 15/10/2026 (somente leitura)
+## Estado executado em 15/10/2026
+
+- **CP1 feito.** A v20_01 (o ledger `volc_ops`, que não toca `public`/`app_auth`: fingerprint igual) e a v27_01 (sha `d8b03f4d…`) foram aplicadas pelo protocolo, com backups em `/root/backups/pre-*.dump`. Recibos e postflight estão em `provas/producao/`.
+- **CP2 feito.** `api_default.py aplicar` rodou às 00:40Z com um único restart, todos os gates verdes e sem rollback. O recibo está em `provas/hermes-aplicar-recibo-20261016-004014.json`.
+- **CP3 e CP4 feitos** no Mac: túnel :18642, FastAPI :8031, Express :3031, Vite :8091. O recibo está em `provas/PROVA-REAL-20261015.md`.
+
+## Fatos de produção lidos antes da execução (somente leitura)
 
 | Fato | Valor |
 |---|---|

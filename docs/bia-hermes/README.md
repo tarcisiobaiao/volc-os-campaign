@@ -1,6 +1,6 @@
 # Bia V1 no VOLC O.S. (P09-T04 / P09-T06)
 
-**Estado: IMPLEMENTADO, AGUARDA PROVA REAL.** O código e a prova hermética estão prontos. Decisão de 15/10/2026: a Bia do VOLC é a mesma do Telegram (profile `default`), numa sessão web separada.
+**Estado (15/10/2026): IMPLEMENTADO E PROVADO no ambiente local do operador.** As migrations v20_01 e v27_01 estão aplicadas no Supabase oficial. A superfície API do profile `default` do Hermes está ligada (loopback, sem ferramentas). A prova real ponta a ponta está em [provas/PROVA-REAL-20261015.md](provas/PROVA-REAL-20261015.md). O FastAPI não está em produção: o widget funciona onde o FastAPI roda, hoje o Mac do operador.
 
 Caminho: navegador (sessão Supabase, ADMIN) → FastAPI `/api/agent/*` → ledger `agente_bia` (Supabase oficial, RPC nomeada) → túnel SSH local → Hermes v0.18.0, **profile `default`** (a mesma Bia do Telegram), sessão web própria, superfície `api_server` sem ferramentas. Contexto VOLC só leitura (`volc_get_campaign_context`), invocado pelo servidor e injetado como dado.
 
@@ -13,6 +13,7 @@ Caminho: navegador (sessão Supabase, ADMIN) → FastAPI `/api/agent/*` → ledg
 | [RUNBOOK-IMPLANTACAO.md](RUNBOOK-IMPLANTACAO.md) | checkpoints CP1 (banco), CP2 (Hermes), CP3 (túnel), CP4 (prova real) |
 | [RUNBOOK-ROLLBACK-ROTACAO.md](RUNBOOK-ROLLBACK-ROTACAO.md) | desligar, reverter, rotacionar, reter |
 | [HANDOFF-INTEGRADOR.md](HANDOFF-INTEGRADOR.md) | o que o integrador aplica em roadmap, curadoria e grafo depois do merge |
+| `provas/PROVA-REAL-20261015.md` | recibo da prova real (gates, roteiro, defeitos achados e corrigidos) |
 | `provas/` | recibos: suíte do lab v27_01 (66/66, modo garantido, `producao_acessada: false`) e protocolo oficial em banco descartável (aplicar, rollback recusado com dado, reverter) |
 
 ## Código

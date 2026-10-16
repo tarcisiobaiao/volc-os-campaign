@@ -1,0 +1,74 @@
+{
+ "unit_ativa": "active",
+ "unit_execstart_gateway_run": true,
+ "gateway_state_mtime": 1792099105.1682153,
+ "main_pid": "943025",
+ "gateway_state": "running",
+ "gateway_state_pid": 943025,
+ "telegram": "connected",
+ "active_agents": 0,
+ "processos_gateway_run": 1,
+ "sha_config": "8812656a2114621657c761e93c976aa842ac603714a8cd79351c9fd15f02f495",
+ "sha_env": "2d0e6f2229272ba9e93f29161372e9f2f366b6beb7e8b61bb3ad84c156f6fb3d",
+ "env_api_server": [],
+ "env_telegram_presente": true,
+ "toolsets_telegram": [
+  "browser",
+  "clarify",
+  "code_execution",
+  "computer_use",
+  "cronjob",
+  "delegation",
+  "file",
+  "image_gen",
+  "kanban",
+  "memory",
+  "session_search",
+  "skills",
+  "terminal",
+  "todo",
+  "tts",
+  "vision",
+  "web"
+ ],
+ "toolsets_api_server": [
+  "browser",
+  "code_execution",
+  "cronjob",
+  "delegation",
+  "file",
+  "image_gen",
+  "memory",
+  "session_search",
+  "skills",
+  "terminal",
+  "todo",
+  "vision",
+  "web"
+ ],
+ "mcp_servers": 0,
+ "platform_toolsets_api_server": "AUSENTE",
+ "ouvintes_8642": [],
+ "profiles": [],
+ "sessoes": {
+  "por_source": {
+   "cli": 1,
+   "subagent": 11,
+   "telegram": 18
+  },
+  "telegram_ativas": [
+   {
+    "id_sha": "95583f6986cd",
+    "mensagens": 137
+   },
+   {
+    "id_sha": "9b9cef8c2895",
+    "mensagens": 90
+   }
+  ]
+ },
+ "projecao": {
+  "toolsets_api_server_com_vazio": [],
+  "toolsets_telegram_iguais": true
+ }
+}
