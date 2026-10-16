@@ -42,7 +42,7 @@ def perfis(pg: dict) -> dict[str, PerfilBytes]:
     rollup = largo["total_bytes"] / largo["linhas"]
     h7 = _medicao(pg, "longo", 10**7)["tamanho"]
     p7 = _medicao(pg, "longo", 10**7, True)["tamanho"]
-    sobre = max(0.0, (p7["total_bytes"] - h7["total_bytes"]) / max(1, p7["folhas"]))
+    fator_part = p7["total_bytes"] / h7["total_bytes"]  # medido em 1e7 (4 partições mensais)
     out = {}
     for nome, variante, formato in (("v21_replica", "v21", "largo"), ("largo_tipado", "largo", "largo"),
                                     ("longo_tipado", "longo", "longo"), ("largo_jsonb", "jsonb", "largo")):
@@ -50,7 +50,7 @@ def perfis(pg: dict) -> dict[str, PerfilBytes]:
         out[nome] = PerfilBytes(formato=formato, heap_por_observacao=t["heap_por_linha"],
                                 indices_por_observacao=t["indices_por_linha"], payload_linha_em_lote=lote,
                                 payload_linha_individual=ind, manifesto_por_lote=250.0, rollup_por_linha=rollup,
-                                sobrecarga_particao_bytes=sobre, origem=f"pg_medicoes.json: {variante} 1e6 (sem partição)")
+                                fator_particao=fator_part, origem=f"pg_medicoes.json: {variante} 1e6 (sem partição)")
     return out
 
 

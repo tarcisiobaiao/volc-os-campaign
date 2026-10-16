@@ -121,11 +121,15 @@ def test_formato_longo_multiplica_observacoes_por_metrica():
     assert a.observacoes_dia == 8 * b.observacoes_dia
 
 
-def test_particao_soma_sobrecarga_por_mes():
+def test_particao_soma_sobrecarga_por_mes_e_fator_proporcional():
     pol = Politica(dedup_observacao=True, dedup_payload="linha")
     a = calcular_cenario([_d0()], ESC, PERFIL, pol)
     b = calcular_cenario([_d0()], ESC, PERFIL, Politica(dedup_observacao=True, dedup_payload="linha", particao_mensal=True))
     assert (b.acumulado_gb["3a"] - a.acumulado_gb["3a"]) * 1024**3 == pytest.approx(37 * 100_000)
+    p2 = PerfilBytes(**{**PERFIL.__dict__, "fator_particao": 1.035})
+    c = calcular_cenario([_d0()], ESC, p2, Politica(dedup_observacao=True, dedup_payload="linha", particao_mensal=True))
+    extra = (a.bytes_observacao_dia + a.bytes_indices_dia) * 0.035
+    assert c.bytes_dia - a.bytes_dia == pytest.approx(extra)
 
 
 @pytest.mark.parametrize("kw", [dict(janela=(2, 1)), dict(fracao_ativa=1.5), dict(lambda_mudanca_h=-1),

@@ -167,7 +167,8 @@ class PerfilBytes:
     manifesto_por_lote: float = 250.0  # linha do lote (chaves, sha256, contagem) sem o payload
     hash_por_linha: float = 56.0  # entrada de índice sha256(linha) → lote, no modo "linha_em_lote"
     rollup_por_linha: float = 300.0  # linha larga de rollup diário (heap + índices)
-    sobrecarga_particao_bytes: float = 0.0
+    sobrecarga_particao_bytes: float = 49_152.0  # fixa por partição (heap + 3 índices vazios, ~6 páginas)
+    fator_particao: float = 1.0  # multiplicador em observação+índices (PK passa a incluir a chave de partição)
     origem: str = "aproximação"
 
     def __post_init__(self) -> None:
@@ -304,8 +305,9 @@ def calcular_cenario(jobs: list[Job], escala: Escala, perfil: PerfilBytes, polit
         linhas_payload += lp
     lotes = sum(r.lotes_dia for r in rs)
     b_pay += lotes * perfil.manifesto_por_lote
-    b_obs = obs * perfil.heap_por_observacao
-    b_idx = obs * perfil.indices_por_observacao if politica.com_indices else 0.0
+    fp = perfil.fator_particao if politica.particao_mensal else 1.0
+    b_obs = obs * perfil.heap_por_observacao * fp
+    b_idx = obs * perfil.indices_por_observacao * fp if politica.com_indices else 0.0
     b_roll = sum(r.linhas_logicas_novas_dia for r in rs) * perfil.rollup_por_linha if politica.rollup_diario else 0.0
     res = ResultadoCenario(jobs=rs, observacoes_dia=obs, linhas_payload_dia=linhas_payload, lotes_dia=lotes,
                            chamadas_dia=sum(r.chamadas_dia for r in rs), bytes_observacao_dia=b_obs,
