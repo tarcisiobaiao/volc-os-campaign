@@ -84,8 +84,11 @@ def observacoes_sem_dado(ctx, payload, campos, status, motivo) -> tuple[Observac
 # campo_chave=None, campos_obrigatorios=(), campo_linhas=None, validador=None); CampoMetrica(nomes, metrica, unidade, value_kind=None)
 # ResultadoNormalizacao(schema_version, payload_sha256, observacoes, rejeicoes, campos_extras); Rejeicao(motivo, indice, detalhe)
 
-def adaptar_google_ads_v21(linha: Mapping) -> tuple[Observacao, ...]   # linha = observação ⋈ lote ⋈ execução (02 §9)
-def adaptar_joinads_v2(linha: Mapping) -> tuple[Observacao, ...]
+def adaptar_google_ads_v21(linha: Mapping, *, moeda_atestada: str | None = None) -> tuple[Observacao, ...]  # 02 §9
+def adaptar_joinads_v2(linha: Mapping, *, moeda_atestada: str | None = None) -> tuple[Observacao, ...]
+Observacao.de_json_texto(texto: str) -> Observacao        # R1: lê como o banco (chave repetida, NaN, float recusados)
+AgregadoObservacao.cobertura_minima_ppm, .n_cobertura_desconhecida   # R1-F16
+ContextoLeitura(..., cobertura_ppm: int | None = None)    # R1-F17: cobertura declarada pela fonte
 def chave_natural(...), chave_base(...), chave_reafirmacao(...), instante_canonico(t)
 ```
 
@@ -136,3 +139,48 @@ Nós/arestas sugeridos para o Mapa Vivo (após merge): nó `volc_dil.fundacao.ob
 estado `testado hermeticamente`); nó `dil_obs` (migration candidata, não aplicada); arestas
 `google_ads_observation (v21) —adaptada_por→ adaptar_google_ads_v21`, `joinads_observation (v2) —adaptada_por→
 adaptar_joinads_v2`, `volc_dil.fundacao.observacao —compõe→ volc_dil.contracts`.
+
+## 7. Resposta à R1 (revisão adversarial, 2026-10-16)
+
+Base: `git merge --no-ff lab/data-foundation-20261016` (HEAD `413395a5`) no worktree A → `d550b445`.
+Correções em `f8de6875`; ajuste mínimo em 2 testes da thread G em `6f7014dc` (marcado `[thread A, R1-*]`).
+Suíte: **692 passed** (650 após o merge + 44 testes novos − 2 substituídos), ~95 s. Dos 44 testes novos,
+**43 falham no código anterior** (`d550b445`, rodado numa cópia com os testes novos); o 44º
+(`test_r1_m7_...` em Python) passa no código correto e existe para matar a mutação M7. Mutações reaplicadas
+numa cópia (script `mutar.py` no scratchpad): **M1, M2, M3, M4, M5, M6, M7 (Python e SQL), M11, M13 e M18 mortas**.
+
+| Achado | Correção | Teste (falha antes, passa depois) |
+|---|---|---|
+| F1 bloqueante: `recebido_em` declarado pelo escritor; `as_of` mostrava no passado o recebido hoje | relógio do banco `dil_obs._agora()`; `payload_bruto.recebido_em` e `lote.recebido_em` := relógio do banco; `p_recebido_em` só conferido (≤ 5 min no passado, nunca futuro); `available_at` ≥ primeiro recebimento dos bytes e ≥ lote | `test_schema_pg_observacao.py::test_r1_f1_nunca_retroativo_pelo_relogio_do_banco` (cenário `t_retro.py` + lote passado + M3 futuro + bytes posteriores + futuro) |
+| F2 aplicador continuava dono | membresia temporária: superusuário não se concede; não-superusuário se concede e revoga no fim; membro permanente → WARNING | `test_schema_pg_r1.py::test_r1_f2_aplicador_nao_superusuario_nao_continua_dono` (papel NOSUPERUSER CREATEROLE aplica; depois `SET ROLE`, UPDATE, TRUNCATE e DISABLE TRIGGER negados; down pelo mesmo aplicador), `test_r1_f2_membro_permanente_recebe_aviso` |
+| F3 linhagem solta | run da obs = run do lote, em andamento (FOR SHARE); fonte/coletor = run; schema = lote | `test_r1_f3_linhagem_conferida` (5 casos), `test_r1_f3_lote_de_run_finalizado_nao_recebe` (cenário `t_linhagem.py`) |
+| F4 moeda inventada a montante | moeda só com prova no payload ou `moeda_atestada`; senão `invalid` `moeda_nao_provada`/`moeda_divergente`; moeda sem prova não é gravada nem em linha sem valor. Documentado: v21 campanha-dia grava 'BRL' fixo, JoinAds `cfg.CURRENCY \|\| 'USD'` + DEFAULT 'USD' | `test_observacao_adaptadores.py::test_r1_f4_*` (2) |
+| F8 run fechado com contagens NULL/incoerentes; retry erra | `finalizar_run` conta inseridas/reafirmadas/dead letter, exige `n_lidas`/`n_noop`, coerência e é idempotente; CHECK com `IS NOT NULL` | `test_schema_pg_r1.py::test_r1_f8_*` (cenário `t_run.py`), `test_r1_m4_check_de_contagens_no_banco` |
+| F9 SQL aceitava o que o Python recusa | entrada `json`; inteiro literal; tipos JSON; offset ISO obrigatório (SQL e `de_json`); `_texto_ok` em toda identidade (CHECK e função); `ingested_at` declarado ≥ `available_at`; Python com `available_timezones()` (caixa exata); `Observacao.de_json_texto` | `test_validacao_python_e_sql_concordam` (37 mutações, todos os casos de `t_div.py`), `test_r1_m18_*` (4), `test_observacao_contrato.py::test_r1_f9_*` (7), novos casos de CHECK |
+| F15 chave JoinAds mascarada a montante | `custom_key_ausente:<pedida>` (pedido do request ou do endpoint); `custom_key_forcado_upstream` em `key_value_country_adunit`/`pageviews_campaign_batch`; limite documentado (linhas substituídas são descartadas antes da tabela) | `test_r1_f15_custom_key_ausente_forcado_e_com_espaco` (casos (j), (k) e M13) |
+| F16 partial somado num total `medido` | `partial` fora do total por padrão; `cobertura_minima_ppm`, `n_cobertura_desconhecida` | `test_observacao_registro_asof.py::test_r1_f16_*` (cenário `t_agreg.py`) |
+| F17 cobertura fabricada linearmente; "desconhecida" impossível | `partial` com `cobertura_ppm` nulo + marcador `cobertura_desconhecida` (Python e CHECK); normalizador usa só cobertura declarada pela fonte; adaptadores gravam desconhecida | `test_r1_f17_*`, `test_v21_intradiario_vira_partial_sem_cobertura_fabricada`, `test_janela_aberta_vira_partial_com_cobertura` (mata M11), `test_checks_aceitam_partial_com_cobertura_desconhecida` |
+| F20 mutações sobreviventes | testes dirigidos: M1 (`ck_obs_janela_fechada`), M2 (`source_updated_at`), M3, M4, M5, M6 (cluster `en_US.UTF-8`, `C.UTF-8` como reserva), M7 (Python e SQL), M11, M13, M18 (mensagem própria da guarda) | casos novos em `test_checks_do_banco_rejeitam_insercao_direta`, `test_schema_pg_r1.py::test_r1_m*`, `test_r1_m7_*` |
+| F21 down com CASCADE cego | down procura dependentes fora de `dil_obs` em `pg_depend` e para listando-os | `test_r1_f21_down_recusa_dependente_fora_do_schema` (view `public.painel_receita` sobrevive) |
+| F22 não reaplicável por não-superusuário com papéis existentes | sem ADMIN OPTION: erro claro com o GRANT a pedir, nada pela metade; com `WITH ADMIN OPTION, INHERIT FALSE, SET FALSE`: reaplica sem membresia residual | `test_r1_f22_papeis_existentes_reaplicacao_por_nao_superusuario` |
+| H3 retry concorrente sob REPEATABLE READ | READ COMMITTED obrigatório (erro `isolamento`); em RC o retry concorrente espera a trava e vira `noop` | `test_r1_h3_*` (duas sessões psql) |
+| H4 `finalizar_run` concorrente | `FOR SHARE` no registro, `FOR UPDATE` + contagem em comando novo no fechamento | `test_r1_h4_*` (fechamento espera a observação em voo e a conta; depois recusa nova) |
+
+Achados contestados: **nenhum**. Duas ressalvas de escopo:
+- F22 pedia "reaplicável por não-superusuário quando papéis já existem". No PostgreSQL 16 um CREATEROLE só
+  administra papéis em que tem ADMIN OPTION; a migration não pode (nem deve) contornar isso. O que entreguei:
+  com ADMIN OPTION reaplica; sem ela, para cedo com o GRANT exato a pedir.
+- F1 vale no banco; o `Registro` em Python continua sem conhecer o recebimento dos bytes (documentado em 02 §3).
+
+Mudanças que afetam outras threads:
+- `registrar_observacao` agora recebe `json` (chamadas com `::jsonb` não resolvem). Linhagem conferida:
+  `schema_version` da observação = a do lote. `finalizar_run`: passe `NULL` nas contagens que o banco calcula.
+- Para dados com `available_at` no passado em teste, troque o relógio do banco: `ClusterPG.sql_relogio(t, papel)`
+  no conftest (só no cluster descartável).
+- Ajustei `test_qualidade_pg_views.py::_carga_dil_obs` e `test_qualidade_checagens.py::test_zero_sintetizado_caminho_contrato_a_igual_ao_direto`
+  da thread G para essas regras (sem mudar a lógica de G). `agregar_observacoes` deixa `partial` fora do total por padrão.
+- O down de 0001 agora recusa rodar com as views `dil_qualidade.*` (dq_02) aplicadas: rode o down de dq_02 antes.
+
+Delta de curadoria adicional (proposta): P06-T08 e P14-T02 continuam `partial`; anotar que a regra "nunca
+retroativo" agora é do relógio do banco e que adaptadores v21/v2 marcam moeda sem prova como `invalid` — o
+coletor v21 precisaria pedir `customer.currency_code` no GAQL para o custo deixar de ser `invalid`.

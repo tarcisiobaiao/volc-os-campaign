@@ -8,9 +8,11 @@ Thread A da missão "Fundação Data Intelligence" (2026-10-16). Branch `lab/dil
 | Adaptadores v21 / JoinAds v2 | `.../observacao/adaptadores.py` | testado hermeticamente, só com **linhas sintéticas** |
 | Migration candidata | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_*.sql` | testada em **PostgreSQL 16 descartável**; não aplicada em nenhum banco operacional |
 | Particionamento (opcional) | `.../migrations_candidatas/dil_obs_0002_*.OPCIONAL*.sql` | testado em PG16 descartável |
-| Testes | `tests/data-intelligence/fundacao/test_observacao_*.py`, `test_schema_pg_*.py` | 171 testes novos; suíte inteira 343 verdes |
+| Testes | `tests/data-intelligence/fundacao/test_observacao_*.py`, `test_schema_pg_*.py` | 1ª entrega: 171 testes; resposta à R1: +44 (suíte inteira 692 verdes após o merge da missão) |
 
 Nada aqui foi validado em produção, rodado em shadow ou calibrado com dado real.
+A revisão adversarial R1 (`handoffs/REVISAO-ADVERSARIAL-R1.md`) achou 13 defeitos desta thread; as
+correções estão incorporadas abaixo e a tabela achado → correção → teste está em `handoffs/HANDOFF-A.md` §7.
 
 ---
 
@@ -65,9 +67,17 @@ observed/zero_confirmed  ⇒  observed_at >= janela_fim     (janela aberta é pa
 - `observed_at`: quando a leitura foi feita na fonte.
 - `available_at`: **o relógio do replay**. Instante em que o VOLC passou a ter o payload. Nunca
   retroativo: backfill feito hoje sobre um dia antigo tem `available_at` de hoje. No banco isso é
-  forçado: `available_at >= lote.recebido_em` e `lote.recebido_em <= now()`.
-- `ingested_at`: quando a linha foi escrita. No banco é `now()` da transação (o escritor não declara);
-  como `ingested_at >= available_at` é CHECK, ninguém registra conhecimento do futuro.
+  forçado pelo **relógio do próprio banco** (R1-F1): `payload_bruto.recebido_em` e `lote.recebido_em`
+  são `dil_obs._agora()` no momento do registro (o `p_recebido_em` do coletor só é conferido: mais de
+  5 min no passado ou qualquer valor no futuro é recusado) e `available_at` precisa ser ≥ o primeiro
+  recebimento dos bytes e ≥ o recebimento do lote. Antes da R1 o escritor declarava `recebido_em` e
+  conseguia fazer o `as_of` mostrar no passado o que o banco recebeu hoje.
+- `ingested_at`: quando a linha foi escrita. No banco é `dil_obs._agora()` (o escritor não declara);
+  como `ingested_at >= available_at` é CHECK, ninguém registra conhecimento do futuro. O valor declarado
+  pelo escritor ainda precisa ser ≥ `available_at` (paridade com o Python, R1-F9).
+- `dil_obs._agora()` é `now()` e é o único relógio de servidor do schema. Não há GUC nem desvio em runtime;
+  os testes o substituem como superusuário no cluster descartável para simular datas passadas.
+- Limite: o `Registro` em Python não conhece o recebimento dos bytes; a regra "nunca retroativo" é do banco.
 - `source_updated_at`: o carimbo da própria fonte (opcional).
 
 ## 4. Status
@@ -85,6 +95,13 @@ observed/zero_confirmed  ⇒  observed_at >= janela_fim     (janela aberta é pa
 
 Regras: `observed` com `0` é recusado (zero afirmado é `zero_confirmed`); qualquer status sem valor
 com `valor=0` é recusado; `cobertura_ppm` só existe em `partial`.
+
+**Cobertura de `partial` (R1-F17):** ou declarada pela fonte (`cobertura_ppm` 1..999 999) ou
+**desconhecida** (`cobertura_ppm` nulo e o marcador `cobertura_desconhecida` no motivo, ex.:
+`janela_aberta;cobertura_desconhecida`). Ninguém fabrica cobertura a partir do relógio: o meio do dia
+não é 50% de cobertura (a curva intradiária de custo é tudo menos linear). O normalizador usa
+`ContextoLeitura.cobertura_ppm` quando a fonte informa; os adaptadores v21/v2 sempre gravam
+desconhecida (as tabelas não dizem quanto da janela foi contado).
 
 Mapeamento para o contrato herdado (`MAPA_ESTADO_HERDADO`): observed→`medido`, zero_confirmed→`zero_confirmado`,
 missing→`ausente`, late→`nao_coletado`, unavailable→`falha`, unsupported→`nao_aplicavel`, invalid→`falha`,
@@ -107,7 +124,12 @@ perde informação de propósito; por isso `agregar_observacoes` devolve também
 
 ## 6. Registro e restatement
 
-`Registro.registrar(obs)` (Python) e `dil_obs.registrar_observacao(jsonb)` (SQL) aplicam as **mesmas** regras:
+`Registro.registrar(obs)` (Python) e `dil_obs.registrar_observacao(json)` (SQL) aplicam as **mesmas** regras.
+A entrada SQL é `json` (não `jsonb`) para preservar o texto: `5e0`, `5000000.0` e chave repetida são
+recusados, como em `Observacao.de_json_texto` (R1-F9). Além das regras abaixo, o banco exige **linhagem**
+(R1-F3): `run_id` da observação = run do lote, run em andamento, `fonte`/`coletor` = os do run,
+`schema_version` = a do lote, `payload_sha256` = o do lote. Reprocessar um payload antigo com outro
+coletor exige run e lote novos (o payload é compartilhado por conteúdo).
 
 | Situação | Resultado |
 |---|---|
@@ -118,6 +140,11 @@ perde informação de propósito; por isso `agregar_observacoes` devolve também
 | outra leitura do mesmo fato com o mesmo `available_at` | erro `versao_ambigua` (UNIQUE `(chave_natural, available_at)`) |
 
 - Restatement é **sempre linha nova**. UPDATE/DELETE/TRUNCATE não existem (§10).
+- Concorrência (R1-H3/H4): `registrar_observacao` exige READ COMMITTED (sob REPEATABLE READ um retry
+  concorrente não enxergaria o commit da outra sessão e viraria `unique_violation`; agora é erro explícito
+  `isolamento`); segura `FOR SHARE` na linha do run, e `finalizar_run` trava `FOR UPDATE` antes de contar —
+  observação em voo entra na contagem ou é recusada, nunca grava num run já fechado. Provado com duas
+  sessões psql paralelas.
 - Reentrega fora de ordem é conservadora: pode atrasar conhecimento, nunca antecipá-lo.
 - Dedup entre execuções: a mesma leitura relida pelo cron seguinte é `noop` e o conhecimento continua
   datado da primeira leitura.
@@ -136,7 +163,9 @@ perde informação de propósito; por isso `agregar_observacoes` devolve também
 - Atenção a consumidores SQL: `sum(valor)` ignora NULL. O total sem a contagem de `valor IS NULL` ao lado
   mente (ver `test_missing_unavailable_late_distintos_no_banco`). Em Python, `agregar_observacoes` compõe
   `volc_dil.contracts.agregar`: vazio → ausente; qualquer membro sem valor → total sem valor (salvo
-  `aceitar_parcial`, que marca cobertura parcial).
+  `aceitar_parcial`, que marca cobertura parcial). `partial` fica **fora do total por padrão** (R1-F16):
+  um membro com 1% de cobertura não vira parcela de um total `medido`; o agregado expõe
+  `cobertura_minima_ppm` e `n_cobertura_desconhecida`.
 
 ## 8. Schema drift (`normalizar`)
 
@@ -155,7 +184,7 @@ perde informação de propósito; por isso `agregar_observacoes` devolve também
 | float / NaN / `"1,5"` / precisão abaixo de micro | `invalid` (sem arredondamento silencioso); JSON é lido com `parse_float=Decimal` |
 | linha duplicada para a mesma entidade | `invalid` `linha_duplicada` |
 | intervalo de datas no lugar do dia (JoinAds) | `invalid` `data_fora_da_janela` (validador do esquema) |
-| janela aberta em `observed_at` | `partial` com `cobertura_ppm` proporcional ao tempo decorrido |
+| janela aberta em `observed_at` | `partial` com a cobertura declarada pela fonte (`ContextoLeitura.cobertura_ppm`) ou cobertura desconhecida (nula, motivo `janela_aberta;cobertura_desconhecida`) — R1-F17 |
 
 `observacoes_sem_dado(ctx, payload, campos, status, motivo)` emite `missing/late/unavailable/unsupported/invalid`
 para as entidades esperadas (ex.: HTTP 503 → `unavailable`, com o corpo do erro como payload).
@@ -194,7 +223,7 @@ SELECT o.*, b.payload_sha256 AS batch_payload_sha256, b.request_meta AS batch_re
 | `entidade`, `grao`, `dimensoes` | `grain` + `campaign_id`/`ad_group_id`/`criterion_id`/`dimensions.search_term` | `campaign_day`→`campaign:<campaign_id>`, `campaign,day`; `keyword_day`→`keyword:<criterion_id>` + dims grupo/campanha; `search_term_day`→`search_term:<texto>`, `ad_group,day`; `campaign_hour`, `ad_group_day`. Grain desconhecido → `AdaptacaoImpossivel` |
 | `metrica`/`unidade`/`valor` | `metrics.cost_micros` (já micros), `impressions`, `clicks`, `conversions` | inteiro estrito; `conversions` fracionária → `invalid` `valor_fracionario` (lacuna: conversão de atribuição data-driven é fracionária e o vocabulário herdado só tem contagem inteira) |
 | não mapeadas | `conversions_value`, `all_conversions*`, `interactions`, `ctr`, `average_cpc_micros`, `cost_per_conversion_micros`, `*_share`, `*_percentage` | razões/derivadas não são observação somável; ficam no payload bruto |
-| `moeda` | `currency_code` | ausente com valor monetário → `invalid` `moeda_nao_declarada` |
+| `moeda` | `currency_code` **com prova** | a coluna não prova: o Code node do v21 campanha-dia grava `currency_code: 'BRL'` fixo (`043c77f5:scripts/instalar_coleta_canonica_google_ads_n8n.py:205`). Valor monetário só sai com moeda se o payload bruto do lote declarar a mesma moeda (ex.: `customer.currencyCode`, que o GAQL atual NÃO pede) ou se o chamador passar `moeda_atestada` (moeda da conta lida com prova própria); senão `invalid` `moeda_nao_provada`, ou `moeda_divergente` (R1-F4). Hoje, sem atestação, **todo custo v21 sai `invalid`** — honesto, e um pedido de endurecimento do coletor |
 | `janela_inicio`/`fim` | `metric_date` (+ `metric_hour`) no `run_timezone` (padrão `America/Sao_Paulo`) | dia local com DST resolvido por `zoneinfo` |
 | `observed_at` | `collected_at` | relógio do n8n |
 | `available_at` = `ingested_at` | `max(collected_at, created_at)` | o VOLC só sabe quando a linha existe no banco; relógio adiantado do n8n não antecipa |
@@ -224,12 +253,20 @@ campanha ENABLED pode ter zero impressões ou simplesmente não ter linha; ficou
 | receita | `revenue_client` e `revenue_gross` | `reported_revenue`, micros por `Decimal` (precisão abaixo de micro → `invalid`); dois fatos distintos pela dimensão `revenue_basis=client/gross` |
 | contagens | `impressions`, `clicks` | — |
 | não mapeadas | `requests_served`, `unfilled`, `pageviews`, `unique_views`, `first_views`, `active_view`, `pmr`, `ctr`, `ecpm_*` | sem métrica no vocabulário (pageview **não** é sessão) ou razão |
-| `moeda` | `currency_code` | ⚠️ a coluna tem `DEFAULT 'USD'`: moeda ausente vira USD no banco e o adaptador não consegue distinguir |
+| `moeda` | `currency_code` **com prova** | o normalizador grava `cfg.CURRENCY \|\| 'USD'` (`joinads_v2_normalize.js:95`) e a coluna tem `DEFAULT 'USD'`: a moeda nunca vem da API. Mesma regra do v21: sem prova no payload ou `moeda_atestada`, receita vira `invalid` `moeda_nao_provada` (R1-F4) |
 | relógios | `collected_at`, `created_at` | como no v21 |
 | `run_id`, `lote_id` | `run_key`, `batch_key` | — |
 | `payload_sha256` | `batch_payload_sha256` | `repeat('0',64)` (default sem o trigger) → todas as métricas `invalid` `payload_sem_hash` |
 | `status` | `data_status` + valor | `unavailable`/`unsupported` → idem para todas as métricas; `null` → `missing`; `0` numa linha devolvida → `zero_confirmed` (a JoinAds devolve linha explícita); `data_status=zero_confirmed` com valor ≠ 0 → `invalid`; janela aberta → `partial` |
-| chave substituída | `batch_request_meta.custom_key` ≠ `custom_key` | todas as métricas `invalid` `chave_substituida:<pedida>-><devolvida>` |
+| chave substituída | `batch_request_meta.custom_key` (ou a chave que o endpoint pede, `CHAVE_PEDIDA_JOINADS`) ≠ `custom_key` | todas as métricas `invalid` `chave_substituida:<pedida>-><devolvida>` |
+| chave ausente (R1-F15) | endpoint que pede chave e linha sem `custom_key` | `invalid` `custom_key_ausente:<pedida>` (o normalizador deixa passar: `if (expectedKey && obs.custom_key && ...)`) |
+| chave forçada (R1-F15) | `key_value_country_adunit`, `pageviews_campaign_batch` | `invalid` `custom_key_forcado_upstream`: o normalizador reescreve `custom_key='utm_campaign'` antes de conferir (`joinads_v2_normalize.js:202,221`), então a chave gravada não prova a identidade |
+
+**Limite que o normalizador a montante impõe (R1-F15/F14):** linhas com chave substituída são
+**descartadas** pelo normalizador (`return null` + warning `custom_key_substituted` no recibo da execução,
+`joinads_v2_normalize.js:169-173`) e nunca chegam a `joinads_observation`. O adaptador só pode detectar o que
+sobreviveu; a ausência de uma campanha em `joinads_observation` **não** é `missing` (nem prova nada) e a
+substituição só é visível nos warnings do recibo da execução, que o adaptador não lê.
 
 ### 9.3 Decisão: `dil_obs` não substitui v21/v2
 
@@ -273,12 +310,26 @@ consumidor. Os 3 runs v21 presos em `running` (recibo L9) não mudam o status da
   superusuário pode desligar o trigger (`DISABLE TRIGGER`, `session_replication_role=replica`); isso é
   decisão de operador, não acidente.
 - Funções de escrita: SECURITY DEFINER com `search_path = ''` (tudo qualificado); lock consultivo por chave
-  natural; recusam campos desconhecidos, float, timezone inválido, dimensões fora de ordem, lote inexistente,
-  payload diferente do lote, `available_at` anterior ao recebimento do lote, execução finalizada.
+  natural; recusam campos desconhecidos, chave JSON repetida, número não inteiro literal, tipo JSON errado,
+  instante sem offset ISO, identidade com controle/espaço de borda, timezone fora da base (caixa exata),
+  dimensões fora de ordem, lote inexistente, linhagem divergente (run/fonte/coletor/schema/payload), run
+  finalizado, `available_at` anterior ao recebimento dos bytes pelo banco, isolamento diferente de READ COMMITTED.
+- `finalizar_run` (R1-F8): inseridas, reafirmadas e dead letters são contadas pelo banco; o chamador informa
+  `n_lidas` e `n_noop` (obrigatórios, `n_lidas >= inseridas + reafirmadas + noop`); valor informado que não
+  bate é erro; repetir o mesmo fechamento é `noop`. CHECK com `IS NOT NULL` explícito nas contagens de run fechado.
+- Quem aplica (R1-F2/F22): superusuário aplica sem virar membro de nada; não-superusuário com CREATEROLE se
+  concede `dil_obs_dono` só durante a transação e a revoga no fim (se já for membro permanente, WARNING).
+  Papéis já existentes criados por outro usuário: sem ADMIN OPTION em `dil_obs_dono` a migration para com erro
+  claro e nada pela metade; com `GRANT dil_obs_dono TO <aplicador> WITH ADMIN OPTION, INHERIT FALSE, SET FALSE`
+  ela reaplica e o aplicador continua sem poder `SET ROLE dil_obs_dono`. Limite: quem tem ADMIN OPTION (inclusive
+  o criador dos papéis no PG16) pode se reconceder a membresia — administrar o papel é poder agir como ele.
 - RLS habilitado **e forçado** em todas as tabelas, policies explícitas só para SELECT (leitor, dono) e
   INSERT (dono); nenhuma policy de UPDATE/DELETE nas tabelas append-only.
-- Rollback `0001.down.sql`: `DROP SCHEMA ... CASCADE` + papéis removidos só se não houver dependência em
-  outro banco (NOTICE). Destrói o histórico (documentado no cabeçalho).
+- Rollback `0001.down.sql`: antes de qualquer DROP, procura em `pg_depend` objetos **fora** de `dil_obs` que
+  dependam dele (views, FKs, defaults, policies, triggers; ex.: as views `dil_qualidade.*` da thread G) e
+  **para** listando-os (R1-F21). Sem dependentes externos, `DROP SCHEMA ... CASCADE` só alcança o próprio
+  schema. Limite: dependência escondida em corpo de função plpgsql não aparece no catálogo. Papéis removidos
+  só se não houver dependência em outro banco (NOTICE). Destrói o histórico (documentado no cabeçalho).
 - Sintaxe compatível com PostgreSQL 15 (produção roda 15.8), mas testado só em 16.
 
 **Particionamento (0002, opcional):** por mês UTC de `janela_inicio`; PK/UNIQUE incluem `janela_inicio`
@@ -314,10 +365,22 @@ observed/zero_confirmed. Maturidade e método de atribuição **não** vêm da f
 | sem partição DEFAULT | DEFAULT | DEFAULT com linhas impede criar a partição do mês |
 | adaptadores sobre v21/v2 | migrar Google/JoinAds para `dil_obs` | duas autoridades; v21/v2 já estão vivas |
 | `invalid` guarda bruto só no payload | coluna `valor_bruto` | um número inválido em coluna numérica acaba somado |
+| relógio do banco em `dil_obs._agora()` (= `now()`), substituído só no teste | `recebido_em` declarado pelo escritor (1ª entrega); GUC de relógio | o escritor forjava o passado (R1-F1); uma GUC seria ajustável pela sessão do escritor |
+| entrada `json` em `registrar_observacao` | `jsonb` | `jsonb` normaliza `5e0`→`5` e engole chave repetida: o banco aceitava o que o Python recusa (R1-F9) |
+| READ COMMITTED obrigatório na escrita | suportar REPEATABLE READ com retry interno | sob RR o snapshot é anterior à trava; recusar explicitamente é mais simples e provável (R1-H3) |
+| moeda só com prova (`moeda_nao_provada`) | confiar na coluna `currency_code` | v21 grava 'BRL' fixo e JoinAds `'USD'` por default: moeda inventada a montante (R1-F4) |
+| cobertura desconhecida (nula + marcador) | cobertura linear pelo relógio | fabricava precisão; a mutação "cobertura constante" sobrevivia (R1-F17) |
+| membresia temporária em `dil_obs_dono` | `GRANT dil_obs_dono TO CURRENT_USER` permanente | o aplicador não-superusuário podia desligar o append-only (R1-F2) |
+| down recusa dependente externo | `DROP SCHEMA ... CASCADE` cego | apagava views de outros schemas (R1-F21) |
 
 ## 13. O que está provado e o que não
 
-**Testado hermeticamente** (comandos e contagens no `handoffs/HANDOFF-A.md`):
+**Testado hermeticamente** (comandos e contagens no `handoffs/HANDOFF-A.md`; após a R1 também:
+nunca retroativo pelo relógio do banco, aplicador não-superusuário sem membresia residual, reaplicação com
+papéis existentes, linhagem, fechamento de run coerente e idempotente, paridade de fronteira em 37 mutações,
+moeda com prova, chave JoinAds ausente/forçada, partial fora do total, cobertura desconhecida, down que
+recusa dependente externo, mutações M1–M7/M11/M13/M18 mortas, cluster en_US.UTF-8, duas sessões
+concorrentes para H3/H4):
 validação de status × valor, relógios, unidade/moeda/value_kind; chaves estáveis a offset e ordem de grão;
 igualdade de chaves Python × PostgreSQL; idempotência (reinserção = no-op, contagem igual) em Python e SQL;
 restatement como versão nova; reafirmação; conflito; versão ambígua; reentrega fora de ordem; as_of antes/depois
@@ -340,3 +403,6 @@ com as_of idêntico antes/depois e rollback exato; varredura de segredos com con
 - aplicação em PostgreSQL 15 e no Supabase self-hosted (PostgREST não expõe `dil_obs`, o que é desejado);
 - origem do `timezone` real de fechamento do dia da JoinAds (README JoinAds: em aberto);
 - GTM/Sensor: só exemplos de semântica; não há adaptador.
+- conjuntos de timezone: Python usa `zoneinfo.available_timezones()` e o banco `pg_timezone_names`; os nomes
+  IANA usuais coincidem, mas os dois catálogos não foram comparados nome a nome;
+- concorrência além de duas sessões e sob carga.
