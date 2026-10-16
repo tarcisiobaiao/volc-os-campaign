@@ -464,7 +464,8 @@ def _carga_dil_obs(obs_fab, agora_real: datetime):
         for _ in range(n_dl):
             linhas.append(f"SELECT dil_obs.registrar_dead_letter({_lit(run)}, {_lit('lote-' + run)}, NULL, 'chave_substituida', '{{}}'::jsonb);")
         # [thread A, R1-F8] inseridas e dead letter são contadas pelo banco (NULL = "conte você")
-        linhas.append(f"SELECT dil_obs.finalizar_run({_lit(run)}, 'succeeded', 5, NULL, 0, NULL, NULL);")
+        # [thread A, R2-G6] dead letter também conta em n_lidas, e run com dead letter fecha 'partial', não 'succeeded'
+        linhas.append(f"SELECT dil_obs.finalizar_run({_lit(run)}, {_lit('partial' if n_dl else 'succeeded')}, {5 + n_dl}, NULL, 0, NULL, NULL);")
     return "\n".join(linhas), obs_lista
 
 

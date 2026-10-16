@@ -7,38 +7,17 @@
 -- =============================================================================
 
 BEGIN;
--- Agir como dil_obs_dono SÓ nesta transação (R1-F2/F22): superusuário não precisa de membresia;
--- quem já pode SET ROLE dil_obs_dono recebe um WARNING (membresia permanente desliga triggers);
--- os demais se concedem a membresia (exige ADMIN OPTION no papel) e a revogam no fim do arquivo.
+-- R2-G1: SÓ SUPERUSUÁRIO aplica ou desfaz. Quem tem ADMIN OPTION em dil_obs_dono — inclusive o CREATEROLE
+-- que criou os papéis, que no PostgreSQL 16 recebe essa opção automaticamente — pode se conceder o papel a
+-- qualquer momento e desligar o append-only (DISABLE TRIGGER, TRUNCATE). Por isso papéis e schema não nascem de
+-- não-superusuário, e a membresia temporária da R1 deixou de existir. No Supabase self-hosted: supabase_admin.
 DO $$
-DECLARE
-  v_super boolean;
-  v_pode boolean;
 BEGIN
-  SELECT rolsuper INTO v_super FROM pg_catalog.pg_roles WHERE rolname = current_user;
-  IF v_super THEN
-    PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'nao', true);
-    RETURN;
-  END IF;
-  IF current_setting('server_version_num')::integer >= 160000 THEN
-    EXECUTE 'SELECT pg_catalog.pg_has_role(current_user, ''dil_obs_dono'', ''SET'')' INTO v_pode;
-  ELSE
-    v_pode := pg_catalog.pg_has_role(current_user, 'dil_obs_dono', 'MEMBER');
-  END IF;
-  IF v_pode THEN
-    RAISE WARNING 'dil_obs: % já pode agir como dil_obs_dono de forma permanente (pode desligar o append-only); revise essa membresia', current_user;
-    PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'nao', true);
-    RETURN;
-  END IF;
-  BEGIN
-    EXECUTE format('GRANT dil_obs_dono TO %I', current_user);
-  EXCEPTION WHEN insufficient_privilege THEN
-    RAISE EXCEPTION 'dil_obs: % não pode administrar o papel dil_obs_dono', current_user
+  IF NOT (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) THEN
+    RAISE EXCEPTION 'dil_obs: aplique como superusuário (% não é superusuário)', current_user
       USING ERRCODE = 'insufficient_privilege',
-            HINT = 'Aplique como superusuário ou como quem criou os papéis, ou peça a um superusuário: '
-                   'GRANT dil_obs_dono TO <aplicador> WITH ADMIN OPTION, INHERIT FALSE, SET FALSE;';
-  END;
-  PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'sim', true);
+            HINT = 'No Supabase self-hosted, como supabase_admin. Quem administra dil_obs_dono pode desligar o append-only.';
+  END IF;
 END $$;
 
 SET LOCAL ROLE dil_obs_dono;
@@ -217,12 +196,20 @@ GRANT SELECT ON dil_obs.observacao, dil_obs.observacao_latest TO dil_obs_leitor;
 GRANT EXECUTE ON FUNCTION dil_obs.observacao_as_of(timestamptz) TO dil_obs_leitor;
 
 RESET ROLE;
--- Fim da membresia temporária (R1-F2): quem aplicou não continua podendo agir como dono.
+-- R2-G1: ninguém além de superusuários deve poder agir como dil_obs_dono. Membresias ou ADMIN OPTION que já
+-- existiam (concedidas por alguém, fora deste arquivo) não são revogadas em silêncio: viram WARNING com o comando.
 DO $$
+DECLARE v_membros text;
 BEGIN
-  IF current_setting('dil_obs.revogar_dono', true) = 'sim'
-     AND EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'dil_obs_dono') THEN
-    EXECUTE format('REVOKE dil_obs_dono FROM %I', current_user);
+  SELECT string_agg(m.rolname || CASE WHEN a.admin_option THEN ' (ADMIN OPTION)' ELSE '' END, ', ' ORDER BY m.rolname)
+    INTO v_membros
+    FROM pg_catalog.pg_auth_members a
+    JOIN pg_catalog.pg_roles r ON r.oid = a.roleid
+    JOIN pg_catalog.pg_roles m ON m.oid = a.member
+   WHERE r.rolname = 'dil_obs_dono' AND NOT m.rolsuper;
+  IF v_membros IS NOT NULL THEN
+    RAISE WARNING 'dil_obs: podem agir como dil_obs_dono e desligar o append-only: %', v_membros
+      USING HINT = 'Um superusuário deve rodar: REVOKE dil_obs_dono FROM <papel>;';
   END IF;
 END $$;
 

@@ -21,13 +21,13 @@
 --     papel de leitura só SELECT; anon/authenticated sem nada, mesmo com default ACL aberto.
 -- Endurecimento após a revisão adversarial R1 (cada item com teste de regressão):
 --   * F1  nunca retroativo: lote.recebido_em é o relógio do banco; available_at >= recebimento dos bytes;
---   * F2  quem aplica não continua membro de dil_obs_dono (membresia só durante a transação);
+--   * F2  (R2-G1) só superusuário aplica: não sobra papel com ADMIN OPTION/membresia em dil_obs_dono (WARNING se já havia);
 --   * F3  linhagem: observação só no run do próprio lote, em andamento; fonte/coletor/schema conferidos;
 --   * F8  fechamento de run com contagens do banco, coerentes e NOT NULL; fechamento repetido = noop;
 --   * F9  fronteira estrita: entrada `json` (texto preservado), inteiro literal, offset ISO, texto JSON,
 --         sem controle/espaço de borda em identidade, ingested_at >= available_at, timezone exato;
 --   * F17 partial com cobertura desconhecida (nula + motivo `cobertura_desconhecida`);
---   * F22 reaplicável por não-superusuário com ADMIN OPTION nos papéis; erro claro sem ela;
+--   * F22 (R2-G1) reaplicável por superusuário com os papéis já existentes; não-superusuário recebe erro claro;
 --   * H3/H4 READ COMMITTED obrigatório na escrita; run travado (FOR SHARE/FOR UPDATE) contra fechamento concorrente.
 -- Relógio do banco: dil_obs._agora() (= now()). É o único ponto de tempo do servidor; os testes o
 -- substituem como superusuário no cluster descartável para simular datas (não há GUC nem desvio em runtime).
@@ -35,6 +35,19 @@
 -- =============================================================================
 
 BEGIN;
+
+-- R2-G1: SÓ SUPERUSUÁRIO aplica ou desfaz. Quem tem ADMIN OPTION em dil_obs_dono — inclusive o CREATEROLE
+-- que criou os papéis, que no PostgreSQL 16 recebe essa opção automaticamente — pode se conceder o papel a
+-- qualquer momento e desligar o append-only (DISABLE TRIGGER, TRUNCATE). Por isso papéis e schema não nascem de
+-- não-superusuário, e a membresia temporária da R1 deixou de existir. No Supabase self-hosted: supabase_admin.
+DO $$
+BEGIN
+  IF NOT (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) THEN
+    RAISE EXCEPTION 'dil_obs: aplique como superusuário (% não é superusuário)', current_user
+      USING ERRCODE = 'insufficient_privilege',
+            HINT = 'No Supabase self-hosted, como supabase_admin. Quem administra dil_obs_dono pode desligar o append-only.';
+  END IF;
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- 0. Papéis dedicados (idempotente). Sem LOGIN: uma credencial de serviço vira membro.
@@ -52,39 +65,6 @@ BEGIN
   END IF;
 END $$;
 
--- Agir como dil_obs_dono SÓ nesta transação (R1-F2/F22): superusuário não precisa de membresia;
--- quem já pode SET ROLE dil_obs_dono recebe um WARNING (membresia permanente desliga triggers);
--- os demais se concedem a membresia (exige ADMIN OPTION no papel) e a revogam no fim do arquivo.
-DO $$
-DECLARE
-  v_super boolean;
-  v_pode boolean;
-BEGIN
-  SELECT rolsuper INTO v_super FROM pg_catalog.pg_roles WHERE rolname = current_user;
-  IF v_super THEN
-    PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'nao', true);
-    RETURN;
-  END IF;
-  IF current_setting('server_version_num')::integer >= 160000 THEN
-    EXECUTE 'SELECT pg_catalog.pg_has_role(current_user, ''dil_obs_dono'', ''SET'')' INTO v_pode;
-  ELSE
-    v_pode := pg_catalog.pg_has_role(current_user, 'dil_obs_dono', 'MEMBER');
-  END IF;
-  IF v_pode THEN
-    RAISE WARNING 'dil_obs: % já pode agir como dil_obs_dono de forma permanente (pode desligar o append-only); revise essa membresia', current_user;
-    PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'nao', true);
-    RETURN;
-  END IF;
-  BEGIN
-    EXECUTE format('GRANT dil_obs_dono TO %I', current_user);
-  EXCEPTION WHEN insufficient_privilege THEN
-    RAISE EXCEPTION 'dil_obs: % não pode administrar o papel dil_obs_dono', current_user
-      USING ERRCODE = 'insufficient_privilege',
-            HINT = 'Aplique como superusuário ou como quem criou os papéis, ou peça a um superusuário: '
-                   'GRANT dil_obs_dono TO <aplicador> WITH ADMIN OPTION, INHERIT FALSE, SET FALSE;';
-  END;
-  PERFORM pg_catalog.set_config('dil_obs.revogar_dono', 'sim', true);
-END $$;
 
 CREATE SCHEMA dil_obs AUTHORIZATION dil_obs_dono;
 REVOKE ALL ON SCHEMA dil_obs FROM PUBLIC;
@@ -188,7 +168,8 @@ CREATE TABLE dil_obs.run_coleta (
        AND n_lidas IS NOT NULL AND n_inseridas IS NOT NULL AND n_noop IS NOT NULL AND n_dead_letter IS NOT NULL
        AND n_confirmadas IS NOT NULL AND n_confirmadas >= 0
        AND n_lidas >= 0 AND n_inseridas >= 0 AND n_noop >= 0 AND n_dead_letter >= 0
-       AND n_lidas >= n_inseridas + n_noop + n_confirmadas))
+       AND n_lidas >= n_inseridas + n_noop + n_confirmadas + n_dead_letter
+       AND (status <> 'succeeded' OR n_dead_letter = 0)))
 );
 COMMENT ON TABLE dil_obs.run_coleta IS 'Uma execução de coletor. Única tabela com UPDATE: running → estado final, uma vez.';
 
@@ -344,7 +325,7 @@ CREATE INDEX ix_dl_run ON dil_obs.dead_letter (run_id);
 
 -- D2' (decisão do integrador sobre a medição da frente B): releitura com o MESMO estado de negócio da versão
 -- vigente vira CONFIRMAÇÃO estreita (bytes medidos no HANDOFF-A §7.2), não versão. Guarda só o suficiente para
--- (a) retry ser no-op (mesmo fato, mesmo observed_at, conhecido de novo depois), (b) frescor ("ainda era verdade em observed_at") e (c)
+-- (a) retry ser no-op ou conflito (mesma leitura: a chave é recalculada de lote + run + observed_at), (b) frescor ("ainda era verdade em observed_at") e (c)
 -- materializar a leitura como versão se uma leitura antiga e diferente chegar atrasada (regra 4 do Registro):
 -- a chave da leitura é recalculada de (chave_natural, payload do lote, esquema, coletor do run, observed_at).
 -- Sem FK para observacao: o particionamento opcional (0002) troca a PK para (observacao_id, janela_inicio).
@@ -352,8 +333,7 @@ CREATE TABLE dil_obs.confirmacao (
   chave_natural         bytea NOT NULL,
   observed_at           timestamptz NOT NULL,
   available_at          timestamptz NOT NULL,
-  run_id                text NOT NULL REFERENCES dil_obs.run_coleta (run_id),
-  lote_id               text NOT NULL REFERENCES dil_obs.lote (lote_id),
+  lote_id               text NOT NULL REFERENCES dil_obs.lote (lote_id),  -- o run é o do lote (linhagem F3)
   observacao_confirmada bigint NOT NULL,
   registrado_em         timestamptz NOT NULL,
   CONSTRAINT pk_confirmacao PRIMARY KEY (chave_natural, observed_at, available_at),
@@ -436,7 +416,7 @@ BEGIN
   RETURN 'inserido';
 END $$;
 
--- Fechamento (R1-F8): inseridas, confirmadas (D2') e dead letters são CONTADAS PELO BANCO; o chamador só informa n_lidas
+-- Fechamento (R1-F8, R2-G6): inseridas, confirmadas (D2') e dead letters são CONTADAS PELO BANCO; o chamador só informa n_lidas
 -- (itens submetidos) e n_noop, que precisam ser coerentes; valores informados para as contagens do banco
 -- precisam bater. Repetir o mesmo fechamento é 'noop'; outro desfecho é erro.
 -- Trava a linha da execução (FOR UPDATE) antes de contar: observações em voo (que seguram FOR SHARE)
@@ -472,7 +452,8 @@ BEGIN
   SELECT count(*) INTO v_dl FROM dil_obs.dead_letter WHERE run_id = p_run_id;
   -- confirmações ainda não materializadas (a materializada já conta em inseridas)
   SELECT count(*) INTO v_conf FROM dil_obs.confirmacao c
-   WHERE c.run_id = p_run_id
+    JOIN dil_obs.lote l ON l.lote_id = c.lote_id
+   WHERE l.run_id = p_run_id
      AND NOT EXISTS (SELECT 1 FROM dil_obs.observacao o WHERE o.chave_natural = c.chave_natural
                        AND o.observed_at = c.observed_at AND o.available_at = c.available_at);
   IF r.status <> 'running' THEN
@@ -491,9 +472,15 @@ BEGIN
      OR p_n_dead_letter IS DISTINCT FROM v_dl AND p_n_dead_letter IS NOT NULL THEN
     RAISE EXCEPTION 'contagem_incoerente: o banco contou inseridas=%, dead_letter=%', v_ins, v_dl USING ERRCODE = 'DLC01';
   END IF;
-  IF p_n_lidas < v_ins + p_n_noop + v_conf THEN
-    RAISE EXCEPTION 'contagem_incoerente: n_lidas (%) menor que inseridas+noop+confirmadas (%)', p_n_lidas,
-      v_ins + p_n_noop + v_conf USING ERRCODE = 'DLC01';
+  -- R2-G6: toda linha lida tem destino (versão, noop, confirmação ou dead letter)
+  IF p_n_lidas < v_ins + p_n_noop + v_conf + v_dl THEN
+    RAISE EXCEPTION 'contagem_incoerente: n_lidas (%) menor que inseridas+noop+confirmadas+dead_letter (%)', p_n_lidas,
+      v_ins + p_n_noop + v_conf + v_dl USING ERRCODE = 'DLC01';
+  END IF;
+  -- R2-G6: run com dead letter não fecha como 'succeeded' limpo
+  IF p_status = 'succeeded' AND v_dl > 0 THEN
+    RAISE EXCEPTION 'contagem_incoerente: run com % dead letter(s) não fecha succeeded; use partial ou failed', v_dl
+      USING ERRCODE = 'DLC01';
   END IF;
   UPDATE dil_obs.run_coleta
      SET status = p_status, finalizado_em = greatest(dil_obs._agora(), iniciado_em), n_lidas = p_n_lidas,
@@ -534,6 +521,18 @@ DECLARE
   l dil_obs.lote%ROWTYPE;
   v_agora timestamptz := dil_obs._agora();
 BEGIN
+  -- R2-G20: retry do MESMO lote é no-op ANTES de conferir p_recebido_em (o coletor reenvia o valor original,
+  -- que depois de 5 min pareceria "no passado"); o recebido_em gravado é o do primeiro registro.
+  SELECT * INTO l FROM dil_obs.lote WHERE lote_id = p_lote_id;
+  IF FOUND THEN
+    IF (l.run_id, l.payload_sha256, l.schema_version, l.pedido) IS DISTINCT FROM
+       (p_run_id, p_payload_sha256, p_schema_version, p_pedido) THEN
+      RAISE EXCEPTION 'conflito_idempotencia: lote % já existe com outro conteúdo', p_lote_id USING ERRCODE = 'DLI01';
+    END IF;
+    RETURN 'noop';
+  END IF;
+  -- p_recebido_em NULL é aceito por decisão: o coletor não declara relógio e o banco carimba (é o caso comum).
+  -- Declarado, só é conferido contra o relógio do banco (nunca gravado).
   IF p_recebido_em > v_agora THEN
     RAISE EXCEPTION 'contrato: recebido_em no futuro' USING ERRCODE = 'DLC01';
   END IF;
@@ -543,14 +542,6 @@ BEGIN
   END IF;
   IF NOT (dil_obs._texto_ok(p_lote_id) AND dil_obs._texto_ok(p_schema_version)) THEN
     RAISE EXCEPTION 'contrato: lote_id/schema_version vazio, com espaço de borda ou caractere de controle' USING ERRCODE = 'DLC01';
-  END IF;
-  SELECT * INTO l FROM dil_obs.lote WHERE lote_id = p_lote_id;
-  IF FOUND THEN
-    IF (l.run_id, l.payload_sha256, l.schema_version, l.pedido) IS DISTINCT FROM
-       (p_run_id, p_payload_sha256, p_schema_version, p_pedido) THEN
-      RAISE EXCEPTION 'conflito_idempotencia: lote % já existe com outro conteúdo', p_lote_id USING ERRCODE = 'DLI01';
-    END IF;
-    RETURN 'noop';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM dil_obs.run_coleta WHERE run_id = p_run_id AND status = 'running') THEN
     RAISE EXCEPTION 'contrato: run_coleta % inexistente ou finalizada', p_run_id USING ERRCODE = 'DLC01';
@@ -567,6 +558,11 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
 DECLARE v_id bigint;
 BEGIN
+  -- R2-G6: dead letter só em run em andamento (FOR SHARE: finalizar_run espera e conta)
+  PERFORM 1 FROM dil_obs.run_coleta WHERE run_id = p_run_id AND status = 'running' FOR SHARE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'contrato: run_coleta % inexistente ou já finalizada (dead letter recusado)', p_run_id USING ERRCODE = 'DLC01';
+  END IF;
   INSERT INTO dil_obs.dead_letter (run_id, lote_id, payload_sha256, motivo, detalhe, registrado_em)
   VALUES (p_run_id, p_lote_id, p_payload_sha256, p_motivo, coalesce(p_detalhe, '{}'::jsonb), dil_obs._agora())
   RETURNING dead_letter_id INTO v_id;
@@ -771,15 +767,30 @@ BEGIN
     END IF;
     RETURN 'noop';
   END IF;
-  SELECT o.* INTO v_exist FROM dil_obs.confirmacao c JOIN dil_obs.observacao o ON o.observacao_id = c.observacao_confirmada
-   WHERE c.chave_natural = v_nat AND c.observed_at = (j ->> 'observed_at')::timestamptz AND c.available_at <= v_avail
-     AND (o.status, o.valor, o.unidade, o.moeda::text, o.cobertura_ppm, o.motivo)
-         IS NOT DISTINCT FROM (j ->> 'status', v_valor, j ->> 'unidade', j ->> 'moeda', v_cob, j ->> 'motivo');
+  -- R2-G4: a MESMA leitura já guardada como confirmação (chave recalculada do lote, run e observed_at da
+  -- confirmação) → conteúdo igual = no-op; diferente = conflito (antes caía em silêncio no caminho de versão)
+  SELECT o.* INTO v_exist
+    FROM dil_obs.confirmacao c
+    JOIN dil_obs.lote l ON l.lote_id = c.lote_id
+    JOIN dil_obs.run_coleta r ON r.run_id = l.run_id
+    JOIN dil_obs.observacao o ON o.observacao_id = c.observacao_confirmada
+   WHERE c.chave_natural = v_nat AND c.observed_at = (j ->> 'observed_at')::timestamptz
+     AND dil_obs._chave_base(c.chave_natural, l.payload_sha256, l.schema_version, r.coletor_nome, r.coletor_versao,
+                             c.observed_at) = v_base
+   LIMIT 1;
   IF FOUND THEN
     IF (v_exist.status, v_exist.valor, v_exist.unidade, v_exist.moeda::text, v_exist.cobertura_ppm)
        IS DISTINCT FROM (j ->> 'status', v_valor, j ->> 'unidade', j ->> 'moeda', v_cob) THEN
       RAISE EXCEPTION 'conflito_idempotencia: mesma leitura (já confirmada) com conteúdo diferente' USING ERRCODE = 'DLI01';
     END IF;
+    RETURN 'noop';
+  END IF;
+  -- outra leitura do mesmo fato, mesmo instante e mesmo estado, já conhecida até agora → no-op
+  IF EXISTS (SELECT 1 FROM dil_obs.confirmacao c JOIN dil_obs.observacao o ON o.observacao_id = c.observacao_confirmada
+              WHERE c.chave_natural = v_nat AND c.observed_at = (j ->> 'observed_at')::timestamptz
+                AND c.available_at <= v_avail
+                AND (o.status, o.valor, o.unidade, o.moeda::text, o.cobertura_ppm, o.motivo)
+                    IS NOT DISTINCT FROM (j ->> 'status', v_valor, j ->> 'unidade', j ->> 'moeda', v_cob, j ->> 'motivo')) THEN
     RETURN 'noop';
   END IF;
 
@@ -808,9 +819,9 @@ BEGIN
     END LOOP;
   END IF;
   IF v_red THEN
-    INSERT INTO dil_obs.confirmacao (chave_natural, observed_at, available_at, run_id, lote_id,
-                                     observacao_confirmada, registrado_em)
-    VALUES (v_nat, v_obs, v_avail, j ->> 'run_id', j ->> 'lote_id', v_q.observacao_id, dil_obs._agora());
+    INSERT INTO dil_obs.confirmacao (chave_natural, observed_at, available_at, lote_id, observacao_confirmada,
+                                     registrado_em)
+    VALUES (v_nat, v_obs, v_avail, j ->> 'lote_id', v_q.observacao_id, dil_obs._agora());
     RETURN 'confirmado';
   END IF;
 
@@ -864,10 +875,10 @@ BEGIN
     SELECT dil_obs._chave_base(v_nat, l.payload_sha256, l.schema_version, r.coletor_nome, r.coletor_versao, v_c.observed_at),
            v_nat, v_q.fonte, v_q.conta, v_q.entidade_tipo, v_q.entidade_id, v_q.grao,
            v_q.dimensoes, v_q.metrica, v_q.value_kind, v_q.valor, v_q.unidade, v_q.moeda, v_q.janela_inicio,
-           v_q.janela_fim, v_q.timezone, v_c.observed_at, NULL, v_c.available_at, dil_obs._agora(), v_c.run_id, NULL,
+           v_q.janela_fim, v_q.timezone, v_c.observed_at, NULL, v_c.available_at, dil_obs._agora(), l.run_id, NULL,
            v_c.lote_id, l.payload_sha256, 'sha256:' || l.payload_sha256, l.schema_version, r.coletor_nome,
            r.coletor_versao, v_q.status, v_q.motivo, v_q.cobertura_ppm
-      FROM dil_obs.lote AS l JOIN dil_obs.run_coleta AS r ON r.run_id = v_c.run_id
+      FROM dil_obs.lote AS l JOIN dil_obs.run_coleta AS r ON r.run_id = l.run_id
      WHERE l.lote_id = v_c.lote_id;
   END LOOP;
   RETURN 'inserido';
@@ -975,12 +986,20 @@ TO dil_obs_leitor;
 GRANT EXECUTE ON FUNCTION dil_obs.observacao_as_of(timestamptz) TO dil_obs_leitor;
 
 RESET ROLE;
--- Fim da membresia temporária (R1-F2): quem aplicou não continua podendo agir como dono.
+-- R2-G1: ninguém além de superusuários deve poder agir como dil_obs_dono. Membresias ou ADMIN OPTION que já
+-- existiam (concedidas por alguém, fora deste arquivo) não são revogadas em silêncio: viram WARNING com o comando.
 DO $$
+DECLARE v_membros text;
 BEGIN
-  IF current_setting('dil_obs.revogar_dono', true) = 'sim'
-     AND EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'dil_obs_dono') THEN
-    EXECUTE format('REVOKE dil_obs_dono FROM %I', current_user);
+  SELECT string_agg(m.rolname || CASE WHEN a.admin_option THEN ' (ADMIN OPTION)' ELSE '' END, ', ' ORDER BY m.rolname)
+    INTO v_membros
+    FROM pg_catalog.pg_auth_members a
+    JOIN pg_catalog.pg_roles r ON r.oid = a.roleid
+    JOIN pg_catalog.pg_roles m ON m.oid = a.member
+   WHERE r.rolname = 'dil_obs_dono' AND NOT m.rolsuper;
+  IF v_membros IS NOT NULL THEN
+    RAISE WARNING 'dil_obs: podem agir como dil_obs_dono e desligar o append-only: %', v_membros
+      USING HINT = 'Um superusuário deve rodar: REVOKE dil_obs_dono FROM <papel>;';
   END IF;
 END $$;
 

@@ -20,21 +20,37 @@ UP = "dil_obs_0001_schema_observacao.sql"
 MIGRACOES = Path(__file__).resolve().parents[3] / "experiments" / "data-intelligence-lab" / "migrations_candidatas"
 
 
+COLETOR, VERSAO = "coleta_canonica_google_ads", "1.0.0"
+ESQUEMA = "google_ads.v21.campaign.campaign_day.api_v25"
+
+
 def _carga_sql(n_ent: int, dias: int, versoes: int, contas: int = 10) -> str:
-    """Carga direta (superusuário, sem as funções de escrita: mede leitura e espaço, não ingestão)."""
+    """Carga direta (superusuário, sem as funções de escrita: mede leitura e espaço, não ingestão).
+
+    R2-G5: ids no formato REAL (sintéticos): run = 64 hex (sha256 da chave de execução do coletor da B), lote =
+    `<run>:<i>`, conta = 10 dígitos, campanha = 11 dígitos, coletor/esquema/payload_ref como os do adaptador v21.
+    Um run por versão (releitura), um lote por (run, conta, campanha) — o payload do lote é o da linha.
+    """
+    run = "encode(sha256(('run:' || v)::bytea), 'hex')"
+    conta = "(1000000000 + c)::text"
+    campanha = "(23100000000 + c * 1000 + e)::text"
+    lote = f"{run} || ':' || (c * 1000 + e)"
+    sha = "encode(sha256(('linha:' || c || ':' || e || ':' || v)::bytea), 'hex')"
     return f"""
 INSERT INTO dil_obs.run_coleta (run_id, fonte, coletor_nome, coletor_versao, iniciado_em, status)
-VALUES ('r', 'google_ads', 'c', '1', '2025-01-01T00:00:00Z', 'running');
+SELECT {run}, 'google_ads', '{COLETOR}', '{VERSAO}', '2025-01-01T00:00:00Z', 'running' FROM generate_series(1, {versoes}) v;
 INSERT INTO dil_obs.payload_bruto (sha256, corpo_bruto, content_type, recebido_em)
-VALUES (encode(sha256('x'::bytea), 'hex'), 'x'::bytea, 'text/plain', '2025-01-01T00:00:00Z');
+SELECT {sha}, ('linha:' || c || ':' || e || ':' || v)::bytea, 'application/json', '2025-01-01T00:00:00Z'
+  FROM generate_series(1, {contas}) c, generate_series(1, {n_ent}) e, generate_series(1, {versoes}) v;
 INSERT INTO dil_obs.lote (lote_id, run_id, payload_sha256, schema_version, pedido, recebido_em, registrado_em)
-VALUES ('l', 'r', encode(sha256('x'::bytea), 'hex'), 'v1', '{{}}', '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z');
+SELECT {lote}, {run}, {sha}, '{ESQUEMA}', '{{}}', '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z'
+  FROM generate_series(1, {contas}) c, generate_series(1, {n_ent}) e, generate_series(1, {versoes}) v;
 WITH b AS (
   SELECT c, e, d, v, timestamptz '2025-01-02 00:00:00-03' + make_interval(days => d) AS ji
     FROM generate_series(1, {contas}) c, generate_series(1, {n_ent}) e, generate_series(0, {dias} - 1) d,
          generate_series(1, {versoes}) v
 ), k AS (
-  SELECT b.*, dil_obs._chave_natural('google_ads', 'c' || c, 'campaign', 'e' || e, ARRAY['campaign', 'day'], '[]'::jsonb,
+  SELECT b.*, dil_obs._chave_natural('google_ads', {conta}, 'campaign', {campanha}, ARRAY['campaign', 'day'], '[]'::jsonb,
                                       'cost', NULL, ji, ji + interval '1 day', 'America/Sao_Paulo') AS nat,
          ji + interval '1 day' + make_interval(hours => v * 7) AS obs_at
     FROM b
@@ -43,23 +59,22 @@ INSERT INTO dil_obs.observacao (chave_idempotencia, chave_natural, fonte, conta,
   dimensoes, metrica, value_kind, valor, unidade, moeda, janela_inicio, janela_fim, timezone, observed_at,
   source_updated_at, available_at, ingested_at, run_id, request_id, lote_id, payload_sha256, payload_ref,
   schema_version, coletor_nome, coletor_versao, status, motivo, cobertura_ppm)
-SELECT dil_obs._chave_base(nat, encode(sha256('x'::bytea), 'hex'), 'v1', 'c', '1', obs_at), nat, 'google_ads',
-       'c' || c, 'campaign', 'e' || e, ARRAY['campaign', 'day'], '[]'::jsonb, 'cost', NULL, 1000000 * v + e, 'micros',
+SELECT dil_obs._chave_base(nat, {sha}, '{ESQUEMA}', '{COLETOR}', '{VERSAO}', obs_at), nat, 'google_ads',
+       {conta}, 'campaign', {campanha}, ARRAY['campaign', 'day'], '[]'::jsonb, 'cost', NULL, 1000000 * v + e, 'micros',
        'BRL', ji, ji + interval '1 day', 'America/Sao_Paulo', obs_at, NULL,
        -- chegada fora da ordem de medição em parte das versões (exercita a ordem do D1)
        obs_at + make_interval(mins => CASE WHEN (e + d + v) % 5 = 0 THEN 600 ELSE 5 END),
-       obs_at + interval '11 hours', 'r', NULL, 'l', encode(sha256('x'::bytea), 'hex'),
-       'sha256:' || encode(sha256('x'::bytea), 'hex'), 'v1', 'c', '1', 'observed', NULL, NULL
+       obs_at + interval '11 hours', {run}, NULL, {lote}, {sha},
+       'google_ads_raw_batch:' || {lote} || ':sha256:' || {sha}, '{ESQUEMA}', '{COLETOR}', '{VERSAO}', 'observed', NULL, NULL
   FROM k;
 ANALYZE dil_obs.observacao;
 """
 
 # D2': uma confirmação por observação (releitura de mesmo estado uma hora depois), só para medir bytes/linha
 CARGA_CONFIRMACOES = """
-INSERT INTO dil_obs.confirmacao (chave_natural, observed_at, available_at, run_id, lote_id,
-                                 observacao_confirmada, registrado_em)
-SELECT chave_natural, observed_at + interval '1 hour',
-       available_at + interval '1 hour', run_id, lote_id, observacao_id, ingested_at + interval '1 hour'
+INSERT INTO dil_obs.confirmacao (chave_natural, observed_at, available_at, lote_id, observacao_confirmada, registrado_em)
+SELECT chave_natural, observed_at + interval '1 hour', available_at + interval '1 hour', lote_id, observacao_id,
+       ingested_at + interval '1 hour'
   FROM dil_obs.observacao;
 ANALYZE dil_obs.confirmacao;
 """
