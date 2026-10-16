@@ -1,0 +1,17 @@
+{
+ "arquivo": "cenario_mini.json",
+ "bytes": 148603,
+ "decisoes_sha256": {
+  "equal": "2b02f2e5e1b4c1e867e0c2016bca7f27efec5b5e774560f78210102d4424fadb",
+  "greedy_conservador": "f1ffd34186f3da168f7d3a53dfbc47919abeb79cc42cadb063bc1ad4e5a851b1",
+  "proportional": "934d7989f3d0f91f329f81429b99b73b38665c4886d517d061ca5c9b736590ff",
+  "proportional_naive_null_as_zero": "002fe3f6a31c4aee8aa6ee4b1aaa00e207b120ca23dba88f0392fb71302df758",
+  "static": "0117a8b3a028379bcb4dd2916a79e527eae213a950e1606b2e9b054be1e42d88"
+ },
+ "gerador": "experiments/data-intelligence-lab/scripts/replay_gerar_fixture.py",
+ "n_observacoes_log_static": 146,
+ "natureza": "sintetico",
+ "relatorio_sha256": "dbceea502482b4eb8e775f1598e9a565187df81a1c0c560a5a37b0ad334ca84c",
+ "seed": 7,
+ "sha256": "13ce61fd3bc4c0dbc67a68cbf477ddf18f76a7d79092c700a8a7af49357a2755"
+}

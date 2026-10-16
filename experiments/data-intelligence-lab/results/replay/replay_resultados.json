@@ -1,0 +1,5959 @@
+{
+ "deterministico": {
+  "auditoria_null_vs_zero_seed0": {
+   "estacionario": [
+    {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "static",
+     "snapshots_com_lacuna": 57,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "equal",
+     "snapshots_com_lacuna": 57,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": false,
+     "decisoes_que_distinguem_null_de_zero": 48,
+     "decisoes_sensiveis_a_valores": 55,
+     "politica": "proportional",
+     "snapshots_com_lacuna": 57,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": false,
+     "decisoes_que_distinguem_null_de_zero": 26,
+     "decisoes_sensiveis_a_valores": 2,
+     "politica": "greedy_conservador",
+     "snapshots_com_lacuna": 57,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": false,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 56,
+     "politica": "proportional_naive_null_as_zero",
+     "snapshots_com_lacuna": 57,
+     "suspeita_null_como_zero": true
+    }
+   ],
+   "lacunas_altas": [
+    {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "static",
+     "snapshots_com_lacuna": 58,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "equal",
+     "snapshots_com_lacuna": 58,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": false,
+     "decisoes_que_distinguem_null_de_zero": 58,
+     "decisoes_sensiveis_a_valores": 51,
+     "politica": "proportional",
+     "snapshots_com_lacuna": 58,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 38,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "greedy_conservador",
+     "snapshots_com_lacuna": 58,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": false,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 55,
+     "politica": "proportional_naive_null_as_zero",
+     "snapshots_com_lacuna": 58,
+     "suspeita_null_como_zero": true
+    }
+   ],
+   "preliminar_otimista": [
+    {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "static",
+     "snapshots_com_lacuna": 58,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "equal",
+     "snapshots_com_lacuna": 58,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": false,
+     "decisoes_que_distinguem_null_de_zero": 52,
+     "decisoes_sensiveis_a_valores": 56,
+     "politica": "proportional",
+     "snapshots_com_lacuna": 58,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": false,
+     "decisoes_que_distinguem_null_de_zero": 26,
+     "decisoes_sensiveis_a_valores": 1,
+     "politica": "greedy_conservador",
+     "snapshots_com_lacuna": 58,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": false,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 58,
+     "politica": "proportional_naive_null_as_zero",
+     "snapshots_com_lacuna": 58,
+     "suspeita_null_como_zero": true
+    }
+   ],
+   "quebra_regime": [
+    {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "static",
+     "snapshots_com_lacuna": 57,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "equal",
+     "snapshots_com_lacuna": 57,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": false,
+     "decisoes_que_distinguem_null_de_zero": 51,
+     "decisoes_sensiveis_a_valores": 50,
+     "politica": "proportional",
+     "snapshots_com_lacuna": 57,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 32,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "greedy_conservador",
+     "snapshots_com_lacuna": 57,
+     "suspeita_null_como_zero": false
+    },
+    {
+     "cega_a_dados": false,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 53,
+     "politica": "proportional_naive_null_as_zero",
+     "snapshots_com_lacuna": 57,
+     "suspeita_null_como_zero": true
+    }
+   ]
+  },
+  "aviso": "Replay por simulador sintético em malha fechada; não é validação com dado real.",
+  "natureza": "sintetico",
+  "relatorios": [
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "estacionario",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 1,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "3a85219a536196e52c1155b8721799ee641d20a7b075d7ad218bdccc493bef28",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 76788914,
+        "hhi_medio_bps": 1412,
+        "lucro_oraculo_micros": 10158500344,
+        "lucro_oraculo_parametros_micros": 8044242031,
+        "lucro_realizado_micros": 5788762887,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 910,
+        "regret_micros": 4369737457,
+        "regret_vs_parametros_bps_do_gasto": 469,
+        "regret_vs_parametros_micros": 2255479144,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 916691,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3233125628,
+        "lucro_oraculo_parametros_micros": 3233125628,
+        "lucro_realizado_micros": 3233125628,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "f4951a0f01db228ba925511138d7c77fbab011407d06a2f9f897011d7f5b9ca7",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 70559749,
+        "hhi_medio_bps": 1252,
+        "lucro_oraculo_micros": 10158500344,
+        "lucro_oraculo_parametros_micros": 8044242031,
+        "lucro_realizado_micros": 5968251673,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 872,
+        "regret_micros": 4190248671,
+        "regret_vs_parametros_bps_do_gasto": 432,
+        "regret_vs_parametros_micros": 2075990358,
+        "turnover_medio_bps_dia": 27
+       },
+       "USD": {
+        "drawdown_maximo_micros": 916691,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3233125628,
+        "lucro_oraculo_parametros_micros": 3233125628,
+        "lucro_realizado_micros": 3233125628,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "d3f10847f4c15eb38e3387baba1c744366ec7ad527130a58a04b468a977541d7",
+      "exclusoes_unidade_dia": 9,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 1749348685,
+        "hhi_medio_bps": 3394,
+        "lucro_oraculo_micros": 10158500344,
+        "lucro_oraculo_parametros_micros": 8044242031,
+        "lucro_realizado_micros": 259434900,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2062,
+        "regret_micros": 9899065444,
+        "regret_vs_parametros_bps_do_gasto": 1621,
+        "regret_vs_parametros_micros": 7784807131,
+        "turnover_medio_bps_dia": 3464
+       },
+       "USD": {
+        "drawdown_maximo_micros": 916691,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3233125628,
+        "lucro_oraculo_parametros_micros": 3233125628,
+        "lucro_realizado_micros": 3233125628,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "848212b832200e1d5dac503d7f78c4d92bf451bf106a9d6dda61145c8302b7c0",
+      "exclusoes_unidade_dia": 179,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 124385943,
+        "hhi_medio_bps": 1679,
+        "lucro_oraculo_micros": 10158500344,
+        "lucro_oraculo_parametros_micros": 8044242031,
+        "lucro_realizado_micros": 6673211850,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 726,
+        "regret_micros": 3485288494,
+        "regret_vs_parametros_bps_do_gasto": 285,
+        "regret_vs_parametros_micros": 1371030181,
+        "turnover_medio_bps_dia": 293
+       },
+       "USD": {
+        "drawdown_maximo_micros": 916691,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3233125628,
+        "lucro_oraculo_parametros_micros": 3233125628,
+        "lucro_realizado_micros": 3233125628,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "03043194b0daa20aa65db8881e884d62c5738ea1d17e0c9041e2ebf5ba35de93",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 1826905800,
+        "hhi_medio_bps": 3957,
+        "lucro_oraculo_micros": 10158500344,
+        "lucro_oraculo_parametros_micros": 8044242031,
+        "lucro_realizado_micros": -765065671,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2275,
+        "regret_micros": 10923566015,
+        "regret_vs_parametros_bps_do_gasto": 1835,
+        "regret_vs_parametros_micros": 8809307702,
+        "turnover_medio_bps_dia": 4410
+       },
+       "USD": {
+        "drawdown_maximo_micros": 916691,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3233125628,
+        "lucro_oraculo_parametros_micros": 3233125628,
+        "lucro_realizado_micros": 3233125628,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "c9473278754bc27b59e41451591b8f6b8bae8b1efb880d4c9ddaa942736badd3"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": 30,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "quebra_regime",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 1,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "bcff3b163bcecaae972859bf43bca0d7d26e7de013b8467193524f275ea2b0ef",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 479939093,
+        "hhi_medio_bps": 1652,
+        "lucro_oraculo_micros": 10617866456,
+        "lucro_oraculo_parametros_micros": 8821689768,
+        "lucro_realizado_micros": 386742183,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2131,
+        "regret_micros": 10231124273,
+        "regret_vs_parametros_bps_do_gasto": 1757,
+        "regret_vs_parametros_micros": 8434947585,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3130326153,
+        "lucro_oraculo_parametros_micros": 3130326153,
+        "lucro_realizado_micros": 3130326153,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "fb883e9442aff9109844399f6293c9d3848829be631b8d405282bac435c382d9",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 126159256,
+        "hhi_medio_bps": 1256,
+        "lucro_oraculo_micros": 10617866456,
+        "lucro_oraculo_parametros_micros": 8821689768,
+        "lucro_realizado_micros": 2909834275,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1605,
+        "regret_micros": 7708032181,
+        "regret_vs_parametros_bps_do_gasto": 1231,
+        "regret_vs_parametros_micros": 5911855493,
+        "turnover_medio_bps_dia": 42
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3130326153,
+        "lucro_oraculo_parametros_micros": 3130326153,
+        "lucro_realizado_micros": 3130326153,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "a084ed2037db0c03a97022d1e950928f2ddfbb59db0f97973a7be108b0973f75",
+      "exclusoes_unidade_dia": 9,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 4145344560,
+        "hhi_medio_bps": 4599,
+        "lucro_oraculo_micros": 10617866456,
+        "lucro_oraculo_parametros_micros": 8821689768,
+        "lucro_realizado_micros": -2423403576,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2716,
+        "regret_micros": 13041270032,
+        "regret_vs_parametros_bps_do_gasto": 2342,
+        "regret_vs_parametros_micros": 11245093344,
+        "turnover_medio_bps_dia": 4063
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3130326153,
+        "lucro_oraculo_parametros_micros": 3130326153,
+        "lucro_realizado_micros": 3130326153,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "b1c1bc8a7637d80401318cfcb594bfc494c5c4f7b4eee7ab663e3978fd445c22",
+      "exclusoes_unidade_dia": 205,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 1472571022,
+        "hhi_medio_bps": 1767,
+        "lucro_oraculo_micros": 10617866456,
+        "lucro_oraculo_parametros_micros": 8821689768,
+        "lucro_realizado_micros": 2264640340,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1740,
+        "regret_micros": 8353226116,
+        "regret_vs_parametros_bps_do_gasto": 1366,
+        "regret_vs_parametros_micros": 6557049428,
+        "turnover_medio_bps_dia": 247
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3130326153,
+        "lucro_oraculo_parametros_micros": 3130326153,
+        "lucro_realizado_micros": 3130326153,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "1d8dd8c4cd53c2ae60047983c72b640a7b3dbe5a2ae253ab4ea2652e7e44deba",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 2418463381,
+        "hhi_medio_bps": 4918,
+        "lucro_oraculo_micros": 10617866456,
+        "lucro_oraculo_parametros_micros": 8821689768,
+        "lucro_realizado_micros": -896618599,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2398,
+        "regret_micros": 11514485055,
+        "regret_vs_parametros_bps_do_gasto": 2024,
+        "regret_vs_parametros_micros": 9718308367,
+        "turnover_medio_bps_dia": 4025
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3130326153,
+        "lucro_oraculo_parametros_micros": 3130326153,
+        "lucro_realizado_micros": 3130326153,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "b604af952d96c4be83f93451df7adaba3f30585d0f72b28344e3a091f368aa8b"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.5,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "preliminar_otimista",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 1,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "5363e4d88d2c97343ad4df821c8e80f1b21468e8501e1d11de762d9e37f34c69",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 41136195,
+        "hhi_medio_bps": 1533,
+        "lucro_oraculo_micros": 11428878624,
+        "lucro_oraculo_parametros_micros": 9256710885,
+        "lucro_realizado_micros": 6218756576,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1085,
+        "regret_micros": 5210122048,
+        "regret_vs_parametros_bps_do_gasto": 632,
+        "regret_vs_parametros_micros": 3037954309,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 4276314495,
+        "lucro_oraculo_parametros_micros": 4276314495,
+        "lucro_realizado_micros": 4276314495,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "9b7a19f46ec8047c3cf9ce749c7461f6346d7777c3c30e197cfc5209f424e47c",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 26998461,
+        "hhi_medio_bps": 1254,
+        "lucro_oraculo_micros": 11428878624,
+        "lucro_oraculo_parametros_micros": 9256710885,
+        "lucro_realizado_micros": 7714834976,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 773,
+        "regret_micros": 3714043648,
+        "regret_vs_parametros_bps_do_gasto": 321,
+        "regret_vs_parametros_micros": 1541875909,
+        "turnover_medio_bps_dia": 29
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 4276314495,
+        "lucro_oraculo_parametros_micros": 4276314495,
+        "lucro_realizado_micros": 4276314495,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "eb8d1d0b9bd6bb143993ad599151cf2da100f4156231c0590c520fc8e29c3ec6",
+      "exclusoes_unidade_dia": 11,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 45106357,
+        "hhi_medio_bps": 1849,
+        "lucro_oraculo_micros": 11428878624,
+        "lucro_oraculo_parametros_micros": 9256710885,
+        "lucro_realizado_micros": 7972729147,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 720,
+        "regret_micros": 3456149477,
+        "regret_vs_parametros_bps_do_gasto": 267,
+        "regret_vs_parametros_micros": 1283981738,
+        "turnover_medio_bps_dia": 1102
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 4276314495,
+        "lucro_oraculo_parametros_micros": 4276314495,
+        "lucro_realizado_micros": 4276314495,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "66695f8fdcc66c3ef2a9dd947be0844573cdf1cc291648e29a64516b74f81a0b",
+      "exclusoes_unidade_dia": 198,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 51319666,
+        "hhi_medio_bps": 1666,
+        "lucro_oraculo_micros": 11428878624,
+        "lucro_oraculo_parametros_micros": 9256710885,
+        "lucro_realizado_micros": 7440958684,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 830,
+        "regret_micros": 3987919940,
+        "regret_vs_parametros_bps_do_gasto": 378,
+        "regret_vs_parametros_micros": 1815752201,
+        "turnover_medio_bps_dia": 296
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 4276314495,
+        "lucro_oraculo_parametros_micros": 4276314495,
+        "lucro_realizado_micros": 4276314495,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "9cd4771268483c74eefe0491cefa6bc3b21e30cf2ee19a98884bfbbb1160f4cc",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 242563322,
+        "hhi_medio_bps": 2394,
+        "lucro_oraculo_micros": 11428878624,
+        "lucro_oraculo_parametros_micros": 9256710885,
+        "lucro_realizado_micros": 5396771999,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1256,
+        "regret_micros": 6032106625,
+        "regret_vs_parametros_bps_do_gasto": 804,
+        "regret_vs_parametros_micros": 3859938886,
+        "turnover_medio_bps_dia": 1991
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 4276314495,
+        "lucro_oraculo_parametros_micros": 4276314495,
+        "lucro_realizado_micros": 4276314495,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "291c1ebcb023da16b3daee50defe8e8e42498d2b6c842a435f37bac2f2c3f5ef"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "lacunas_altas",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.15,
+     "p_receita_falha_prelim": 0.2,
+     "p_receita_nao_coletada": 0.08,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.35,
+     "seed": 1,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "ce3190cea8aa0a25c10af225c44cff07d661ad4e3833d0052654dfc8c070a411",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1646,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 288511001,
+        "hhi_medio_bps": 1660,
+        "lucro_oraculo_micros": 13490821753,
+        "lucro_oraculo_parametros_micros": 7116040739,
+        "lucro_realizado_micros": 4619908550,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1848,
+        "regret_micros": 8870913203,
+        "regret_vs_parametros_bps_do_gasto": 520,
+        "regret_vs_parametros_micros": 2496132189,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 71073501,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 776490772,
+        "lucro_oraculo_parametros_micros": 776490772,
+        "lucro_realizado_micros": 776490772,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "50c16ca9ec87ccc687e0eff20b944ee3b0a6f4e884e02cbeed2c625e54dd1175",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1646,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 184639740,
+        "hhi_medio_bps": 1256,
+        "lucro_oraculo_micros": 13490821753,
+        "lucro_oraculo_parametros_micros": 7116040739,
+        "lucro_realizado_micros": 6575107068,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1440,
+        "regret_micros": 6915714685,
+        "regret_vs_parametros_bps_do_gasto": 112,
+        "regret_vs_parametros_micros": 540933671,
+        "turnover_medio_bps_dia": 44
+       },
+       "USD": {
+        "drawdown_maximo_micros": 71073501,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 776490772,
+        "lucro_oraculo_parametros_micros": 776490772,
+        "lucro_realizado_micros": 776490772,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "68da2a88a94cbeba10eeec063e72e09e479e005a7bb264a591a74254d6822e02",
+      "exclusoes_unidade_dia": 13,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1646,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 2421741059,
+        "hhi_medio_bps": 3701,
+        "lucro_oraculo_micros": 13490821753,
+        "lucro_oraculo_parametros_micros": 7116040739,
+        "lucro_realizado_micros": -1550410480,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 3133,
+        "regret_micros": 15041232233,
+        "regret_vs_parametros_bps_do_gasto": 1805,
+        "regret_vs_parametros_micros": 8666451219,
+        "turnover_medio_bps_dia": 4103
+       },
+       "USD": {
+        "drawdown_maximo_micros": 71073501,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 776490772,
+        "lucro_oraculo_parametros_micros": 776490772,
+        "lucro_realizado_micros": 776490772,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 10,
+      "decisoes_sha256": "c75dc80dfd979f328e2ecbc2a3b974da84576fa28571aec0ade04a0e632032c6",
+      "exclusoes_unidade_dia": 397,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1646,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 273650710,
+        "hhi_medio_bps": 1625,
+        "lucro_oraculo_micros": 13490821753,
+        "lucro_oraculo_parametros_micros": 7116040739,
+        "lucro_realizado_micros": 5483731492,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1668,
+        "regret_micros": 8007090261,
+        "regret_vs_parametros_bps_do_gasto": 340,
+        "regret_vs_parametros_micros": 1632309247,
+        "turnover_medio_bps_dia": 123
+       },
+       "USD": {
+        "drawdown_maximo_micros": 71073501,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 776490772,
+        "lucro_oraculo_parametros_micros": 776490772,
+        "lucro_realizado_micros": 776490772,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "8fb8ee5cef9833c66994097fd3e3c45339daa989b5098f8baca980d2ccf677b2",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1646,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 4151931802,
+        "hhi_medio_bps": 4450,
+        "lucro_oraculo_micros": 13490821753,
+        "lucro_oraculo_parametros_micros": 7116040739,
+        "lucro_realizado_micros": -3294094766,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 3496,
+        "regret_micros": 16784916519,
+        "regret_vs_parametros_bps_do_gasto": 2168,
+        "regret_vs_parametros_micros": 10410135505,
+        "turnover_medio_bps_dia": 3883
+       },
+       "USD": {
+        "drawdown_maximo_micros": 71073501,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 776490772,
+        "lucro_oraculo_parametros_micros": 776490772,
+        "lucro_realizado_micros": 776490772,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "c22ea9dbf5448e89105b9f0161b4920549f237c6c889a7e593d0fc6e814d68c7"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "estacionario",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 2,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "ce64c351c9f4f43cf5ea33831b88c5cf58db11c7a9ecbd884a7668962c9676dd",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1632,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 2003278879,
+        "hhi_medio_bps": 1598,
+        "lucro_oraculo_micros": 2904397592,
+        "lucro_oraculo_parametros_micros": 1092638592,
+        "lucro_realizado_micros": -1960665827,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1013,
+        "regret_micros": 4865063419,
+        "regret_vs_parametros_bps_do_gasto": 636,
+        "regret_vs_parametros_micros": 3053304419,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 22717160,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1335188665,
+        "lucro_oraculo_parametros_micros": 1335188665,
+        "lucro_realizado_micros": 1335188665,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "04bd71bb629330e8f1c867d3596a7fc2df651745d66a2e30f23c6203dc8b1b76",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1632,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 404303113,
+        "hhi_medio_bps": 1255,
+        "lucro_oraculo_micros": 2904397592,
+        "lucro_oraculo_parametros_micros": 1092638592,
+        "lucro_realizado_micros": 87791287,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 586,
+        "regret_micros": 2816606305,
+        "regret_vs_parametros_bps_do_gasto": 209,
+        "regret_vs_parametros_micros": 1004847305,
+        "turnover_medio_bps_dia": 38
+       },
+       "USD": {
+        "drawdown_maximo_micros": 22717160,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1335188665,
+        "lucro_oraculo_parametros_micros": 1335188665,
+        "lucro_realizado_micros": 1335188665,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "61d39a3fe909c669ab7429a5760ebd0fba42856a2234de36e2109b07cf16d91e",
+      "exclusoes_unidade_dia": 9,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1632,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 9625273621,
+        "hhi_medio_bps": 5237,
+        "lucro_oraculo_micros": 2904397592,
+        "lucro_oraculo_parametros_micros": 1092638592,
+        "lucro_realizado_micros": -9582660569,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2601,
+        "regret_micros": 12487058161,
+        "regret_vs_parametros_bps_do_gasto": 2224,
+        "regret_vs_parametros_micros": 10675299161,
+        "turnover_medio_bps_dia": 5292
+       },
+       "USD": {
+        "drawdown_maximo_micros": 22717160,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1335188665,
+        "lucro_oraculo_parametros_micros": 1335188665,
+        "lucro_realizado_micros": 1335188665,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "bca6f641ff5c1c192c0aa92a07484a20cc5098a29cfe9637d7c4f2303dbfad0b",
+      "exclusoes_unidade_dia": 197,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1632,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 683871500,
+        "hhi_medio_bps": 1694,
+        "lucro_oraculo_micros": 2904397592,
+        "lucro_oraculo_parametros_micros": 1092638592,
+        "lucro_realizado_micros": -473260028,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 703,
+        "regret_micros": 3377657620,
+        "regret_vs_parametros_bps_do_gasto": 326,
+        "regret_vs_parametros_micros": 1565898620,
+        "turnover_medio_bps_dia": 316
+       },
+       "USD": {
+        "drawdown_maximo_micros": 22717160,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1335188665,
+        "lucro_oraculo_parametros_micros": 1335188665,
+        "lucro_realizado_micros": 1335188665,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "abd259b2b908f05d8bc11508faef633ebf9808e14b0e1b0d969d714bcf922927",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1632,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 11462175798,
+        "hhi_medio_bps": 5236,
+        "lucro_oraculo_micros": 2904397592,
+        "lucro_oraculo_parametros_micros": 1092638592,
+        "lucro_realizado_micros": -11419562746,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2984,
+        "regret_micros": 14323960338,
+        "regret_vs_parametros_bps_do_gasto": 2606,
+        "regret_vs_parametros_micros": 12512201338,
+        "turnover_medio_bps_dia": 5318
+       },
+       "USD": {
+        "drawdown_maximo_micros": 22717160,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1335188665,
+        "lucro_oraculo_parametros_micros": 1335188665,
+        "lucro_realizado_micros": 1335188665,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "7533b579377c244da33f5c77b4eefd00e27b5638948aba56db5b60b7569ea107"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": 30,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "quebra_regime",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 2,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "7b11dc80edf7a0321150d734d04d12f66c29b1d2db54eb0e2f0e6ab25c906e21",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1631,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 71458950,
+        "hhi_medio_bps": 2006,
+        "lucro_oraculo_micros": 21339014916,
+        "lucro_oraculo_parametros_micros": 19176391208,
+        "lucro_realizado_micros": 7345704631,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2915,
+        "regret_micros": 13993310285,
+        "regret_vs_parametros_bps_do_gasto": 2464,
+        "regret_vs_parametros_micros": 11830686577,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 35229729,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 886511965,
+        "lucro_oraculo_parametros_micros": 886511965,
+        "lucro_realizado_micros": 886511965,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "e6ece1f53c3309d5884bd878f07f6113736030b3899696c46e97f41d47c021e7",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1631,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 2925611,
+        "hhi_medio_bps": 1262,
+        "lucro_oraculo_micros": 21339014916,
+        "lucro_oraculo_parametros_micros": 19176391208,
+        "lucro_realizado_micros": 12633761077,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1813,
+        "regret_micros": 8705253839,
+        "regret_vs_parametros_bps_do_gasto": 1363,
+        "regret_vs_parametros_micros": 6542630131,
+        "turnover_medio_bps_dia": 56
+       },
+       "USD": {
+        "drawdown_maximo_micros": 35229729,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 886511965,
+        "lucro_oraculo_parametros_micros": 886511965,
+        "lucro_realizado_micros": 886511965,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "5e063713244d954d0c2a16e8b5703d7e056dcea03887aba1e26f4681796c2eea",
+      "exclusoes_unidade_dia": 10,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1631,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 2275,
+        "lucro_oraculo_micros": 21339014916,
+        "lucro_oraculo_parametros_micros": 19176391208,
+        "lucro_realizado_micros": 17283455085,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 844,
+        "regret_micros": 4055559831,
+        "regret_vs_parametros_bps_do_gasto": 394,
+        "regret_vs_parametros_micros": 1892936123,
+        "turnover_medio_bps_dia": 975
+       },
+       "USD": {
+        "drawdown_maximo_micros": 35229729,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 886511965,
+        "lucro_oraculo_parametros_micros": 886511965,
+        "lucro_realizado_micros": 886511965,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "b6465f769c255754dc358bd79b22317518536ec888b33c016e330666d9d2e848",
+      "exclusoes_unidade_dia": 167,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1631,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 7461684,
+        "hhi_medio_bps": 1973,
+        "lucro_oraculo_micros": 21339014916,
+        "lucro_oraculo_parametros_micros": 19176391208,
+        "lucro_realizado_micros": 12582880264,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1824,
+        "regret_micros": 8756134652,
+        "regret_vs_parametros_bps_do_gasto": 1373,
+        "regret_vs_parametros_micros": 6593510944,
+        "turnover_medio_bps_dia": 255
+       },
+       "USD": {
+        "drawdown_maximo_micros": 35229729,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 886511965,
+        "lucro_oraculo_parametros_micros": 886511965,
+        "lucro_realizado_micros": 886511965,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "917d31cbe877cde5cab1240d6d4998cdd4b9ad30d077988484e41ae07dc3282c",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1631,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 2481,
+        "lucro_oraculo_micros": 21339014916,
+        "lucro_oraculo_parametros_micros": 19176391208,
+        "lucro_realizado_micros": 16800565472,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 945,
+        "regret_micros": 4538449444,
+        "regret_vs_parametros_bps_do_gasto": 494,
+        "regret_vs_parametros_micros": 2375825736,
+        "turnover_medio_bps_dia": 1641
+       },
+       "USD": {
+        "drawdown_maximo_micros": 35229729,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 886511965,
+        "lucro_oraculo_parametros_micros": 886511965,
+        "lucro_realizado_micros": 886511965,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "9047c3c613911dde4b5d835f13f2a1f2bb6d7fb97f5a68917151473e44f03b52"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.5,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "preliminar_otimista",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 2,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "51191d347d8aa01bb455d265627fd27f9258a33c4eee35dffa12c66b0397cfbd",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1516,
+        "lucro_oraculo_micros": 19545052697,
+        "lucro_oraculo_parametros_micros": 17390411616,
+        "lucro_realizado_micros": 13251817674,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1311,
+        "regret_micros": 6293235023,
+        "regret_vs_parametros_bps_do_gasto": 862,
+        "regret_vs_parametros_micros": 4138593942,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 13693708,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2335091357,
+        "lucro_oraculo_parametros_micros": 2335091357,
+        "lucro_realizado_micros": 2335091357,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "1746d7e5af0c7742a8b5aeb061571551428935bbe27988004162a1d8bedc250a",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1254,
+        "lucro_oraculo_micros": 19545052697,
+        "lucro_oraculo_parametros_micros": 17390411616,
+        "lucro_realizado_micros": 14861547567,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 975,
+        "regret_micros": 4683505130,
+        "regret_vs_parametros_bps_do_gasto": 526,
+        "regret_vs_parametros_micros": 2528864049,
+        "turnover_medio_bps_dia": 34
+       },
+       "USD": {
+        "drawdown_maximo_micros": 13693708,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2335091357,
+        "lucro_oraculo_parametros_micros": 2335091357,
+        "lucro_realizado_micros": 2335091357,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "687540d5515c86d8861af846811a3ff2b1d74310f3b298996de787ebd56fa36b",
+      "exclusoes_unidade_dia": 10,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1740,
+        "lucro_oraculo_micros": 19545052697,
+        "lucro_oraculo_parametros_micros": 17390411616,
+        "lucro_realizado_micros": 15853653243,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 769,
+        "regret_micros": 3691399454,
+        "regret_vs_parametros_bps_do_gasto": 320,
+        "regret_vs_parametros_micros": 1536758373,
+        "turnover_medio_bps_dia": 801
+       },
+       "USD": {
+        "drawdown_maximo_micros": 13693708,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2335091357,
+        "lucro_oraculo_parametros_micros": 2335091357,
+        "lucro_realizado_micros": 2335091357,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "3ce69dea07374a7b57b609cc68c4c83a74f2872bf5d712e3aeb906c2bad2adaa",
+      "exclusoes_unidade_dia": 163,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1808,
+        "lucro_oraculo_micros": 19545052697,
+        "lucro_oraculo_parametros_micros": 17390411616,
+        "lucro_realizado_micros": 15386973929,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 866,
+        "regret_micros": 4158078768,
+        "regret_vs_parametros_bps_do_gasto": 417,
+        "regret_vs_parametros_micros": 2003437687,
+        "turnover_medio_bps_dia": 305
+       },
+       "USD": {
+        "drawdown_maximo_micros": 13693708,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2335091357,
+        "lucro_oraculo_parametros_micros": 2335091357,
+        "lucro_realizado_micros": 2335091357,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "5fa79cb9b960b69c2227105ac12d228989b5e2b5847ec33b488fea5ff8c0be71",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1964,
+        "lucro_oraculo_micros": 19545052697,
+        "lucro_oraculo_parametros_micros": 17390411616,
+        "lucro_realizado_micros": 14679647060,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1013,
+        "regret_micros": 4865405637,
+        "regret_vs_parametros_bps_do_gasto": 564,
+        "regret_vs_parametros_micros": 2710764556,
+        "turnover_medio_bps_dia": 1409
+       },
+       "USD": {
+        "drawdown_maximo_micros": 13693708,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2335091357,
+        "lucro_oraculo_parametros_micros": 2335091357,
+        "lucro_realizado_micros": 2335091357,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "dbdfde7071a799d6f9821f7ee3ea35704147779eedc9d5ac508efea3370108c5"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "lacunas_altas",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.15,
+     "p_receita_falha_prelim": 0.2,
+     "p_receita_nao_coletada": 0.08,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.35,
+     "seed": 2,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "c0b787b27531d661901fa3bde9445c752de1d6563b8d88ed602dcb91f29c0e39",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1658,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 237309884,
+        "hhi_medio_bps": 1703,
+        "lucro_oraculo_micros": 18872054465,
+        "lucro_oraculo_parametros_micros": 12465425670,
+        "lucro_realizado_micros": 4433749056,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 3007,
+        "regret_micros": 14438305409,
+        "regret_vs_parametros_bps_do_gasto": 1673,
+        "regret_vs_parametros_micros": 8031676614,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 160505069,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 532409984,
+        "lucro_oraculo_parametros_micros": 532409984,
+        "lucro_realizado_micros": 532409984,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "6ab560fa093e1381e61d110f3b2aa2e99b9c809f73daaa54683128e2504b4416",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1658,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 131203733,
+        "hhi_medio_bps": 1257,
+        "lucro_oraculo_micros": 18872054465,
+        "lucro_oraculo_parametros_micros": 12465425670,
+        "lucro_realizado_micros": 9498188987,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1952,
+        "regret_micros": 9373865478,
+        "regret_vs_parametros_bps_do_gasto": 618,
+        "regret_vs_parametros_micros": 2967236683,
+        "turnover_medio_bps_dia": 44
+       },
+       "USD": {
+        "drawdown_maximo_micros": 160505069,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 532409984,
+        "lucro_oraculo_parametros_micros": 532409984,
+        "lucro_realizado_micros": 532409984,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "262a7070272e3e995ceeaf5213bf42e10bcdf956a19b6fdc84073f6e2a2bb483",
+      "exclusoes_unidade_dia": 14,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1658,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 178576238,
+        "hhi_medio_bps": 2950,
+        "lucro_oraculo_micros": 18872054465,
+        "lucro_oraculo_parametros_micros": 12465425670,
+        "lucro_realizado_micros": 6989453766,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2475,
+        "regret_micros": 11882600699,
+        "regret_vs_parametros_bps_do_gasto": 1140,
+        "regret_vs_parametros_micros": 5475971904,
+        "turnover_medio_bps_dia": 2643
+       },
+       "USD": {
+        "drawdown_maximo_micros": 160505069,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 532409984,
+        "lucro_oraculo_parametros_micros": 532409984,
+        "lucro_realizado_micros": 532409984,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "537b68df3bcc30ed2c1d6453aa29df9c8be514898caf17c42f1c611f22c7e086",
+      "exclusoes_unidade_dia": 401,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1658,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 195876589,
+        "hhi_medio_bps": 1660,
+        "lucro_oraculo_micros": 18872054465,
+        "lucro_oraculo_parametros_micros": 12465425670,
+        "lucro_realizado_micros": 7595194029,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2349,
+        "regret_micros": 11276860436,
+        "regret_vs_parametros_bps_do_gasto": 1014,
+        "regret_vs_parametros_micros": 4870231641,
+        "turnover_medio_bps_dia": 118
+       },
+       "USD": {
+        "drawdown_maximo_micros": 160505069,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 532409984,
+        "lucro_oraculo_parametros_micros": 532409984,
+        "lucro_realizado_micros": 532409984,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "d46061d46e81be8b5e97cbbc46cfd55dbc759410e9f6114f8aaba24423dab810",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1658,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 766495457,
+        "hhi_medio_bps": 4254,
+        "lucro_oraculo_micros": 18872054465,
+        "lucro_oraculo_parametros_micros": 12465425670,
+        "lucro_realizado_micros": 3959227680,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 3106,
+        "regret_micros": 14912826785,
+        "regret_vs_parametros_bps_do_gasto": 1772,
+        "regret_vs_parametros_micros": 8506197990,
+        "turnover_medio_bps_dia": 3882
+       },
+       "USD": {
+        "drawdown_maximo_micros": 160505069,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 532409984,
+        "lucro_oraculo_parametros_micros": 532409984,
+        "lucro_realizado_micros": 532409984,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "c4849f819144dea6a67775c8f074ac78cf6cc336c2c7905618cf1e996b1923a5"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "estacionario",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 3,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "e53d51418d4c1e47334cf605ca147141d221e3f1e0b49bd62a818d14fff0bc1a",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1425,
+        "lucro_oraculo_micros": 18586769447,
+        "lucro_oraculo_parametros_micros": 15924423398,
+        "lucro_realizado_micros": 15481618849,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 646,
+        "regret_micros": 3105150598,
+        "regret_vs_parametros_bps_do_gasto": 92,
+        "regret_vs_parametros_micros": 442804549,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 17993445,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2112602461,
+        "lucro_oraculo_parametros_micros": 2112602461,
+        "lucro_realizado_micros": 2112602461,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "38f5183ebe97035ee43a6ec4cadd90cdc135122042d20cb032cfd7c468ea2a84",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1252,
+        "lucro_oraculo_micros": 18586769447,
+        "lucro_oraculo_parametros_micros": 15924423398,
+        "lucro_realizado_micros": 13762744324,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1005,
+        "regret_micros": 4824025123,
+        "regret_vs_parametros_bps_do_gasto": 450,
+        "regret_vs_parametros_micros": 2161679074,
+        "turnover_medio_bps_dia": 25
+       },
+       "USD": {
+        "drawdown_maximo_micros": 17993445,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2112602461,
+        "lucro_oraculo_parametros_micros": 2112602461,
+        "lucro_realizado_micros": 2112602461,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "885363fd98282f1abacfe41552f90f7dda0a8867cdf3dc0ab28d78e2262f2497",
+      "exclusoes_unidade_dia": 9,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1789,
+        "lucro_oraculo_micros": 18586769447,
+        "lucro_oraculo_parametros_micros": 15924423398,
+        "lucro_realizado_micros": 13805993601,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 995,
+        "regret_micros": 4780775846,
+        "regret_vs_parametros_bps_do_gasto": 441,
+        "regret_vs_parametros_micros": 2118429797,
+        "turnover_medio_bps_dia": 1461
+       },
+       "USD": {
+        "drawdown_maximo_micros": 17993445,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2112602461,
+        "lucro_oraculo_parametros_micros": 2112602461,
+        "lucro_realizado_micros": 2112602461,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "b2abbed6d36ef36bff52853c92be4bb0f0ff1d0c88763a247ea18b028f7adae7",
+      "exclusoes_unidade_dia": 148,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1867,
+        "lucro_oraculo_micros": 18586769447,
+        "lucro_oraculo_parametros_micros": 15924423398,
+        "lucro_realizado_micros": 14257286115,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 901,
+        "regret_micros": 4329483332,
+        "regret_vs_parametros_bps_do_gasto": 347,
+        "regret_vs_parametros_micros": 1667137283,
+        "turnover_medio_bps_dia": 332
+       },
+       "USD": {
+        "drawdown_maximo_micros": 17993445,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2112602461,
+        "lucro_oraculo_parametros_micros": 2112602461,
+        "lucro_realizado_micros": 2112602461,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "2ffd9b4556ec0b73e162545e644b67274d222680033c49247ed22e697614c882",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1918,
+        "lucro_oraculo_micros": 18586769447,
+        "lucro_oraculo_parametros_micros": 15924423398,
+        "lucro_realizado_micros": 12943117418,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1175,
+        "regret_micros": 5643652029,
+        "regret_vs_parametros_bps_do_gasto": 621,
+        "regret_vs_parametros_micros": 2981305980,
+        "turnover_medio_bps_dia": 1893
+       },
+       "USD": {
+        "drawdown_maximo_micros": 17993445,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2112602461,
+        "lucro_oraculo_parametros_micros": 2112602461,
+        "lucro_realizado_micros": 2112602461,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "e5a64136985eed92da3348bc1690043d9473c4b143562f1f62e74975f97770b2"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": 30,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "quebra_regime",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 3,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "3eb6b809cdc65239cb790d515c1007572a5fd9937317e90e0453191aae8da3b8",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 14319795,
+        "hhi_medio_bps": 1540,
+        "lucro_oraculo_micros": 16913558146,
+        "lucro_oraculo_parametros_micros": 15008010934,
+        "lucro_realizado_micros": 6115864857,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2249,
+        "regret_micros": 10797693289,
+        "regret_vs_parametros_bps_do_gasto": 1852,
+        "regret_vs_parametros_micros": 8892146077,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 1570160394,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -1570160394,
+        "lucro_oraculo_parametros_micros": -1570160394,
+        "lucro_realizado_micros": -1570160394,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "72b1abcf6e5b8cc3d802ee6d81f68b2a756ef7c225111aa0968e9dcfbf5cdd49",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1254,
+        "lucro_oraculo_micros": 16913558146,
+        "lucro_oraculo_parametros_micros": 15008010934,
+        "lucro_realizado_micros": 8521001148,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1748,
+        "regret_micros": 8392556998,
+        "regret_vs_parametros_bps_do_gasto": 1351,
+        "regret_vs_parametros_micros": 6487009786,
+        "turnover_medio_bps_dia": 35
+       },
+       "USD": {
+        "drawdown_maximo_micros": 1570160394,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -1570160394,
+        "lucro_oraculo_parametros_micros": -1570160394,
+        "lucro_realizado_micros": -1570160394,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "2dd8cb4734a88580f86e4cec4ab0a2e9863e9a47eeaa8d78127506642b2447a3",
+      "exclusoes_unidade_dia": 9,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 70222190,
+        "hhi_medio_bps": 2816,
+        "lucro_oraculo_micros": 16913558146,
+        "lucro_oraculo_parametros_micros": 15008010934,
+        "lucro_realizado_micros": 11255731085,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1178,
+        "regret_micros": 5657827061,
+        "regret_vs_parametros_bps_do_gasto": 781,
+        "regret_vs_parametros_micros": 3752279849,
+        "turnover_medio_bps_dia": 1785
+       },
+       "USD": {
+        "drawdown_maximo_micros": 1570160394,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -1570160394,
+        "lucro_oraculo_parametros_micros": -1570160394,
+        "lucro_realizado_micros": -1570160394,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "f719039dc57053b05c1c2d1cb65c822f7ffd9b1f46f40af94610afad796e51b0",
+      "exclusoes_unidade_dia": 182,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 295418775,
+        "hhi_medio_bps": 1928,
+        "lucro_oraculo_micros": 16913558146,
+        "lucro_oraculo_parametros_micros": 15008010934,
+        "lucro_realizado_micros": 8977229623,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1653,
+        "regret_micros": 7936328523,
+        "regret_vs_parametros_bps_do_gasto": 1256,
+        "regret_vs_parametros_micros": 6030781311,
+        "turnover_medio_bps_dia": 281
+       },
+       "USD": {
+        "drawdown_maximo_micros": 1570160394,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -1570160394,
+        "lucro_oraculo_parametros_micros": -1570160394,
+        "lucro_realizado_micros": -1570160394,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "25d9e2c288a869cef4e9ad4499f6e60ddcd04bed6dd80e738381dd0999a32979",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 233066336,
+        "hhi_medio_bps": 3176,
+        "lucro_oraculo_micros": 16913558146,
+        "lucro_oraculo_parametros_micros": 15008010934,
+        "lucro_realizado_micros": 10133256617,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1412,
+        "regret_micros": 6780301529,
+        "regret_vs_parametros_bps_do_gasto": 1015,
+        "regret_vs_parametros_micros": 4874754317,
+        "turnover_medio_bps_dia": 2422
+       },
+       "USD": {
+        "drawdown_maximo_micros": 1570160394,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -1570160394,
+        "lucro_oraculo_parametros_micros": -1570160394,
+        "lucro_realizado_micros": -1570160394,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "dc6b65513528d04963a97beb9630b1afa038f417a0521355606e3247d087ba06"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.5,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "preliminar_otimista",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 3,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "c97a4cc12d7eaf1a3e08d738774bafd1c0deec5b887eb04dfb78c41628ee98bf",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1632,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 12956217,
+        "hhi_medio_bps": 1578,
+        "lucro_oraculo_micros": 18256341019,
+        "lucro_oraculo_parametros_micros": 15395418085,
+        "lucro_realizado_micros": 10559630957,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1603,
+        "regret_micros": 7696710062,
+        "regret_vs_parametros_bps_do_gasto": 1007,
+        "regret_vs_parametros_micros": 4835787128,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 7752671,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2565276573,
+        "lucro_oraculo_parametros_micros": 2565276573,
+        "lucro_realizado_micros": 2565276573,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "815aac5a17041f74d25698947e7da2ade1d95bf75b07b6f0b2a69487e3f0eb1a",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1632,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1255,
+        "lucro_oraculo_micros": 18256341019,
+        "lucro_oraculo_parametros_micros": 15395418085,
+        "lucro_realizado_micros": 13176816419,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1058,
+        "regret_micros": 5079524600,
+        "regret_vs_parametros_bps_do_gasto": 462,
+        "regret_vs_parametros_micros": 2218601666,
+        "turnover_medio_bps_dia": 36
+       },
+       "USD": {
+        "drawdown_maximo_micros": 7752671,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2565276573,
+        "lucro_oraculo_parametros_micros": 2565276573,
+        "lucro_realizado_micros": 2565276573,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "69e6a89aaf86a39853f44b5b36a959dfb36244733c02d16d5c0e8d031ab69198",
+      "exclusoes_unidade_dia": 11,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1632,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1824,
+        "lucro_oraculo_micros": 18256341019,
+        "lucro_oraculo_parametros_micros": 15395418085,
+        "lucro_realizado_micros": 13758908086,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 936,
+        "regret_micros": 4497432933,
+        "regret_vs_parametros_bps_do_gasto": 340,
+        "regret_vs_parametros_micros": 1636509999,
+        "turnover_medio_bps_dia": 977
+       },
+       "USD": {
+        "drawdown_maximo_micros": 7752671,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2565276573,
+        "lucro_oraculo_parametros_micros": 2565276573,
+        "lucro_realizado_micros": 2565276573,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "9bf692ba5d47666ebe9702d4423a2838bef0cf0dbca0a8b417519507bb150efb",
+      "exclusoes_unidade_dia": 181,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1632,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 2008,
+        "lucro_oraculo_micros": 18256341019,
+        "lucro_oraculo_parametros_micros": 15395418085,
+        "lucro_realizado_micros": 12507876862,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1197,
+        "regret_micros": 5748464157,
+        "regret_vs_parametros_bps_do_gasto": 601,
+        "regret_vs_parametros_micros": 2887541223,
+        "turnover_medio_bps_dia": 320
+       },
+       "USD": {
+        "drawdown_maximo_micros": 7752671,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2565276573,
+        "lucro_oraculo_parametros_micros": 2565276573,
+        "lucro_realizado_micros": 2565276573,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "48e1142693ae33ac22a656493fe769fb8ae968f833b043d4b36ed6d335560320",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1632,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 59437198,
+        "hhi_medio_bps": 2112,
+        "lucro_oraculo_micros": 18256341019,
+        "lucro_oraculo_parametros_micros": 15395418085,
+        "lucro_realizado_micros": 12311087438,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1238,
+        "regret_micros": 5945253581,
+        "regret_vs_parametros_bps_do_gasto": 642,
+        "regret_vs_parametros_micros": 3084330647,
+        "turnover_medio_bps_dia": 1669
+       },
+       "USD": {
+        "drawdown_maximo_micros": 7752671,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2565276573,
+        "lucro_oraculo_parametros_micros": 2565276573,
+        "lucro_realizado_micros": 2565276573,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "f051867155d19720ea6738fa32141992f93b2642ea912164279a64e394adfaba"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "lacunas_altas",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.15,
+     "p_receita_falha_prelim": 0.2,
+     "p_receita_nao_coletada": 0.08,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.35,
+     "seed": 3,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "ddb431a9539ad1b9ac7ef970c39e7559c12a22aeadd66f97773c11d2f3fc8a21",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1664,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 112310109,
+        "hhi_medio_bps": 1453,
+        "lucro_oraculo_micros": 22178601273,
+        "lucro_oraculo_parametros_micros": 15175256035,
+        "lucro_realizado_micros": 10517229410,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2429,
+        "regret_micros": 11661371863,
+        "regret_vs_parametros_bps_do_gasto": 970,
+        "regret_vs_parametros_micros": 4658026625,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 85861529,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1768789932,
+        "lucro_oraculo_parametros_micros": 1768789932,
+        "lucro_realizado_micros": 1768789932,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "66ac639ab3284edb5588a5b27c8708263824fafd435c7cd68b660decbb645c80",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1664,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 30282863,
+        "hhi_medio_bps": 1253,
+        "lucro_oraculo_micros": 22178601273,
+        "lucro_oraculo_parametros_micros": 15175256035,
+        "lucro_realizado_micros": 12777120275,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1958,
+        "regret_micros": 9401480998,
+        "regret_vs_parametros_bps_do_gasto": 499,
+        "regret_vs_parametros_micros": 2398135760,
+        "turnover_medio_bps_dia": 27
+       },
+       "USD": {
+        "drawdown_maximo_micros": 85861529,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1768789932,
+        "lucro_oraculo_parametros_micros": 1768789932,
+        "lucro_realizado_micros": 1768789932,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "c99a9e5068981f3e61e27bd2e80df27703db9e54ce3cc6bb06773be9ce652a36",
+      "exclusoes_unidade_dia": 11,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1664,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 325312634,
+        "hhi_medio_bps": 2776,
+        "lucro_oraculo_micros": 22178601273,
+        "lucro_oraculo_parametros_micros": 15175256035,
+        "lucro_realizado_micros": 11607300779,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2202,
+        "regret_micros": 10571300494,
+        "regret_vs_parametros_bps_do_gasto": 743,
+        "regret_vs_parametros_micros": 3567955256,
+        "turnover_medio_bps_dia": 2062
+       },
+       "USD": {
+        "drawdown_maximo_micros": 85861529,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1768789932,
+        "lucro_oraculo_parametros_micros": 1768789932,
+        "lucro_realizado_micros": 1768789932,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 11,
+      "decisoes_sha256": "ed3238666939ec7921dc7677dc0ce4a88bfb9ab10c21609ccf69402269941652",
+      "exclusoes_unidade_dia": 439,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1664,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 42006926,
+        "hhi_medio_bps": 1554,
+        "lucro_oraculo_micros": 22178601273,
+        "lucro_oraculo_parametros_micros": 15175256035,
+        "lucro_realizado_micros": 12103385001,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2099,
+        "regret_micros": 10075216272,
+        "regret_vs_parametros_bps_do_gasto": 639,
+        "regret_vs_parametros_micros": 3071871034,
+        "turnover_medio_bps_dia": 53
+       },
+       "USD": {
+        "drawdown_maximo_micros": 85861529,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1768789932,
+        "lucro_oraculo_parametros_micros": 1768789932,
+        "lucro_realizado_micros": 1768789932,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "8abf666b56ca0bc9af1cff9d6137f0152ff7a334203f8b1de4bf60e726d7f1b8",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1664,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 445751512,
+        "hhi_medio_bps": 3867,
+        "lucro_oraculo_micros": 22178601273,
+        "lucro_oraculo_parametros_micros": 15175256035,
+        "lucro_realizado_micros": 7737220917,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 3008,
+        "regret_micros": 14441380356,
+        "regret_vs_parametros_bps_do_gasto": 1549,
+        "regret_vs_parametros_micros": 7438035118,
+        "turnover_medio_bps_dia": 3721
+       },
+       "USD": {
+        "drawdown_maximo_micros": 85861529,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1768789932,
+        "lucro_oraculo_parametros_micros": 1768789932,
+        "lucro_realizado_micros": 1768789932,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "c6a86d1bc5360fa31c8639ae35ed98c8ef1e246b5300f5c3daab1ab74322acce"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "estacionario",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 4,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "4e5632f4eb2ba174b40480a47191df85e0ce2e0a669201e9df2b21a590f28cb1",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1623,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 10271431,
+        "hhi_medio_bps": 1640,
+        "lucro_oraculo_micros": 15408227678,
+        "lucro_oraculo_parametros_micros": 12764646444,
+        "lucro_realizado_micros": 9163344363,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1301,
+        "regret_micros": 6244883315,
+        "regret_vs_parametros_bps_do_gasto": 750,
+        "regret_vs_parametros_micros": 3601302081,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 1133136455,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -1133136455,
+        "lucro_oraculo_parametros_micros": -1133136455,
+        "lucro_realizado_micros": -1133136455,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "3cd3b6a0433be3e08ae7ad6295aa94c5b5353eb13bf812ad8495dc2a5b1e027f",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1623,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1256,
+        "lucro_oraculo_micros": 15408227678,
+        "lucro_oraculo_parametros_micros": 12764646444,
+        "lucro_realizado_micros": 11070959250,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 903,
+        "regret_micros": 4337268428,
+        "regret_vs_parametros_bps_do_gasto": 352,
+        "regret_vs_parametros_micros": 1693687194,
+        "turnover_medio_bps_dia": 39
+       },
+       "USD": {
+        "drawdown_maximo_micros": 1133136455,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -1133136455,
+        "lucro_oraculo_parametros_micros": -1133136455,
+        "lucro_realizado_micros": -1133136455,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "509efb1826fdcce0f7c710d55174f54b77f6675044800a668cbb680354cfdd99",
+      "exclusoes_unidade_dia": 9,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1623,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 2080,
+        "lucro_oraculo_micros": 15408227678,
+        "lucro_oraculo_parametros_micros": 12764646444,
+        "lucro_realizado_micros": 10446246691,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1033,
+        "regret_micros": 4961980987,
+        "regret_vs_parametros_bps_do_gasto": 482,
+        "regret_vs_parametros_micros": 2318399753,
+        "turnover_medio_bps_dia": 1943
+       },
+       "USD": {
+        "drawdown_maximo_micros": 1133136455,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -1133136455,
+        "lucro_oraculo_parametros_micros": -1133136455,
+        "lucro_realizado_micros": -1133136455,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "68cfa3fee1a06ac3b00b675b202ebc98dc821f6770a696a7b8ea278ef793b96f",
+      "exclusoes_unidade_dia": 165,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1623,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1902,
+        "lucro_oraculo_micros": 15408227678,
+        "lucro_oraculo_parametros_micros": 12764646444,
+        "lucro_realizado_micros": 10516663541,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1019,
+        "regret_micros": 4891564137,
+        "regret_vs_parametros_bps_do_gasto": 468,
+        "regret_vs_parametros_micros": 2247982903,
+        "turnover_medio_bps_dia": 365
+       },
+       "USD": {
+        "drawdown_maximo_micros": 1133136455,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -1133136455,
+        "lucro_oraculo_parametros_micros": -1133136455,
+        "lucro_realizado_micros": -1133136455,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "4eb438d719544a9a87ad677003f749185f1b602b90a5032af074d104556fe542",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1623,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 76518933,
+        "hhi_medio_bps": 2382,
+        "lucro_oraculo_micros": 15408227678,
+        "lucro_oraculo_parametros_micros": 12764646444,
+        "lucro_realizado_micros": 8944629661,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1346,
+        "regret_micros": 6463598017,
+        "regret_vs_parametros_bps_do_gasto": 795,
+        "regret_vs_parametros_micros": 3820016783,
+        "turnover_medio_bps_dia": 2602
+       },
+       "USD": {
+        "drawdown_maximo_micros": 1133136455,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -1133136455,
+        "lucro_oraculo_parametros_micros": -1133136455,
+        "lucro_realizado_micros": -1133136455,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "2b921c14f0ed4c5e411fd877b2895f02fe9df8473fd18681b21817c000152033"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": 30,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "quebra_regime",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 4,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "fb5d17cfc278a2fbc87090cb2e27b77c998fafd6286465f2770859e7a342220d",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1380,
+        "lucro_oraculo_micros": 23246774151,
+        "lucro_oraculo_parametros_micros": 20887534048,
+        "lucro_realizado_micros": 11918507330,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2360,
+        "regret_micros": 11328266821,
+        "regret_vs_parametros_bps_do_gasto": 1868,
+        "regret_vs_parametros_micros": 8969026718,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 119731286,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -37553415,
+        "lucro_oraculo_parametros_micros": -37553415,
+        "lucro_realizado_micros": -37553415,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "76bba246d9b662800c53ddebb75b1af26a66606abdf630afdeeb6acc86df56a2",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1252,
+        "lucro_oraculo_micros": 23246774151,
+        "lucro_oraculo_parametros_micros": 20887534048,
+        "lucro_realizado_micros": 13776448328,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1972,
+        "regret_micros": 9470325823,
+        "regret_vs_parametros_bps_do_gasto": 1481,
+        "regret_vs_parametros_micros": 7111085720,
+        "turnover_medio_bps_dia": 24
+       },
+       "USD": {
+        "drawdown_maximo_micros": 119731286,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -37553415,
+        "lucro_oraculo_parametros_micros": -37553415,
+        "lucro_realizado_micros": -37553415,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "3953a8a448e216cfa77be31a902bcf2000c1e1627262cb9f6a75261f97abf81d",
+      "exclusoes_unidade_dia": 10,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 2133,
+        "lucro_oraculo_micros": 23246774151,
+        "lucro_oraculo_parametros_micros": 20887534048,
+        "lucro_realizado_micros": 19207289487,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 841,
+        "regret_micros": 4039484664,
+        "regret_vs_parametros_bps_do_gasto": 350,
+        "regret_vs_parametros_micros": 1680244561,
+        "turnover_medio_bps_dia": 1053
+       },
+       "USD": {
+        "drawdown_maximo_micros": 119731286,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -37553415,
+        "lucro_oraculo_parametros_micros": -37553415,
+        "lucro_realizado_micros": -37553415,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "0c9cdcb9355fa46781fcf79488c41158a20e22f2c0e2bf81d7512272115ade45",
+      "exclusoes_unidade_dia": 212,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1868,
+        "lucro_oraculo_micros": 23246774151,
+        "lucro_oraculo_parametros_micros": 20887534048,
+        "lucro_realizado_micros": 15994970704,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1510,
+        "regret_micros": 7251803447,
+        "regret_vs_parametros_bps_do_gasto": 1019,
+        "regret_vs_parametros_micros": 4892563344,
+        "turnover_medio_bps_dia": 294
+       },
+       "USD": {
+        "drawdown_maximo_micros": 119731286,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -37553415,
+        "lucro_oraculo_parametros_micros": -37553415,
+        "lucro_realizado_micros": -37553415,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "f78e7b9ce5ca7e3380c126d3723190e7e385db49da145c3b14bc938dd468ec78",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1626,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 2472,
+        "lucro_oraculo_micros": 23246774151,
+        "lucro_oraculo_parametros_micros": 20887534048,
+        "lucro_realizado_micros": 16857822516,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1331,
+        "regret_micros": 6388951635,
+        "regret_vs_parametros_bps_do_gasto": 839,
+        "regret_vs_parametros_micros": 4029711532,
+        "turnover_medio_bps_dia": 1722
+       },
+       "USD": {
+        "drawdown_maximo_micros": 119731286,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": -37553415,
+        "lucro_oraculo_parametros_micros": -37553415,
+        "lucro_realizado_micros": -37553415,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "e31dfc5b05af0cfc3dd9c86b5012dc4dfb4cf7096b2902d0b54393d36561d5ee"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.5,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "preliminar_otimista",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 4,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "9fc3d9be5d8f2fbcc57650980db1603c22a14f431ef2380de7246ce299bff2dd",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1627,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 15774352,
+        "hhi_medio_bps": 1620,
+        "lucro_oraculo_micros": 16893634659,
+        "lucro_oraculo_parametros_micros": 14151130077,
+        "lucro_realizado_micros": 6890868269,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2083,
+        "regret_micros": 10002766390,
+        "regret_vs_parametros_bps_do_gasto": 1512,
+        "regret_vs_parametros_micros": 7260261808,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 133767847,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 106781174,
+        "lucro_oraculo_parametros_micros": 106781174,
+        "lucro_realizado_micros": 106781174,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "6461a121b06f8fbd46d04c60c4f6d17a540295c8a70b91e298c4ff50d46b520d",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1627,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1256,
+        "lucro_oraculo_micros": 16893634659,
+        "lucro_oraculo_parametros_micros": 14151130077,
+        "lucro_realizado_micros": 11589041078,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1105,
+        "regret_micros": 5304593581,
+        "regret_vs_parametros_bps_do_gasto": 533,
+        "regret_vs_parametros_micros": 2562088999,
+        "turnover_medio_bps_dia": 43
+       },
+       "USD": {
+        "drawdown_maximo_micros": 133767847,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 106781174,
+        "lucro_oraculo_parametros_micros": 106781174,
+        "lucro_realizado_micros": 106781174,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "baf8352cd10d3111ae69c17e728e74215522aca55d3f474efe8e879a69be41ed",
+      "exclusoes_unidade_dia": 10,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1627,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 7622633,
+        "hhi_medio_bps": 2029,
+        "lucro_oraculo_micros": 16893634659,
+        "lucro_oraculo_parametros_micros": 14151130077,
+        "lucro_realizado_micros": 12400549454,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 936,
+        "regret_micros": 4493085205,
+        "regret_vs_parametros_bps_do_gasto": 364,
+        "regret_vs_parametros_micros": 1750580623,
+        "turnover_medio_bps_dia": 955
+       },
+       "USD": {
+        "drawdown_maximo_micros": 133767847,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 106781174,
+        "lucro_oraculo_parametros_micros": 106781174,
+        "lucro_realizado_micros": 106781174,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "00591996a18dc1885fb75ff3ba1f13c2f58458635edf04b84c158f564b77af84",
+      "exclusoes_unidade_dia": 198,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1627,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1899,
+        "lucro_oraculo_micros": 16893634659,
+        "lucro_oraculo_parametros_micros": 14151130077,
+        "lucro_realizado_micros": 11275308846,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1170,
+        "regret_micros": 5618325813,
+        "regret_vs_parametros_bps_do_gasto": 599,
+        "regret_vs_parametros_micros": 2875821231,
+        "turnover_medio_bps_dia": 323
+       },
+       "USD": {
+        "drawdown_maximo_micros": 133767847,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 106781174,
+        "lucro_oraculo_parametros_micros": 106781174,
+        "lucro_realizado_micros": 106781174,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "d91ab5c307426602c45b12234c5d6e0ffc87a37940f80de4703fe851278691ee",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1627,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 30688157,
+        "hhi_medio_bps": 2185,
+        "lucro_oraculo_micros": 16893634659,
+        "lucro_oraculo_parametros_micros": 14151130077,
+        "lucro_realizado_micros": 12064979772,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1005,
+        "regret_micros": 4828654887,
+        "regret_vs_parametros_bps_do_gasto": 434,
+        "regret_vs_parametros_micros": 2086150305,
+        "turnover_medio_bps_dia": 1164
+       },
+       "USD": {
+        "drawdown_maximo_micros": 133767847,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 106781174,
+        "lucro_oraculo_parametros_micros": 106781174,
+        "lucro_realizado_micros": 106781174,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "072ee16d01b588aa136ce9d42a81766a48e30ec992bec90d107f4359cad54cdb"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "lacunas_altas",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.15,
+     "p_receita_falha_prelim": 0.2,
+     "p_receita_nao_coletada": 0.08,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.35,
+     "seed": 4,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "dee10959b5e7335684fcbd293581588745b90b17347820f858983044a4a3c5eb",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1658,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 63296980,
+        "hhi_medio_bps": 1672,
+        "lucro_oraculo_micros": 24902567655,
+        "lucro_oraculo_parametros_micros": 18029333544,
+        "lucro_realizado_micros": 8201944911,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 3479,
+        "regret_micros": 16700622744,
+        "regret_vs_parametros_bps_do_gasto": 2047,
+        "regret_vs_parametros_micros": 9827388633,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 127524714,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 391947787,
+        "lucro_oraculo_parametros_micros": 391947787,
+        "lucro_realizado_micros": 391947787,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "bbef1a30675f879e85eaf7d3bde5194503731ce5b12e5dfe9bb88a13d3a706cd",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1658,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 754884,
+        "hhi_medio_bps": 1257,
+        "lucro_oraculo_micros": 24902567655,
+        "lucro_oraculo_parametros_micros": 18029333544,
+        "lucro_realizado_micros": 12254771920,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2634,
+        "regret_micros": 12647795735,
+        "regret_vs_parametros_bps_do_gasto": 1203,
+        "regret_vs_parametros_micros": 5774561624,
+        "turnover_medio_bps_dia": 43
+       },
+       "USD": {
+        "drawdown_maximo_micros": 127524714,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 391947787,
+        "lucro_oraculo_parametros_micros": 391947787,
+        "lucro_realizado_micros": 391947787,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "df67bd4be1d3128f71c1bbc522ac0c7e30d44ccc998efdd80fa70c3ac11b663a",
+      "exclusoes_unidade_dia": 13,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1658,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 94199617,
+        "hhi_medio_bps": 2652,
+        "lucro_oraculo_micros": 24902567655,
+        "lucro_oraculo_parametros_micros": 18029333544,
+        "lucro_realizado_micros": 14382124530,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2191,
+        "regret_micros": 10520443125,
+        "regret_vs_parametros_bps_do_gasto": 759,
+        "regret_vs_parametros_micros": 3647209014,
+        "turnover_medio_bps_dia": 1853
+       },
+       "USD": {
+        "drawdown_maximo_micros": 127524714,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 391947787,
+        "lucro_oraculo_parametros_micros": 391947787,
+        "lucro_realizado_micros": 391947787,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 11,
+      "decisoes_sha256": "8be60d39615d2068efb91867c6f700930a7c67fc9c40296fa36d6d1d23ec8072",
+      "exclusoes_unidade_dia": 396,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1658,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 36757158,
+        "hhi_medio_bps": 1784,
+        "lucro_oraculo_micros": 24902567655,
+        "lucro_oraculo_parametros_micros": 18029333544,
+        "lucro_realizado_micros": 11281024580,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2837,
+        "regret_micros": 13621543075,
+        "regret_vs_parametros_bps_do_gasto": 1405,
+        "regret_vs_parametros_micros": 6748308964,
+        "turnover_medio_bps_dia": 94
+       },
+       "USD": {
+        "drawdown_maximo_micros": 127524714,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 391947787,
+        "lucro_oraculo_parametros_micros": 391947787,
+        "lucro_realizado_micros": 391947787,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "d6f83fc727197f1cab9ab7e64b21fd9107a1236373f8d5d2e5f1573754a35a6a",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1658,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 468821498,
+        "hhi_medio_bps": 3628,
+        "lucro_oraculo_micros": 24902567655,
+        "lucro_oraculo_parametros_micros": 18029333544,
+        "lucro_realizado_micros": 11129769991,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2869,
+        "regret_micros": 13772797664,
+        "regret_vs_parametros_bps_do_gasto": 1437,
+        "regret_vs_parametros_micros": 6899563553,
+        "turnover_medio_bps_dia": 3519
+       },
+       "USD": {
+        "drawdown_maximo_micros": 127524714,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 391947787,
+        "lucro_oraculo_parametros_micros": 391947787,
+        "lucro_realizado_micros": 391947787,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "ac502e3f2b969ea74d46ad6105bdfd44e6b4805d64dbba7ea1c0a122befe70ad"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "estacionario",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 5,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "5d2c6ad71d74ef1f9cacb44d7df5c0c34f1366f2caca84c3a85df269bac8f30e",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1628,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 2076,
+        "lucro_oraculo_micros": 16941067117,
+        "lucro_oraculo_parametros_micros": 14643509939,
+        "lucro_realizado_micros": 9591698074,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1531,
+        "regret_micros": 7349369043,
+        "regret_vs_parametros_bps_do_gasto": 1052,
+        "regret_vs_parametros_micros": 5051811865,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3411860496,
+        "lucro_oraculo_parametros_micros": 3411860496,
+        "lucro_realizado_micros": 3411860496,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "073c0cbe55b6b6d45b757a4176d5eb2dc3c01c6834d3ee4745ae7850bd4ab8ed",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1628,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1263,
+        "lucro_oraculo_micros": 16941067117,
+        "lucro_oraculo_parametros_micros": 14643509939,
+        "lucro_realizado_micros": 12077264834,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1013,
+        "regret_micros": 4863802283,
+        "regret_vs_parametros_bps_do_gasto": 534,
+        "regret_vs_parametros_micros": 2566245105,
+        "turnover_medio_bps_dia": 61
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3411860496,
+        "lucro_oraculo_parametros_micros": 3411860496,
+        "lucro_realizado_micros": 3411860496,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "1e1e954b892dd2c4c05027db69a1eaa38fa38c65fbfd98103b1e2431e4cbebdc",
+      "exclusoes_unidade_dia": 9,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1628,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 32602930,
+        "hhi_medio_bps": 1959,
+        "lucro_oraculo_micros": 16941067117,
+        "lucro_oraculo_parametros_micros": 14643509939,
+        "lucro_realizado_micros": 13342336143,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 749,
+        "regret_micros": 3598730974,
+        "regret_vs_parametros_bps_do_gasto": 271,
+        "regret_vs_parametros_micros": 1301173796,
+        "turnover_medio_bps_dia": 1424
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3411860496,
+        "lucro_oraculo_parametros_micros": 3411860496,
+        "lucro_realizado_micros": 3411860496,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "9e616e87e514c7f9368b87f6f4240c1c0476eb9e7ccee620f3a7129436c05dff",
+      "exclusoes_unidade_dia": 190,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1628,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 2032,
+        "lucro_oraculo_micros": 16941067117,
+        "lucro_oraculo_parametros_micros": 14643509939,
+        "lucro_realizado_micros": 12403410207,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 945,
+        "regret_micros": 4537656910,
+        "regret_vs_parametros_bps_do_gasto": 466,
+        "regret_vs_parametros_micros": 2240099732,
+        "turnover_medio_bps_dia": 291
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3411860496,
+        "lucro_oraculo_parametros_micros": 3411860496,
+        "lucro_realizado_micros": 3411860496,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "dbde802d650d7a0e79486d978b2041b69f23960d8d2f917dc64acfd4b3e60e4a",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1628,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 40885309,
+        "hhi_medio_bps": 2556,
+        "lucro_oraculo_micros": 16941067117,
+        "lucro_oraculo_parametros_micros": 14643509939,
+        "lucro_realizado_micros": 10822581379,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1274,
+        "regret_micros": 6118485738,
+        "regret_vs_parametros_bps_do_gasto": 796,
+        "regret_vs_parametros_micros": 3820928560,
+        "turnover_medio_bps_dia": 2434
+       },
+       "USD": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3411860496,
+        "lucro_oraculo_parametros_micros": 3411860496,
+        "lucro_realizado_micros": 3411860496,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "28ffe6b067d5063a5529593f9998dd126e0f3722722fead9ad7a91370ec56cc2"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": 30,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "quebra_regime",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 5,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "88f441397bd2b5bb81075893e9d0934e71dfea3c2ce4d2ae607d2e4a367d881f",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 2077708461,
+        "hhi_medio_bps": 1449,
+        "lucro_oraculo_micros": 6901770202,
+        "lucro_oraculo_parametros_micros": 5077465271,
+        "lucro_realizado_micros": -1975908503,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1849,
+        "regret_micros": 8877678705,
+        "regret_vs_parametros_bps_do_gasto": 1469,
+        "regret_vs_parametros_micros": 7053373774,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 13669080,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3126728648,
+        "lucro_oraculo_parametros_micros": 3126728648,
+        "lucro_realizado_micros": 3126728648,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "a5e564bc106cc3b701779932de0a88e0e024e6bad34c261aca66a3d3ebe2c5bc",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 1263425170,
+        "hhi_medio_bps": 1253,
+        "lucro_oraculo_micros": 6901770202,
+        "lucro_oraculo_parametros_micros": 5077465271,
+        "lucro_realizado_micros": -1173156413,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1682,
+        "regret_micros": 8074926615,
+        "regret_vs_parametros_bps_do_gasto": 1302,
+        "regret_vs_parametros_micros": 6250621684,
+        "turnover_medio_bps_dia": 29
+       },
+       "USD": {
+        "drawdown_maximo_micros": 13669080,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3126728648,
+        "lucro_oraculo_parametros_micros": 3126728648,
+        "lucro_realizado_micros": 3126728648,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "fbe74a287259f1c9fc9b021ba8eddda9c23f1965062d1a3fc8359e61a0bab6aa",
+      "exclusoes_unidade_dia": 12,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 6263392743,
+        "hhi_medio_bps": 5644,
+        "lucro_oraculo_micros": 6901770202,
+        "lucro_oraculo_parametros_micros": 5077465271,
+        "lucro_realizado_micros": -6106726303,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2710,
+        "regret_micros": 13008496505,
+        "regret_vs_parametros_bps_do_gasto": 2330,
+        "regret_vs_parametros_micros": 11184191574,
+        "turnover_medio_bps_dia": 4427
+       },
+       "USD": {
+        "drawdown_maximo_micros": 13669080,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3126728648,
+        "lucro_oraculo_parametros_micros": 3126728648,
+        "lucro_realizado_micros": 3126728648,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "ad9138abd5bc98533a03c9e24b42d90eb0a9c299e509bc852bd6ef15958bb6a6",
+      "exclusoes_unidade_dia": 180,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 2353928207,
+        "hhi_medio_bps": 1861,
+        "lucro_oraculo_micros": 6901770202,
+        "lucro_oraculo_parametros_micros": 5077465271,
+        "lucro_realizado_micros": -987986921,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1643,
+        "regret_micros": 7889757123,
+        "regret_vs_parametros_bps_do_gasto": 1263,
+        "regret_vs_parametros_micros": 6065452192,
+        "turnover_medio_bps_dia": 290
+       },
+       "USD": {
+        "drawdown_maximo_micros": 13669080,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3126728648,
+        "lucro_oraculo_parametros_micros": 3126728648,
+        "lucro_realizado_micros": 3126728648,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "cfd0b0171f23a76f7a99a126659973f0b7053ea5a2b47763ec33d655313c57d5",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1625,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 7864474521,
+        "hhi_medio_bps": 5599,
+        "lucro_oraculo_micros": 6901770202,
+        "lucro_oraculo_parametros_micros": 5077465271,
+        "lucro_realizado_micros": -7750231052,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 3052,
+        "regret_micros": 14652001254,
+        "regret_vs_parametros_bps_do_gasto": 2672,
+        "regret_vs_parametros_micros": 12827696323,
+        "turnover_medio_bps_dia": 4925
+       },
+       "USD": {
+        "drawdown_maximo_micros": 13669080,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 3126728648,
+        "lucro_oraculo_parametros_micros": 3126728648,
+        "lucro_realizado_micros": 3126728648,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "1b6c4ad07129194dfa232b133004d56410b33438ba63ba53364b72a6aaeef66c"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.5,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "preliminar_otimista",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.03,
+     "p_receita_falha_prelim": 0.05,
+     "p_receita_nao_coletada": 0.02,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.2,
+     "seed": 5,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "7ce583e7cb9e121d66e8a82be981c12b028443c8c945974cf6fbe20106e4793f",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 77668745,
+        "hhi_medio_bps": 1933,
+        "lucro_oraculo_micros": 12972376139,
+        "lucro_oraculo_parametros_micros": 10871022063,
+        "lucro_realizado_micros": 4788199773,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1705,
+        "regret_micros": 8184176366,
+        "regret_vs_parametros_bps_do_gasto": 1267,
+        "regret_vs_parametros_micros": 6082822290,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 4924439,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2211585764,
+        "lucro_oraculo_parametros_micros": 2211585764,
+        "lucro_realizado_micros": 2211585764,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "ac6b2fec715ef57a39b5343aaa46eb14b2aad6ca5325d5ddfc5f7826a7c44056",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 6264501,
+        "hhi_medio_bps": 1261,
+        "lucro_oraculo_micros": 12972376139,
+        "lucro_oraculo_parametros_micros": 10871022063,
+        "lucro_realizado_micros": 9791835601,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 662,
+        "regret_micros": 3180540538,
+        "regret_vs_parametros_bps_do_gasto": 224,
+        "regret_vs_parametros_micros": 1079186462,
+        "turnover_medio_bps_dia": 52
+       },
+       "USD": {
+        "drawdown_maximo_micros": 4924439,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2211585764,
+        "lucro_oraculo_parametros_micros": 2211585764,
+        "lucro_realizado_micros": 2211585764,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "2a633cab869aa5dd87a2d1df6ef4db848f36e533831a44c60573df14edbcebb8",
+      "exclusoes_unidade_dia": 10,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1737,
+        "lucro_oraculo_micros": 12972376139,
+        "lucro_oraculo_parametros_micros": 10871022063,
+        "lucro_realizado_micros": 8653955351,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 899,
+        "regret_micros": 4318420788,
+        "regret_vs_parametros_bps_do_gasto": 461,
+        "regret_vs_parametros_micros": 2217066712,
+        "turnover_medio_bps_dia": 1152
+       },
+       "USD": {
+        "drawdown_maximo_micros": 4924439,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2211585764,
+        "lucro_oraculo_parametros_micros": 2211585764,
+        "lucro_realizado_micros": 2211585764,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "05a8463621b985bacebdd45965287943938234aa8bc0a88477bf11764169b1c4",
+      "exclusoes_unidade_dia": 151,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 40260579,
+        "hhi_medio_bps": 2216,
+        "lucro_oraculo_micros": 12972376139,
+        "lucro_oraculo_parametros_micros": 10871022063,
+        "lucro_realizado_micros": 7882156194,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1060,
+        "regret_micros": 5090219945,
+        "regret_vs_parametros_bps_do_gasto": 622,
+        "regret_vs_parametros_micros": 2988865869,
+        "turnover_medio_bps_dia": 323
+       },
+       "USD": {
+        "drawdown_maximo_micros": 4924439,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2211585764,
+        "lucro_oraculo_parametros_micros": 2211585764,
+        "lucro_realizado_micros": 2211585764,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "93a3ff097f936bbbd6911d7f0b021cbe403e55eec23ddb43511902318fedb688",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1629,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 100299429,
+        "hhi_medio_bps": 1927,
+        "lucro_oraculo_micros": 12972376139,
+        "lucro_oraculo_parametros_micros": 10871022063,
+        "lucro_realizado_micros": 7245627994,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 1193,
+        "regret_micros": 5726748145,
+        "regret_vs_parametros_bps_do_gasto": 755,
+        "regret_vs_parametros_micros": 3625394069,
+        "turnover_medio_bps_dia": 1739
+       },
+       "USD": {
+        "drawdown_maximo_micros": 4924439,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 2211585764,
+        "lucro_oraculo_parametros_micros": 2211585764,
+        "lucro_realizado_micros": 2211585764,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "8ed0f6fd017a298ee97faca7acbbe1d70bf041a1f27932cf35c7234b8f4757a4"
+   },
+   {
+    "cenario": {
+     "atraso_custo_h": 3,
+     "atraso_prelim_h": 6,
+     "conta": "acc-sint-1",
+     "data_inicio": "2026-07-01",
+     "dia_quebra": null,
+     "dias_revisao": 3,
+     "elasticidade": 0.7,
+     "fator_alta": 1.6,
+     "fator_queda": 0.5,
+     "frac_unidades_prelim_otimista": 0.0,
+     "moeda": "BRL",
+     "n_dias": 60,
+     "n_unidades": 8,
+     "n_unidades_outra_moeda": 1,
+     "natureza": "sintetico",
+     "nome": "lacunas_altas",
+     "orcamento_por_unidade_micros": 100000000,
+     "outra_moeda": "USD",
+     "p_custo_backfill": 0.5,
+     "p_custo_nao_coletado": 0.15,
+     "p_receita_falha_prelim": 0.2,
+     "p_receita_nao_coletada": 0.08,
+     "roas_ref_max": 1.6,
+     "roas_ref_min": 0.7,
+     "ruido_sigma": 0.35,
+     "seed": 5,
+     "vies_otimista_max": 1.6,
+     "vies_otimista_min": 1.2,
+     "vies_prelim_max": 1.05,
+     "vies_prelim_min": 0.6
+    },
+    "politicas": [
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "303defb92930ff5248ef23519303dae7c98dab25d1a41c16e1df4a64e0b54c0a",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1655,
+      "notas_identidade": 0,
+      "politica": "static",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1558,
+        "lucro_oraculo_micros": 32520482020,
+        "lucro_oraculo_parametros_micros": 25028266572,
+        "lucro_realizado_micros": 18490824868,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2922,
+        "regret_micros": 14029657152,
+        "regret_vs_parametros_bps_do_gasto": 1361,
+        "regret_vs_parametros_micros": 6537441704,
+        "turnover_medio_bps_dia": 0
+       },
+       "USD": {
+        "drawdown_maximo_micros": 58298137,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1983263983,
+        "lucro_oraculo_parametros_micros": 1983263983,
+        "lucro_realizado_micros": 1983263983,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 59,
+      "decisoes_sha256": "6c86c6dc4d048997d1ea4b0d61a4663240c9d9ba3bf2cb792346b0e7d553a70e",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1655,
+      "notas_identidade": 0,
+      "politica": "equal",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1255,
+        "lucro_oraculo_micros": 32520482020,
+        "lucro_oraculo_parametros_micros": 25028266572,
+        "lucro_realizado_micros": 22730230230,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2039,
+        "regret_micros": 9790251790,
+        "regret_vs_parametros_bps_do_gasto": 478,
+        "regret_vs_parametros_micros": 2298036342,
+        "turnover_medio_bps_dia": 37
+       },
+       "USD": {
+        "drawdown_maximo_micros": 58298137,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1983263983,
+        "lucro_oraculo_parametros_micros": 1983263983,
+        "lucro_realizado_micros": 1983263983,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "1e1f1993d75d993f0c7756bd8f4e8bda44d6583e202b704bd77486bb70ac8d38",
+      "exclusoes_unidade_dia": 14,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1655,
+      "notas_identidade": 0,
+      "politica": "proportional",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1859,
+        "lucro_oraculo_micros": 32520482020,
+        "lucro_oraculo_parametros_micros": 25028266572,
+        "lucro_realizado_micros": 22150496934,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2160,
+        "regret_micros": 10369985086,
+        "regret_vs_parametros_bps_do_gasto": 599,
+        "regret_vs_parametros_micros": 2877769638,
+        "turnover_medio_bps_dia": 1299
+       },
+       "USD": {
+        "drawdown_maximo_micros": 58298137,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1983263983,
+        "lucro_oraculo_parametros_micros": 1983263983,
+        "lucro_realizado_micros": 1983263983,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 0,
+      "decisoes_sem_insumo": 9,
+      "decisoes_sha256": "3384b09b11afc65392d794f4700da880ebafd8dd7440e5028a19175c81bdc166",
+      "exclusoes_unidade_dia": 401,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1655,
+      "notas_identidade": 0,
+      "politica": "greedy_conservador",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 0,
+        "hhi_medio_bps": 1455,
+        "lucro_oraculo_micros": 32520482020,
+        "lucro_oraculo_parametros_micros": 25028266572,
+        "lucro_realizado_micros": 20826847963,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 2436,
+        "regret_micros": 11693634057,
+        "regret_vs_parametros_bps_do_gasto": 875,
+        "regret_vs_parametros_micros": 4201418609,
+        "turnover_medio_bps_dia": 120
+       },
+       "USD": {
+        "drawdown_maximo_micros": 58298137,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1983263983,
+        "lucro_oraculo_parametros_micros": 1983263983,
+        "lucro_realizado_micros": 1983263983,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     },
+     {
+      "decisoes_com_dado_preliminar": 58,
+      "decisoes_sem_insumo": 1,
+      "decisoes_sha256": "242d63388eee2254b84c653e65783e9dee3545d8eb2cc0565e34874f1bdda682",
+      "exclusoes_unidade_dia": 0,
+      "n_decisoes": 59,
+      "n_observacoes_log": 1655,
+      "notas_identidade": 0,
+      "politica": "proportional_naive_null_as_zero",
+      "por_moeda": {
+       "BRL": {
+        "drawdown_maximo_micros": 79572691,
+        "hhi_medio_bps": 2751,
+        "lucro_oraculo_micros": 32520482020,
+        "lucro_oraculo_parametros_micros": 25028266572,
+        "lucro_realizado_micros": 16408061764,
+        "n_unidades": 8,
+        "regret_bps_do_gasto": 3356,
+        "regret_micros": 16112420256,
+        "regret_vs_parametros_bps_do_gasto": 1795,
+        "regret_vs_parametros_micros": 8620204808,
+        "turnover_medio_bps_dia": 2883
+       },
+       "USD": {
+        "drawdown_maximo_micros": 58298137,
+        "hhi_medio_bps": 10000,
+        "lucro_oraculo_micros": 1983263983,
+        "lucro_oraculo_parametros_micros": 1983263983,
+        "lucro_realizado_micros": 1983263983,
+        "n_unidades": 1,
+        "regret_bps_do_gasto": 0,
+        "regret_micros": 0,
+        "regret_vs_parametros_bps_do_gasto": 0,
+        "regret_vs_parametros_micros": 0,
+        "turnover_medio_bps_dia": 0
+       }
+      }
+     }
+    ],
+    "relatorio_sha256": "40abc8c3c71f528a784690b7179a7783858a1011c11a472896ce5ddf69b8adec"
+   }
+  ],
+  "relatorios_sha256": [
+   "c9473278754bc27b59e41451591b8f6b8bae8b1efb880d4c9ddaa942736badd3",
+   "b604af952d96c4be83f93451df7adaba3f30585d0f72b28344e3a091f368aa8b",
+   "291c1ebcb023da16b3daee50defe8e8e42498d2b6c842a435f37bac2f2c3f5ef",
+   "c22ea9dbf5448e89105b9f0161b4920549f237c6c889a7e593d0fc6e814d68c7",
+   "7533b579377c244da33f5c77b4eefd00e27b5638948aba56db5b60b7569ea107",
+   "9047c3c613911dde4b5d835f13f2a1f2bb6d7fb97f5a68917151473e44f03b52",
+   "dbdfde7071a799d6f9821f7ee3ea35704147779eedc9d5ac508efea3370108c5",
+   "c4849f819144dea6a67775c8f074ac78cf6cc336c2c7905618cf1e996b1923a5",
+   "e5a64136985eed92da3348bc1690043d9473c4b143562f1f62e74975f97770b2",
+   "dc6b65513528d04963a97beb9630b1afa038f417a0521355606e3247d087ba06",
+   "f051867155d19720ea6738fa32141992f93b2642ea912164279a64e394adfaba",
+   "c6a86d1bc5360fa31c8639ae35ed98c8ef1e246b5300f5c3daab1ab74322acce",
+   "2b921c14f0ed4c5e411fd877b2895f02fe9df8473fd18681b21817c000152033",
+   "e31dfc5b05af0cfc3dd9c86b5012dc4dfb4cf7096b2902d0b54393d36561d5ee",
+   "072ee16d01b588aa136ce9d42a81766a48e30ec992bec90d107f4359cad54cdb",
+   "ac502e3f2b969ea74d46ad6105bdfd44e6b4805d64dbba7ea1c0a122befe70ad",
+   "28ffe6b067d5063a5529593f9998dd126e0f3722722fead9ad7a91370ec56cc2",
+   "1b6c4ad07129194dfa232b133004d56410b33438ba63ba53364b72a6aaeef66c",
+   "8ed0f6fd017a298ee97faca7acbbe1d70bf041a1f27932cf35c7234b8f4757a4",
+   "40abc8c3c71f528a784690b7179a7783858a1011c11a472896ce5ddf69b8adec"
+  ],
+  "resumo_brl": {
+   "estacionario": {
+    "equal": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      70559749,
+      404303113,
+      0,
+      0,
+      0
+     ],
+     "hhi_bps": [
+      1252,
+      1255,
+      1252,
+      1256,
+      1263
+     ],
+     "lucro_micros": [
+      5968251673,
+      87791287,
+      13762744324,
+      11070959250,
+      12077264834
+     ],
+     "regret_bps": [
+      872,
+      586,
+      1005,
+      903,
+      1013
+     ],
+     "regret_bps_mediana": 903,
+     "regret_param_bps": [
+      432,
+      209,
+      450,
+      352,
+      534
+     ],
+     "regret_param_bps_mediana": 432,
+     "turnover_bps": [
+      27,
+      38,
+      25,
+      39,
+      61
+     ],
+     "vitorias": 2
+    },
+    "greedy_conservador": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      124385943,
+      683871500,
+      0,
+      0,
+      0
+     ],
+     "hhi_bps": [
+      1679,
+      1694,
+      1867,
+      1902,
+      2032
+     ],
+     "lucro_micros": [
+      6673211850,
+      -473260028,
+      14257286115,
+      10516663541,
+      12403410207
+     ],
+     "regret_bps": [
+      726,
+      703,
+      901,
+      1019,
+      945
+     ],
+     "regret_bps_mediana": 901,
+     "regret_param_bps": [
+      285,
+      326,
+      347,
+      468,
+      466
+     ],
+     "regret_param_bps_mediana": 347,
+     "turnover_bps": [
+      293,
+      316,
+      332,
+      365,
+      291
+     ],
+     "vitorias": 1
+    },
+    "proportional": {
+     "decisoes_preliminar": [
+      58,
+      58,
+      58,
+      58,
+      58
+     ],
+     "drawdown_micros": [
+      1749348685,
+      9625273621,
+      0,
+      0,
+      32602930
+     ],
+     "hhi_bps": [
+      3394,
+      5237,
+      1789,
+      2080,
+      1959
+     ],
+     "lucro_micros": [
+      259434900,
+      -9582660569,
+      13805993601,
+      10446246691,
+      13342336143
+     ],
+     "regret_bps": [
+      2062,
+      2601,
+      995,
+      1033,
+      749
+     ],
+     "regret_bps_mediana": 1033,
+     "regret_param_bps": [
+      1621,
+      2224,
+      441,
+      482,
+      271
+     ],
+     "regret_param_bps_mediana": 482,
+     "turnover_bps": [
+      3464,
+      5292,
+      1461,
+      1943,
+      1424
+     ],
+     "vitorias": 1
+    },
+    "proportional_naive_null_as_zero": {
+     "decisoes_preliminar": [
+      58,
+      58,
+      58,
+      58,
+      58
+     ],
+     "drawdown_micros": [
+      1826905800,
+      11462175798,
+      0,
+      76518933,
+      40885309
+     ],
+     "hhi_bps": [
+      3957,
+      5236,
+      1918,
+      2382,
+      2556
+     ],
+     "lucro_micros": [
+      -765065671,
+      -11419562746,
+      12943117418,
+      8944629661,
+      10822581379
+     ],
+     "regret_bps": [
+      2275,
+      2984,
+      1175,
+      1346,
+      1274
+     ],
+     "regret_bps_mediana": 1346,
+     "regret_param_bps": [
+      1835,
+      2606,
+      621,
+      795,
+      796
+     ],
+     "regret_param_bps_mediana": 796,
+     "turnover_bps": [
+      4410,
+      5318,
+      1893,
+      2602,
+      2434
+     ],
+     "vitorias": 0
+    },
+    "static": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      76788914,
+      2003278879,
+      0,
+      10271431,
+      0
+     ],
+     "hhi_bps": [
+      1412,
+      1598,
+      1425,
+      1640,
+      2076
+     ],
+     "lucro_micros": [
+      5788762887,
+      -1960665827,
+      15481618849,
+      9163344363,
+      9591698074
+     ],
+     "regret_bps": [
+      910,
+      1013,
+      646,
+      1301,
+      1531
+     ],
+     "regret_bps_mediana": 1013,
+     "regret_param_bps": [
+      469,
+      636,
+      92,
+      750,
+      1052
+     ],
+     "regret_param_bps_mediana": 636,
+     "turnover_bps": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "vitorias": 1
+    }
+   },
+   "lacunas_altas": {
+    "equal": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      184639740,
+      131203733,
+      30282863,
+      754884,
+      0
+     ],
+     "hhi_bps": [
+      1256,
+      1257,
+      1253,
+      1257,
+      1255
+     ],
+     "lucro_micros": [
+      6575107068,
+      9498188987,
+      12777120275,
+      12254771920,
+      22730230230
+     ],
+     "regret_bps": [
+      1440,
+      1952,
+      1958,
+      2634,
+      2039
+     ],
+     "regret_bps_mediana": 1958,
+     "regret_param_bps": [
+      112,
+      618,
+      499,
+      1203,
+      478
+     ],
+     "regret_param_bps_mediana": 499,
+     "turnover_bps": [
+      44,
+      44,
+      27,
+      43,
+      37
+     ],
+     "vitorias": 4
+    },
+    "greedy_conservador": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      273650710,
+      195876589,
+      42006926,
+      36757158,
+      0
+     ],
+     "hhi_bps": [
+      1625,
+      1660,
+      1554,
+      1784,
+      1455
+     ],
+     "lucro_micros": [
+      5483731492,
+      7595194029,
+      12103385001,
+      11281024580,
+      20826847963
+     ],
+     "regret_bps": [
+      1668,
+      2349,
+      2099,
+      2837,
+      2436
+     ],
+     "regret_bps_mediana": 2349,
+     "regret_param_bps": [
+      340,
+      1014,
+      639,
+      1405,
+      875
+     ],
+     "regret_param_bps_mediana": 875,
+     "turnover_bps": [
+      123,
+      118,
+      53,
+      94,
+      120
+     ],
+     "vitorias": 0
+    },
+    "proportional": {
+     "decisoes_preliminar": [
+      58,
+      58,
+      58,
+      58,
+      58
+     ],
+     "drawdown_micros": [
+      2421741059,
+      178576238,
+      325312634,
+      94199617,
+      0
+     ],
+     "hhi_bps": [
+      3701,
+      2950,
+      2776,
+      2652,
+      1859
+     ],
+     "lucro_micros": [
+      -1550410480,
+      6989453766,
+      11607300779,
+      14382124530,
+      22150496934
+     ],
+     "regret_bps": [
+      3133,
+      2475,
+      2202,
+      2191,
+      2160
+     ],
+     "regret_bps_mediana": 2202,
+     "regret_param_bps": [
+      1805,
+      1140,
+      743,
+      759,
+      599
+     ],
+     "regret_param_bps_mediana": 759,
+     "turnover_bps": [
+      4103,
+      2643,
+      2062,
+      1853,
+      1299
+     ],
+     "vitorias": 1
+    },
+    "proportional_naive_null_as_zero": {
+     "decisoes_preliminar": [
+      58,
+      58,
+      58,
+      58,
+      58
+     ],
+     "drawdown_micros": [
+      4151931802,
+      766495457,
+      445751512,
+      468821498,
+      79572691
+     ],
+     "hhi_bps": [
+      4450,
+      4254,
+      3867,
+      3628,
+      2751
+     ],
+     "lucro_micros": [
+      -3294094766,
+      3959227680,
+      7737220917,
+      11129769991,
+      16408061764
+     ],
+     "regret_bps": [
+      3496,
+      3106,
+      3008,
+      2869,
+      3356
+     ],
+     "regret_bps_mediana": 3106,
+     "regret_param_bps": [
+      2168,
+      1772,
+      1549,
+      1437,
+      1795
+     ],
+     "regret_param_bps_mediana": 1772,
+     "turnover_bps": [
+      3883,
+      3882,
+      3721,
+      3519,
+      2883
+     ],
+     "vitorias": 0
+    },
+    "static": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      288511001,
+      237309884,
+      112310109,
+      63296980,
+      0
+     ],
+     "hhi_bps": [
+      1660,
+      1703,
+      1453,
+      1672,
+      1558
+     ],
+     "lucro_micros": [
+      4619908550,
+      4433749056,
+      10517229410,
+      8201944911,
+      18490824868
+     ],
+     "regret_bps": [
+      1848,
+      3007,
+      2429,
+      3479,
+      2922
+     ],
+     "regret_bps_mediana": 2922,
+     "regret_param_bps": [
+      520,
+      1673,
+      970,
+      2047,
+      1361
+     ],
+     "regret_param_bps_mediana": 1361,
+     "turnover_bps": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "vitorias": 0
+    }
+   },
+   "preliminar_otimista": {
+    "equal": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      26998461,
+      0,
+      0,
+      0,
+      6264501
+     ],
+     "hhi_bps": [
+      1254,
+      1254,
+      1255,
+      1256,
+      1261
+     ],
+     "lucro_micros": [
+      7714834976,
+      14861547567,
+      13176816419,
+      11589041078,
+      9791835601
+     ],
+     "regret_bps": [
+      773,
+      975,
+      1058,
+      1105,
+      662
+     ],
+     "regret_bps_mediana": 975,
+     "regret_param_bps": [
+      321,
+      526,
+      462,
+      533,
+      224
+     ],
+     "regret_param_bps_mediana": 462,
+     "turnover_bps": [
+      29,
+      34,
+      36,
+      43,
+      52
+     ],
+     "vitorias": 1
+    },
+    "greedy_conservador": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      51319666,
+      0,
+      0,
+      0,
+      40260579
+     ],
+     "hhi_bps": [
+      1666,
+      1808,
+      2008,
+      1899,
+      2216
+     ],
+     "lucro_micros": [
+      7440958684,
+      15386973929,
+      12507876862,
+      11275308846,
+      7882156194
+     ],
+     "regret_bps": [
+      830,
+      866,
+      1197,
+      1170,
+      1060
+     ],
+     "regret_bps_mediana": 1060,
+     "regret_param_bps": [
+      378,
+      417,
+      601,
+      599,
+      622
+     ],
+     "regret_param_bps_mediana": 599,
+     "turnover_bps": [
+      296,
+      305,
+      320,
+      323,
+      323
+     ],
+     "vitorias": 0
+    },
+    "proportional": {
+     "decisoes_preliminar": [
+      58,
+      58,
+      58,
+      58,
+      58
+     ],
+     "drawdown_micros": [
+      45106357,
+      0,
+      0,
+      7622633,
+      0
+     ],
+     "hhi_bps": [
+      1849,
+      1740,
+      1824,
+      2029,
+      1737
+     ],
+     "lucro_micros": [
+      7972729147,
+      15853653243,
+      13758908086,
+      12400549454,
+      8653955351
+     ],
+     "regret_bps": [
+      720,
+      769,
+      936,
+      936,
+      899
+     ],
+     "regret_bps_mediana": 899,
+     "regret_param_bps": [
+      267,
+      320,
+      340,
+      364,
+      461
+     ],
+     "regret_param_bps_mediana": 340,
+     "turnover_bps": [
+      1102,
+      801,
+      977,
+      955,
+      1152
+     ],
+     "vitorias": 4
+    },
+    "proportional_naive_null_as_zero": {
+     "decisoes_preliminar": [
+      58,
+      58,
+      58,
+      58,
+      58
+     ],
+     "drawdown_micros": [
+      242563322,
+      0,
+      59437198,
+      30688157,
+      100299429
+     ],
+     "hhi_bps": [
+      2394,
+      1964,
+      2112,
+      2185,
+      1927
+     ],
+     "lucro_micros": [
+      5396771999,
+      14679647060,
+      12311087438,
+      12064979772,
+      7245627994
+     ],
+     "regret_bps": [
+      1256,
+      1013,
+      1238,
+      1005,
+      1193
+     ],
+     "regret_bps_mediana": 1193,
+     "regret_param_bps": [
+      804,
+      564,
+      642,
+      434,
+      755
+     ],
+     "regret_param_bps_mediana": 642,
+     "turnover_bps": [
+      1991,
+      1409,
+      1669,
+      1164,
+      1739
+     ],
+     "vitorias": 0
+    },
+    "static": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      41136195,
+      0,
+      12956217,
+      15774352,
+      77668745
+     ],
+     "hhi_bps": [
+      1533,
+      1516,
+      1578,
+      1620,
+      1933
+     ],
+     "lucro_micros": [
+      6218756576,
+      13251817674,
+      10559630957,
+      6890868269,
+      4788199773
+     ],
+     "regret_bps": [
+      1085,
+      1311,
+      1603,
+      2083,
+      1705
+     ],
+     "regret_bps_mediana": 1603,
+     "regret_param_bps": [
+      632,
+      862,
+      1007,
+      1512,
+      1267
+     ],
+     "regret_param_bps_mediana": 1007,
+     "turnover_bps": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "vitorias": 0
+    }
+   },
+   "quebra_regime": {
+    "equal": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      126159256,
+      2925611,
+      0,
+      0,
+      1263425170
+     ],
+     "hhi_bps": [
+      1256,
+      1262,
+      1254,
+      1252,
+      1253
+     ],
+     "lucro_micros": [
+      2909834275,
+      12633761077,
+      8521001148,
+      13776448328,
+      -1173156413
+     ],
+     "regret_bps": [
+      1605,
+      1813,
+      1748,
+      1972,
+      1682
+     ],
+     "regret_bps_mediana": 1748,
+     "regret_param_bps": [
+      1231,
+      1363,
+      1351,
+      1481,
+      1302
+     ],
+     "regret_param_bps_mediana": 1351,
+     "turnover_bps": [
+      42,
+      56,
+      35,
+      24,
+      29
+     ],
+     "vitorias": 1
+    },
+    "greedy_conservador": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      1472571022,
+      7461684,
+      295418775,
+      0,
+      2353928207
+     ],
+     "hhi_bps": [
+      1767,
+      1973,
+      1928,
+      1868,
+      1861
+     ],
+     "lucro_micros": [
+      2264640340,
+      12582880264,
+      8977229623,
+      15994970704,
+      -987986921
+     ],
+     "regret_bps": [
+      1740,
+      1824,
+      1653,
+      1510,
+      1643
+     ],
+     "regret_bps_mediana": 1653,
+     "regret_param_bps": [
+      1366,
+      1373,
+      1256,
+      1019,
+      1263
+     ],
+     "regret_param_bps_mediana": 1263,
+     "turnover_bps": [
+      247,
+      255,
+      281,
+      294,
+      290
+     ],
+     "vitorias": 1
+    },
+    "proportional": {
+     "decisoes_preliminar": [
+      58,
+      58,
+      58,
+      58,
+      58
+     ],
+     "drawdown_micros": [
+      4145344560,
+      0,
+      70222190,
+      0,
+      6263392743
+     ],
+     "hhi_bps": [
+      4599,
+      2275,
+      2816,
+      2133,
+      5644
+     ],
+     "lucro_micros": [
+      -2423403576,
+      17283455085,
+      11255731085,
+      19207289487,
+      -6106726303
+     ],
+     "regret_bps": [
+      2716,
+      844,
+      1178,
+      841,
+      2710
+     ],
+     "regret_bps_mediana": 1178,
+     "regret_param_bps": [
+      2342,
+      394,
+      781,
+      350,
+      2330
+     ],
+     "regret_param_bps_mediana": 781,
+     "turnover_bps": [
+      4063,
+      975,
+      1785,
+      1053,
+      4427
+     ],
+     "vitorias": 3
+    },
+    "proportional_naive_null_as_zero": {
+     "decisoes_preliminar": [
+      58,
+      58,
+      58,
+      58,
+      58
+     ],
+     "drawdown_micros": [
+      2418463381,
+      0,
+      233066336,
+      0,
+      7864474521
+     ],
+     "hhi_bps": [
+      4918,
+      2481,
+      3176,
+      2472,
+      5599
+     ],
+     "lucro_micros": [
+      -896618599,
+      16800565472,
+      10133256617,
+      16857822516,
+      -7750231052
+     ],
+     "regret_bps": [
+      2398,
+      945,
+      1412,
+      1331,
+      3052
+     ],
+     "regret_bps_mediana": 1412,
+     "regret_param_bps": [
+      2024,
+      494,
+      1015,
+      839,
+      2672
+     ],
+     "regret_param_bps_mediana": 1015,
+     "turnover_bps": [
+      4025,
+      1641,
+      2422,
+      1722,
+      4925
+     ],
+     "vitorias": 0
+    },
+    "static": {
+     "decisoes_preliminar": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "drawdown_micros": [
+      479939093,
+      71458950,
+      14319795,
+      0,
+      2077708461
+     ],
+     "hhi_bps": [
+      1652,
+      2006,
+      1540,
+      1380,
+      1449
+     ],
+     "lucro_micros": [
+      386742183,
+      7345704631,
+      6115864857,
+      11918507330,
+      -1975908503
+     ],
+     "regret_bps": [
+      2131,
+      2915,
+      2249,
+      2360,
+      1849
+     ],
+     "regret_bps_mediana": 2249,
+     "regret_param_bps": [
+      1757,
+      2464,
+      1852,
+      1868,
+      1469
+     ],
+     "regret_param_bps_mediana": 1852,
+     "turnover_bps": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "vitorias": 0
+    }
+   }
+  },
+  "seeds": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ]
+ },
+ "deterministico_sha256": "a2685d2bf47e39bc497c8c5b8ca40c9c404fc3641d65d3539d84089b400fa8bd",
+ "manifesto": {
+  "codigo_sha256": null,
+  "entradas_sha256": {
+   "fixture_mini": "13ce61fd3bc4c0dbc67a68cbf477ddf18f76a7d79092c700a8a7af49357a2755"
+  },
+  "fingerprint": "f432f9bb4c1e03f2be188b0000993f18b13f19910e0b18697ae8b34284f21fb3",
+  "nome": "replay_economico_v0",
+  "parametros": {
+   "janela_consulta_dias": 14,
+   "piso_bps": 1000,
+   "politicas": [
+    "static",
+    "equal",
+    "proportional",
+    "greedy_conservador",
+    "proportional_naive_null_as_zero"
+   ],
+   "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  "resultado_sha256": null,
+  "seed": 1,
+  "versoes": {
+   "duckdb": "1.5.6",
+   "numpy": "2.5.3",
+   "pandas": "3.0.6",
+   "plataforma": "macOS-15.6-arm64-arm-64bit-Mach-O",
+   "polars": "1.44.2",
+   "python": "3.13.0",
+   "scikit-learn": "1.9.1",
+   "scipy": "1.18.1",
+   "statsmodels": "0.15.0"
+  }
+ },
+ "tempos_s_nao_deterministico": {
+  "estacionario/equal": {
+   "mediana": 0.3333,
+   "n": 5
+  },
+  "estacionario/greedy_conservador": {
+   "mediana": 0.3423,
+   "n": 5
+  },
+  "estacionario/proportional": {
+   "mediana": 0.3434,
+   "n": 5
+  },
+  "estacionario/proportional_naive_null_as_zero": {
+   "mediana": 0.3437,
+   "n": 5
+  },
+  "estacionario/static": {
+   "mediana": 0.3354,
+   "n": 5
+  },
+  "lacunas_altas/equal": {
+   "mediana": 0.336,
+   "n": 5
+  },
+  "lacunas_altas/greedy_conservador": {
+   "mediana": 0.348,
+   "n": 5
+  },
+  "lacunas_altas/proportional": {
+   "mediana": 0.3448,
+   "n": 5
+  },
+  "lacunas_altas/proportional_naive_null_as_zero": {
+   "mediana": 0.3425,
+   "n": 5
+  },
+  "lacunas_altas/static": {
+   "mediana": 0.3345,
+   "n": 5
+  },
+  "preliminar_otimista/equal": {
+   "mediana": 0.3406,
+   "n": 5
+  },
+  "preliminar_otimista/greedy_conservador": {
+   "mediana": 0.3466,
+   "n": 5
+  },
+  "preliminar_otimista/proportional": {
+   "mediana": 0.3434,
+   "n": 5
+  },
+  "preliminar_otimista/proportional_naive_null_as_zero": {
+   "mediana": 0.341,
+   "n": 5
+  },
+  "preliminar_otimista/static": {
+   "mediana": 0.3407,
+   "n": 5
+  },
+  "quebra_regime/equal": {
+   "mediana": 0.3334,
+   "n": 5
+  },
+  "quebra_regime/greedy_conservador": {
+   "mediana": 0.3424,
+   "n": 5
+  },
+  "quebra_regime/proportional": {
+   "mediana": 0.3414,
+   "n": 5
+  },
+  "quebra_regime/proportional_naive_null_as_zero": {
+   "mediana": 0.3463,
+   "n": 5
+  },
+  "quebra_regime/static": {
+   "mediana": 0.3346,
+   "n": 5
+  }
+ }
+}
