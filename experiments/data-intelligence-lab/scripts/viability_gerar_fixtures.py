@@ -1,5 +1,9 @@
 """Gera as fixtures do kernel de viabilidade (determinístico) em fixtures/viability/ + MANIFEST.json.
 
+Contrato v2: a tolerância de perda carrega uma `Autorizacao` de laboratório (AUTH-LAB-0001, issuer
+"owner:lab-fixture", hash calculado) e câmbio/revshare/imposto são versionados (effective_at/disponivel_em
+<= as_of). Nenhuma autorização aqui é do owner real: prova integridade da fixture, não autoria.
+
 A fixture "senac_sanitizada" é DERIVADA do experimento já versionado em
 tools/freedom-lab/experimentos/senac-shadow-20261015/resultado.json (agregados da janela madura),
 com o identificador substituído por um pseudônimo (sha256 truncado). Nenhum número da Senac está
@@ -22,12 +26,16 @@ sys.path.insert(0, str(RAIZ_LAB / "src"))
 
 from volc_dil.contracts import Dinheiro  # noqa: E402
 from volc_dil.viability.contrato import (  # noqa: E402
-    Cambio, EntradaViabilidade, Evidencia, JanelaObservada, MedidaContagem, MedidaMonetaria, PerdaMaxima, PontoSimulacao,
+    Autorizacao, Cambio, EntradaViabilidade, Evidencia, JanelaObservada, MedidaContagem, MedidaMonetaria, PerdaMaxima, PontoSimulacao,
     SimulacaoEntrada, Taxa, json_canonico,
 )
 
 SAIDA = RAIZ_LAB / "fixtures" / "viability"
 AS_OF = datetime(2026, 10, 15, 12, 0, tzinfo=timezone.utc)
+# Parâmetros versionados (câmbio, revshare, imposto) e a autorização da tolerância valem desde o início da janela
+# e foram conhecidos no mesmo instante: nunca depois do as_of.
+EFETIVO = datetime(2026, 10, 15, 0, 0, tzinfo=timezone.utc)
+AUTORIZACAO = Autorizacao.emitir(authorization_id="AUTH-LAB-0001", version="1", issuer="owner:lab-fixture", effective_at=EFETIVO, expires_at=None, disponivel_em=EFETIVO)
 SENAC = RAIZ_REPO / "tools" / "freedom-lab" / "experimentos" / "senac-shadow-20261015" / "resultado.json"
 
 
@@ -42,15 +50,21 @@ def cnt(v, ev=Evidencia.OBSERVED):
 
 
 def cambio(taxa=None, ev=Evidencia.ESTIMATED, prov="literal_app", de="USD", para="BRL"):
-    return Cambio(None if taxa is None else Decimal(str(taxa)), de, para, prov if taxa else "ausente", ev if taxa else Evidencia.ABSENT)
+    if taxa is None:
+        return Cambio(None, de, para, "ausente", Evidencia.ABSENT)
+    return Cambio(Decimal(str(taxa)), de, para, prov, ev, effective_at=EFETIVO, disponivel_em=EFETIVO, versao=f"{prov}-2026-10-15")
 
 
 def taxa(v=None, ev=Evidencia.ATTESTED, prov="tela"):
-    return Taxa(None if v is None else Decimal(str(v)), ev if v is not None else Evidencia.UNKNOWN, prov if v is not None else "ausente")
+    if v is None:
+        return Taxa(None, Evidencia.UNKNOWN, "ausente")
+    return Taxa(Decimal(str(v)), ev, prov, effective_at=EFETIVO, disponivel_em=EFETIVO, versao=f"{prov}-2026-10-15")
 
 
 def perda(v=None, h=None):
-    return PerdaMaxima(None if v is None else Dinheiro.de_decimal(str(v), "BRL"), h, "owner" if v else "ausente")
+    if v is None:
+        return PerdaMaxima(None, None, None)
+    return PerdaMaxima(Dinheiro.de_decimal(str(v), "BRL"), h, AUTORIZACAO)
 
 
 def base(cid, **kw):
@@ -78,7 +92,8 @@ def senac_sanitizada() -> tuple[EntradaViabilidade, dict]:
     # proveniência sem nome nem caminho da campanha: só o sha256 do artefato sanitizado de origem
     sobre = {"derivada_de": "experimento shadow versionado em tools/freedom-lab/experimentos (resultado.json)",
              "fonte_sha256": hashlib.sha256(SENAC.read_bytes()).hexdigest(),
-             "nota": "receita_usd = receita_brl / cambio fixo do experimento; moeda JoinAds atestada; id pseudonimizado por sha256"}
+             "nota": "receita_usd = receita_brl / cambio fixo do experimento; moeda JoinAds atestada; id pseudonimizado por sha256; "
+                     "tolerância com autorização de laboratório (AUTH-LAB-0001, issuer owner:lab-fixture), não do owner real"}
     return e, sobre
 
 
