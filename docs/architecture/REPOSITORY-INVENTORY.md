@@ -1,25 +1,25 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-15T22:02:16-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-16T23:22:03-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 930 arquivos: 667 Markdown e 263 SQL;
-- 928 versionados e 2 ainda não versionados;
+- 1010 arquivos: 721 Markdown e 289 SQL;
+- 1010 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 171 SQL com palavras de mutação de alto risco.
+- 179 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 56 |
-| `documentation` | 477 |
+| `audit` | 58 |
+| `documentation` | 528 |
 | `generated` | 2 |
-| `module-guide` | 45 |
+| `module-guide` | 46 |
 | `product-document` | 23 |
 | `project-control` | 4 |
 | `reference` | 12 |
@@ -27,8 +27,8 @@ Gerado em `2026-10-15T22:02:16-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 148 |
-| `sql-validation` | 13 |
+| `sql-needs-review` | 173 |
+| `sql-validation` | 14 |
 
 ## Duplicatas exatas
 
@@ -42,6 +42,14 @@ estejam errados, mas impede aplicação automática.
 | Path | Classe | Nós no grafo | Grau |
 |---|---|---:|---:|
 | `docs/closure/traffic-operational-closure-v2/ler-catalogo-meta.sql` | `sql-needs-review` | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_schema_observacao.down.sql` | `sql-needs-review` | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_schema_observacao.sql` | `sql-needs-review` | 19 | 40 |
+| `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0002_observacao_particionada.OPCIONAL.down.sql` | `sql-needs-review` | 2 | 2 |
+| `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0002_observacao_particionada.OPCIONAL.sql` | `sql-needs-review` | 3 | 4 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/20261015163704_joinads_collection_canonical.sql` | `sql-needs-review` | 4 | 6 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/v21_01_google_ads_coleta_canonica.sql` | `sql-needs-review` | 3 | 4 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/dq_01_views_qualidade.down.sql` | `sql-needs-review` | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/dq_02_views_dil_obs.down.sql` | `sql-needs-review` | 1 | 0 |
 | `scripts/preflight-incidente-anon-w4.sql` | `sql-needs-review` | 1 | 0 |
 | `scripts/provar-google-inteligencia-v12_03.sql` | `sql-needs-review` | 6 | 12 |
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | 7 | 12 |
@@ -197,7 +205,7 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v21_pacote_reverter.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v23_01_receita_datada_cambio.sql` | `sql-needs-review` | 18 | 51 |
 | `supabase/migrations/v23_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
-| `supabase/migrations/v25_01_conversao_offline_ledger.sql` | `sql-needs-review` | 14 | 50 |
+| `supabase/migrations/v25_01_conversao_offline_ledger.sql` | `sql-needs-review` | 14 | 48 |
 | `supabase/migrations/v25_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
@@ -281,6 +289,33 @@ estejam errados, mas impede aplicação automática.
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-CODEX-CRIATIVO.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-GEMINI-CONTRATOS.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-operational-closure-v2/ler-catalogo-meta.sql` | `sql-needs-review` | high | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/handoffs/REVISAO-ADVERSARIAL-R1.md` | `audit` | — | 0 | 0 |
+| `docs/data-intelligence/fundacao-20261016/handoffs/REVISAO-ADVERSARIAL-R2.md` | `audit` | — | 0 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/l1.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/l10.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/l2.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/l4.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/l5.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/l5a.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/lb.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/lg_selects_qualidade.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/lh_hipoteses_r1.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/export_snapshot.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_schema_observacao.down.sql` | `sql-needs-review` | high | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_schema_observacao.sql` | `sql-needs-review` | high | 19 | 40 |
+| `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0002_observacao_particionada.OPCIONAL.down.sql` | `sql-needs-review` | high | 2 | 2 |
+| `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0002_observacao_particionada.OPCIONAL.sql` | `sql-needs-review` | high | 3 | 4 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/00_prelude_somente_teste.sql` | `sql-needs-review` | medium | 2 | 2 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/20261015163704_joinads_collection_canonical.sql` | `sql-needs-review` | high | 4 | 6 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/v21_01_google_ads_coleta_canonica.sql` | `sql-needs-review` | high | 3 | 4 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/v21_02_google_ads_hash_no_servidor.sql` | `sql-needs-review` | medium | 2 | 2 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/v21_03_google_ads_finalizacao_run.sql` | `sql-needs-review` | medium | 3 | 4 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/dq_01_views_qualidade.down.sql` | `sql-needs-review` | high | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/dq_01_views_qualidade.sql` | `sql-needs-review` | medium | 2 | 2 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/dq_02_views_dil_obs.down.sql` | `sql-needs-review` | high | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/dq_02_views_dil_obs.sql` | `sql-needs-review` | medium | 6 | 15 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/export_recibo_somente_leitura.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/selects_somente_leitura.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
 | `scripts/preflight-incidente-anon-w4.sql` | `sql-needs-review` | high | 1 | 0 |
 | `scripts/provar-google-inteligencia-v12_03.sql` | `sql-needs-review` | high | 6 | 12 |
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | high | 7 | 12 |
@@ -310,33 +345,6 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/check_existing_triggers.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 1 | 0 |
 | `src/sql/create_campaign_highlights_table.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 2 | 10 |
 | `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | high | 5 | 14 |
-| `src/sql/cron_campaign_highlights.sql` | `sql-needs-lineage` | medium | 2 | 2 |
-| `src/sql/cron_campaign_highlights_fixed.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 1 | 0 |
-| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | high | 2 | 3 |
-| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | high | 3 | 7 |
-| `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | high | 3 | 6 |
-| `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | high | 2 | 2 |
-| `src/sql/force_recalculate_commissions_today.sql` | `sql-needs-lineage` | medium | 1 | 0 |
-| `src/sql/get_placement_negation_suggestions.sql` | `sql-needs-lineage` | medium | 2 | 3 |
-| `src/sql/get_rotated_campaign_highlights.sql` | `sql-needs-lineage` | high | 2 | 6 |
-| `src/sql/get_rotated_campaign_highlights_FINAL.sql` | `sql-needs-lineage` | high | 3 | 10 |
-| `src/sql/get_rotated_campaign_highlights_WORKING.sql` | `sql-needs-lineage` | high | 3 | 10 |
-| `src/sql/get_rotated_campaign_highlights_read_only.sql` | `sql-needs-lineage` | high | 2 | 6 |
-| `src/sql/get_rotated_campaign_highlights_simple.sql` | `sql-needs-lineage` | high | 3 | 8 |
-| `src/sql/get_rotated_campaign_highlights_v2.sql` | `sql-needs-lineage` | high | 3 | 10 |
-| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | high | 3 | 6 |
-| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | high | 2 | 2 |
-| `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | high | 2 | 2 |
-| `src/sql/merge_projects_fix.sql` | `sql-needs-lineage` | high | 2 | 2 |
-| `src/sql/n8n_insert_examples.sql` | `sql-needs-lineage` | medium | 1 | 0 |
-| `src/sql/operational_costs_real_structure.sql` | `sql-needs-lineage` | medium | 1 | 0 |
-| `src/sql/production-maintenance.sql` | `sql-needs-lineage` | high | 1 | 0 |
-| `src/sql/refresh_campaign_highlights.sql` | `sql-needs-lineage` | high | 2 | 28 |
-| `src/sql/refresh_campaign_highlights_v3.sql` | `sql-needs-lineage` | high | 2 | 16 |
-| `src/sql/restructure_daily_project_metrics.sql` | `sql-needs-lineage` | high | 8 | 26 |
-| `src/sql/rollback_sync_status.sql` | `sql-needs-lineage` | high | 1 | 0 |
-| `src/sql/rpc_get_campaign_detailed_metrics.sql` | `sql-needs-lineage` | medium | 2 | 3 |
-| `src/sql/rpc_get_daily_metrics_aggregated.sql` | `sql-needs-lineage` | medium | 2 | 6 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.
