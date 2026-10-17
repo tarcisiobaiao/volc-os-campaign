@@ -49,7 +49,7 @@ Conclusão: não havia implementação equivalente. O kernel estende o contrato 
 
 `results/viability/replay.{json,md}` — 18 casos, `replay_hash` reproduzível, invariantes ok em todos. Pontos relevantes:
 
-- **Senac sanitizada** (derivada do experimento shadow de 15/10, id pseudonimizado): `structurally_unviable`, confiança `medium` (moeda atestada + câmbio literal), multiplicador de RPC ≈ 18× sob premissas conservadoras; nenhum cenário de estresse chega a zero. Coincide com a direção "pausar" do experimento original por um caminho independente.
+- **Senac sanitizada** (derivada do experimento shadow de 15/10, id pseudonimizado): `unviable_under_declared_scenarios` (V2; V1 dizia `structurally_unviable`), confiança `medium` (moeda atestada + câmbio literal), multiplicador de RPC ≈ 18× sob premissas conservadoras; nenhum cenário de estresse chega a zero. Coincide com a direção "pausar" do experimento original por um caminho independente.
 - **ROAS médio bom, marginal destrói**: veredito `already_profitable` (a campanha como está paga), mas `kernel_marginal = expandir_ate_100000` enquanto a baseline `cpc_medio` diz `expandir`. É exatamente o exemplo do ADR do ciclo econômico §2.
 - **Evidência insuficiente** (receita ausente, câmbio ausente, moeda desconhecida, custo ausente, imaturo, sem limite financeiro): o kernel recusa decidir e diz o que falta.
 - **Baselines**: registradas no mesmo vocabulário; nenhuma é avaliada por acerto porque não há resultado maduro. **Nenhuma superioridade é declarada.**
@@ -88,3 +88,14 @@ cd experiments/data-intelligence-lab
 .venv/bin/python -I scripts/viability_cli.py verify /tmp/vk/recibo.json
 cd ../.. && experiments/data-intelligence-lab/.venv/bin/python -m pytest tests/data-intelligence/viability -q
 ```
+
+
+---
+
+## 10. V2 (17/10, 23:00–23:40Z) — candidata após revisão adversarial
+
+Branch `lab/fable-viability-kernel-v2-20261017` a partir de 2e982a82 (V1 preservada). Três subagentes em worktrees próprias com ownership disjunta (A: economia/teto/simulacao/gate; B: contrato/adaptadores/CLI/fixtures; C: suíte RED, sem tocar código), integrados por um único integrador que só reconciliou `_entradas.py`, `invariantes.py`, o alias do veredito, a cobertura das fixtures sintéticas, a regra de `issuer` e os testes de A sob o contrato V2.
+
+Correções (todas com teste RED antes): grão por clique (RPC por visita só reportado; visitas=0 válido); stop-loss por perda líquida realizada vs max_loss (perda conservadora vira aviso), com `max_loss`, `spend_cap` e contribuição separados; moedas incompatíveis recusadas em teto e simulação (conversão só explícita e registrada); custo/receita/cliques brutos ≥ 0 no contrato e no kernel; `micros_de_fracao` inteiro half-even; veredito `unviable_under_declared_scenarios`; `viable_candidate` alcançável; governança de evidência (custo/cliques/receita projetados, stale por SLA, flags `invalid*`, cobertura de receita, moeda do custo) bloqueia vereditos positivos e confiança `high`; adapter soma todo custo maduro e mede cobertura própria da receita, recusa moedas heterogêneas, deduplica datas com flag, preserva a evidência mais fraca por linha; parâmetros versionados (effective_at/disponivel_em/versao/hash) com `disponivel_em <= as_of`; `PerdaMaxima` só com `Autorizacao` (id, versão, hash, issuer com identidade, vigência); Bia/Pautador recebem referência de autorização e não podem passar nenhum campo financeiro; recibo com commit, ambiente (uv.lock), hashes de entrada/resultado/relatório, `external_actions` e `replay_hash`, e `verify` falha em artefato ausente ou campo adulterado.
+
+Contagens no SHA candidato: suíte RED 58/58 (44 falhavam na V1: 31 por asserção econômica, 13 por construção), kernel 204, Data Intelligence completa 1205 passed / 3 skipped, replay reproduzível em duas execuções. Limitações remanescentes: `PREMISSAS` e limiares seguem declarações de laboratório; a fixture Senac mantém cobertura de receita desconhecida (honesto: o experimento de origem não a estrutura), por isso é inviável mas nunca poderia ser positiva; `verify` prova integridade e reprodutibilidade, não autoria; sem replay contra export v21/JoinAds v2; um candidato por avaliação.

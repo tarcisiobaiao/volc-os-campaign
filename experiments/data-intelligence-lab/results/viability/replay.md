@@ -1,6 +1,6 @@
 # Replay do kernel de viabilidade
 
-kernel `viability-kernel@1.0.0` · código `11a533a73e1f…` · replay_hash `565e467f7393…`
+kernel `viability-kernel@1.0.0` · código `6d6318e0376d…` · replay_hash `c230fbfb9f25…`
 
 | fixture | veredito | recomendação | confiança | manter | não lançar | igual | CPC médio | RPC médio | kernel marginal | invariantes |
 |---|---|---|---|---|---|---|---|---|---|---|
