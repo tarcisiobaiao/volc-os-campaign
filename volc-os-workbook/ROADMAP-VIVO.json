@@ -948,7 +948,7 @@
           "id": "P06-T07",
           "title": "Criar o Tracking Control Plane em modo leitura",
           "status": "partial",
-          "proof": "Do lado da tela: src/lib/trafego/portoes.ts e src/components/trafego/canais/PainelDaMensuracao.tsx, montado em Lancamento.tsx. ⚠️ NAO existe: inventario canonico de propriedades GA4, streams, containers e tags GTM, eventos, UTMs, dimensoes, vinculos e drift — que e a OUTRA metade do que esta tarefa descreve, e ela continua inteira em aberto. Nenhuma linha desta entrega a toca. Por isso partial, e nao done. [Histórico completo: docs/operations/qg-reconciliation-20261007/EVIDENCE-LEDGER.md#p06-t07]"
+          "proof": "Do lado da tela: src/lib/trafego/portoes.ts e src/components/trafego/canais/PainelDaMensuracao.tsx, montado em Lancamento.tsx. [Histórico completo: docs/operations/qg-reconciliation-20261007/EVIDENCE-LEDGER.md#p06-t07] · 16/10/2026: a primeira guarda operacional de GTM entrou em modo leitura. `measurement/gtm/manifest.json` fixa container, versão, fontes, triggers e consentimentos; `scripts/verificar_measurement_volc.py` compara a versão live, prova heartbeat v3.1, bloqueio anon de raw_events e rejeição de origem inválida. Produção passou com GTM v36 e canário público. Continua partial: ainda faltam inventário canônico amplo de propriedades/streams/dimensões/vínculos, histórico de drift e operação Data Manager."
         },
         {
           "id": "P06-T08",
@@ -1048,7 +1048,7 @@
           "id": "P08-T01",
           "title": "Manter sensor comportamental operando",
           "status": "done",
-          "proof": "eventos e fatos de página existem"
+          "proof": "Eventos e fatos de página existem. · 16/10/2026: GTM v36 publicou `VOLC Sensor v3.1`; canário público gravou heartbeat v3.1 com host/path e UTM corretos. A Edge Function e a migration com RLS forçada foram relidas; anon recebeu 401. A chave ganhou `event_seq`, preservando dois eventos do mesmo tipo no mesmo segundo sem perder idempotência. Provas: docs/operations/VOLC-MEASUREMENT-V3-2026-10-15.md."
         },
         {
           "id": "P08-T02",
@@ -1084,7 +1084,7 @@
           "id": "P08-T07",
           "title": "Versionar a telemetria comportamental e fechar o agregador do funil",
           "status": "partial",
-          "proof": "Sensor, fatos e parte das RPCs existem; o flow GHMVIgFAv6oytKuj está inativo, duplica orquestração e ainda contém datas fixas. · 07/10/2026 (P10-T22): o motor emite `medicao.json` por run com jornada, listando os sinais que dependem desta telemetria (CTA, scroll/engagement, saída oficial) e separando hipótese, simulação e observação real. Nenhum evento novo foi implantado; segue partial. · 07/10/2026 (P10-T22, 2ª rodada): o `medicao.json` passou a marcar TODO sinal como nao_implantada, porque nenhum coletor foi provado ativo para as URLs do funil (o agregador deste item está inativo). A mesma guarda recusa simulação como observação real na evidência da jornada e na leitura do contrato. Nada implantado; segue partial.",
+          "proof": "Sensor, fatos e parte das RPCs existem; o flow GHMVIgFAv6oytKuj está inativo, duplica orquestração e ainda contém datas fixas. · 07/10/2026 (P10-T22): o motor emite `medicao.json` por run com jornada, listando os sinais que dependem desta telemetria (CTA, scroll/engagement, saída oficial) e separando hipótese, simulação e observação real. · 16/10/2026: telemetria versionada no repositório e provada em produção. GTM v36, `volc-ingest` e `raw_events.event_seq` preservam rajadas no mesmo segundo; manifesto e verificador read-only detectam drift e heartbeat. A view `economia.page_journey_leakage` leu o dia corrente e os fatos de página chegaram a 16/10. Segue partial: o agregador legado continua inativo, `fact_funnel_daily` permanece sem frescor corrente e ainda faltam owner/schedule/replay operacional unificados.",
           "explanation": "Manter o que mede scroll, engagement, viewability, CTA e dead/rage click, mas transformar suas heurísticas em políticas auditáveis.",
           "acceptance": "Schema de evento, host/path e agregações reproduzíveis no Supabase oficial; zero data fixa; owner, heartbeat, watermark, replay e run datado com contagens; cada alerta cita política, amostra, janela, fonte e lido_em.",
           "dependencies": [
