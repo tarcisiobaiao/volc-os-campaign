@@ -10,6 +10,7 @@ Dinheiro só em micros inteiros (`volc_dil.contracts.Dinheiro`); razões em `Fra
 from __future__ import annotations
 
 from .contrato import (  # noqa: F401
+    Autorizacao,
     Cambio,
     ContratoViabilidadeViolado,
     EntradaViabilidade,
