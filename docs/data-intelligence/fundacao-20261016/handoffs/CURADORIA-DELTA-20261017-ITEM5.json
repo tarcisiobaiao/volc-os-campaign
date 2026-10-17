@@ -1,0 +1,98 @@
+{
+ "esquema": "volc-dil.curadoria-delta.v2",
+ "gerado_em": "2026-10-17",
+ "branch": "lab/data-foundation-20261016",
+ "head": "52ae48d53ca364f04335b15526013f7042126232",
+ "aviso": "Aplicado só nesta branch local (sem push, não integrado). Atualidade do grafo vale só para ela.",
+ "roadmap_updates": [
+  {
+   "task_id": "P06-T10",
+   "campo": "proof",
+   "valor": "· 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): os três coletores Google canônicos (D0 Ps9y…, D-1 7yxs…, termos TFlm…) rodam a versão do contrato item5-20261017 (collector_version 2): sem linha de métrica na GAQL nada é fabricado (metrics = {} e attributes.metric_row_status = 'metric_row_absent'); zero do proto3 em linha presente segue zero medido; a GAQL pede customer.currency_code e a observação grava a moeda devolvida pela conta com currency_status 'observed' e currency_source 'gaql:customer.currency_code' (sem BRL fixo). Provas reais relidas no Supabase oficial (read-only): D0 com 12 execuções agendadas desde 17/10 09:07 BRT (60 observações: 48 metric_row_absent sem custo, 12 present, todas BRL observed); termos pelo cron natural de 17/10 20:23 BRT (2 lotes, 2.156 linhas, 0 rejeição, BRL observed); D-1 com cutover em 17/10 20:23 BRT e canário funcional por cópia temporária com só o gatilho trocado (janela 16/10, 5 lotes, 4 metric_row_absent sem custo, 1 present, BRL observed, run completed, lotes e linhas = declarados, 0 erro silencioso). O canário do D-1 é prova FUNCIONAL; a prova do agendador do D-1 é a execução natural de 18/10 06:17 BRT, pendente nesta escrita. Zero sem linha gravado pela versão nova: 0. Testes herméticos sobre o mesmo código: 31 (test_item5_contrato_coletores.py e test_item5_google_d1_implantavel.py). O histórico antigo não foi reescrito: as linhas v1 seguem com zero sintetizado e o adaptador do lab as marca missing. Replay estrito com as observações novas: segue insuficiente nas cinco políticas (snapshot 17/10 20:27 BRT, decisões E ca7ea487…, anti-baseline null→zero 290/290 bloqueadas); pela primeira vez há custo Google observed com moeda provada em janela fechada (1), e os motivos restantes são moeda JoinAds só atestada (110 linhas invalid no estrito), câmbio não provado, 0 de 3 dias maduros e uma única campanha ativa (REPLAY-ANTES-DEPOIS.md). Recibo: docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/VEREDITO-ITEM5.md.",
+   "base_sha256_campo_anterior": "3e96e1b98dee54a2a99ae3c305c14cf2745d19dc1a8c03663c968363de19b6fc"
+  },
+  {
+   "task_id": "P06-T10",
+   "campo": "gaps",
+   "valor": "· 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): falta o critério de 7 dias: dq_zero_sintetizado = 0% 'sem linha' em leitura read-only diária de 18/10/2026 em diante (plano no recibo); leitores existentes (economia wip, v17_04, front) ainda não tratam as linhas antigas pelo veredito do adaptador; os relatórios legados de Google Ads seguem ativos em paralelo (P06-T11).",
+   "base_sha256_campo_anterior": "3806819233ee234f8d9f5b3cfb70794d89ec4ecf1230768f4dc1da152b85d295"
+  },
+  {
+   "task_id": "P06-T10",
+   "campo": "status",
+   "valor": "partial",
+   "base_sha256_campo_anterior": "602fae580f5863abfb31bf356decfdc73bf1224a62aacf6b4829ffa2dbe58390"
+  },
+  {
+   "task_id": "P10-T28",
+   "campo": "proof",
+   "valor": "· 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): error workflow comum fvqy… (idempotente, mensagens sanitizadas, conta pseudonimizada, classifica falha antes do primeiro lote, parcial e depois da gravação, só finaliza run ainda running e nunca repete escrita incerta, sem errorWorkflow próprio para não entrar em loop) ligado aos cinco coletores canônicos e ativo; testado por payloads sintéticos em dry-run e pelos testes test_error_*; nenhum erro real disparado desde a implantação. Reaper 4V7w… ativo SÓ EM SHADOW (cron 41 * * * *): 12+ execuções horárias com saída idêntica (os mesmos 3 candidatos, ação nenhuma_shadow:abandoned_inexistente_no_schema); o status de run do ledger não aceita 'abandoned' e a transição exige migration (não autorizada), então os 3 órfãos de termos de 15/10 seguem running, intactos. Recibo: docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/VEREDITO-ITEM5.md.",
+   "base_sha256_campo_anterior": "45ada4a80245ee38130d4d76831d842a32f20679d2b7505d5ab02dff32cbb929"
+  },
+  {
+   "task_id": "P10-T28",
+   "campo": "gaps",
+   "valor": "· 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): migration para o estado 'abandoned' (ou RPC oficial equivalente) antes de o reaper sair do shadow e fechar os 3 órfãos; falha induzida numa cópia inativa de coletor não foi feita (a API pública do n8n não executa cópia inativa); dead letter persistida não existe; canal de alerta por decidir; dq_runs_orfaos = 0 por 7 dias depende do fechamento dos órfãos.",
+   "base_sha256_campo_anterior": "7ec8a9d189c127c7296465fd74f4b7c5aff1d6440f3d35aa5f5d08b73eb0f3e5"
+  },
+  {
+   "task_id": "P10-T28",
+   "campo": "status",
+   "valor": "partial",
+   "base_sha256_campo_anterior": "602fae580f5863abfb31bf356decfdc73bf1224a62aacf6b4829ffa2dbe58390"
+  },
+  {
+   "task_id": "P06-T10",
+   "campo": "links",
+   "valor": [
+    "docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/VEREDITO-ITEM5.md",
+    "tests/data-intelligence/fundacao/test_item5_contrato_coletores.py",
+    "tests/data-intelligence/fundacao/test_item5_google_d1_implantavel.py"
+   ]
+  },
+  {
+   "task_id": "P10-T28",
+   "campo": "links",
+   "valor": [
+    "docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/VEREDITO-ITEM5.md"
+   ]
+  }
+ ],
+ "roadmap_new_tasks": [],
+ "roadmap_initiative_updates": [],
+ "curadoria_updates": {
+  "meta": {
+   "campo": "meta.curadoria_atualizada_em",
+   "valor": "2026-10-17"
+  },
+  "mudancas_de_estado": [],
+  "evidence_appends": [
+   {
+    "secao": "concepts",
+    "id": "risk:google_ads_zero_sintetizado",
+    "campo": "evidence",
+    "valor": "· 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): o zero sintetizado parou na origem para observações novas dos três coletores Google; o risco segue aberto até 7 dias de dq_zero_sintetizado = 0% e enquanto leitores consumirem as linhas antigas sem o adaptador.",
+    "base_sha256_campo_anterior": "903419af52f7133df78a4c842791bc3ae29ab5a32d3dfc5f889db5c207868baf"
+   },
+   {
+    "secao": "concepts",
+    "id": "risk:coletores_canonicos_sem_reaper",
+    "campo": "evidence",
+    "valor": "· 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): error workflow comum ligado aos cinco canônicos; reaper só em shadow por falta do estado 'abandoned' no schema; os 3 órfãos seguem running.",
+    "base_sha256_campo_anterior": "0ee80343ff6fa6f2b8f636b72783582c6a1aaffdc8ec9eb764669f175e75ba87"
+   },
+   {
+    "secao": "concepts",
+    "id": "concept:joinads_collection_ledger",
+    "campo": "evidence",
+    "valor": "· 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): JoinAds intradiário e D-1 (collector_version 5) gravam receita em micros por decimal exato half-even, fail-closed, com a representação recebida em attributes.revenue_original; moeda USD por atestação do dono (currency_status 'attested', currency_source 'owner_attestation'), sem conversão no ledger porque a cotação do VOLC (5,25) está parada desde 18/02/2026 (conversion.status = 'nao_convertido').",
+    "base_sha256_campo_anterior": "cb0a29756395728b3ffa7d3159ac38fcd7b0f9c5138e520d081d7c53bc807a15"
+   }
+  ],
+  "novos_nos": {
+   "concepts": [],
+   "documents": []
+  },
+  "novas_arestas": []
+ }
+}

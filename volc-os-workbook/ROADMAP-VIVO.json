@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-16",
+  "updated_at": "2026-10-17",
   "purpose": "Fonte editorial provisória das tarefas do Workbook. O grafo continua sendo a autoridade de capacidades e relações.",
   "status_weights": {
     "done": 1,
@@ -1019,8 +1019,8 @@
         {
           "id": "P06-T10",
           "title": "Eliminar o zero sintetizado do coletor canônico Google Ads e provar a moeda na origem",
-          "status": "todo",
-          "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o Code node dos coletores canônicos (instalador wip 043c77f5, scripts/instalar_coleta_canonica_google_ads_n8n.py linhas 127, 133 e 149-167; termos linha 56) grava custo, cliques e conversões 0 quando a campanha é listada sem linha de métrica, contrariando o COMMENT da própria tabela ('métricas ausentes não recebem zero inventado'). Medido em produção por leitura read-only: 88 de 110 observações campaign_day com custo e impressões 0; dq_zero_sintetizado marca 80% 'alto' em todos os dias e coletores (D0 15/10: 60 de 75; 16/10: 16 de 20; D-1 14/10: 8 de 10; 15/10: 4 de 5), isto é, 4 das 5 campanhas da conta aparecem como 0 sem linha de métrica. O bruto é preservado (raw_batch e raw_source), logo é recuperável a jusante: adaptar_google_ads_v21 trata zero sem linha como missing (31 testes de adaptador) e a ponte de qualidade lê o mesmo veredito (test_zero_sintetizado_caminho_contrato_a_igual_ao_direto). Moeda: a v21 grava BRL fixo em campanha-dia e os adaptadores marcam moeda sem prova como invalid; com o coletor de hoje (sem moeda no payload) todo custo v21 sai invalid moeda_nao_provada e o replay real só produz 'insuficiente' (R2-G22, test_shadow_real.py) [confirmado no replay real de 17/10: 140 de 175 linhas campaign_day são zero sem linha de métrica, todas de 4 campanhas com status PAUSED; a campanha ativa tem linha de métrica em todas as leituras]. Nada foi alterado em produção.",
+          "status": "partial",
+          "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o Code node dos coletores canônicos (instalador wip 043c77f5, scripts/instalar_coleta_canonica_google_ads_n8n.py linhas 127, 133 e 149-167; termos linha 56) grava custo, cliques e conversões 0 quando a campanha é listada sem linha de métrica, contrariando o COMMENT da própria tabela ('métricas ausentes não recebem zero inventado'). Medido em produção por leitura read-only: 88 de 110 observações campaign_day com custo e impressões 0; dq_zero_sintetizado marca 80% 'alto' em todos os dias e coletores (D0 15/10: 60 de 75; 16/10: 16 de 20; D-1 14/10: 8 de 10; 15/10: 4 de 5), isto é, 4 das 5 campanhas da conta aparecem como 0 sem linha de métrica. O bruto é preservado (raw_batch e raw_source), logo é recuperável a jusante: adaptar_google_ads_v21 trata zero sem linha como missing (31 testes de adaptador) e a ponte de qualidade lê o mesmo veredito (test_zero_sintetizado_caminho_contrato_a_igual_ao_direto). Moeda: a v21 grava BRL fixo em campanha-dia e os adaptadores marcam moeda sem prova como invalid; com o coletor de hoje (sem moeda no payload) todo custo v21 sai invalid moeda_nao_provada e o replay real só produz 'insuficiente' (R2-G22, test_shadow_real.py) [confirmado no replay real de 17/10: 140 de 175 linhas campaign_day são zero sem linha de métrica, todas de 4 campanhas com status PAUSED; a campanha ativa tem linha de métrica em todas as leituras]. Nada foi alterado em produção. · 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): os três coletores Google canônicos (D0 Ps9y…, D-1 7yxs…, termos TFlm…) rodam a versão do contrato item5-20261017 (collector_version 2): sem linha de métrica na GAQL nada é fabricado (metrics = {} e attributes.metric_row_status = 'metric_row_absent'); zero do proto3 em linha presente segue zero medido; a GAQL pede customer.currency_code e a observação grava a moeda devolvida pela conta com currency_status 'observed' e currency_source 'gaql:customer.currency_code' (sem BRL fixo). Provas reais relidas no Supabase oficial (read-only): D0 com 12 execuções agendadas desde 17/10 09:07 BRT (60 observações: 48 metric_row_absent sem custo, 12 present, todas BRL observed); termos pelo cron natural de 17/10 20:23 BRT (2 lotes, 2.156 linhas, 0 rejeição, BRL observed); D-1 com cutover em 17/10 20:23 BRT e canário funcional por cópia temporária com só o gatilho trocado (janela 16/10, 5 lotes, 4 metric_row_absent sem custo, 1 present, BRL observed, run completed, lotes e linhas = declarados, 0 erro silencioso). O canário do D-1 é prova FUNCIONAL; a prova do agendador do D-1 é a execução natural de 18/10 06:17 BRT, pendente nesta escrita. Zero sem linha gravado pela versão nova: 0. Testes herméticos sobre o mesmo código: 31 (test_item5_contrato_coletores.py e test_item5_google_d1_implantavel.py). O histórico antigo não foi reescrito: as linhas v1 seguem com zero sintetizado e o adaptador do lab as marca missing. Replay estrito com as observações novas: segue insuficiente nas cinco políticas (snapshot 17/10 20:27 BRT, decisões E ca7ea487…, anti-baseline null→zero 290/290 bloqueadas); pela primeira vez há custo Google observed com moeda provada em janela fechada (1), e os motivos restantes são moeda JoinAds só atestada (110 linhas invalid no estrito), câmbio não provado, 0 de 3 dias maduros e uma única campanha ativa (REPLAY-ANTES-DEPOIS.md). Recibo: docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/VEREDITO-ITEM5.md.",
           "explanation": "Corrigir na origem para que 'sem gasto' e 'sem linha' deixem de ser indistinguíveis no ledger, e pedir customer.currency_code na GAQL para que a moeda seja prova e não suposição. Linhas históricas não são reescritas (append-only): a camada de leitura as reclassifica.",
           "acceptance": [
             "Zero só é gravado quando há linha de métrica na resposta (ou prova explícita de status da campanha); campanha listada sem linha vira ausência com motivo, nunca 0",
@@ -1037,15 +1037,18 @@
             "docs/data-intelligence/fundacao-20261016/09-OBSERVABILIDADE.md",
             "docs/data-intelligence/fundacao-20261016/02-CONTRATO-DE-DADOS.md",
             "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md",
-            "tests/data-intelligence/fundacao/test_observacao_adaptadores.py"
+            "tests/data-intelligence/fundacao/test_observacao_adaptadores.py",
+            "docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/VEREDITO-ITEM5.md",
+            "tests/data-intelligence/fundacao/test_item5_contrato_coletores.py",
+            "tests/data-intelligence/fundacao/test_item5_google_d1_implantavel.py"
           ],
-          "gaps": "Exige alterar workflow n8n de produção e republicar o coletor: ato de escrita que o dono precisa autorizar (gerar, importar, executar e ativar são atos distintos). Zero legítimo da API (campo omitido dentro de linha existente) continua correto e deve ser preservado.",
+          "gaps": "Exige alterar workflow n8n de produção e republicar o coletor: ato de escrita que o dono precisa autorizar (gerar, importar, executar e ativar são atos distintos). Zero legítimo da API (campo omitido dentro de linha existente) continua correto e deve ser preservado. · 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): falta o critério de 7 dias: dq_zero_sintetizado = 0% 'sem linha' em leitura read-only diária de 18/10/2026 em diante (plano no recibo); leitores existentes (economia wip, v17_04, front) ainda não tratam as linhas antigas pelo veredito do adaptador; os relatórios legados de Google Ads seguem ativos em paralelo (P06-T11).",
           "graph_nodes": [
             "concept:google_ads_collection_ledger",
             "cap_cost_ingestion",
             "risk:google_ads_zero_sintetizado"
           ],
-          "updated_at": "2026-10-16"
+          "updated_at": "2026-10-17"
         },
         {
           "id": "P06-T11",
@@ -2226,8 +2229,8 @@
         {
           "id": "P10-T28",
           "title": "Reaper de runs presos, error workflow e dead letter nos coletores canônicos",
-          "status": "todo",
-          "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): leitura read-only de produção: 3 runs do coletor de termos permanecem em running desde 15/10 (iniciados 11:46–11:48, último lote cerca de 24 min depois, 2.242 lotes cada, nunca finalizados; 22 h depois ainda abertos) — dq_runs_orfaos = alto ×3. Nenhum fluxo canônico (Google ou JoinAds v2) tem error workflow configurado (inventário versionado do coletor, wip): falha antes do primeiro lote não deixa recibo no banco e só aparece como slot ausente. No laboratório, o executor run_coleta (timeout, retry com backoff e full jitter, dead letter, heartbeat, dry_run nulo, fonte presa não impede o processo de sair) está testado só com fakes (test_capacidade_coletor.py, 26 testes) e a tabela dead_letter existe no schema candidato dil_obs, que desde a R2 recusa dead letter em run fechado; não há adaptador real.",
+          "status": "partial",
+          "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): leitura read-only de produção: 3 runs do coletor de termos permanecem em running desde 15/10 (iniciados 11:46–11:48, último lote cerca de 24 min depois, 2.242 lotes cada, nunca finalizados; 22 h depois ainda abertos) — dq_runs_orfaos = alto ×3. Nenhum fluxo canônico (Google ou JoinAds v2) tem error workflow configurado (inventário versionado do coletor, wip): falha antes do primeiro lote não deixa recibo no banco e só aparece como slot ausente. No laboratório, o executor run_coleta (timeout, retry com backoff e full jitter, dead letter, heartbeat, dry_run nulo, fonte presa não impede o processo de sair) está testado só com fakes (test_capacidade_coletor.py, 26 testes) e a tabela dead_letter existe no schema candidato dil_obs, que desde a R2 recusa dead letter em run fechado; não há adaptador real. · 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): error workflow comum fvqy… (idempotente, mensagens sanitizadas, conta pseudonimizada, classifica falha antes do primeiro lote, parcial e depois da gravação, só finaliza run ainda running e nunca repete escrita incerta, sem errorWorkflow próprio para não entrar em loop) ligado aos cinco coletores canônicos e ativo; testado por payloads sintéticos em dry-run e pelos testes test_error_*; nenhum erro real disparado desde a implantação. Reaper 4V7w… ativo SÓ EM SHADOW (cron 41 * * * *): 12+ execuções horárias com saída idêntica (os mesmos 3 candidatos, ação nenhuma_shadow:abandoned_inexistente_no_schema); o status de run do ledger não aceita 'abandoned' e a transição exige migration (não autorizada), então os 3 órfãos de termos de 15/10 seguem running, intactos. Recibo: docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/VEREDITO-ITEM5.md.",
           "explanation": "Um run preso em running some do frescor e engana a decisão que depende dele. Fechar o ciclo exige reaper (o banco marca o run abandonado com motivo, sem apagar), error workflow (a falha antes do primeiro lote deixa rastro) e dead letter reprocessável de forma idempotente.",
           "acceptance": [
             "Reaper: run em running além do timeout do coletor e sem sinal de vida passa a abandoned/failed com motivo e instante, por evento append-only, sem UPDATE destrutivo",
@@ -2244,16 +2247,17 @@
             "docs/data-intelligence/fundacao-20261016/05-ARQUITETURA-COLETORES.md",
             "docs/data-intelligence/fundacao-20261016/09-OBSERVABILIDADE.md",
             "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md",
-            "tests/data-intelligence/fundacao/test_capacidade_coletor.py"
+            "tests/data-intelligence/fundacao/test_capacidade_coletor.py",
+            "docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/VEREDITO-ITEM5.md"
           ],
-          "gaps": "Fechar os órfãos e configurar error workflow são escritas em produção e em n8n: exigem autorização do dono. A causa raiz do travamento do coletor de termos não foi investigada. Janela de timeout por coletor ainda é escolha inicial (30–60 min).",
+          "gaps": "Fechar os órfãos e configurar error workflow são escritas em produção e em n8n: exigem autorização do dono. A causa raiz do travamento do coletor de termos não foi investigada. Janela de timeout por coletor ainda é escolha inicial (30–60 min). · 18/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado; produção n8n alterada com autorização do dono de 17/10 10:49): migration para o estado 'abandoned' (ou RPC oficial equivalente) antes de o reaper sair do shadow e fechar os 3 órfãos; falha induzida numa cópia inativa de coletor não foi feita (a API pública do n8n não executa cópia inativa); dead letter persistida não existe; canal de alerta por decidir; dq_runs_orfaos = 0 por 7 dias depende do fechamento dos órfãos.",
           "graph_nodes": [
             "risk:coletores_canonicos_sem_reaper",
             "concept:google_ads_collection_ledger",
             "concept:joinads_collection_ledger",
             "cap_health"
           ],
-          "updated_at": "2026-10-16"
+          "updated_at": "2026-10-17"
         },
         {
           "id": "P10-T29",
