@@ -7,8 +7,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -76,6 +78,26 @@ def test_fixtures_seguem_o_contrato_v2():
             assert len(par["hash"]) == 64, (p.name, nome)
             if par.get("taxa", par.get("valor")) is not None:
                 assert par["effective_at"] <= e["as_of"] and par["disponivel_em"] <= e["as_of"] and par["versao"], (p.name, nome)
+
+
+def test_fixture_senac_janela_derivada_do_experimento_shadow():
+    """A janela da Senac vem do resultado.json do shadow: 16 dias maduros terminando no corte de maturidade (2026-10-12),
+    3 dias imaturos até o as_of (2026-10-15). 16 + 3 == span 19; nada a inventar e nada a esconder."""
+    j = json.loads((FIX / "senac_sanitizada.json").read_text())["entrada"]["janela"]
+    assert (j["inicio"], j["fim"], j["dias_maduros"], j["dias_imaturos"]) == ("2026-09-27", "2026-10-15", 16, 3)
+    assert j["cobertura_receita_ppm"] is None and j["dias_custo_maduro"] is None and j["dias_receita_madura"] is None
+    assert (date.fromisoformat(j["fim"]) - date.fromisoformat(j["inicio"])).days + 1 == 19
+
+
+def test_fixtures_janelas_coerentes_com_span_e_as_of():
+    for p in sorted(FIX.glob("*.json")):
+        if p.name == "MANIFEST.json":
+            continue
+        e = json.loads(p.read_text())["entrada"]
+        j = e["janela"]
+        span = (date.fromisoformat(j["fim"]) - date.fromisoformat(j["inicio"])).days + 1
+        assert j["dias_maduros"] + j["dias_imaturos"] <= span, (p.name, j)
+        assert date.fromisoformat(j["fim"]) <= datetime.fromisoformat(e["as_of"]).date(), (p.name, j["fim"], e["as_of"])
 
 
 # --------------------------------------------------------------------------- evaluate / recibo

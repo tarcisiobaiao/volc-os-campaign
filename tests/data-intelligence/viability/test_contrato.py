@@ -61,7 +61,7 @@ def _entrada(**sobrescreve) -> EntradaViabilidade:
         fonte_custo="google_ads",
         fonte_receita="joinads",
         as_of=AS_OF,
-        janela=JanelaObservada(inicio="2026-09-26", fim="2026-10-11", dias_maduros=16, dias_imaturos=3),
+        janela=JanelaObservada(inicio="2026-09-26", fim="2026-10-14", dias_maduros=16, dias_imaturos=3),  # 16 maduros + 3 imaturos = span 19
         cliques=MedidaContagem(valor=634, evidencia=Evidencia.OBSERVED, disponivel_em=AS_OF),
         custo=MedidaMonetaria(valor=Dinheiro.de_decimal("554.75", "BRL"), evidencia=Evidencia.OBSERVED, moeda_evidencia=Evidencia.OBSERVED, disponivel_em=AS_OF),
         receita=MedidaMonetaria(valor=Dinheiro.de_decimal("7.77", "USD"), evidencia=Evidencia.RECONCILED, moeda_evidencia=Evidencia.ATTESTED, disponivel_em=AS_OF),
@@ -293,6 +293,36 @@ def test_janela_com_cobertura_e_dias_de_custo_e_receita():
     assert JanelaObservada("2026-10-01", "2026-10-04", dias_maduros=4).cobertura_receita_ppm is None
 
 
+def test_janela_fim_posterior_ao_as_of_e_recusada():
+    # a janela observada não pode terminar depois da data do próprio as_of (lookahead por construção)
+    with pytest.raises(ContratoViabilidadeViolado, match="janela.fim posterior ao as_of"):
+        _entrada(janela=JanelaObservada("2026-10-10", "2026-10-16", dias_maduros=7))
+    # fim no MESMO dia do as_of (2026-10-15 12:00Z → 2026-10-15) é aceito
+    assert _entrada(janela=JanelaObservada("2026-10-10", "2026-10-15", dias_maduros=6)).janela.fim == "2026-10-15"
+
+
+def test_janela_contagens_nunca_excedem_o_span_de_dias():
+    # span = (fim - inicio).days + 1 = 4
+    with pytest.raises(ContratoViabilidadeViolado, match="dias_maduros \\+ dias_imaturos"):
+        JanelaObservada("2026-10-01", "2026-10-04", dias_maduros=4, dias_imaturos=1)
+    with pytest.raises(ContratoViabilidadeViolado, match="dias_maduros \\+ dias_imaturos"):
+        JanelaObservada("2026-10-01", "2026-10-04", dias_maduros=5, dias_custo_maduro=5)
+    with pytest.raises(ContratoViabilidadeViolado, match="dias_receita_madura"):
+        JanelaObservada("2026-10-01", "2026-10-04", dias_maduros=3, dias_receita_madura=5)
+    # encaixe exato: 16 maduros + 3 imaturos em 19 dias
+    j = JanelaObservada("2026-09-26", "2026-10-14", dias_maduros=16, dias_imaturos=3, dias_custo_maduro=16, dias_receita_madura=16)
+    assert j.span_dias == 19
+    # a configuração antiga das fixtures (16 + 3 em 16 dias) é exatamente o que a regra recusa
+    with pytest.raises(ContratoViabilidadeViolado, match="span"):
+        JanelaObservada("2026-09-26", "2026-10-11", dias_maduros=16, dias_imaturos=3)
+
+
+@pytest.mark.parametrize("inicio,fim", [("2026-13-01", "2026-10-04"), ("2026-10-01", "ontem"), ("20261001", "2026-10-04"), ("2026-10-01T00:00", "2026-10-04")])
+def test_janela_datas_precisam_ser_iso_aaaa_mm_dd(inicio, fim):
+    with pytest.raises(ContratoViabilidadeViolado, match="AAAA-MM-DD"):
+        JanelaObservada(inicio, fim, dias_maduros=1)
+
+
 # --------------------------------------------------------------------------- Simulação com câmbio
 def test_simulacao_aceita_cambio_opcional_e_respeita_as_of():
     s = SimulacaoEntrada("CPC_BID", "USD", (PontoSimulacao(1, 1, 1),), AS_OF, "MANUAL_CPC", "", _cambio())
@@ -309,7 +339,7 @@ def test_para_json_e_de_json_sao_inversos_com_todos_os_campos():
         visitas=MedidaContagem(valor=700, evidencia=Evidencia.OBSERVED, disponivel_em=AS_OF, fonte="ga4", observado_em=AS_OF - timedelta(days=1), flags_qualidade=("amostrado",)),
         custo=MedidaMonetaria(valor=Dinheiro.de_decimal("554.75", "BRL"), evidencia=Evidencia.OBSERVED, moeda_evidencia=Evidencia.OBSERVED, disponivel_em=AS_OF,
                               fonte="google_ads", observado_em=AS_OF - timedelta(days=2), flags_qualidade=("datas_duplicadas=1",)),
-        janela=JanelaObservada("2026-09-26", "2026-10-11", 16, 3, dias_custo_maduro=16, dias_receita_madura=12, dias_custo_sem_receita=4, cobertura_receita_ppm=750_000),
+        janela=JanelaObservada("2026-09-26", "2026-10-14", 16, 3, dias_custo_maduro=16, dias_receita_madura=12, dias_custo_sem_receita=4, cobertura_receita_ppm=750_000),
         imposto=_taxa("0.15"),
         perda_maxima=_perda(autorizacao=_autorizacao(expires_at=AS_OF + timedelta(days=30))),
         simulacao=SimulacaoEntrada("CPC_BID", "USD", (PontoSimulacao(100_000, 1000, 80_000_000),), AS_OF, "MANUAL_CPC", "search", _cambio()),
