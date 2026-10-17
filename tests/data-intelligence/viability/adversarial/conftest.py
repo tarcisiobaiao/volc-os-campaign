@@ -45,7 +45,7 @@ def autorizacao_v2() -> Callable[..., Any]:
 
     def fabrica(*, issuer: str = "tarcisio@agenciavolc.com.br", effective_at: Optional[datetime] = None,
                 expires_at: Optional[datetime] = None, disponivel_em: Optional[datetime] = None,
-                authorization_id: str = "aut-red-0001", version: int = 1, hash_errado: bool = False) -> Any:
+                authorization_id: str = "aut-red-0001", version: str = "1", hash_errado: bool = False) -> Any:
         A = getattr(contrato, "Autorizacao", None)
         if A is None:
             pytest.fail("falha por construção: a V1 não tem `Autorizacao` (perda_maxima só carrega proveniência textual)")
