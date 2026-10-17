@@ -319,3 +319,15 @@ def test_governanca_evidencia_de_custo_mais_fraca_nunca_e_mais_permissiva():
         fraca = avaliar(entrada(custo_ev=ev, **FAV))
         assert Veredito.ordem(fraca.verdict) <= Veredito.ordem(forte.verdict)
         assert fraca.confidence_class.ordem() <= forte.confidence_class.ordem()
+
+
+# ---------------------------------------------------------------- R1 (red team V2): moeda do CUSTO também precisa ser provada
+def test_r1_moeda_do_custo_atestada_nunca_e_veredito_positivo_nem_high():
+    from volc_dil.viability.invariantes import verificar_invariantes
+    e = entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14)
+    e = _com(e, custo=_com(e.custo, moeda_evidencia=Evidencia.ATTESTED))
+    r = avaliar(e)
+    assert r.verdict not in (Veredito.ALREADY_PROFITABLE, Veredito.VIABLE_CANDIDATE)
+    assert r.confidence_class is not Confianca.HIGH
+    assert any(m.codigo == "moeda_custo_attested" for m in r.reasons)
+    verificar_invariantes(e, r)  # o gate e o verificador concordam

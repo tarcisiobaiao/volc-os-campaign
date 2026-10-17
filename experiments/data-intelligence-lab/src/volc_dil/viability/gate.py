@@ -238,7 +238,8 @@ def _confianca(env: Envelope, e: EntradaViabilidade, gov: Governanca) -> Confian
     """Classe de confiança. Evidência de custo e cliques entra junto com a de receita/moeda/câmbio;
     governança (stale, flags inválidas, cobertura incompleta, evidência não decisiva) nunca permite `high`."""
     c = Confianca.HIGH
-    if env.economia.moeda_evidencia is not Evidencia.OBSERVED or (env.economia.cambio_evidencia not in (None, Evidencia.OBSERVED)):
+    if (env.economia.moeda_evidencia is not Evidencia.OBSERVED or e.custo.moeda_evidencia is not Evidencia.OBSERVED
+            or (env.economia.cambio_evidencia not in (None, Evidencia.OBSERVED))):
         c = _menor(c, Confianca.MEDIUM)
     for m in (e.custo, e.cliques):
         if m.evidencia in EVIDENCIA_NAO_DECISIVA:
@@ -408,7 +409,11 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
         return _resultado(Veredito.INSUFFICIENT_EVIDENCE, Confianca.INSUFFICIENT, Recomendacao.COLETAR_EVIDENCIA, **comum)
 
     realizada = env.receita_realizada and not gov.evidencia_fraca   # custo/cliques projetados ou estimados também não realizam
-    moeda_provada = eco.moeda_evidencia is Evidencia.OBSERVED and eco.cambio_evidencia in (None, Evidencia.OBSERVED)
+    moeda_custo_ev = e.custo.moeda_evidencia
+    moeda_provada = (eco.moeda_evidencia is Evidencia.OBSERVED and moeda_custo_ev is Evidencia.OBSERVED
+                     and eco.cambio_evidencia in (None, Evidencia.OBSERVED))
+    if moeda_custo_ev is not Evidencia.OBSERVED:
+        reasons.append(Motivo(f"moeda_custo_{moeda_custo_ev.value}", "moeda do custo não observada na fonte", "aviso"))
     poucos = eco.cliques < MIN_CLIQUES_MADUROS
     forte = eco.cliques >= CLIQUES_CONFIANCA_ALTA and e.janela.dias_maduros >= DIAS_CONFIANCA_ALTA
     if poucos:

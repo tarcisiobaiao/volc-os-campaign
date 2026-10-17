@@ -23,4 +23,4 @@ from .contrato import (  # noqa: F401
     hash_entrada,
 )
 
-VERSAO_KERNEL = "viability-kernel@1.0.0"
+VERSAO_KERNEL = "viability-kernel@2.0.0"
