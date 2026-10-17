@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -36,7 +37,8 @@ def test_fixtures_minimas_existem_com_manifesto_integro():
 
 def test_fixture_senac_nao_tem_identificador_real():
     txt = (FIX / "senac_sanitizada.json").read_text()
-    assert "24278665189" not in txt and "senac" not in txt.lower()
+    assert re.search(r"\b\d{10,12}\b", txt) is None  # nenhum id de campanha/conta bruto
+    assert "senac" not in txt.lower()
 
 
 def test_evaluate_conclusivo_exit_0_e_gera_json_relatorio_recibo(tmp_path):

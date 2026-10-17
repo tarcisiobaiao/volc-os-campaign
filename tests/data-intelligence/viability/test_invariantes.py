@@ -153,8 +153,10 @@ def test_inv14_nenhum_numero_da_senac_hardcoded_no_kernel():
     import importlib
     for mod in ("volc_dil.viability.gate", "volc_dil.viability.economia", "volc_dil.viability.simulacao", "volc_dil.viability.teto", "volc_dil.viability.contrato"):
         src = open(importlib.import_module(mod).__file__, encoding="utf-8").read()
-        for n in ("554.75", "40.79", "634", "0.0735", "24278665189", "senac", "Senac"):
+        for n in ("554.75", "40.79", "634", "0.0735", "senac", "Senac"):
             assert n not in src, f"{mod} contém {n}"
+        import re as _re
+        assert _re.search(r"\b\d{10,12}\b", src) is None, f"{mod} contém id bruto"
 
 
 # ------------------------------------------------------------------ 15: veredito muda com economia favorável
