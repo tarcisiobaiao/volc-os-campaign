@@ -5,7 +5,7 @@
     "papel": "FONTE HUMANA. Editável à mão. O pipeline lê este arquivo e NUNCA o sobrescreve.",
     "saida_gerada": "docs/volc-os-graph/volc-os-graph.json",
     "snapshot_date": "2026-08-22",
-    "curadoria_atualizada_em": "2026-10-15",
+    "curadoria_atualizada_em": "2026-10-16",
     "method": "Código + PostgREST vivo + inventário n8n + ClickUp + fontes oficiais + decisões do dono",
     "warning": "Ativo declarado no n8n nao equivale a execucao comprovada. Um workflow versionado com active:false tambem nao equivale a workflow importado: gerar, importar, executar e ativar sao quatro atos distintos."
   },
@@ -98,7 +98,7 @@
       "cluster": "measurement",
       "state": "partial",
       "summary": "Atualiza campanha, gasto, leilão, conversões e placements.",
-      "evidence": "P10-T16 definiu N8N_IS_SCHEDULE_AUTHORITY, trouxe fato canônico campanha-dia + ledger + RPC e workflows D0/D-1 active:false. Em 03/09/2026, P10-T17 fechou a concorrência local com 17/0 provas A–Q: UPSERT condicional, locks por idempotência e execução, fechamento contra lote em voo, empate divergente e isolamento nomeados. Permanece partial: v12_04 não aplicada oficialmente, REAL_N8N_READ_NOT_PROVEN, REAL_GOOGLE_ADS_READ_NOT_PROVEN, credenciais/retry/canário/heartbeat/ativação ainda não exercitados."
+      "evidence": "P10-T16 definiu N8N_IS_SCHEDULE_AUTHORITY, trouxe fato canônico campanha-dia + ledger + RPC e workflows D0/D-1 active:false. Em 03/09/2026, P10-T17 fechou a concorrência local com 17/0 provas A–Q: UPSERT condicional, locks por idempotência e execução, fechamento contra lote em voo, empate divergente e isolamento nomeados. Permanece partial: v12_04 não aplicada oficialmente, REAL_N8N_READ_NOT_PROVEN, REAL_GOOGLE_ADS_READ_NOT_PROVEN, credenciais/retry/canário/heartbeat/ativação ainda não exercitados. · 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): CORREÇÃO do estado de produção: o catálogo lido read-only em 16/10 mostra aplicadas ao mesmo tempo as tabelas do ledger v12/v17 (trafego_coleta_execucao, google_ads_campanha_dia, google_ads_fato_granular) e as do ledger canônico v21 (google_ads_collection_run, google_ads_raw_batch, google_ads_observation), com gatilhos append-only ativos e os coletores D0, D-1 e termos concluindo em 16/10 — o trecho acima ('v12_04 não aplicada oficialmente') está defasado quanto às tabelas (a RPC e os workflows do v12_04 não foram conferidos). Defeito medido: 80% de zero sintetizado nas leituras campaign_day (risk:google_ads_zero_sintetizado) e 3 runs presos sem reaper (risk:coletores_canonicos_sem_reaper). Os gatilhos legados de custo e receita seguem vivos (co-autoridade). Permanece partial; a autoridade do ledger está por decidir (concept:ledger_authority_decision)."
     },
     {
       "id": "cap_revenue_ingestion",
@@ -106,7 +106,7 @@
       "cluster": "measurement",
       "state": "partial",
       "summary": "Une AdSense, GAM e JoinAds por projeto, campanha, URL e placement.",
-      "evidence": "daily_project_metrics chegou a 22/08; tabelas GAM/JoinAds estão vazias e AdSense parou em fevereiro. 08/09/2026: do lado Meta, a receita passou a ser resolvida por gam_metrics.utm_campaign_value = adset_id, com escopo por vínculo de projeto e conta GAM única. Ambiguidade entre contas GAM vira estado explícito com receita NULL, nunca escolha. gam_metrics/gam_accounts continuam sem DDL neste repositório — schema legado. Em 06/10/2026 uma nova rede GAM foi adicionada aos quatro workflows ativos de receita por campanha e projeto, atual e D-1, com quatro canários concluídos; a reconciliação do destino legado com a autoridade self-hosted, ledger, heartbeat e alertas segue pendente."
+      "evidence": "daily_project_metrics chegou a 22/08; tabelas GAM/JoinAds estão vazias e AdSense parou em fevereiro. 08/09/2026: do lado Meta, a receita passou a ser resolvida por gam_metrics.utm_campaign_value = adset_id, com escopo por vínculo de projeto e conta GAM única. Ambiguidade entre contas GAM vira estado explícito com receita NULL, nunca escolha. gam_metrics/gam_accounts continuam sem DDL neste repositório — schema legado. Em 06/10/2026 uma nova rede GAM foi adicionada aos quatro workflows ativos de receita por campanha e projeto, atual e D-1, com quatro canários concluídos; a reconciliação do destino legado com a autoridade self-hosted, ledger, heartbeat e alertas segue pendente. · 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): a JoinAds v2 append-only (joinads_collection_run, joinads_raw_batch, joinads_observation) existe em produção e a razão receita por campanha / earnings de domínio foi 0,968–1,000 em 08–16/10 (concept:joinads_collection_ledger). Grão do legado: dia × campanha × domínio, upsert sem histórico, revenue NOT NULL DEFAULT 0. Os gatilhos trg_joinads_sync_daily (último domínio vence; insere linha de custo 0 quando não acha a campanha-dia — efeito em produção não medido) e sync_revenue_to_daily_metrics estão ativos; joinads_observation.currency_code tem DEFAULT 'USD'. O legado não tem as-of de receita; o replay real depende de snapshot autorizado [17/10: executado uma vez; o earnings com até 17 casas decimais é recusado pelo adaptador estrito em 5 de 9 dias]. Permanece partial."
     },
     {
       "id": "cap_behavior",
@@ -114,7 +114,7 @@
       "cluster": "measurement",
       "state": "live",
       "summary": "Mede sessão, scroll, engajamento, clique interno, dead/rage click e comportamento por página/funil.",
-      "evidence": "16/10/2026: sensor operando no GTM v36. `VOLC Sensor v3.1` envia eventos allowlisted para `volc-ingest`; RLS forçada e revogações impedem escrita/leitura anônima direta. Canário público reconciliou host, path, UTM, versão e `event_seq`. A chave `(sid,pid,event_name,ts_sec,event_seq)` preservou dois scrolls no mesmo segundo e manteve replay idempotente. `economia.page_journey_leakage` tinha 15 recortes e fatos correntes de 16/10; o motor mede sinais estruturados, não replay visual ou heatmap."
+      "evidence": "16/10/2026: sensor operando no GTM v36. `VOLC Sensor v3.1` envia eventos allowlisted para `volc-ingest`; RLS forçada e revogações impedem escrita/leitura anônima direta. Canário público reconciliou host, path, UTM, versão e `event_seq`. A chave `(sid,pid,event_name,ts_sec,event_seq)` preservou dois scrolls no mesmo segundo e manteve replay idempotente. `economia.page_journey_leakage` tinha 15 recortes e fatos correntes de 16/10; o motor mede sinais estruturados, não replay visual ou heatmap. · 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o sensor segue operando (eventos volc_sensor_ready em 15–16/10), mas sem campaign.id: de 28 sessões pagas, nenhuma com utm.campaign, porque o filtro de PII descarta valores de UTM com 10 ou mais dígitos (risk:sensor_campaign_id_pii_filter). O estado permanece live porque a captura funciona; a atribuição por campanha não funciona. Sensor, wrapper e volc-ingest só estão versionados em wip/historico-measurement-20261015 [reconciliado em 17/10: superado; v3.0 em 128b93ae e v3.1 em db65a78a, igual ao live; no Sensor v3.1 (GTM v36), 0 de 13 sessões pagas com utm.campaign em 16/10 13:05–22:57]."
     },
     {
       "id": "cap_attribution",
@@ -122,7 +122,7 @@
       "cluster": "measurement",
       "state": "partial",
       "summary": "Conecta origem de mídia, campanha, funil, URL e comportamento.",
-      "evidence": "1 de 4 campanhas tem funnel_run_id; a campanha nova tem 0 URLs em campaign_funnel_urls. 08/09/2026: o eixo Meta ganhou grão próprio (conjunto/dia) com semântica de ausência explícita — associação desconhecida é NULL e nunca zero — e três estados de mapeamento distintos. Receita não desce para anúncio ou criativo."
+      "evidence": "1 de 4 campanhas tem funnel_run_id; a campanha nova tem 0 URLs em campaign_funnel_urls. 08/09/2026: o eixo Meta ganhou grão próprio (conjunto/dia) com semântica de ausência explícita — associação desconhecida é NULL e nunca zero — e três estados de mapeamento distintos. Receita não desce para anúncio ou criativo. · 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): matriz de grão honesto (03-MATRIZ-DE-ATRIBUICAO.md; codificada em volc_dil.fundacao.identidade.graos.MATRIZ): custo × receita em campanha × dia é determinístico (campaign.id = custom_value da JoinAds); o tráfego do sensor por campanha é NÃO atribuível hoje (o sensor anula o campaign.id: 0 de 28 sessões pagas com campanha, e 0 de 13 no Sensor v3.1; risk:sensor_campaign_id_pii_filter); clique e sessão × receita são impossíveis (o sensor nunca envia gclid, gbraid ou wbraid; a receita é agregada); a junção recusa o grão (GraoNaoSuportado) em vez de ratear. O vínculo campanha → funil (trafego_vinculo) não é tocado por estas provas. Permanece partial."
     },
     {
       "id": "cap_offline_conversion",
@@ -1069,7 +1069,7 @@
       "cluster": "measurement",
       "state": "partial",
       "summary": "Inventário e governança de GA4, GTM, UTMs, eventos, conversões, streams, dimensões, vínculos e drift antes de qualquer alteração.",
-      "evidence": "A primeira fatia canônica existe em 349e1a9..70e1382: InventarioDeMarcacao distingue auto-tagging, importações e caminhos declarados de sinais realmente observados; lê dono da ação, click IDs, consentimento e frescor sem transformar capacidade em conversão. Em 2026-09-01 o schema que guarda esse inventário passou a existir no banco oficial (v12_02 aplicada, RPC provada em transação com rollback). Em 02/09/2026 (4c34128) a metade de tráfego passou a existir: identidade canônica do que se mede, vínculo campanha -> intenção -> perfil, sete portões e fronteira validateOnly da Data Manager. Em 16/10/2026 entrou a primeira guarda operacional do GTM: manifesto versionado, fontes exatos do wrapper/sensor, comparação read-only da versão live, heartbeat e contraprovas de acesso. GTM v36 e Sensor v3.1 foram provados no site e no Supabase oficial. Continua partial: ainda faltam inventário amplo de propriedades GA4, streams, dimensões e vínculos, histórico automatizado de drift e operação Data Manager; conversion_queue/conversion_batches continuam recusadas como autoridade."
+      "evidence": "A primeira fatia canônica existe em 349e1a9..70e1382: InventarioDeMarcacao distingue auto-tagging, importações e caminhos declarados de sinais realmente observados; lê dono da ação, click IDs, consentimento e frescor sem transformar capacidade em conversão. Em 2026-09-01 o schema que guarda esse inventário passou a existir no banco oficial (v12_02 aplicada, RPC provada em transação com rollback). Em 02/09/2026 (4c34128) a metade de tráfego passou a existir: identidade canônica do que se mede, vínculo campanha -> intenção -> perfil, sete portões e fronteira validateOnly da Data Manager. Em 16/10/2026 entrou a primeira guarda operacional do GTM: manifesto versionado, fontes exatos do wrapper/sensor, comparação read-only da versão live, heartbeat e contraprovas de acesso. GTM v36 e Sensor v3.1 foram provados no site e no Supabase oficial. Continua partial: ainda faltam inventário amplo de propriedades GA4, streams, dimensões e vínculos, histórico automatizado de drift e operação Data Manager; conversion_queue/conversion_batches continuam recusadas como autoridade. · 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): a cobertura de atribuição do sensor virou métrica candidata (dq_cobertura_atribuicao_sensor, só agregado) e vetores-ouro do JS real (3.076) detectam drift do Sensor v3 e do WEBS Wrapper v2; o container GTM em produção (versão 35) e esses artefatos só estão versionados em wip [reconciliado em 17/10: a produção está na v36, com sensor e wrapper iguais a db65a78a; a evidência da frente de medição neste campo foi preservada]. Nenhuma publicação de GTM foi feita. O inventário amplo de GA4, GTM, UTMs e drift continua NÃO construído."
     },
     {
       "id": "concept:campaign_measurement_plan",
@@ -1325,7 +1325,7 @@
       "cluster": "decision",
       "state": "todo",
       "summary": "Aloca orçamento global entre unidades de mídia elegíveis com restrições explícitas de ROI, risco e gasto, inicialmente por replay e shadow, sem substituir Smart Bidding ou executar mutações.",
-      "evidence": "SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md confronta o paper arXiv:2302.01523 com ORAKUL, Decision Lab e Meridian. Nenhum allocator foi implementado; campanhas que não consomem budget são explicitamente inelegíveis."
+      "evidence": "SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md confronta o paper arXiv:2302.01523 com ORAKUL, Decision Lab e Meridian. Nenhum allocator foi implementado; campanhas que não consomem budget são explicitamente inelegíveis. · 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): em laboratório sintético existe um alocador sob restrições (KKT; 0 violações de piso, teto, passo e total) com regret muito menor que igual e proporcional, mas o ganho vem de cortar campanhas com ROAS abaixo de 1 (primeira ordem), não da curvatura; a elasticidade fica no teto em 30–40% das campanhas e a curva marginal NÃO é identificável sem variação exógena de orçamento. SH/ASHA não superam o guloso. Não é o SGD-UCB da SPEC; nenhum dado real. M10 foi classificado como parcial na errata da R2 (H10a suportada, H10b refutada; histórico de decisão lido do painel as_of maduro). O estado permanece todo."
     },
     {
       "id": "concept:decision_intelligence_lab",
@@ -1397,7 +1397,7 @@
       "cluster": "measurement",
       "state": "partial",
       "summary": "Separa recibo, item e métrica da inteligência Google Ads por conta, campanha, fonte, janela, versão e frescor sem colapsar zero, ausência, inelegibilidade, vazio confirmado e falha.",
-      "evidence": "A v12_01 está aplicada e preserva estados semânticos. P10-T16 adicionou o fato campanha-dia v12_04 e workflows D0/D-1 inativos. Em 03/09/2026, P10-T17 provou concorrência A–Q 17/0 e removeu o bloqueio estrutural de corrida; o conceito permanece partial porque v12_04 e os workflows não foram aplicados/ativados no ambiente oficial e faltam leitura viva, canário e heartbeat."
+      "evidence": "A v12_01 está aplicada e preserva estados semânticos. P10-T16 adicionou o fato campanha-dia v12_04 e workflows D0/D-1 inativos. Em 03/09/2026, P10-T17 provou concorrência A–Q 17/0 e removeu o bloqueio estrutural de corrida; o conceito permanece partial porque v12_04 e os workflows não foram aplicados/ativados no ambiente oficial e faltam leitura viva, canário e heartbeat. · 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): DUAS gerações de ledger aplicadas ao mesmo tempo em produção (v12/v17 e v21), sem registro de quando a v21 foi aplicada e sem ancestral comum entre main e a linha wip; legado latest-wins e canônico append-only escrevem o mesmo fato. O trecho acima sobre v12_04 e workflows não aplicados está defasado quanto às tabelas. Riscos medidos: zero sintetizado em 80% das leituras campaign_day, 3 runs presos e nenhum error workflow. Contrato de leitura v21 → Observacao com adaptador testado (31 testes, linhas sintéticas). Decisão de autoridade pendente: concept:ledger_authority_decision. Permanece partial."
     },
     {
       "id": "concept:execution-receipt",
@@ -1582,6 +1582,70 @@
       "state": "partial",
       "summary": "Modo em que os PIXELS da fotografia do operador entram na peça sem serem regerados: o modelo compõe apenas o entorno e um compositor determinístico junta os dois, registrando crop, escala, posição e versão da régua.",
       "evidence": "08/09/2026 · backend/app/criativo/studio/composicao.py e anexo.py, com 26 contraprovas em test_criativo_anexo_e_composicao.py e 6 pelo Executor. Preservacao de pixels provada com motor duble; reinterpretacao e modo separado. Atualizacao oficial: v16_01 aplicada por autorizacao de hash exato, com 26 colunas e tabela de anexos confirmadas em catalogo/PostgREST, RLS forcada e grants restritos. Recibo: docs/closure/creative-studio-v16-01-official/RECEIPT.json. Esta janela nao gerou imagem nem provou composicao/persistencia de bytes reais; storage segue local. Estado permanece partial. 08/09/2026, rodada ADS-REFERENCE-AND-SCHEMA: seleção/edição de anúncios por conjunto com identidade preservada; inspiração visual opcional chega em bytes ao gpt-image-2 medium sem compositor de colagem. Perfil CREATE_ONLY instalado e conferido no catálogo do Supabase oficial (PERFIL_ATUAL); constraint de referencia_visual instalada e relida. 149 testes backend e 39 frontend passaram; QA Chrome com fixtures, teclado e seis viewports/temas sem overflow. Não houve geração paga nem campanha real. V2 ainda não executa criação e pack→política→registro Meta→anúncio segue pendente. Estado partial. Evidência: docs/closure/meta-creative-reuse-v1/ADS-REFERENCE-AND-SCHEMA.md."
+    },
+    {
+      "id": "risk:sensor_campaign_id_pii_filter",
+      "label": "Filtro de PII do Sensor v3 e do WEBS Wrapper anula o campaign.id",
+      "cluster": "measurement",
+      "state": "risk",
+      "summary": "O filtro de telefone/sequência longa do Sensor v3 e do WEBS Wrapper v2 descarta qualquer valor de UTM com 10 ou mais dígitos, o que inclui o campaign.id numérico do Google Ads (template utm_campaign={campaignid}) e, por inferência (comprimento real não lido), o ad_group.id. O sensor opera, mas o tráfego medido por ele não junta com campanha: só source, medium, term e paid chegam a raw_events.",
+      "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): defeito reproduzido executando em Node o JS real extraído do Sensor v3 e do wrapper (3.076 vetores, 0 divergências contra a réplica Python volc_dil.fundacao.identidade; prova em docs/data-intelligence/fundacao-20261016/receipts/inventario/02-prova-filtro-pii-utm.mjs) e medido em produção por leitura read-only: 0 de 28 sessões pagas de 15–16/10 com utm.campaign; 0 de 19 (15/10) e 0 de 14 (16/10) no health contract dq_cobertura_atribuicao_sensor. A ponte custo × receita campanha × dia pela JoinAds NÃO quebrou (razão receita por campanha / earnings 0,968–1,000 em 08–16/10); o mecanismo pelo qual a JoinAds recebe o id numérico apesar do filtro não foi identificado (leitura da GTM API pendente; feita em 17/10: só o WEBS Wrapper define key-values no container v35/v36 e ele descarta o id, então o caminho é externo ao GTM, inferido). Sensor, wrapper e volc-ingest só existem versionados em wip/historico-measurement-20261015 [17/10: superado; v3.1 em db65a78a, igual ao live]. No Sensor v3.1 (GTM v36), 0 de 13 sessões pagas com utm.campaign em 16/10 13:05–22:57. A correção proposta (allowlist por chave, só ^\\d{6,20}$ em utm_campaign e utm_content) exige publicação de GTM autorizada pelo dono; nada foi publicado. Tarefa: P08-T11."
+    },
+    {
+      "id": "risk:google_ads_zero_sintetizado",
+      "label": "Zero sintetizado no coletor canônico Google Ads",
+      "cluster": "measurement",
+      "state": "risk",
+      "summary": "O Code node dos coletores canônicos grava custo, cliques e conversões 0 para campanha listada sem linha de métrica, contrariando o contrato 'ausência não vira zero' da própria tabela; o dado não distingue 'sem gasto' de 'sem linha'.",
+      "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): 88 de 110 observações campaign_day em produção têm custo e impressões 0 (leitura read-only); dq_zero_sintetizado marca 80% 'alto' em todos os dias e coletores (4 das 5 campanhas da conta aparecem como 0 sem linha de métrica no payload bruto). Causa em código: Code node dos instaladores dos coletores D0/D-1 e de termos (só em wip 043c77f5). O bruto é preservado, logo o dado é recuperável a jusante: adaptar_google_ads_v21 trata zero sem linha como missing e moeda sem prova como invalid (31 testes). Com o coletor de hoje (sem moeda no payload) todo custo v21 sai invalid e o replay real só produz 'insuficiente'. A correção na origem (e pedir customer.currency_code) exige alterar workflow n8n em produção, não autorizado. Tarefa: P06-T10."
+    },
+    {
+      "id": "risk:coletores_canonicos_sem_reaper",
+      "label": "Coletores canônicos sem reaper, sem error workflow e sem dead letter",
+      "cluster": "platform",
+      "state": "risk",
+      "summary": "Um run preso em running não é fechado por ninguém e uma falha antes do primeiro lote não deixa recibo no banco; o frescor e a decisão que dependem dele podem se enganar.",
+      "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): leitura read-only em produção: 3 runs do coletor de termos em running desde 15/10 (iniciados 11:46–11:48, último lote cerca de 24 min depois, 2.242 lotes cada, nunca finalizados; 22 h depois ainda abertos; dq_runs_orfaos = alto ×3); 29 runs concluídos e 3 falhos no ledger Google; nenhum fluxo canônico (Google ou JoinAds v2) com error workflow configurado no inventário versionado. O executor run_coleta do laboratório (timeout, retry com backoff, dead letter, heartbeat) está testado só com fakes (26 testes) e não tem adaptador real. Tarefa: P10-T28."
+    },
+    {
+      "id": "concept:joinads_collection_ledger",
+      "label": "Ledger canônico de coleta JoinAds v2 (append-only)",
+      "cluster": "measurement",
+      "state": "partial",
+      "summary": "Run, lote bruto e observação por métrica da JoinAds em tabelas append-only (joinads_collection_run, joinads_raw_batch, joinads_observation) com view de última versão; coleta intraday e D-1 relendo D-7 a D-1.",
+      "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): as tabelas e os gatilhos append-only EXISTEM em produção (catálogo e gatilhos lidos read-only), embora o código só esteja versionado em wip/historico-joinads-20261015; 14 runs (versões de coletor v2, v3 e v4), o último em 16/10; razão receita por campanha / earnings 0,968–1,000 em 08–16/10; fingerprints de payload estáveis por versão. Lacunas: nenhum leitor versionado em main (o núcleo econômico em wip lê o legado latest-wins), moeda com DEFAULT 'USD', RLS só habilitada no DDL de wip (não forçada), sem view de saúde nem error workflow em produção, e o gatilho legado trg_joinads_sync_daily continua vivo."
+    },
+    {
+      "id": "concept:ledger_authority_decision",
+      "label": "Decisão: autoridade única do ledger Google Ads (v12/v17 × v21)",
+      "cluster": "platform",
+      "state": "decision",
+      "summary": "Duas gerações de ledger Google Ads estão aplicadas ao mesmo tempo em produção, e legado latest-wins e canônico append-only escrevem o mesmo fato (D0/D-1, JoinAds). O dono precisa decidir a autoridade por fonte e grão, o escritor único e a data de aposentadoria do legado. A decisão de agenda (n8n) já existe e não responde a esta pergunta.",
+      "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o catálogo de produção lido read-only mostra v12/v17 (trafego_coleta_execucao, google_ads_campanha_dia, google_ads_fato_granular, google_ads_mudanca, google_ads_estado) e v21 (google_ads_collection_run, google_ads_raw_batch, google_ads_observation) coexistindo; não há registro de quando a v21 e a JoinAds v2 foram aplicadas (supabase_migrations.schema_migrations ausente; volc_ops.migracao_evento com 1 linha); main e a linha wip não têm ancestral comum e a numeração v21_01/v21_02 colide. A reconciliação D-1 de 14/10 entre legado e canônico bateu exatamente nas 5 campanhas, o que autoriza planejar a troca, não executá-la. O laboratório propôs como OPÇÃO uma arquitetura híbrida (n8n agenda e credencial; Python contrato e gravação), que contradiz o ADR atual (Python como biblioteca e one-shot). Tarefa: P06-T11."
+    },
+    {
+      "id": "concept:data_intelligence_lab",
+      "label": "Laboratório Data Intelligence — fundação (contrato, replay, shadow, simulador, modelos)",
+      "cluster": "data",
+      "state": "inactive",
+      "summary": "Laboratório isolado (experiments/data-intelligence-lab) que testa em sintético e em PostgreSQL descartável o contrato de observação append-only, o replay as_of, o shadow engine, o simulador, o Model Lab e os health contracts. É referência sem autoridade operacional: nada foi aplicado em banco operacional, publicado ou rodado em shadow.",
+      "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): HEAD 85aa7ab2 (mais commits só de documentação); 915 testes coletados em tests/data-intelligence (172 herdados + 743 da fundação: observação e schema 230, simulador 115, identidade 91, qualidade 81, modelos 77, shadow 76, capacidade 73); o integrador relata 914 verdes e 1 pulado (medição grande opcional) — este curador não reexecutou a suíte. Duas revisões adversarais independentes respondidas pelos donos: R1 (26 achados confirmados, 1 bloqueante) e R2 (23 achados: 3 altos, 12 médios, 5 baixos; entre eles o aplicador de migration com ADMIN OPTION residual, a dedup do shadow que quebrava a ordem de versão e o portão de cobertura que aprovava corte sem earnings); a verificação das respostas da R2 é a suíte e as provas reexecutadas pelas frentes, não uma terceira revisão. Estado máximo: testado com sintético. Replay com dado real e shadow: nenhum (a exportação do snapshot foi negada pela permissão da sessão). · 17/10/2026, rodada autorizada: um replay com dado real sobre snapshot read-only pseudonimizado (3 dias de custo, 9 de receita; todas as políticas em 'insuficiente'; anti-baseline null→0 bloqueada em 180 de 180); shadow agendado: nenhum (doc:rodada-autorizada-20261017). As leituras externas read-only de 16/10 calibraram só premissas. Plano de promoção em 12-PLANO-DE-PROMOCAO.md; ideias futuras e hipóteses: 10-BACKLOG-OUROS.md, cobertas por P14-T11 a P14-T19."
+    },
+    {
+      "id": "concept:observation_append_only_contract",
+      "label": "Contrato de observação append-only com as_of (dil_obs, candidato)",
+      "cluster": "data",
+      "state": "inactive",
+      "summary": "Uma observação é um fato em uma versão de conhecimento: três relógios, status por métrica (observed, zero_confirmed, missing, late, unavailable, unsupported, invalid, partial), linhagem até o payload bruto e ordem de versão por observed_at. Para Google Ads e JoinAds é modelo de leitura sobre v21 e v2 (adaptadores); o schema dil_obs é candidato a fontes sem ledger append-only.",
+      "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): domínio Python e migration candidata dil_obs_0001 (mais 0002 opcional particionada, com rollback) testados em PostgreSQL 16 descartável: append-only até para superusuário, RLS forçada, available_at limitado pelo relógio do banco, equivalência as_of SQL × Python; só superusuário aplica ou desfaz a migration (R2-G1). Regra de versão final D2': a releitura só vira versão quando o estado de negócio muda; releitura igual vira confirmação estreita (dil_obs.confirmacao) e retry é no-op. observacao_as_of é inlinável (ponto de uma chave 0,001 s em 1e6 linhas). Bytes com ids no formato real: 1.158 B por observação e 276 B por confirmação; projeção proporcional de ~2,5 TB em 3 anos a ×100 (a modelagem de capacidade, com ids de gerador, dá ~2,0 TB). NÃO aplicada em banco algum, não testada em PostgreSQL 15 (produção), adaptadores só com linhas sintéticas. Decisão registrada: dil_obs NÃO recebe Google Ads nem JoinAds (duas autoridades). Tarefa: P06-T12."
+    },
+    {
+      "id": "concept:data_quality_observability",
+      "label": "Observabilidade e health contracts de qualidade de dados",
+      "cluster": "measurement",
+      "state": "inactive",
+      "summary": "Contratos de saúde por coletor (frescor por slot, completude, runs órfãos, falha silenciosa, duplicação, zero sintetizado, reconciliações, deriva, schema drift, substituição de fonte, cobertura de atribuição do sensor) como funções Python puras e views candidatas read-only, com alertas decididos por função pura e sem envio.",
+      "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): 81 testes (66 da entrega + 15 da resposta à R2; PostgreSQL 16 descartável, equivalência Python × SQL, falso alarme do detector de deriva até 2%); os SELECTs gerados das views rodaram UMA vez em produção, read-only (16/10 ~13:04 UTC): 5 coletores frescos, 3 runs órfãos, zero sintetizado 80%, cobertura do sensor 0, reconciliação receita ok, custo D0 × D-1 ok; depois da R2 a reconciliação de receita é por domínio × dia, dead letter tardio e run só de dead letters alertam, o estado de dil_obs é o vigente e confirmações D2' contam como linhas escritas. Nenhuma view foi criada em produção, nada está agendado, nenhum alerta foi enviado e os limiares não foram calibrados com dado real. Tarefa: P10-T29."
     }
   ],
   "documents": [
@@ -2015,6 +2079,30 @@
       "documenta": "cap_meta_ads",
       "summary": "Separa o legado Google campanha/dia da atribuição Meta conjunto/dia; Meta sobe para campanha somente pela soma dos filhos e chaves ambíguas falham fechadas. O read model agora também transporta o percurso clique→LPV→impressão GAM→receita com incompletude explícita.",
       "evidence": "P11-T20/P11-T25 partial; docs/closure/meta-gam-adset-grain-20260910/HANDOFF.md e docs/closure/meta-implementation-20260912/HANDOFF.md. Migration oficial anterior aplicada após backup: views financeiras e classificador presentes, 99 linhas legadas preservadas e zero grants de browser. Incremento local preserva campos Meta já existentes, deriva pontes sem migration e recusa densidade GAM sobre soma parcial. 31 testes financeiros, 264 UI Meta e build passaram. Faltam reconciliar o workflow remoto 9jOsfVPGrFOQAcUR, provar a primeira linha real Meta+GAM e fazer QA autenticado."
+    },
+    {
+      "id": "doc:data-foundation-20261016",
+      "label": "Fundação Data Intelligence — documentos 00 a 10, handoffs e recibos",
+      "cluster": "data",
+      "documenta": "concept:data_intelligence_lab",
+      "summary": "Manifesto, inventário, contrato de dados, matriz de atribuição, cadência e capacidade, arquitetura de coletores, replay e shadow, simulador, Model Lab, observabilidade e backlog de ouros da missão de 16/10/2026.",
+      "evidence": "docs/data-intelligence/fundacao-20261016/ (00-MANIFESTO a 10-BACKLOG-OUROS, handoffs A a G, revisão adversarial R1, receipts). Trabalho local em lab/data-foundation-20261016, sem push e não integrado até o merge."
+    },
+    {
+      "id": "doc:leituras-externas-20261016",
+      "label": "Recibo de leituras externas read-only de 16/10/2026",
+      "cluster": "measurement",
+      "documenta": "concept:google_ads_collection_ledger",
+      "summary": "Quatro rodadas de leitura somente-leitura do Postgres oficial (catálogo, gatilhos, índice, sensor, saúde, maturação, zero, health contracts e hipóteses da R1), com a trava default_transaction_read_only=on e sem segredo impresso.",
+      "evidence": "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md e os .sql da pasta. Não executadas em 16/10: GTM API, n8n API e hash da Edge Function; exportação do snapshot negada pela permissão da sessão. Todas feitas em 17/10 (doc:rodada-autorizada-20261017)."
+    },
+    {
+      "id": "doc:rodada-autorizada-20261017",
+      "label": "Recibo da rodada autorizada de 17/10/2026 (snapshot, replay real e metadados)",
+      "cluster": "data",
+      "documenta": "concept:data_intelligence_lab",
+      "summary": "Exportação read-only pseudonimizada de v21 campaign_day e JoinAds v2, replay as_of horário com três variantes, e leituras só de metadados de GTM (v35 e v36), n8n (workflows, schedules, error workflows, execuções) e do hash da Edge Function volc-ingest.",
+      "evidence": "docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/ (recibo, SQL, scripts e resumos agregados; nenhum identificador real)."
     }
   ],
   "edges": [
@@ -4135,6 +4223,156 @@
       "source": "concept:campaign_shadow_recommendation",
       "target": "cap_inventario_trafego",
       "relation": "aparece_na_pagina_canonica"
+    },
+    {
+      "source": "risk:sensor_campaign_id_pii_filter",
+      "target": "cap_attribution",
+      "relation": "ameaca",
+      "evidence": "Sem campaign.id no sensor, o tráfego por campanha × dia sai nao_atribuivel; custo × receita segue determinístico pela JoinAds."
+    },
+    {
+      "source": "risk:sensor_campaign_id_pii_filter",
+      "target": "cap_behavior",
+      "relation": "ameaca",
+      "evidence": "O sensor opera, mas 0 de 28 sessões pagas chegam com campanha (0 de 13 no v3.1)."
+    },
+    {
+      "source": "risk:sensor_campaign_id_pii_filter",
+      "target": "concept:tracking_control_plane",
+      "relation": "ameaca",
+      "evidence": "A correção exige publicação de GTM, fora do que o plano de controle atual governa."
+    },
+    {
+      "source": "risk:google_ads_zero_sintetizado",
+      "target": "concept:google_ads_collection_ledger",
+      "relation": "ameaca",
+      "evidence": "80% das leituras campaign_day com 0 sem linha de métrica."
+    },
+    {
+      "source": "risk:google_ads_zero_sintetizado",
+      "target": "cap_cost_ingestion",
+      "relation": "ameaca",
+      "evidence": "O custo lido do canônico contém zero sintetizado até o adaptador reclassificar."
+    },
+    {
+      "source": "risk:coletores_canonicos_sem_reaper",
+      "target": "concept:google_ads_collection_ledger",
+      "relation": "ameaca",
+      "evidence": "3 runs presos em running por 22 h."
+    },
+    {
+      "source": "risk:coletores_canonicos_sem_reaper",
+      "target": "concept:joinads_collection_ledger",
+      "relation": "ameaca",
+      "evidence": "Sem error workflow nem view de saúde em produção."
+    },
+    {
+      "source": "concept:joinads_collection_ledger",
+      "target": "cap_revenue_ingestion",
+      "relation": "alimenta",
+      "evidence": "Receita por campanha-dia, append-only; razão kv/earnings 0,968–1,000."
+    },
+    {
+      "source": "concept:joinads_collection_ledger",
+      "target": "external:joinads",
+      "relation": "le_de",
+      "evidence": "API JoinAds; custom_key pode ser substituída pela API, a v2 registra o aviso e não grava a linha."
+    },
+    {
+      "source": "concept:google_ads_collection_ledger",
+      "target": "cap_cost_ingestion",
+      "relation": "alimenta",
+      "evidence": "Custo campanha-dia canônico, coexistindo com o legado."
+    },
+    {
+      "source": "concept:ledger_authority_decision",
+      "target": "concept:google_ads_collection_ledger",
+      "relation": "governa",
+      "evidence": "Decide qual geração do ledger é a autoridade por fonte e grão."
+    },
+    {
+      "source": "concept:ledger_authority_decision",
+      "target": "concept:joinads_collection_ledger",
+      "relation": "governa",
+      "evidence": "Decide a aposentadoria dos gatilhos legados de receita."
+    },
+    {
+      "source": "concept:schedule_authority",
+      "target": "concept:ledger_authority_decision",
+      "relation": "nao_governa",
+      "evidence": "Agenda única (n8n) não é autoridade de dado: são decisões separadas."
+    },
+    {
+      "source": "concept:data_intelligence_lab",
+      "target": "concept:decision_intelligence_lab",
+      "relation": "informa_sem_autorizar",
+      "evidence": "Laboratório de referência sem autoridade operacional."
+    },
+    {
+      "source": "concept:data_intelligence_lab",
+      "target": "concept:adaptive_budget_allocator",
+      "relation": "prova_em_laboratorio",
+      "evidence": "Alocador sob restrições testado só em sintético."
+    },
+    {
+      "source": "concept:data_intelligence_lab",
+      "target": "concept:forecast_lifecycle",
+      "relation": "prova_em_laboratorio",
+      "evidence": "Bancada as_of com checagem de vazamento por disponivel_em; sem registry."
+    },
+    {
+      "source": "concept:data_intelligence_lab",
+      "target": "cap_freedom_lab",
+      "relation": "consulta_como_referencia",
+      "evidence": "Dois ambientes com pins diferentes (polars 1.44.2 × 2.0.0): tempos não transferíveis."
+    },
+    {
+      "source": "concept:data_intelligence_lab",
+      "target": "concept:observation_append_only_contract",
+      "relation": "contem",
+      "evidence": "Contrato e schema candidato."
+    },
+    {
+      "source": "concept:data_intelligence_lab",
+      "target": "concept:data_quality_observability",
+      "relation": "contem",
+      "evidence": "Health contracts e views candidatas."
+    },
+    {
+      "source": "concept:observation_append_only_contract",
+      "target": "concept:google_ads_collection_ledger",
+      "relation": "declara_contrato_de",
+      "evidence": "Leitura via adaptar_google_ads_v21; sem escrita em dil_obs."
+    },
+    {
+      "source": "concept:observation_append_only_contract",
+      "target": "concept:joinads_collection_ledger",
+      "relation": "declara_contrato_de",
+      "evidence": "Leitura via adaptar_joinads_v2; sem escrita em dil_obs."
+    },
+    {
+      "source": "concept:data_quality_observability",
+      "target": "concept:google_ads_collection_ledger",
+      "relation": "observa",
+      "evidence": "Frescor, completude, órfãos, zero sintetizado."
+    },
+    {
+      "source": "concept:data_quality_observability",
+      "target": "concept:joinads_collection_ledger",
+      "relation": "observa",
+      "evidence": "Reconciliação kv/earnings, schema drift, substituição de fonte."
+    },
+    {
+      "source": "concept:data_quality_observability",
+      "target": "cap_attribution",
+      "relation": "mede",
+      "evidence": "Cobertura de atribuição do sensor (só agregado)."
+    },
+    {
+      "source": "concept:data_quality_observability",
+      "target": "cap_health",
+      "relation": "informa_saude",
+      "evidence": "Recibo de saúde e alertas propostos (não enviados)."
     }
   ],
   "priorities": [
