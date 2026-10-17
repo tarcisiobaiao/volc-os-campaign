@@ -26,5 +26,3 @@ def entrada(cliques=634, custo="554.75", receita="7.77", moeda_receita="USD", ta
         imposto=Taxa(valor=None if imposto is None else Decimal(imposto), evidencia=Evidencia.UNKNOWN if imposto is None else Evidencia.ATTESTED, proveniencia="x"),
         perda_maxima=PerdaMaxima(valor=None if perda is None else Dinheiro.de_decimal(perda, "BRL"), horizonte_dias=horizonte, proveniencia="owner" if perda else "ausente"),
     )
-
-
