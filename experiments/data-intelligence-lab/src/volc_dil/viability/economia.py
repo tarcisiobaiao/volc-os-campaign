@@ -7,7 +7,7 @@ não são calibrações. Ausência propaga como `Indisponivel`, nunca como zero.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from decimal import ROUND_HALF_EVEN, Decimal
+from decimal import Decimal
 from fractions import Fraction
 from typing import Optional, Union
 
@@ -22,11 +22,25 @@ class Indisponivel:
     detalhe: str = ""
 
 
+def micros_de_fracao(fr: Fraction) -> int:
+    """Fraction → int com arredondamento half-even, SÓ com aritmética inteira (sem Decimal, sem float).
+
+    `divmod` em Python arredonda o quociente para −∞ e deixa o resto em [0, d); por isso a mesma
+    comparação `2·resto` vs `denominador` decide o empate para positivos e negativos.
+    """
+    n, d = fr.numerator, fr.denominator
+    q, r = divmod(n, d)
+    dobro = 2 * r
+    if dobro < d:
+        return q
+    if dobro > d:
+        return q + 1
+    return q if q % 2 == 0 else q + 1
+
+
 def _micros_x(micros: int, fator: Union[Fraction, Decimal]) -> int:
     f = Fraction(fator) if isinstance(fator, Decimal) else fator
-    v = Fraction(micros) * f
-    # HALF_EVEN sobre a fração exata (numerador/denominador em Decimal com precisão suficiente)
-    return int((Decimal(v.numerator) / Decimal(v.denominator)).quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
+    return micros_de_fracao(Fraction(micros) * f)
 
 
 # Premissas conservadoras (nome → fator). Declaradas, não calibradas.
@@ -53,6 +67,21 @@ class ReceitaComparavel:
     aplicados: tuple[str, ...]
 
 
+def _negativos(e: EntradaViabilidade) -> Optional[Indisponivel]:
+    """Custo, receita, cliques e visitas observados nunca são negativos. O contrato (V2) recusa na
+    construção; o kernel recusa de novo, defensivamente, para que a contribuição (que PODE ser
+    negativa) jamais nasça de uma entrada negativa."""
+    for nome in ("custo", "receita"):
+        m = getattr(e, nome)
+        if m.valor is not None and m.valor.micros < 0:
+            return Indisponivel("valor_negativo", f"{nome}={m.valor.micros} micros")
+    for nome in ("cliques", "visitas"):
+        m = getattr(e, nome)
+        if m is not None and m.valor is not None and m.valor < 0:
+            return Indisponivel("valor_negativo", f"{nome}={m.valor}")
+    return None
+
+
 def receita_liquida_comparavel(e: EntradaViabilidade) -> Union[ReceitaComparavel, Indisponivel]:
     r = e.receita
     if r.valor is None:
@@ -61,6 +90,9 @@ def receita_liquida_comparavel(e: EntradaViabilidade) -> Union[ReceitaComparavel
         return Indisponivel(f"custo_{e.custo.evidencia.value}")
     if r.moeda_evidencia is Evidencia.INVALID:
         return Indisponivel("moeda_receita_invalid")
+    neg = _negativos(e)
+    if neg is not None:
+        return neg
     limitacoes: list[str] = []
     aplicados: list[str] = []
     micros = r.valor.micros
@@ -98,20 +130,29 @@ def receita_liquida_comparavel(e: EntradaViabilidade) -> Union[ReceitaComparavel
 
 @dataclass(frozen=True)
 class EconomiaObservada:
+    """Grão da decisão é o CLIQUE: custo e receita são divididos pelos mesmos cliques, logo o break-even
+    por clique compara CPC com RPC por clique. RPC por visita é SÓ reportado (nunca entra no break-even);
+    sem visitas (None) ou com visitas == 0 ele fica indisponível com motivo e NUNCA cai para cliques."""
     moeda: str
     cliques: int
-    visitas_elegiveis: int
+    visitas_elegiveis: Optional[int]      # None = sem medida de visitas; 0 é valor observado válido
     custo: Dinheiro
     receita_liquida: Dinheiro
-    cpc: Fraction              # micros por clique
-    rpc: Fraction              # micros por visita elegível
+    cpc: Fraction                         # micros por clique
+    rpc: Fraction                         # micros por clique (== rpc_por_clique; grão do break-even)
     contribuicao: Dinheiro
-    break_even_cpc: Fraction   # = rpc (RPC conservador é aplicado no envelope)
+    break_even_cpc: Fraction              # = rpc por clique (RPC conservador é aplicado no envelope)
     receita_evidencia: Evidencia
     moeda_evidencia: Evidencia
     cambio_evidencia: Optional[Evidencia]
     limitacoes: tuple[str, ...]
     aplicados: tuple[str, ...]
+    rpc_por_visita: Optional[Fraction] = None            # só reportado
+    rpc_por_visita_indisponivel: Optional[str] = None    # "visitas_ausente" | "visitas_zero"
+
+    @property
+    def rpc_por_clique(self) -> Fraction:
+        return self.rpc
 
 
 def calcular_economia(e: EntradaViabilidade) -> Union[EconomiaObservada, Indisponivel]:
@@ -121,17 +162,28 @@ def calcular_economia(e: EntradaViabilidade) -> Union[EconomiaObservada, Indispo
         return Indisponivel("cliques_zero")
     if e.custo.valor is None:
         return Indisponivel(f"custo_{e.custo.evidencia.value}")
+    neg = _negativos(e)
+    if neg is not None:
+        return neg
     rc = receita_liquida_comparavel(e)
     if isinstance(rc, Indisponivel):
         return rc
-    visitas = e.visitas.valor if (e.visitas is not None and e.visitas.valor) else e.cliques.valor
     cpc = Fraction(e.custo.valor.micros, e.cliques.valor)
-    rpc = Fraction(rc.valor.micros, visitas)
+    rpc = Fraction(rc.valor.micros, e.cliques.valor)
+    visitas: Optional[int] = None if (e.visitas is None or e.visitas.valor is None) else e.visitas.valor
+    rpc_visita: Optional[Fraction] = None
+    rpc_visita_motivo: Optional[str] = None
+    if visitas is None:
+        rpc_visita_motivo = "visitas_ausente"
+    elif visitas == 0:
+        rpc_visita_motivo = "visitas_zero"
+    else:
+        rpc_visita = Fraction(rc.valor.micros, visitas)
     return EconomiaObservada(
         moeda=e.custo.valor.moeda, cliques=e.cliques.valor, visitas_elegiveis=visitas, custo=e.custo.valor,
         receita_liquida=rc.valor, cpc=cpc, rpc=rpc, contribuicao=rc.valor - e.custo.valor, break_even_cpc=rpc,
         receita_evidencia=rc.evidencia, moeda_evidencia=rc.moeda_evidencia, cambio_evidencia=rc.cambio_evidencia,
-        limitacoes=rc.limitacoes, aplicados=rc.aplicados,
+        limitacoes=rc.limitacoes, aplicados=rc.aplicados, rpc_por_visita=rpc_visita, rpc_por_visita_indisponivel=rpc_visita_motivo,
     )
 
 
@@ -149,6 +201,12 @@ class Envelope:
     premissas: tuple[tuple[str, str], ...]   # (nome, valor) aplicados
     limitacoes: tuple[str, ...]
     economia: EconomiaObservada
+    custo_conservador: Optional[Dinheiro] = None     # custo × margem de reconciliação
+    receita_conservadora: Optional[Dinheiro] = None  # receita líquida × fatores de evidência
+
+    def perda_liquida_conservadora(self) -> Dinheiro:
+        """max(0, custo_cons − receita_cons): perda líquida sob as premissas; nunca o gasto bruto."""
+        return Dinheiro(max(0, -self.contribuicao_conservadora.micros), self.moeda)
 
 
 def _fator_receita(eco: EconomiaObservada) -> tuple[Fraction, list[tuple[str, str]], list[str], bool]:
@@ -201,6 +259,7 @@ def envelope_conservador(e: EntradaViabilidade) -> Union[Envelope, Indisponivel]
         moeda=eco.moeda, cpc_central=eco.cpc, cpc_conservador=cpc_cons, rpc_central=eco.rpc, rpc_conservador=rpc_cons,
         rpc_otimista=eco.rpc * f_otim, contribuicao_central=eco.contribuicao, contribuicao_conservadora=rec_cons - custo_cons,
         receita_realizada=realizada, premissas=tuple(prem), limitacoes=tuple(lim), economia=eco,
+        custo_conservador=custo_cons, receita_conservadora=rec_cons,
     )
 
 
@@ -274,5 +333,5 @@ def estresse(e: EntradaViabilidade) -> Union[list[Cenario], Indisponivel]:
     out: list[Cenario] = []
     for nome, fr, fc, rs, prem in cenarios:
         micros = _receita_cenario(e, eco, fr, fc, rs)
-        out.append(Cenario(nome, Dinheiro(micros - eco.custo.micros, eco.moeda), Fraction(micros, eco.visitas_elegiveis), prem))
+        out.append(Cenario(nome, Dinheiro(micros - eco.custo.micros, eco.moeda), Fraction(micros, eco.cliques), prem))
     return out

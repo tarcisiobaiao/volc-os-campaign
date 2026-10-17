@@ -81,7 +81,7 @@ def test_inv4_cambio_estimado_nao_vira_viable_nem_already():
 def test_inv5_ausente_e_zero_produzem_vereditos_diferentes():
     ausente = avaliar(entrada(receita_none=True))
     zero = avaliar(entrada(receita="0", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.OBSERVED))
-    assert ausente.verdict is Veredito.INSUFFICIENT_EVIDENCE and zero.verdict is Veredito.STRUCTURALLY_UNVIABLE
+    assert ausente.verdict is Veredito.INSUFFICIENT_EVIDENCE and zero.verdict is Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS
     assert ausente.contribution_observed is None and zero.contribution_observed is not None
 
 
@@ -161,7 +161,7 @@ def test_inv14_nenhum_numero_da_senac_hardcoded_no_kernel():
 
 # ------------------------------------------------------------------ 15: veredito muda com economia favorável
 def test_inv15_veredito_muda_com_economia_favoravel():
-    assert avaliar(entrada(perda="300", horizonte=14)).verdict is Veredito.STRUCTURALLY_UNVIABLE
+    assert avaliar(entrada(perda="300", horizonte=14)).verdict is Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS
     assert avaliar(entrada(receita="900", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14)).verdict is Veredito.ALREADY_PROFITABLE
 
 
@@ -200,12 +200,51 @@ def test_mutante_cpc_medio_no_lugar_do_marginal_e_detectado():
 
 
 def test_mutante_projected_como_realizado_e_detectado(monkeypatch):
+    """Mutante: PROJECTED entra em REALIZADA no envelope. Duas redes o seguram: a governança do gate
+    (evidência projetada nunca sustenta veredito positivo) e, se ela também caísse, o verificador."""
     monkeypatch.setattr(E, "REALIZADA", frozenset({Evidencia.OBSERVED, Evidencia.RECONCILED, Evidencia.PROJECTED}))
     e = entrada(receita="900", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.PROJECTED, perda="300", horizonte=14)
     r = avaliar(e)
-    assert r.verdict is Veredito.ALREADY_PROFITABLE  # o mutante produz o erro
+    assert r.verdict not in (Veredito.ALREADY_PROFITABLE, Veredito.VIABLE_CANDIDATE)   # a governança segura o mutante
+    verificar_invariantes(e, r)
+    # se a governança também fosse mutada, o resultado positivo seria pego pelo verificador
+    positivo = G.ResultadoViabilidade(**{**r.__dict__, "verdict": Veredito.ALREADY_PROFITABLE})
+    positivo = G.ResultadoViabilidade(**{**positivo.__dict__, "result_hash": G._hash_resultado(positivo.para_json(com_hash=False))})
     with pytest.raises(InvarianteViolada):
-        verificar_invariantes(e, r)
+        verificar_invariantes(e, positivo)
+
+
+def test_mutante_governanca_ignorada_e_pego_pelo_verificador():
+    """Mutante no gate que devolvesse already_profitable com receita projetada: o verificador recusa."""
+    e = entrada(receita="900", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.PROJECTED, perda="300", horizonte=14)
+    r = avaliar(e)
+    mutado = G.ResultadoViabilidade(**{**r.__dict__, "verdict": Veredito.VIABLE_CANDIDATE})
+    mutado = G.ResultadoViabilidade(**{**mutado.__dict__, "result_hash": G._hash_resultado(mutado.para_json(com_hash=False))})
+    with pytest.raises(InvarianteViolada):
+        verificar_invariantes(e, mutado)
+
+
+# ------------------------------------------------------------------ V2: governança em grade (fix 9)
+def test_inv_governanca_stale_e_invalid_nunca_positivos_em_grade():
+    from datetime import timedelta
+    fav = dict(receita="900", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14)
+    assert avaliar(entrada(**fav)).verdict is Veredito.ALREADY_PROFITABLE
+    for campo in ("custo", "cliques", "receita"):
+        r = avaliar(entrada(observado_em={campo: AS_OF - timedelta(days=30)}, **fav))
+        assert r.verdict is Veredito.INSUFFICIENT_EVIDENCE and r.max_experiment_spend is None
+        r = avaliar(entrada(flags_medidas={campo: ("invalid_x",)}, **fav))
+        assert r.verdict is Veredito.INSUFFICIENT_EVIDENCE and f"{campo}:invalid_x" in r.invalid_evidence
+    for ppm in (None, 0, 999_999):
+        r = avaliar(entrada(cobertura_ppm=ppm, **fav))
+        assert Veredito.ordem(r.verdict) <= Veredito.ordem(Veredito.TEST_WITH_CAP) and r.confidence_class is not Confianca.HIGH
+
+
+def test_inv_viable_candidate_fica_entre_test_with_cap_e_already_profitable():
+    fav = dict(receita="900", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14)
+    cand = avaliar(entrada(cliques=300, custo="250", **fav))
+    assert cand.verdict is Veredito.VIABLE_CANDIDATE
+    assert Veredito.ordem(Veredito.TEST_WITH_CAP) < Veredito.ordem(cand.verdict) < Veredito.ordem(Veredito.ALREADY_PROFITABLE)
+    verificar_invariantes(entrada(cliques=300, custo="250", **fav), cand)
 
 
 def test_mutante_remover_as_of_e_detectado():

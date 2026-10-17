@@ -52,12 +52,16 @@ def _cpc_rpc_conservadores(e: EntradaViabilidade) -> Union[tuple[Fraction, Fract
         return env.cpc_conservador, env.rpc_conservador, prem
     # sem economia observada: CPC de pesquisa (limite superior) e RPC desconhecido = perda total
     if e.cpc_intervalo is not None:
+        if e.cpc_intervalo[0].moeda != e.cpc_intervalo[1].moeda:
+            return Indisponivel("cpc_intervalo_moeda_incompativel", f"{e.cpc_intervalo[0].moeda} vs {e.cpc_intervalo[1].moeda}")
         cpc = Fraction(max(e.cpc_intervalo[0].micros, e.cpc_intervalo[1].micros))
         prem.append("cpc_de_pesquisa_limite_superior_nunca_autoriza_verba")
     else:
         return Indisponivel("cpc_desconhecido", env.motivo)
     rpc = Fraction(0)
     if e.rpc_intervalo is not None:
+        if {e.rpc_intervalo[0].moeda, e.rpc_intervalo[1].moeda} != {e.cpc_intervalo[0].moeda}:
+            return Indisponivel("rpc_intervalo_moeda_incompativel", f"rpc em {e.rpc_intervalo[0].moeda}/{e.rpc_intervalo[1].moeda}, cpc em {e.cpc_intervalo[0].moeda}")
         rpc = Fraction(min(e.rpc_intervalo[0].micros, e.rpc_intervalo[1].micros))
         prem.append("rpc_de_pesquisa_limite_inferior")
     else:
@@ -74,8 +78,10 @@ def calcular_teto(e: EntradaViabilidade) -> Union[TetoExperimento, Indisponivel]
     if isinstance(r, Indisponivel):
         return r
     cpc, rpc, prem = r
-    if pm.valor.moeda != (e.custo.valor.moeda if e.custo.valor is not None else pm.valor.moeda):
-        return Indisponivel("perda_maxima_moeda_incompativel")
+    # moeda de referência: a do custo observado; sem custo, a do CPC de pesquisa. Nunca conversão implícita.
+    moeda_ref = e.custo.valor.moeda if e.custo.valor is not None else (e.cpc_intervalo[0].moeda if e.cpc_intervalo is not None else None)
+    if moeda_ref is None or pm.valor.moeda != moeda_ref:
+        return Indisponivel("perda_maxima_moeda_incompativel", f"perda_maxima em {pm.valor.moeda}, referência em {moeda_ref}")
     moeda = pm.valor.moeda
     perda = Fraction(pm.valor.micros)
     perda_clique = max(Fraction(0), cpc - rpc)

@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from fractions import Fraction
 
-from volc_dil.viability.contrato import PontoSimulacao, SimulacaoEntrada
+from volc_dil.viability.contrato import Cambio, Evidencia, PontoSimulacao, SimulacaoEntrada
+
+from _entradas import v2
 from volc_dil.viability.simulacao import CurvaIndisponivel, FronteiraMarginal, analisar_simulacao
 
 AS_OF = datetime(2026, 10, 15, 12, 0, tzinfo=timezone.utc)
@@ -111,3 +113,33 @@ def test_fronteira_eficiente_e_auditavel_e_deterministica():
     b = analisar_simulacao(sim(ADR), RPC)
     assert a.para_json() == b.para_json()
     assert "segmentos" in a.para_json() and "rpc_conservador_micros" in a.para_json()
+
+
+# ---------------------------------------------------------------- V2: moeda da simulação ≠ moeda do custo (fix 3)
+def test_moeda_da_simulacao_diferente_sem_cambio_e_indisponivel():
+    r = analisar_simulacao(sim(ADR, moeda="USD"), RPC, moeda="BRL")
+    assert isinstance(r, CurvaIndisponivel) and r.motivo == "moeda_incompativel" and "USD" in r.detalhe and "BRL" in r.detalhe
+
+
+def test_moeda_igual_ou_nao_informada_nao_converte():
+    assert analisar_simulacao(sim(ADR), RPC, moeda="BRL").conversao is None
+    assert analisar_simulacao(sim(ADR, moeda="USD"), RPC).conversao is None   # sem moeda de referência: comportamento V1
+
+
+def test_moeda_diferente_com_cambio_converte_o_custo_explicitamente_e_registra_no_json():
+    cambio = Cambio(taxa=Decimal("5"), de="USD", para="BRL", proveniencia="ptax", evidencia=Evidencia.OBSERVED)
+    s = v2(sim(ADR, moeda="USD"), cambio=cambio)
+    fm = analisar_simulacao(s, RPC * 5, moeda="BRL")
+    assert isinstance(fm, FronteiraMarginal)
+    assert fm.moeda == "BRL" and fm.moeda_original == "USD"
+    assert [p.custo_micros for p in fm.pontos] == [400_000_000, 600_000_000]       # 80 e 120 USD × 5
+    assert fm.segmentos[0].cpc_marginal == Fraction(1_000_000)                    # 0,20 USD × 5
+    j = fm.para_json()
+    assert j["conversao"] == {"de": "USD", "para": "BRL", "taxa": "5", "proveniencia": "ptax", "evidencia": "observed", "campos": ["custo_micros"]}
+    assert j["moeda"] == "BRL"
+
+
+def test_cambio_com_par_errado_e_indisponivel():
+    cambio = Cambio(taxa=Decimal("5"), de="EUR", para="BRL", proveniencia="ptax", evidencia=Evidencia.OBSERVED)
+    r = analisar_simulacao(v2(sim(ADR, moeda="USD"), cambio=cambio), RPC, moeda="BRL")
+    assert isinstance(r, CurvaIndisponivel) and r.motivo == "moeda_incompativel"

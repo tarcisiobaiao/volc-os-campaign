@@ -141,3 +141,94 @@ def test_aumentar_receita_reconciliada_nunca_piora_contribuicao():
     a = calcular_economia(entrada(receita="7.77"))
     b = calcular_economia(entrada(receita="9.00"))
     assert b.contribuicao.micros > a.contribuicao.micros
+
+
+# ---------------------------------------------------------------- V2: arredondamento exato Fraction→micros (fix 6)
+def test_micros_de_fracao_empata_para_o_par_inclusive_negativo():
+    from volc_dil.viability.economia import micros_de_fracao
+    assert micros_de_fracao(Fraction(1, 2)) == 0
+    assert micros_de_fracao(Fraction(3, 2)) == 2
+    assert micros_de_fracao(Fraction(5, 2)) == 2
+    assert micros_de_fracao(Fraction(7, 2)) == 4
+    assert micros_de_fracao(Fraction(-1, 2)) == 0
+    assert micros_de_fracao(Fraction(-3, 2)) == -2
+    assert micros_de_fracao(Fraction(-5, 2)) == -2
+    assert micros_de_fracao(Fraction(2, 3)) == 1 and micros_de_fracao(Fraction(-2, 3)) == -1
+    assert micros_de_fracao(Fraction(1, 3)) == 0 and micros_de_fracao(Fraction(-1, 3)) == 0
+    assert micros_de_fracao(Fraction(7)) == 7
+
+
+def test_micros_de_fracao_nao_perde_precisao_em_numeradores_grandes():
+    from volc_dil.viability.economia import micros_de_fracao
+    n = 10 ** 40
+    assert micros_de_fracao(Fraction(n, 3)) == n // 3            # 333...3 (resto 1/3 arredonda para baixo)
+    assert micros_de_fracao(Fraction(2 * n, 3)) == (2 * n) // 3 + 1  # resto 2/3 arredonda para cima
+    assert micros_de_fracao(Fraction(n + 1, 2)) == n // 2        # empate em (10^40+1)/2: 10^40/2 é par
+    # o caminho antigo (Decimal com 28 dígitos) falharia aqui: o resultado precisa ser exato
+    assert micros_de_fracao(Fraction(10 ** 40 + 7, 1)) == 10 ** 40 + 7
+
+
+def test_micros_x_usa_aritmetica_inteira_e_aceita_decimal():
+    from volc_dil.viability.economia import _micros_x
+    assert _micros_x(5, Fraction(1, 2)) == 2          # 2,5 → 2 (par)
+    assert _micros_x(7, Fraction(1, 2)) == 4          # 3,5 → 4 (par)
+    assert _micros_x(10 ** 40, Decimal("0.3")) == 3 * 10 ** 39
+
+
+# ---------------------------------------------------------------- V2: entradas negativas (fix 4)
+def _negativo(e, campo, micros):
+    m = getattr(e, campo)
+    return e.__class__(**{**e.__dict__, campo: m.__class__(**{**m.__dict__, "valor": Dinheiro(micros, m.valor.moeda)})})
+
+
+def test_custo_negativo_e_indisponivel_valor_negativo():
+    e = _negativo(entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED), "custo", -1)
+    r = calcular_economia(e)
+    assert isinstance(r, Indisponivel) and r.motivo == "valor_negativo" and "custo" in r.detalhe
+
+
+def test_receita_negativa_e_indisponivel_valor_negativo():
+    e = _negativo(entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED), "receita", -5)
+    r = calcular_economia(e)
+    assert isinstance(r, Indisponivel) and r.motivo == "valor_negativo" and "receita" in r.detalhe
+    assert isinstance(receita_liquida_comparavel(e), Indisponivel)
+
+
+def test_contribuicao_pode_ser_negativa_embora_entradas_nao_possam():
+    eco = calcular_economia(entrada(receita="0", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.OBSERVED))
+    assert isinstance(eco, EconomiaObservada) and eco.contribuicao.micros < 0
+    assert eco.custo.micros >= 0 and eco.receita_liquida.micros >= 0 and eco.cliques >= 0
+
+
+# ---------------------------------------------------------------- V2: grão por clique; visitas só reportadas (fixes 1 e 5)
+def test_break_even_e_por_clique_e_rpc_por_visita_e_so_reportado():
+    # 100 cliques, 50 visitas, custo 100, receita 75 BRL observada
+    eco = calcular_economia(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, visitas=50))
+    assert isinstance(eco, EconomiaObservada)
+    assert eco.cpc == Fraction(1_000_000)
+    assert eco.rpc_por_clique == Fraction(750_000) and eco.rpc == eco.rpc_por_clique and eco.break_even_cpc == Fraction(750_000)
+    assert eco.rpc_por_visita == Fraction(1_500_000)
+    assert eco.visitas_elegiveis == 50
+    assert eco.contribuicao == Dinheiro(-25_000_000, "BRL")   # nunca "prejuízo zero" por trocar o grão
+
+
+def test_visitas_ausentes_nao_calcula_rpc_por_visita():
+    eco = calcular_economia(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED))
+    assert eco.rpc_por_visita is None and eco.visitas_elegiveis is None
+    assert eco.rpc_por_visita_indisponivel == "visitas_ausente"
+    assert eco.rpc_por_clique == Fraction(750_000)
+
+
+def test_visitas_zero_e_valor_valido_e_nunca_cai_para_cliques():
+    eco = calcular_economia(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, visitas=0))
+    assert isinstance(eco, EconomiaObservada)
+    assert eco.visitas_elegiveis == 0
+    assert eco.rpc_por_visita is None and eco.rpc_por_visita_indisponivel == "visitas_zero"
+    assert eco.rpc_por_clique == Fraction(750_000) and eco.break_even_cpc == Fraction(750_000)
+    assert eco.contribuicao == Dinheiro(-25_000_000, "BRL")
+
+
+def test_estresse_usa_o_grao_por_clique():
+    s = estresse(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, visitas=50))
+    base = next(c for c in s if c.nome == "base")
+    assert base.rpc == Fraction(750_000) and base.contribuicao == Dinheiro(-25_000_000, "BRL")
