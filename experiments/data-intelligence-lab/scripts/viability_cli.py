@@ -7,19 +7,26 @@ Uso (da raiz do lab, com o Python do lab):
   .venv/bin/python -I scripts/viability_cli.py replay     fixtures/viability --saida DIR
   .venv/bin/python -I scripts/viability_cli.py verify     DIR/recibo.json
 
-Exit codes: 0 conclusivo · 2 entrada inválida · 3 insuficiente/indisponível · 4 invariante violada.
-Saídas: resultado JSON canônico, relatório humano curto, recibo com hashes (entrada, resultado, código).
+Exit codes: 0 conclusivo · 2 entrada inválida · 3 insuficiente/indisponível · 4 invariante violada / recibo não verificado.
+Saídas: resultado JSON canônico, relatório humano curto, recibo com hashes (código, ambiente, entrada, resultado, relatório).
+
+O recibo prova INTEGRIDADE e REPRODUTIBILIDADE (sha256), nunca identidade nem autoria: isso exigiria uma
+assinatura, que o laboratório não tem. Ver README-viability-cli.md.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import platform
+import subprocess
 import sys
 from fractions import Fraction
 from pathlib import Path
+from typing import Optional
 
 RAIZ_LAB = Path(__file__).resolve().parents[1]
+RAIZ_REPO = RAIZ_LAB.parents[1]
 sys.path.insert(0, str(RAIZ_LAB / "src"))
 
 from volc_dil.viability import VERSAO_KERNEL  # noqa: E402
@@ -30,7 +37,10 @@ from volc_dil.viability.invariantes import InvarianteViolada, verificar_invarian
 from volc_dil.viability.simulacao import CurvaIndisponivel, analisar_simulacao  # noqa: E402
 
 EXIT_OK, EXIT_ENTRADA_INVALIDA, EXIT_INSUFICIENTE, EXIT_INVARIANTE = 0, 2, 3, 4
-MODULOS = sorted((RAIZ_LAB / "src" / "volc_dil" / "viability").glob("*.py"))
+# O código que produz o recibo: os módulos do kernel E este CLI (o relatório/recibo são formatados aqui).
+MODULOS = sorted((RAIZ_LAB / "src" / "volc_dil" / "viability").glob("*.py")) + [Path(__file__).resolve()]
+UV_LOCK = RAIZ_LAB / "uv.lock"
+INDISPONIVEL = "indisponivel"
 
 
 def codigo_sha256() -> str:
@@ -38,6 +48,24 @@ def codigo_sha256() -> str:
     for p in MODULOS:
         h.update(p.name.encode()); h.update(p.read_bytes())
     return h.hexdigest()
+
+
+def _sha256_arquivo(p: Path) -> Optional[str]:
+    return hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None
+
+
+def source_commit() -> str:
+    """`git rev-parse HEAD` na raiz do repositório (subprocesso local; não é chamada de rede). 'indisponivel' se o git falhar."""
+    try:
+        r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(RAIZ_REPO), capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return INDISPONIVEL
+    sha = r.stdout.strip()
+    return sha if r.returncode == 0 and len(sha) == 40 else INDISPONIVEL
+
+
+def ambiente() -> dict:
+    return {"python": sys.version, "plataforma": platform.platform(), "uv_lock_sha256": _sha256_arquivo(UV_LOCK) or INDISPONIVEL}
 
 
 def carregar(caminho: Path) -> EntradaViabilidade:
@@ -70,10 +98,19 @@ def relatorio_humano(r: ResultadoViabilidade) -> str:
     return "\n".join(linhas)
 
 
-def recibo(e: EntradaViabilidade, r: ResultadoViabilidade, resultado_path: Path) -> dict:
-    return {"kernel_version": VERSAO_KERNEL, "codigo_sha256": codigo_sha256(), "entrada": e.para_json(), "input_hash": r.input_hash,
-            "result_hash": r.result_hash, "resultado_arquivo": resultado_path.name,
-            "resultado_sha256": hashlib.sha256(resultado_path.read_bytes()).hexdigest(), "external_actions": 0}
+def _recibo_base(resultado_path: Path, relatorio_path: Path) -> dict:
+    return {"kernel_version": VERSAO_KERNEL, "codigo_sha256": codigo_sha256(), "source_commit": source_commit(), "ambiente": ambiente(),
+            "resultado_arquivo": resultado_path.name, "resultado_sha256": _sha256_arquivo(resultado_path),
+            "relatorio_arquivo": relatorio_path.name, "relatorio_sha256": _sha256_arquivo(relatorio_path), "external_actions": 0,
+            "nota": "sha256 prova integridade e reprodutibilidade, não identidade nem autoria (sem assinatura)"}
+
+
+def recibo(e: EntradaViabilidade, r: ResultadoViabilidade, resultado_path: Path, relatorio_path: Path) -> dict:
+    return {**_recibo_base(resultado_path, relatorio_path), "tipo": "evaluate", "entrada": e.para_json(), "input_hash": r.input_hash, "result_hash": r.result_hash}
+
+
+def _gravar_recibo(saida: Path, rec: dict) -> None:
+    (saida / "recibo.json").write_text(json.dumps(rec, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def cmd_evaluate(args) -> int:
@@ -89,10 +126,10 @@ def cmd_evaluate(args) -> int:
     except InvarianteViolada as exc:
         print(f"invariante violada: {exc}", file=sys.stderr)
         return EXIT_INVARIANTE
-    rp = saida / "resultado.json"
+    rp, mp = saida / "resultado.json", saida / "relatorio.md"
     rp.write_text(json_canonico(r.para_json()) + "\n", encoding="utf-8")
-    (saida / "relatorio.md").write_text(relatorio_humano(r), encoding="utf-8")
-    (saida / "recibo.json").write_text(json.dumps(recibo(e, r, rp), ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    mp.write_text(relatorio_humano(r), encoding="utf-8")
+    _gravar_recibo(saida, recibo(e, r, rp, mp))
     print(f"{r.verdict.value} · {r.recomendacao.value} · {r.confidence_class.value} · {rp}")
     return EXIT_INSUFICIENTE if r.verdict is Veredito.INSUFFICIENT_EVIDENCE else EXIT_OK
 
@@ -171,11 +208,11 @@ def _kernel_marginal(r: ResultadoViabilidade) -> str:
     return f"expandir_ate_{u}" if u is not None else "nao_expandir"
 
 
-def cmd_replay(args) -> int:
-    saida = Path(args.saida); saida.mkdir(parents=True, exist_ok=True)
+def executar_replay(fixtures: Path) -> tuple[dict, int]:
+    """Roda todas as fixtures do diretório e devolve (documento do replay com replay_hash, pior exit)."""
     casos = []
     pior = EXIT_OK
-    for p in sorted(Path(args.fixtures).glob("*.json")):
+    for p in sorted(fixtures.glob("*.json")):
         if p.name == "MANIFEST.json":
             continue
         caso = {"fixture": p.stem, "fixture_sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
@@ -199,6 +236,14 @@ def cmd_replay(args) -> int:
            "declaracao": {"superioridade_declarada": False,
                           "nota": "baselines registradas no mesmo vocabulário; nenhuma é avaliada por 'acerto' porque não há resultado maduro para comparar. A diferença entre `cpc_medio` e `kernel_marginal` é o ponto do ADR §2: média ≠ marginal."}}
     doc["replay_hash"] = hashlib.sha256(json_canonico({k: v for k, v in doc.items() if k != "replay_hash"}).encode()).hexdigest()
+    return doc, pior
+
+
+def cmd_replay(args) -> int:
+    saida = Path(args.saida); saida.mkdir(parents=True, exist_ok=True)
+    fixtures = Path(args.fixtures).resolve()
+    doc, pior = executar_replay(fixtures)
+    casos = doc["casos"]
     (saida / "replay.json").write_text(json_canonico(doc) + "\n", encoding="utf-8")
     md = ["# Replay do kernel de viabilidade", "", f"kernel `{VERSAO_KERNEL}` · código `{doc['codigo_sha256'][:12]}…` · replay_hash `{doc['replay_hash'][:12]}…`", "",
           "| fixture | veredito | recomendação | confiança | manter | não lançar | igual | CPC médio | RPC médio | kernel marginal | invariantes |", "|---|---|---|---|---|---|---|---|---|---|---|"]
@@ -209,35 +254,76 @@ def cmd_replay(args) -> int:
         md.append(f"| {c['fixture']} | {c['verdict']} | {c['recomendacao']} | {c['confianca']} | {b['manter']} | {b['nao_lancar']} | {b['alocacao_igual']} | {b['cpc_medio']} | {b['rpc_medio']} | {c['kernel_marginal']} | {c['invariantes']} |")
     md += ["", "Nenhuma superioridade é declarada: não há resultado maduro contra o qual medir. A tabela mostra onde regras ingênuas e o kernel divergem e por quê.", ""]
     (saida / "replay.md").write_text("\n".join(md), encoding="utf-8")
+    _gravar_recibo(saida, {**_recibo_base(saida / "replay.json", saida / "replay.md"), "tipo": "replay", "replay_hash": doc["replay_hash"],
+                           "fixtures_dir": str(fixtures), "fixtures_sha256": {c["fixture"]: c["fixture_sha256"] for c in casos}})
     print(f"{len(casos)} casos · replay_hash {doc['replay_hash'][:12]} · exit {pior}")
     return pior
+
+
+def _verificar_comum(rec: dict, p: Path) -> list[str]:
+    """Checagens que valem para qualquer recibo: arquivos presentes e íntegros, código, ambiente, zero ações externas."""
+    falhas = []
+    for chave_arquivo, chave_sha, padrao in (("resultado_arquivo", "resultado_sha256", "resultado.json"), ("relatorio_arquivo", "relatorio_sha256", "relatorio.md")):
+        arq = p.with_name(str(rec.get(chave_arquivo) or padrao))
+        if not arq.is_file():
+            falhas.append(f"{arq.name} ausente ao lado do recibo ({chave_arquivo})")
+        elif _sha256_arquivo(arq) != rec.get(chave_sha):
+            falhas.append(f"{chave_sha} não bate com {arq.name}")
+    if rec.get("codigo_sha256") != codigo_sha256():
+        falhas.append("codigo_sha256 difere do código atual")
+    if (rec.get("ambiente") or {}).get("uv_lock_sha256") != ambiente()["uv_lock_sha256"]:
+        falhas.append("ambiente.uv_lock_sha256 difere do uv.lock atual")
+    if rec.get("external_actions") != 0:
+        falhas.append(f"external_actions={rec.get('external_actions')!r} (o kernel nunca emite ação externa)")
+    return falhas
+
+
+def _verificar_evaluate(rec: dict) -> list[str]:
+    falhas = []
+    try:
+        e = EntradaViabilidade.de_json(rec["entrada"])
+    except (ContratoViabilidadeViolado, KeyError, ValueError, TypeError) as exc:
+        return [f"entrada do recibo inválida (input_hash não reproduzível): {exc}"]
+    if rec.get("input_hash") != hash_entrada(e):
+        falhas.append("input_hash não bate com a entrada do recibo")
+    r = avaliar(e)
+    if rec.get("result_hash") != r.result_hash:
+        falhas.append("result_hash não reproduz (código ou entrada mudaram, ou recibo adulterado)")
+    try:
+        verificar_invariantes(e, r)
+    except InvarianteViolada as exc:
+        falhas.append(f"invariante: {exc}")
+    return falhas
+
+
+def _verificar_replay(rec: dict) -> list[str]:
+    fixtures = Path(str(rec.get("fixtures_dir", "")))
+    if not fixtures.is_dir():
+        return [f"replay_hash não reproduzível: fixtures_dir ausente ({fixtures})"]
+    doc, _ = executar_replay(fixtures)
+    falhas = []
+    atuais = {c["fixture"]: c["fixture_sha256"] for c in doc["casos"]}
+    if atuais != rec.get("fixtures_sha256"):
+        falhas.append("fixtures_sha256 difere das fixtures atuais")
+    if rec.get("replay_hash") != doc["replay_hash"]:
+        falhas.append("replay_hash não reproduz (fixtures, código ou recibo mudaram)")
+    return falhas
 
 
 def cmd_verify(args) -> int:
     p = Path(args.recibo)
     try:
         rec = json.loads(p.read_text(encoding="utf-8"))
-        e = EntradaViabilidade.de_json(rec["entrada"])
-    except (ContratoViabilidadeViolado, KeyError, ValueError, TypeError) as exc:
+        if not isinstance(rec, dict):
+            raise TypeError("recibo precisa ser um objeto JSON")
+    except (OSError, ValueError, TypeError) as exc:
         print(f"recibo inválido: {exc}", file=sys.stderr); return EXIT_ENTRADA_INVALIDA
-    falhas = []
-    if rec.get("input_hash") != hash_entrada(e):
-        falhas.append("input_hash não bate com a entrada do recibo")
-    r = avaliar(e)
-    if rec.get("result_hash") != r.result_hash:
-        falhas.append("result_hash não reproduz (código ou entrada mudaram, ou recibo adulterado)")
-    if rec.get("codigo_sha256") != codigo_sha256():
-        falhas.append("codigo_sha256 difere do código atual")
-    rp = p.with_name(rec.get("resultado_arquivo", "resultado.json"))
-    if rp.exists() and hashlib.sha256(rp.read_bytes()).hexdigest() != rec.get("resultado_sha256"):
-        falhas.append("resultado.json difere do recibo")
-    try:
-        verificar_invariantes(e, r)
-    except InvarianteViolada as exc:
-        falhas.append(f"invariante: {exc}")
+    tipo = rec.get("tipo") or ("replay" if "replay_hash" in rec else "evaluate")
+    falhas = _verificar_comum(rec, p) + (_verificar_replay(rec) if tipo == "replay" else _verificar_evaluate(rec))
     if falhas:
         print("recibo NÃO verificado: " + "; ".join(falhas), file=sys.stderr); return EXIT_INVARIANTE
-    print(f"recibo verificado · result_hash {r.result_hash[:12]} reproduzido"); return EXIT_OK
+    alvo = rec.get("replay_hash") if tipo == "replay" else rec.get("result_hash")
+    print(f"recibo verificado ({tipo}) · {str(alvo)[:12]} reproduzido · integridade/reprodutibilidade, não autoria"); return EXIT_OK
 
 
 def main(argv=None) -> int:
