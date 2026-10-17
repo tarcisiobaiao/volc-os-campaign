@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-16T23:24:03-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-17T20:31:08-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 1015 arquivos: 721 Markdown e 294 SQL;
-- 1015 versionados e 0 ainda não versionados;
+- 1031 arquivos: 727 Markdown e 304 SQL;
+- 1030 versionados e 1 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 179 SQL com palavras de mutação de alto risco.
 
@@ -17,7 +17,7 @@ Gerado em `2026-10-16T23:24:03-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 58 |
-| `documentation` | 528 |
+| `documentation` | 534 |
 | `generated` | 2 |
 | `module-guide` | 46 |
 | `product-document` | 23 |
@@ -27,7 +27,7 @@ Gerado em `2026-10-16T23:24:03-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 178 |
+| `sql-needs-review` | 188 |
 | `sql-validation` | 14 |
 
 ## Duplicatas exatas
@@ -291,6 +291,16 @@ estejam errados, mas impede aplicação automática.
 | `docs/closure/traffic-operational-closure-v2/ler-catalogo-meta.sql` | `sql-needs-review` | high | 1 | 0 |
 | `docs/data-intelligence/fundacao-20261016/handoffs/REVISAO-ADVERSARIAL-R1.md` | `audit` | — | 0 | 0 |
 | `docs/data-intelligence/fundacao-20261016/handoffs/REVISAO-ADVERSARIAL-R2.md` | `audit` | — | 0 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/i5_cat.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/i5_fn.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/i5_fx.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/i5_fx2.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/i5_fx3.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/i5_ja.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/i5_rec.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/verificar_d1_canario.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/verificar_integridade.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/verificar_pos_cutover.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
 | `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/l1.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
 | `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/l10.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
 | `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/l2.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
@@ -335,16 +345,6 @@ estejam errados, mas impede aplicação automática.
 | `sql/fix_marliseac_password_final.sql` | `sql-needs-review` | medium | 1 | 0 |
 | `sql/fix_user_campaigns_campaign_id.sql` | `sql-needs-review` | high | 1 | 0 |
 | `sql/fix_user_campaigns_reference.sql` | `sql-needs-review` | high | 1 | 0 |
-| `sql/recreate_marliseac.sql` | `sql-needs-review` | high | 1 | 0 |
-| `sql/reset_marliseac_password.sql` | `sql-needs-review` | medium | 1 | 0 |
-| `sql/reset_senha_alternativo.sql` | `sql-needs-review` | high | 1 | 0 |
-| `src/sql/add_commission_operator_automation.sql` | `sql-needs-lineage` | high | 8 | 16 |
-| `src/sql/add_costs_division_column.sql` | `sql-needs-lineage` | medium | 1 | 0 |
-| `src/sql/add_gam_metrics_columns.sql` | `sql-needs-lineage` | high | 4 | 8 |
-| `src/sql/add_needs_password_change_column.sql` | `sql-needs-lineage` | medium | 1 | 0 |
-| `src/sql/add_revenue_converted_column.sql` | `sql-needs-lineage` | high | 10 | 27 |
-| `src/sql/add_revshare_automation.sql` | `sql-needs-lineage` | high | 10 | 33 |
-| `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | high | 6 | 18 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.
