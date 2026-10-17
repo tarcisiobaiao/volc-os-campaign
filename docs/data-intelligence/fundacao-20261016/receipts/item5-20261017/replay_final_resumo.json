@@ -1,0 +1,949 @@
+{
+ "adaptacao": {
+  "E": {
+   "brutas": 2184,
+   "dead_letter": {},
+   "leituras_sem_nova_versao": 1625,
+   "quarentena": 0,
+   "status_por_metrica": {
+    "google_ads|clicks|missing|metrica_ausente_no_registro:clicks": 8,
+    "google_ads|clicks|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|clicks|observed|": 3,
+    "google_ads|clicks|partial|janela_aberta;cobertura_desconhecida": 40,
+    "google_ads|conversions|missing|metrica_ausente_no_registro:conversions": 8,
+    "google_ads|conversions|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|conversions|observed|": 4,
+    "google_ads|conversions|partial|janela_aberta;cobertura_desconhecida": 22,
+    "google_ads|cost|invalid|moeda_nao_provada": 4,
+    "google_ads|cost|missing|metrica_ausente_no_registro:cost_micros": 8,
+    "google_ads|cost|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|cost|observed|": 1,
+    "google_ads|cost|partial|janela_aberta;cobertura_desconhecida": 11,
+    "google_ads|impressions|missing|metrica_ausente_no_registro:impressions": 8,
+    "google_ads|impressions|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|impressions|observed|": 3,
+    "google_ads|impressions|partial|janela_aberta;cobertura_desconhecida": 46,
+    "joinads|clicks|observed|": 36,
+    "joinads|clicks|partial|janela_aberta;cobertura_desconhecida": 41,
+    "joinads|clicks|zero_confirmed|": 16,
+    "joinads|impressions|observed|": 48,
+    "joinads|impressions|partial|janela_aberta;cobertura_desconhecida": 61,
+    "joinads|impressions|zero_confirmed|": 4,
+    "joinads|revenue|invalid|moeda_nao_provada": 110,
+    "joinads|revenue|invalid|precisao_acima_de_micros:revenue_client": 6,
+    "joinads|revenue|invalid|precisao_acima_de_micros:revenue_gross": 7
+   },
+   "versoes": 559
+  },
+  "H": {
+   "brutas": 2184,
+   "dead_letter": {},
+   "leituras_sem_nova_versao": 1513,
+   "quarentena": 0,
+   "status_por_metrica": {
+    "google_ads|clicks|missing|metrica_ausente_no_registro:clicks": 8,
+    "google_ads|clicks|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|clicks|observed|": 3,
+    "google_ads|clicks|partial|janela_aberta;cobertura_desconhecida": 40,
+    "google_ads|conversions|missing|metrica_ausente_no_registro:conversions": 8,
+    "google_ads|conversions|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|conversions|observed|": 4,
+    "google_ads|conversions|partial|janela_aberta;cobertura_desconhecida": 22,
+    "google_ads|cost|missing|metrica_ausente_no_registro:cost_micros": 8,
+    "google_ads|cost|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|cost|observed|": 3,
+    "google_ads|cost|partial|janela_aberta;cobertura_desconhecida": 41,
+    "google_ads|impressions|missing|metrica_ausente_no_registro:impressions": 8,
+    "google_ads|impressions|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|impressions|observed|": 3,
+    "google_ads|impressions|partial|janela_aberta;cobertura_desconhecida": 46,
+    "joinads|clicks|observed|": 36,
+    "joinads|clicks|partial|janela_aberta;cobertura_desconhecida": 41,
+    "joinads|clicks|zero_confirmed|": 16,
+    "joinads|impressions|observed|": 48,
+    "joinads|impressions|partial|janela_aberta;cobertura_desconhecida": 61,
+    "joinads|impressions|zero_confirmed|": 4,
+    "joinads|revenue|invalid|precisao_acima_de_micros:revenue_client": 6,
+    "joinads|revenue|invalid|precisao_acima_de_micros:revenue_gross": 7,
+    "joinads|revenue|observed|": 79,
+    "joinads|revenue|partial|janela_aberta;cobertura_desconhecida": 99,
+    "joinads|revenue|zero_confirmed|": 16
+   },
+   "versoes": 671
+  },
+  "H_sem_presos": {
+   "brutas": 2184,
+   "dead_letter": {},
+   "leituras_sem_nova_versao": 1513,
+   "quarentena": 0,
+   "status_por_metrica": {
+    "google_ads|clicks|missing|metrica_ausente_no_registro:clicks": 8,
+    "google_ads|clicks|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|clicks|observed|": 3,
+    "google_ads|clicks|partial|janela_aberta;cobertura_desconhecida": 40,
+    "google_ads|conversions|missing|metrica_ausente_no_registro:conversions": 8,
+    "google_ads|conversions|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|conversions|observed|": 4,
+    "google_ads|conversions|partial|janela_aberta;cobertura_desconhecida": 22,
+    "google_ads|cost|missing|metrica_ausente_no_registro:cost_micros": 8,
+    "google_ads|cost|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|cost|observed|": 3,
+    "google_ads|cost|partial|janela_aberta;cobertura_desconhecida": 41,
+    "google_ads|impressions|missing|metrica_ausente_no_registro:impressions": 8,
+    "google_ads|impressions|missing|zero_sem_linha_de_metrica": 16,
+    "google_ads|impressions|observed|": 3,
+    "google_ads|impressions|partial|janela_aberta;cobertura_desconhecida": 46,
+    "joinads|clicks|observed|": 36,
+    "joinads|clicks|partial|janela_aberta;cobertura_desconhecida": 41,
+    "joinads|clicks|zero_confirmed|": 16,
+    "joinads|impressions|observed|": 48,
+    "joinads|impressions|partial|janela_aberta;cobertura_desconhecida": 61,
+    "joinads|impressions|zero_confirmed|": 4,
+    "joinads|revenue|invalid|precisao_acima_de_micros:revenue_client": 6,
+    "joinads|revenue|invalid|precisao_acima_de_micros:revenue_gross": 7,
+    "joinads|revenue|observed|": 79,
+    "joinads|revenue|partial|janela_aberta;cobertura_desconhecida": 99,
+    "joinads|revenue|zero_confirmed|": 16
+   },
+   "versoes": 671
+  }
+ },
+ "efeito_runs_presos": {
+  "decisoes_iguais_H_vs_H_sem_presos": true,
+  "linhas_v21_dos_presos": 0
+ },
+ "entradas_sha256": {
+  "joinads.jsonl": "702b423e21e6e96ae8de95641dde354db9c7d04125d943096ec1c353cc7e6fa5",
+  "joinads_run.jsonl": "780664fd732b5fd77575fec1a0a92823b6d146c092565ea545d361beca073c03",
+  "v21.jsonl": "47193c56885d16d99446febcb1a3e9383f7610938590153a0b70346649959dea",
+  "v21_run.jsonl": "e26c17d269f827c6ac0058bfb47df91d782de5abd94677a07e2ec08872ddbb8a"
+ },
+ "natureza": "testado_em_replay (snapshot real read-only pseudonimizado)",
+ "qualidade": {
+  "cobertura_kv_sobre_earnings_por_dia": {
+   "2026-10-08": 0.9808,
+   "2026-10-09": 0.9748,
+   "2026-10-10": 0.9891,
+   "2026-10-11": 1.0,
+   "2026-10-12": 1.0,
+   "2026-10-13": 1.0,
+   "2026-10-14": 0.9684,
+   "2026-10-15": 0.9677,
+   "2026-10-16": 1.0,
+   "2026-10-17": 1.0
+  },
+  "dias_com_custo_e_receita": [
+   "2026-10-14",
+   "2026-10-15",
+   "2026-10-16",
+   "2026-10-17"
+  ],
+  "ja_data_status": {
+   "earnings|observed": 53,
+   "key_value_campaign_adunit|observed": 192,
+   "key_value_campaign_adunit|zero_confirmed": 31
+  },
+  "ja_hash_zero": 0,
+  "ja_kv_chave_pedida_igual_devolvida": {
+   "true": 223
+  },
+  "ja_kv_valores_distintos": 1,
+  "ja_linhas": {
+   "earnings": 53,
+   "key_value_campaign_adunit": 223
+  },
+  "ja_moeda_coluna": {
+   "USD": 276
+  },
+  "ja_moeda_no_payload": {
+   "0": 276
+  },
+  "juncao_kv_com_campanha_google": {
+   "campanhas_google_sem_kv": 4,
+   "kv_que_casam": 1,
+   "kv_sem_campanha_google": 0
+  },
+  "v21_campanha_dia": {
+   "2026-10-14": {
+    "celulas": 5,
+    "com_custo_positivo": 1,
+    "so_zero_sintetizado": 4
+   },
+   "2026-10-15": {
+    "celulas": 5,
+    "com_custo_positivo": 1,
+    "so_zero_sintetizado": 4
+   },
+   "2026-10-16": {
+    "celulas": 5,
+    "com_custo_positivo": 1,
+    "so_zero_sintetizado": 4
+   },
+   "2026-10-17": {
+    "celulas": 5,
+    "com_custo_positivo": 1,
+    "so_zero_sintetizado": 4
+   }
+  },
+  "v21_campanhas": 5,
+  "v21_dias": [
+   "2026-10-14",
+   "2026-10-15",
+   "2026-10-16",
+   "2026-10-17"
+  ],
+  "v21_linhas": 270,
+  "v21_metrica_ausente": {
+   "clicks": 52,
+   "conversions": 52,
+   "cost_micros": 52,
+   "impressions": 52
+  },
+  "v21_moeda_coluna": {
+   "BRL": 270
+  },
+  "v21_moeda_no_payload": {
+   "0": 205,
+   "1": 65
+  },
+  "v21_nao_zero_sem_linha": 0,
+  "v21_por_run_status": {
+   "completed": 270
+  },
+  "v21_runs_com_linhas": 54,
+  "v21_zero_com_linha_de_metrica": 0,
+  "v21_zero_custo_e_impr": 216,
+  "v21_zero_sem_linha_de_metrica": 216
+ },
+ "replay": {
+  "E": {
+   "auditoria_null_zero": {
+    "equal": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "equal",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "greedy_conservador": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "greedy_conservador",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "guardiao_72h[regra_margem]": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "guardiao_72h[regra_margem]",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "manter": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "manter",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "regra_margem": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "regra_margem",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "regra_margem_null_zero": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "regra_margem_null_zero",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    }
+   },
+   "decisoes_sha256": "ca7ea487278fb0cdf35662d9be0f5387d9af0c980cc82d6e51fd55baebfbe35e",
+   "ledger_cadeia_ok": true,
+   "ledger_sha256": "c44da47c15f072d75c20a011f98d59d325bb25bce393860d0e643ff84821c32a",
+   "ms_por_corte": 9.2,
+   "n_cortes": 58,
+   "n_decisoes": 348,
+   "politicas": {
+    "equal": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "greedy_conservador": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "guardiao_72h[regra_margem]": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "manter": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "manter": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "regra_margem": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "regra_margem_null_zero": {
+     "bloqueios": {
+      "cobertura_receita_nao_comprovada": 2030
+     },
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 290,
+     "propostas_por_acao": {
+      "pausar": 290
+     },
+     "trocas_entre_cortes": 0
+    }
+   },
+   "primeiro_corte": "2026-10-15T15:00:00+00:00",
+   "tempo_s": 0.53,
+   "ultimo_corte": "2026-10-18T00:00:00+00:00",
+   "ultimo_snapshot": {
+    "bloqueios_entidade": [],
+    "cobertura": {
+     "2026-10-08": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": []
+     },
+     "2026-10-09": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": []
+     },
+     "2026-10-10": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": []
+     },
+     "2026-10-11": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": []
+     },
+     "2026-10-12": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": []
+     },
+     "2026-10-13": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": []
+     },
+     "2026-10-14": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": []
+     },
+     "2026-10-15": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": []
+     },
+     "2026-10-16": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": []
+     },
+     "2026-10-17": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": []
+     }
+    },
+    "fatos_custo_receita": {
+     "ausente|ausente": 16,
+     "falha|falha": 2,
+     "medido|falha": 2
+    }
+   }
+  },
+  "H": {
+   "auditoria_null_zero": {
+    "equal": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "equal",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "greedy_conservador": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "greedy_conservador",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "guardiao_72h[regra_margem]": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "guardiao_72h[regra_margem]",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "manter": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "manter",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "regra_margem": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "regra_margem",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "regra_margem_null_zero": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "regra_margem_null_zero",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    }
+   },
+   "decisoes_sha256": "a37da1987b21564c326a4e889f80c6a43864fa35a39edb866a28651adc443e88",
+   "ledger_cadeia_ok": true,
+   "ledger_sha256": "bbeaee32b2e44498bb2d9b47d6c7b4e489c06a4a10a839864a26b7052174531d",
+   "ms_por_corte": 6.8,
+   "n_cortes": 58,
+   "n_decisoes": 348,
+   "politicas": {
+    "equal": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "greedy_conservador": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "guardiao_72h[regra_margem]": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "manter": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "manter": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "regra_margem": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "regra_margem_null_zero": {
+     "bloqueios": {
+      "cobertura_receita_baixa": 330,
+      "cobertura_receita_nao_comprovada": 1310
+     },
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 290,
+     "propostas_por_acao": {
+      "pausar": 290
+     },
+     "trocas_entre_cortes": 0
+    }
+   },
+   "primeiro_corte": "2026-10-15T15:00:00+00:00",
+   "tempo_s": 0.4,
+   "ultimo_corte": "2026-10-18T00:00:00+00:00",
+   "ultimo_snapshot": {
+    "bloqueios_entidade": [],
+    "cobertura": {
+     "2026-10-08": {
+      "bloqueios": [],
+      "denominador": "earnings_dominio_dia",
+      "fracoes": [
+       [
+        "USD",
+        0.0,
+        "earnings_dominio_dia"
+       ]
+      ]
+     },
+     "2026-10-09": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": [
+       [
+        "USD",
+        null,
+        "indisponivel"
+       ]
+      ]
+     },
+     "2026-10-10": {
+      "bloqueios": [],
+      "denominador": "earnings_dominio_dia",
+      "fracoes": [
+       [
+        "USD",
+        0.0,
+        "earnings_dominio_dia"
+       ]
+      ]
+     },
+     "2026-10-11": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": [
+       [
+        "USD",
+        null,
+        "indisponivel"
+       ]
+      ]
+     },
+     "2026-10-12": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": [
+       [
+        "USD",
+        null,
+        "indisponivel"
+       ]
+      ]
+     },
+     "2026-10-13": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": [
+       [
+        "USD",
+        null,
+        "indisponivel"
+       ]
+      ]
+     },
+     "2026-10-14": {
+      "bloqueios": [],
+      "denominador": "earnings_dominio_dia",
+      "fracoes": [
+       [
+        "USD",
+        0.9684,
+        "earnings_dominio_dia"
+       ]
+      ]
+     },
+     "2026-10-15": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": [
+       [
+        "USD",
+        null,
+        "indisponivel"
+       ]
+      ]
+     },
+     "2026-10-16": {
+      "bloqueios": [],
+      "denominador": "earnings_dominio_dia",
+      "fracoes": [
+       [
+        "USD",
+        1.0,
+        "earnings_dominio_dia"
+       ]
+      ]
+     },
+     "2026-10-17": {
+      "bloqueios": [],
+      "denominador": "earnings_dominio_dia",
+      "fracoes": [
+       [
+        "USD",
+        1.0,
+        "earnings_dominio_dia"
+       ]
+      ]
+     }
+    },
+    "fatos_custo_receita": {
+     "ausente|ausente": 16,
+     "medido|medido": 4
+    }
+   }
+  },
+  "H_sem_presos": {
+   "auditoria_null_zero": {
+    "equal": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "equal",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "greedy_conservador": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "greedy_conservador",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "guardiao_72h[regra_margem]": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "guardiao_72h[regra_margem]",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "manter": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "manter",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "regra_margem": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "regra_margem",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    },
+    "regra_margem_null_zero": {
+     "cega_a_dados": true,
+     "decisoes_que_distinguem_null_de_zero": 0,
+     "decisoes_sensiveis_a_valores": 0,
+     "politica": "regra_margem_null_zero",
+     "snapshots_com_lacuna": 2,
+     "suspeita_null_como_zero": false
+    }
+   },
+   "decisoes_sha256": "a37da1987b21564c326a4e889f80c6a43864fa35a39edb866a28651adc443e88",
+   "ledger_cadeia_ok": true,
+   "ledger_sha256": "bbeaee32b2e44498bb2d9b47d6c7b4e489c06a4a10a839864a26b7052174531d",
+   "ms_por_corte": 7.2,
+   "n_cortes": 58,
+   "n_decisoes": 348,
+   "politicas": {
+    "equal": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "greedy_conservador": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "guardiao_72h[regra_margem]": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "manter": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "manter": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "regra_margem": {
+     "bloqueios": {},
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 0,
+     "propostas_por_acao": {
+      "insuficiente": 290
+     },
+     "trocas_entre_cortes": 0
+    },
+    "regra_margem_null_zero": {
+     "bloqueios": {
+      "cobertura_receita_baixa": 330,
+      "cobertura_receita_nao_comprovada": 1310
+     },
+     "cortes": 58,
+     "mudancas_de_verba_nao_bloqueadas": {},
+     "propostas_bloqueadas": 290,
+     "propostas_por_acao": {
+      "pausar": 290
+     },
+     "trocas_entre_cortes": 0
+    }
+   },
+   "primeiro_corte": "2026-10-15T15:00:00+00:00",
+   "tempo_s": 0.42,
+   "ultimo_corte": "2026-10-18T00:00:00+00:00",
+   "ultimo_snapshot": {
+    "bloqueios_entidade": [],
+    "cobertura": {
+     "2026-10-08": {
+      "bloqueios": [],
+      "denominador": "earnings_dominio_dia",
+      "fracoes": [
+       [
+        "USD",
+        0.0,
+        "earnings_dominio_dia"
+       ]
+      ]
+     },
+     "2026-10-09": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": [
+       [
+        "USD",
+        null,
+        "indisponivel"
+       ]
+      ]
+     },
+     "2026-10-10": {
+      "bloqueios": [],
+      "denominador": "earnings_dominio_dia",
+      "fracoes": [
+       [
+        "USD",
+        0.0,
+        "earnings_dominio_dia"
+       ]
+      ]
+     },
+     "2026-10-11": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": [
+       [
+        "USD",
+        null,
+        "indisponivel"
+       ]
+      ]
+     },
+     "2026-10-12": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": [
+       [
+        "USD",
+        null,
+        "indisponivel"
+       ]
+      ]
+     },
+     "2026-10-13": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": [
+       [
+        "USD",
+        null,
+        "indisponivel"
+       ]
+      ]
+     },
+     "2026-10-14": {
+      "bloqueios": [],
+      "denominador": "earnings_dominio_dia",
+      "fracoes": [
+       [
+        "USD",
+        0.9684,
+        "earnings_dominio_dia"
+       ]
+      ]
+     },
+     "2026-10-15": {
+      "bloqueios": [],
+      "denominador": "indisponivel",
+      "fracoes": [
+       [
+        "USD",
+        null,
+        "indisponivel"
+       ]
+      ]
+     },
+     "2026-10-16": {
+      "bloqueios": [],
+      "denominador": "earnings_dominio_dia",
+      "fracoes": [
+       [
+        "USD",
+        1.0,
+        "earnings_dominio_dia"
+       ]
+      ]
+     },
+     "2026-10-17": {
+      "bloqueios": [],
+      "denominador": "earnings_dominio_dia",
+      "fracoes": [
+       [
+        "USD",
+        1.0,
+        "earnings_dominio_dia"
+       ]
+      ]
+     }
+    },
+    "fatos_custo_receita": {
+     "ausente|ausente": 16,
+     "medido|medido": 4
+    }
+   }
+  }
+ },
+ "runs_presos": {
+  "joinads_por_status": {
+   "n8n_joinads_v2|v2|partial": 1,
+   "n8n_joinads_v2|v3|completed": 2,
+   "n8n_joinads_v2|v4|completed": 21,
+   "n8n_joinads_v2|v5|completed": 7
+  },
+  "presos": [
+   {
+    "batches_written": 2242,
+    "collector": "n8n-google-ads-terms-keywords",
+    "finished_at": null,
+    "horas_preso": 56.6894,
+    "n_obs": 2242,
+    "n_obs_campaign_day": 0,
+    "started_at": "2026-10-15T11:46:03.86-03:00",
+    "ultima_obs": "2026-10-15T12:10:36.126862-03:00"
+   },
+   {
+    "batches_written": 2242,
+    "collector": "n8n-google-ads-terms-keywords",
+    "finished_at": null,
+    "horas_preso": 56.6725,
+    "n_obs": 2242,
+    "n_obs_campaign_day": 0,
+    "started_at": "2026-10-15T11:47:04.662-03:00",
+    "ultima_obs": "2026-10-15T12:11:28.689644-03:00"
+   },
+   {
+    "batches_written": 2242,
+    "collector": "n8n-google-ads-terms-keywords",
+    "finished_at": null,
+    "horas_preso": 56.6558,
+    "n_obs": 2242,
+    "n_obs_campaign_day": 0,
+    "started_at": "2026-10-15T11:48:04.959-03:00",
+    "ultima_obs": "2026-10-15T12:12:34.465847-03:00"
+   }
+  ],
+  "runs_v21_por_coletor_status": {
+   "n8n-google-ads-d0|completed": 47,
+   "n8n-google-ads-d1|completed": 7,
+   "n8n-google-ads-terms-keywords|completed": 16,
+   "n8n-google-ads-terms-keywords|failed": 3,
+   "n8n-google-ads-terms-keywords|running": 3
+  },
+  "v21_por_status": {
+   "completed": 70,
+   "failed": 3,
+   "running": 3
+  }
+ },
+ "snapshot_at": "2026-10-17T20:27:25.72238-03:00",
+ "versao_codigo": "a7a678e4b3f9663cd18d9dde1328ac81b4f28ce88182d388c053f03e1959ac76"
+}
