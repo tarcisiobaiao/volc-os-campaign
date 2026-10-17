@@ -7,7 +7,13 @@ Contrato v2: a tolerância de perda carrega uma `Autorizacao` de laboratório (A
 A fixture "senac_sanitizada" é DERIVADA do experimento já versionado em
 tools/freedom-lab/experimentos/senac-shadow-20261015/resultado.json (agregados da janela madura),
 com o identificador substituído por um pseudônimo (sha256 truncado). Nenhum número da Senac está
-no código do kernel; está aqui, na fixture, e é lido do artefato sanitizado.
+no código do kernel; está aqui, na fixture, e é lido do artefato sanitizado. A janela é derivada
+do arquivo, não declarada: `janela_madura.dias` dias maduros terminando em `corte_maturidade`
+(inicio = corte - (dias - 1)), `fim` = `as_of` do arquivo, `dias_imaturos` = parametros.dias_imaturos;
+o gerador confere que maduros + imaturos == span e recusa gerar se não bater.
+
+Janela-base das demais fixtures: 16 dias maduros (2026-09-26..2026-10-11) + 3 imaturos (2026-10-12..14),
+span 19 ≤ as_of 2026-10-15 — o contrato v2 recusa contagens que excedem o span.
 
 Uso (da raiz do lab): .venv/bin/python -I scripts/viability_gerar_fixtures.py
 """
@@ -16,7 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
 
@@ -69,7 +75,7 @@ def perda(v=None, h=None):
 
 def base(cid, **kw):
     d = dict(candidato_id=cid, vertical="generica", pais="BR", fonte_custo="google_ads", fonte_receita="joinads", as_of=AS_OF,
-             janela=JanelaObservada("2026-09-26", "2026-10-11", 16, 3, dias_custo_maduro=16, dias_receita_madura=16, dias_custo_sem_receita=0, cobertura_receita_ppm=1_000_000),
+             janela=JanelaObservada("2026-09-26", "2026-10-14", 16, 3, dias_custo_maduro=16, dias_receita_madura=16, dias_custo_sem_receita=0, cobertura_receita_ppm=1_000_000),
              cliques=cnt(634), custo=mon("554.75", "BRL"),
              receita=mon("40.79", "BRL"), cambio=cambio(), revshare=taxa(1), imposto=taxa(), perda_maxima=perda(300, 14))
     d.update(kw)
@@ -86,13 +92,21 @@ def senac_sanitizada() -> tuple[EntradaViabilidade, dict]:
     fx = Decimal(str(d["parametros"]["cambio_usd_brl"]))
     pseudo = "camp-" + hashlib.sha256(str(d["campanha"]).encode()).hexdigest()[:10]
     receita_usd = (Decimal(str(jm["receita_brl"])) / fx).quantize(Decimal("0.000001"), rounding=ROUND_HALF_EVEN)
-    e = base(pseudo, vertical="educacao", janela=JanelaObservada(d["corte_maturidade"], d["as_of"], int(jm["dias"]), int(d["parametros"]["dias_imaturos"])),
+    # janela derivada do experimento: maduros terminam no corte de maturidade; imaturos vão do corte ao as_of do arquivo
+    dias_maduros, dias_imaturos = int(jm["dias"]), int(d["parametros"]["dias_imaturos"])
+    corte, fim = date.fromisoformat(d["corte_maturidade"]), date.fromisoformat(d["as_of"])
+    inicio = corte - timedelta(days=dias_maduros - 1)
+    span = (fim - inicio).days + 1
+    if dias_maduros + dias_imaturos != span:
+        raise ValueError(f"senac: janela_madura.dias + dias_imaturos ({dias_maduros} + {dias_imaturos}) != span {span} ({inicio}..{fim}); fixture não gerada")
+    e = base(pseudo, vertical="educacao", janela=JanelaObservada(inicio.isoformat(), fim.isoformat(), dias_maduros, dias_imaturos),
              cliques=cnt(int(jm["cliques"])), custo=mon(str(jm["custo_brl"]), "BRL"),
              receita=mon(str(receita_usd), "USD", Evidencia.RECONCILED, Evidencia.ATTESTED, "joinads"),
              cambio=cambio(fx), revshare=taxa(1), imposto=taxa(), perda_maxima=perda(300, 14))
     # proveniência sem nome nem caminho da campanha: só o sha256 do artefato sanitizado de origem
     sobre = {"derivada_de": "experimento shadow versionado em tools/freedom-lab/experimentos (resultado.json)",
              "fonte_sha256": hashlib.sha256(SENAC.read_bytes()).hexdigest(),
+             "janela": f"{dias_maduros} dias maduros até corte_maturidade {corte.isoformat()} + {dias_imaturos} imaturos até as_of {fim.isoformat()} (span {span})",
              "nota": "receita_usd = receita_brl / cambio fixo do experimento; moeda JoinAds atestada; id pseudonimizado por sha256; "
                      "tolerância com autorização de laboratório (AUTH-LAB-0001, issuer owner:lab-fixture), não do owner real"}
     return e, sobre

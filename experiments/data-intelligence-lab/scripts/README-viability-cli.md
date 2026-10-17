@@ -45,8 +45,8 @@ Campos do recibo de `evaluate` (`tipo: "evaluate"`):
 | campo | o que é |
 |---|---|
 | `kernel_version` | `VERSAO_KERNEL` |
-| `codigo_sha256` | sha256 dos módulos `volc_dil/viability/*.py` **e** deste CLI (nome + bytes, em ordem) |
-| `source_commit` | `git rev-parse HEAD` da raiz do repositório, ou `"indisponivel"` se o git falhar |
+| `codigo_sha256` | sha256 do conjunto fechado de arquivos abaixo (caminho relativo ao lab + NUL + bytes, em ordem de caminho) |
+| `source_commit` | `git rev-parse HEAD` da raiz do repositório, ou `"indisponivel"` se o git falhar (registrado, nunca comparado) |
 | `ambiente` | `{python: sys.version, plataforma: platform.platform(), uv_lock_sha256: sha256(experiments/data-intelligence-lab/uv.lock)}` |
 | `entrada` | a entrada completa (`para_json`) |
 | `input_hash` | `hash_entrada(entrada)` |
@@ -54,6 +54,23 @@ Campos do recibo de `evaluate` (`tipo: "evaluate"`):
 | `resultado_arquivo` / `resultado_sha256` | nome e sha256 do `resultado.json` ao lado do recibo |
 | `relatorio_arquivo` / `relatorio_sha256` | nome e sha256 do `relatorio.md` ao lado do recibo |
 | `external_actions` | sempre `0` |
+
+### Conjunto de arquivos do `codigo_sha256`
+
+Exatamente estes, ordenados pelo caminho relativo a `experiments/data-intelligence-lab`; para cada um
+entra `caminho` (posix) + byte `NUL` + bytes do arquivo:
+
+- `scripts/viability_cli.py` (este CLI: formata relatório e recibo);
+- `src/volc_dil/contracts/money.py` (`Dinheiro`: micros inteiros + moeda — a aritmética monetária do kernel);
+- `src/volc_dil/contracts/vocab.py` (vocabulário de evidência/observação de que o contrato depende);
+- `src/volc_dil/viability/*.py` (todos os módulos do kernel: `__init__`, `adaptadores`, `contrato`,
+  `economia`, `gate`, `invariantes`, `simulacao`, `teto` — o glob é resolvido no momento da execução).
+
+Qualquer byte alterado em qualquer um deles (até um comentário) muda o `codigo_sha256` e faz `verify`
+sair `4`. O conjunto é deliberadamente fechado: `uv.lock` entra separado em `ambiente`, e o resto do
+repositório é coberto por `source_commit` — que é informação de proveniência, não parte da verificação:
+numa cópia do lab fora de um repositório git (por exemplo a cópia isolada usada nos testes) ele vale
+`"indisponivel"` e o recibo continua verificável.
 
 O recibo de `replay` (`tipo: "replay"`, também gravado como `recibo.json` em `--saida`) troca
 `entrada`/`input_hash`/`result_hash` por `replay_hash`, `fixtures_dir` (caminho absoluto) e
@@ -66,7 +83,7 @@ O recibo de `replay` (`tipo: "replay"`, também gravado como `recibo.json` em `-
 
 - `resultado.json` ou `relatorio.md` (os nomes do recibo) não está ao lado do recibo;
 - `resultado_sha256` ou `relatorio_sha256` não bate com o arquivo;
-- `codigo_sha256` difere do código atual;
+- `codigo_sha256` difere do código atual (conjunto de arquivos acima);
 - `ambiente.uv_lock_sha256` difere do `uv.lock` atual;
 - `external_actions != 0`;
 - (evaluate) `input_hash` não bate com a `entrada` do recibo, ou `result_hash` não reproduz ao
@@ -74,8 +91,9 @@ O recibo de `replay` (`tipo: "replay"`, também gravado como `recibo.json` em `-
 - (replay) `fixtures_dir` não existe, `fixtures_sha256` difere das fixtures atuais, ou `replay_hash`
   não reproduz ao rodar o replay de novo.
 
-`python` e `plataforma` em `ambiente` são registrados, não comparados: um recibo reproduzido em outro
-Python/SO com o mesmo `uv.lock` e o mesmo código ainda verifica (e isso é informação, não falha).
+`python` e `plataforma` em `ambiente` e `source_commit` são registrados, não comparados: um recibo reproduzido
+em outro Python/SO, ou numa cópia sem git, com o mesmo `uv.lock` e o mesmo código ainda verifica (e isso é
+informação, não falha).
 
 ## O que o sha256 prova — e o que não prova
 

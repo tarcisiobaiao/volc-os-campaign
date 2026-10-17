@@ -11,6 +11,14 @@ Regras do ledger campanha×dia (`de_ledger_campanha_dia`):
   continua real e somável; a contagem não é) — decisão: rebaixar a evidência em vez de rejeitar a entrada,
   porque o kernel já diz "cliques_unknown" e o custo não deixa de existir;
 - moedas heterogêneas dentro do custo ou dentro da receita ⇒ `ContratoViabilidadeViolado("moedas_heterogeneas")`;
+- moeda NUNCA é assumida (sem BRL/USD por padrão): se nenhuma linha declara `custo_moeda` (ou `receita_moeda`
+  onde há receita com valor), a medida vira valor=None, evidencia=UNKNOWN, moeda_evidencia=UNKNOWN, flag
+  `moeda_ausente` — custo sem moeda não é somável (fail-closed); os dias e os cliques continuam contados.
+  Linha COM valor e SEM moeda enquanto alguma linha do ledger declara a moeda ⇒
+  `ContratoViabilidadeViolado("moeda_ausente_em_linha")` (ausência heterogênea, não é "a moeda das outras");
+- o câmbio nunca inventa o par: `de`/`para` só entram quando ambas as moedas são conhecidas (do dict ou das
+  linhas); caso contrário o câmbio é ABSENT com proveniencia "moeda_desconhecida" e `de`/`para` vazios — uma
+  taxa sem par não converte nada, e o kernel dirá `cambio_ausente` se precisar converter;
 - evidência agregada = a MAIS FRACA entre as linhas (FORCA); moeda_evidencia idem; flags = união;
   observado_em = o mais antigo; fonte = a declarada na chamada;
 - datas duplicadas ⇒ fica a linha de maior `disponivel_em`, flag `datas_duplicadas=N`, dias_* contam datas distintas;
@@ -53,10 +61,21 @@ def _instante_de(d: Mapping[str, Any], chave: str, nome: str, obrigatorio: bool)
     return v if isinstance(v, datetime) else datetime.fromisoformat(str(v))
 
 
-def _cambio(d: Optional[Mapping[str, Any]], de: str, para: str) -> Cambio:
-    if not d or d.get("taxa") is None:
-        return Cambio(taxa=None, de=de, para=para, proveniencia=(d or {}).get("proveniencia", "ausente"), evidencia=Evidencia.ABSENT)
-    return Cambio(taxa=Decimal(str(d["taxa"])), de=d.get("de", de), para=d.get("para", para), proveniencia=d.get("proveniencia", ""),
+MOEDA_DESCONHECIDA = ""  # `Cambio.de`/`Cambio.para` vazios: o par não é conhecido e nunca é inventado
+
+
+def _cambio(d: Optional[Mapping[str, Any]], de: Optional[str], para: Optional[str]) -> Cambio:
+    """`de`/`para` do chamador (moedas das linhas) só valem quando ambas são conhecidas; o dict pode declará-las
+    explicitamente. Sem par conhecido o câmbio é ABSENT/"moeda_desconhecida" mesmo que o dict traga uma taxa:
+    uma taxa sem par não converte nada (e o kernel dirá `cambio_ausente` quando precisar converter)."""
+    d = d or {}
+    de_ = str(d["de"]) if d.get("de") else de
+    para_ = str(d["para"]) if d.get("para") else para
+    if not de_ or not para_:
+        return Cambio(taxa=None, de=MOEDA_DESCONHECIDA, para=MOEDA_DESCONHECIDA, proveniencia="moeda_desconhecida", evidencia=Evidencia.ABSENT)
+    if d.get("taxa") is None:
+        return Cambio(taxa=None, de=de_, para=para_, proveniencia=d.get("proveniencia", "ausente"), evidencia=Evidencia.ABSENT)
+    return Cambio(taxa=Decimal(str(d["taxa"])), de=de_, para=para_, proveniencia=d.get("proveniencia", ""),
                   evidencia=Evidencia(d.get("evidencia", "estimated")), effective_at=_instante_de(d, "effective_at", "cambio", True),
                   disponivel_em=_instante_de(d, "disponivel_em", "cambio", True), versao=str(d.get("versao", "")), hash=str(d.get("hash", "")))
 
@@ -91,11 +110,21 @@ def _evidencia(l: Mapping[str, Any], chave: str, padrao: Evidencia) -> Evidencia
     return _STATUS_PARA_EVIDENCIA[v] if v in _STATUS_PARA_EVIDENCIA else Evidencia(v)
 
 
-def _moeda_unica(linhas: Sequence[Mapping[str, Any]], chave: str, medida: str, padrao: str) -> str:
+def _moeda_unica(linhas: Sequence[Mapping[str, Any]], chave: str, medida: str) -> Optional[str]:
+    """A única moeda declarada no ledger para a medida; None quando nenhuma linha declara (nunca um padrão)."""
     moedas = {l[chave] for l in linhas if l.get(chave)}
     if len(moedas) > 1:
         raise ContratoViabilidadeViolado(f"moedas_heterogeneas em {medida}: {sorted(moedas)}")
-    return next(iter(moedas)) if moedas else padrao
+    return next(iter(moedas)) if moedas else None
+
+
+def _moeda_somavel(com_valor: Sequence[Mapping[str, Any]], chave: str, medida: str, declarada: Optional[str]) -> Optional[str]:
+    """Moeda com que as linhas COM valor podem ser somadas. Linha com valor sem moeda: se o ledger declara a moeda em
+    alguma linha, é `moeda_ausente_em_linha` (erro de contrato); se nenhuma declara, devolve None (medida não somável)."""
+    sem = [l["dia"] for l in com_valor if not l.get(chave)]
+    if sem and declarada is not None:
+        raise ContratoViabilidadeViolado(f"moeda_ausente_em_linha em {medida}: {len(sem)} de {len(com_valor)} linhas com valor sem {chave} ({', '.join(sem)})")
+    return None if sem else declarada
 
 
 def _dt(v: Any) -> Optional[datetime]:
@@ -143,8 +172,10 @@ def de_ledger_campanha_dia(candidato_id: str, linhas: Sequence[Mapping[str, Any]
     dias_receita = {l["dia"] for l in com_receita}
     sem_receita = sorted(dias_custo - dias_receita)
     disp = max((_dt(l["disponivel_em"]) for l in linhas), default=as_of)  # type: ignore[type-var]
-    moeda_custo = _moeda_unica(linhas, "custo_moeda", "custo", "BRL")
-    moeda_rec = _moeda_unica(linhas, "receita_moeda", "receita", "USD")
+    moeda_custo = _moeda_unica(linhas, "custo_moeda", "custo")
+    moeda_rec = _moeda_unica(linhas, "receita_moeda", "receita")
+    moeda_custo_somavel = _moeda_somavel(com_custo, "custo_moeda", "custo", moeda_custo)
+    moeda_rec_somavel = _moeda_somavel(com_receita, "receita_moeda", "receita", moeda_rec)
     flags = _flags_das_linhas(maduras)
     if sem_receita:
         flags.add(f"dias_com_custo_sem_receita={len(sem_receita)}")
@@ -157,9 +188,15 @@ def de_ledger_campanha_dia(candidato_id: str, linhas: Sequence[Mapping[str, Any]
     # custo e cliques: todos os dias maduros com custo
     if com_custo:
         ev_custo = _mais_fraca((_evidencia(l, "custo_evidencia", _evidencia(l, "status", Evidencia.OBSERVED)) for l in com_custo), Evidencia.OBSERVED)
-        custo = MedidaMonetaria(Dinheiro(sum(int(l["custo_micros"]) for l in com_custo), moeda_custo), ev_custo,
-                                _mais_fraca((_evidencia(l, "custo_moeda_evidencia", Evidencia.UNKNOWN) for l in com_custo), Evidencia.UNKNOWN),
-                                disp, fonte_custo, observado_em=_mais_antigo(com_custo, "observado_em"), flags_qualidade=tuple(_flags_das_linhas(com_custo)))
+        if moeda_custo_somavel is None:
+            # custo sem moeda em nenhuma linha: não é somável (nunca BRL por padrão); dias e cliques continuam reais
+            custo = MedidaMonetaria(None, Evidencia.UNKNOWN, Evidencia.UNKNOWN, disp, fonte_custo, observado_em=_mais_antigo(com_custo, "observado_em"),
+                                    flags_qualidade=tuple(sorted(_flags_das_linhas(com_custo) | {"moeda_ausente"})))
+            flags.add("moeda_ausente")
+        else:
+            custo = MedidaMonetaria(Dinheiro(sum(int(l["custo_micros"]) for l in com_custo), moeda_custo_somavel), ev_custo,
+                                    _mais_fraca((_evidencia(l, "custo_moeda_evidencia", Evidencia.UNKNOWN) for l in com_custo), Evidencia.UNKNOWN),
+                                    disp, fonte_custo, observado_em=_mais_antigo(com_custo, "observado_em"), flags_qualidade=tuple(_flags_das_linhas(com_custo)))
         sem_cliques = [l for l in com_custo if l.get("cliques") is None]
         if sem_cliques:
             cliques = MedidaContagem(None, Evidencia.UNKNOWN, disp, fonte_custo, observado_em=_mais_antigo(com_custo, "observado_em"),
@@ -174,8 +211,13 @@ def de_ledger_campanha_dia(candidato_id: str, linhas: Sequence[Mapping[str, Any]
         cliques = MedidaContagem(None, Evidencia.ABSENT, disp, fonte_custo)
 
     # receita: só dias maduros com receita observada/zero confirmado; moeda_evidencia = a mais fraca das linhas com receita
-    if com_receita:
-        receita = MedidaMonetaria(Dinheiro(sum(int(l["receita_micros"]) for l in com_receita), moeda_rec),
+    if com_receita and moeda_rec_somavel is None:
+        # receita com valor mas sem moeda em nenhuma linha: não é somável (nunca USD por padrão)
+        receita = MedidaMonetaria(None, Evidencia.UNKNOWN, Evidencia.UNKNOWN, disp, fonte_receita, observado_em=_mais_antigo(com_receita, "observado_em"),
+                                  flags_qualidade=tuple(sorted(_flags_das_linhas(com_receita) | {"moeda_ausente"})))
+        flags.add("moeda_ausente")
+    elif com_receita:
+        receita = MedidaMonetaria(Dinheiro(sum(int(l["receita_micros"]) for l in com_receita), moeda_rec_somavel),
                                   _mais_fraca((_evidencia(l, "receita_evidencia", Evidencia.RECONCILED) for l in com_receita), Evidencia.RECONCILED),
                                   _mais_fraca((_evidencia(l, "receita_moeda_evidencia", Evidencia.UNKNOWN) for l in com_receita), Evidencia.UNKNOWN),
                                   disp, fonte_receita, observado_em=_mais_antigo(com_receita, "observado_em"), flags_qualidade=tuple(_flags_das_linhas(com_receita)))
@@ -241,8 +283,9 @@ def de_joinads_campanha_dia(linhas: Sequence[Mapping[str, Any]], *, moeda: str, 
 def de_pautador_card(card: Mapping[str, Any], *, as_of: datetime, cpc_intervalo: Optional[tuple[Dinheiro, Dinheiro]] = None,
                      rpc_intervalo: Optional[tuple[Dinheiro, Dinheiro]] = None, autorizacao_ref: Optional[Autorizacao] = None,
                      perda_maxima_valor: Optional[Dinheiro] = None, perda_maxima_horizonte_dias: Optional[int] = None,
-                     moeda: str = "BRL") -> EntradaViabilidade:
+                     moeda: str) -> EntradaViabilidade:
     """Card sem histórico: só pesquisa e tolerância do owner. Custo/receita/cliques ficam AUSENTES.
+    `moeda` é obrigatória (a moeda em que o card será operado; nunca BRL por padrão).
     A tolerância só existe com `autorizacao_ref` (emitida do lado VOLC); valor sem autorização é erro de contrato."""
     return EntradaViabilidade(
         candidato_id=str(card.get("id", "card")), vertical=card.get("vertical", ""), pais=card.get("pais", ""), fonte_custo="pesquisa", fonte_receita="pesquisa",

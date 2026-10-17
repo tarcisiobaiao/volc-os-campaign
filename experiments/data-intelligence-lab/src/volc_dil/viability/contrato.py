@@ -5,6 +5,8 @@ Regras que o contrato impõe por construção (não por convenção):
 - custo e receita brutos nunca são negativos; contagens nunca são negativas;
 - toda medida carrega `disponivel_em` e nenhuma pode ser posterior ao `as_of` da entrada
   (nem `observado_em` posterior ao próprio `disponivel_em`);
+- a janela observada é coerente por construção: `inicio`/`fim` são datas ISO (AAAA-MM-DD), `fim` nunca é
+  posterior à data do `as_of`, e nenhuma contagem de dias excede o span (`fim - inicio + 1`);
 - dinheiro é `Dinheiro` (micros inteiros + moeda ISO); razões são `Decimal`;
 - moeda atestada é um estado distinto de moeda observada e nunca é promovida aqui;
 - câmbio, revshare e imposto são parâmetros VERSIONADOS (effective_at, disponivel_em, versao, hash)
@@ -21,7 +23,7 @@ import enum
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping, Optional
 
@@ -87,6 +89,17 @@ def _iso(v: Optional[datetime]) -> Optional[str]:
 
 def _de_iso(v: Optional[str]) -> Optional[datetime]:
     return None if v is None else datetime.fromisoformat(v)
+
+
+def _data_iso(nome: str, v: Any) -> date:
+    """Data de calendário estrita (AAAA-MM-DD). Formatos compactos, com hora ou texto livre são recusados:
+    as datas da janela são comparadas e ordenadas como strings em outros pontos do kernel."""
+    if not isinstance(v, str) or len(v) != 10 or v[4] != "-" or v[7] != "-":
+        raise ContratoViabilidadeViolado(f"{nome} precisa ser data ISO AAAA-MM-DD, não {v!r}")
+    try:
+        return date.fromisoformat(v)
+    except ValueError as e:
+        raise ContratoViabilidadeViolado(f"{nome} precisa ser data ISO AAAA-MM-DD válida, não {v!r}") from e
 
 
 def _decimal(nome: str, v: Any, permitir_none: bool = False) -> Optional[Decimal]:
@@ -408,8 +421,22 @@ class JanelaObservada:
             raise ContratoViabilidadeViolado("dias_custo_maduro difere de dias_maduros")
         if self.cobertura_receita_ppm is not None and not (0 <= self.cobertura_receita_ppm <= 1_000_000):
             raise ContratoViabilidadeViolado("cobertura_receita_ppm fora de 0..1_000_000")
-        if self.inicio > self.fim:
+        inicio, fim = _data_iso("janela.inicio", self.inicio), _data_iso("janela.fim", self.fim)
+        if inicio > fim:
             raise ContratoViabilidadeViolado("janela: inicio > fim")
+        span = (fim - inicio).days + 1
+        if self.dias_maduros + self.dias_imaturos > span:
+            raise ContratoViabilidadeViolado(
+                f"janela: dias_maduros + dias_imaturos ({self.dias_maduros} + {self.dias_imaturos}) excede o span de {span} dias ({self.inicio}..{self.fim})")
+        for n in ("dias_custo_maduro", "dias_receita_madura"):
+            v = getattr(self, n)
+            if v is not None and v > span:
+                raise ContratoViabilidadeViolado(f"janela: {n}={v} excede o span de {span} dias ({self.inicio}..{self.fim})")
+
+    @property
+    def span_dias(self) -> int:
+        """Dias de calendário cobertos pela janela, inclusive nas duas pontas."""
+        return (date.fromisoformat(self.fim) - date.fromisoformat(self.inicio)).days + 1
 
     def para_json(self) -> dict:
         return {"inicio": self.inicio, "fim": self.fim, "dias_maduros": self.dias_maduros, "dias_imaturos": self.dias_imaturos,
@@ -500,6 +527,9 @@ class EntradaViabilidade:
         as_of = _instante("as_of", self.as_of)
         if not isinstance(self.freshness_sla_dias, int) or isinstance(self.freshness_sla_dias, bool) or self.freshness_sla_dias < 0:
             raise ContratoViabilidadeViolado("freshness_sla_dias precisa ser int >= 0")
+        # a janela é validada como data ISO no próprio JanelaObservada; aqui só a relação com o as_of (data do próprio instante)
+        if date.fromisoformat(self.janela.fim) > as_of.date():
+            raise ContratoViabilidadeViolado(f"janela.fim posterior ao as_of ({self.janela.fim} > {as_of.date().isoformat()})")
         disponiveis = [("cliques", self.cliques), ("custo", self.custo), ("receita", self.receita), ("visitas", self.visitas),
                        ("simulacao", self.simulacao), ("cambio", self.cambio), ("revshare", self.revshare), ("imposto", self.imposto),
                        ("perda_maxima.autorizacao", self.perda_maxima.autorizacao)]
