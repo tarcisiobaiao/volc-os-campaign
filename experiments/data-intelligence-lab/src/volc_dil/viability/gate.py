@@ -234,10 +234,26 @@ def _menor(a: Confianca, b: Confianca) -> Confianca:
     return a if a.ordem() <= b.ordem() else b
 
 
+def _taxas_nao_observadas(e: EntradaViabilidade) -> tuple[tuple[str, Evidencia], ...]:
+    """(nome, evidência) de revshare/imposto cuja evidência não é OBSERVED — inclui UNKNOWN/ABSENT (valor ausente, não aplicado)."""
+    return tuple((nome, t.evidencia) for nome, t in (("revshare", e.revshare), ("imposto", e.imposto)) if t.evidencia is not Evidencia.OBSERVED)
+
+
+def _motivos_taxas(e: EntradaViabilidade) -> list[Motivo]:
+    """Motivos tipados `revshare_<evidencia>` / `imposto_<evidencia>` do teto de confiança (R4). O chamador
+    descarta os códigos que a economia já emitiu como limitação (ex.: `revshare_attested`)."""
+    return [Motivo(f"{nome}_{ev.value}", f"{nome} com evidência {ev.value} (não observado na fonte) limita a confiança a medium; o valor declarado segue aplicado como está", "aviso")
+            for nome, ev in _taxas_nao_observadas(e)]
+
+
 def _confianca(env: Envelope, e: EntradaViabilidade, gov: Governanca) -> Confianca:
     """Classe de confiança. Evidência de custo e cliques entra junto com a de receita/moeda/câmbio;
-    governança (stale, flags inválidas, cobertura incompleta, evidência não decisiva) nunca permite `high`."""
+    governança (stale, flags inválidas, cobertura incompleta, evidência não decisiva) nunca permite `high`.
+    Revshare e imposto não observados (atestados, estimados, desconhecidos) também limitam a `medium` (R4):
+    o valor declarado continua aplicado tal como está; só a classe de confiança reflete a evidência."""
     c = Confianca.HIGH
+    if _taxas_nao_observadas(e):
+        c = _menor(c, Confianca.MEDIUM)
     if (env.economia.moeda_evidencia is not Evidencia.OBSERVED or e.custo.moeda_evidencia is not Evidencia.OBSERVED
             or (env.economia.cambio_evidencia not in (None, Evidencia.OBSERVED))):
         c = _menor(c, Confianca.MEDIUM)
@@ -393,6 +409,9 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
                   "cobertura_receita_ppm": gov.cobertura_receita_ppm, "dias_custo_sem_receita": gov.dias_custo_sem_receita, "freshness_sla_dias": gov.freshness_sla_dias})
 
     conf = _confianca(env, e, gov)
+    for mot in _motivos_taxas(e):
+        if not any(r.codigo == mot.codigo for r in reasons):
+            reasons.append(mot)
     imatura = eco.receita_evidencia is Evidencia.IMMATURE or e.janela.dias_maduros < MIN_DIAS_MADUROS
     if imatura:
         espera = max(MIN_DIAS_MADUROS, MATURITY_WAIT_DIAS - e.janela.dias_maduros)
