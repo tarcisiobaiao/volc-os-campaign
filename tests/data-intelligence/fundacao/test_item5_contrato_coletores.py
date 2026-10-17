@@ -201,3 +201,22 @@ def test_error_teste_nunca_escreve(tmp_path):
     c = classificar(tmp_path, {"teste": evento()})
     d = decidir(tmp_path, c, {})
     assert c["teste"] is True and d["acao"] == "nenhuma" and d["acao_planejada"] == "google_finish" and d["motivo"].startswith("teste_sem_escrita")
+
+
+# ------------------------------------------------------------------ reaper (shadow)
+def test_reaper_shadow_classifica_sem_escrever(tmp_path):
+    from datetime import datetime, timedelta, timezone
+    agora = datetime.now(timezone.utc)
+    iso = lambda m: (agora - timedelta(minutes=m)).isoformat()
+    nodes = {"Runs Google em running": [{"json": {"run_id": "r-velho", "collector": "c", "started_at": iso(2000), "google_ads_raw_batch": [{"created_at": iso(1900)}]}},
+                                        {"json": {"run_id": "r-ativo", "collector": "c", "started_at": iso(300), "google_ads_raw_batch": [{"created_at": iso(5)}]}}],
+             "Runs JoinAds em running": [{"json": {}}]}
+    c, f = tmp_path / "r.js", tmp_path / "r.json"
+    c.write_text((COD / "reaper_classificar.js").read_text())
+    f.write_text(json.dumps({"nodes": nodes}))
+    out = json.loads(subprocess.run([NODE, str(COD / "executar_code_node.mjs"), str(c), str(f)], capture_output=True, text=True, check=True).stdout)[0]["json"]
+    runs = {r["minutos_sem_atividade"] > 60: r for r in out["runs"]}
+    assert out["modo"] == "shadow" and out["n_running"] == 2 and out["n_candidatos"] == 1
+    assert runs[True]["acao"].startswith("nenhuma_shadow") and runs[False]["candidato_orfao"] is False
+    assert all("r-velho" not in json.dumps(r) for r in out["runs"])  # id pseudonimizado
+    assert "fetch(" not in (COD / "reaper_classificar.js").read_text() and "PATCH" not in (COD / "reaper_classificar.js").read_text()
