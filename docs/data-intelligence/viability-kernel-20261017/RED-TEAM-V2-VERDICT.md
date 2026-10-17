@@ -89,3 +89,24 @@ Condições para que o "low risks" continue verdadeiro (não autoaprovo nenhuma 
 - **R1 antes de qualquer consumidor de biblioteca** (Pautador, Bia, Hub) chamar `avaliar` sem `verificar_invariantes`; a correção é de uma linha e cabe num commit do integrador com teste de gate. Sem isso, para consumidores de biblioteca o veredito seria REJECT.
 - **R2 antes do merge** (rótulo de versão), porque muda todos os hashes e o replay — depois do merge vira uma mudança de proveniência difícil de explicar.
 - **R3 documentado** no README (seção V2) como "referência de autorização; integridade, não autoria".
+
+---
+
+## 6. Re-verificação em `117892a3` (R1 e R2 fechados)
+
+Alvo: SHA `117892a341b4f7c18acd79f7910f619add635b65`, mesma worktree do integrador (árvore limpa, lida sem modificação). Commit de correção na história: `624db981 integ(viability-v2): R1 moeda do custo entra em moeda_provada e na confiança; R2 VERSAO_KERNEL 2.0.0; R3 documentado; replay regenerado`. Suíte RED inalterada desde `055ca6b4` (diff vazio contra o diretório `adversarial`).
+
+| Verificação | Resultado executado |
+|---|---|
+| RED (58 testes) | **58 passed / 0 failed** |
+| `tests/data-intelligence/viability` | **263 passed** (204 kernel + 58 RED + 1 novo `test_r1_moeda_do_custo_atestada_nunca_e_veredito_positivo_nem_high`) |
+| R1 pela biblioteca — custo `moeda_evidencia=ATTESTED`, resto favorável | `test_with_cap · medium · propor_teste_limitado`, razão `moeda_custo_attested`, invariantes **ok** (não levanta) |
+| R1 pela biblioteca — custo `moeda_evidencia=UNKNOWN` | `test_with_cap · medium`, razão `moeda_custo_unknown`, invariantes ok |
+| R1 pela CLI — mesma entrada | `evaluate` exit **0** com resultado gravado; `verify` exit **0** |
+| Controle — custo com moeda observada | continua `already_profitable · high` |
+| R2 — rótulo de versão | `VERSAO_KERNEL = "viability-kernel@2.0.0"` em `__init__.py`; `results/viability/replay.json`, `replay.md` e `recibo.json` regenerados com `viability-kernel@2.0.0`; recibo novo de `evaluate` idem |
+| R3 — documentação | README seção V2 registra R1–R3 fechados e a natureza da `Autorizacao` (integridade, não autoria) |
+
+Riscos que permanecem (inalterados, todos baixos ou baixo-médios, nenhum reabre achado da suíte): R4 (parâmetros ESTIMATED ao valor de face não impedem `high`), R5 (janela sem cross-check; intervalo da fixture Senac), R6 (receita projetada com gasto alto recebe teto), R7 (moeda padrão silenciosa no adapter, mitigada por `unknown`), R8 (`codigo_sha256` sem `contracts/money.py`). R3 segue sendo a condição de uso: nenhum consumidor pode tratar `Autorizacao` como consentimento do owner sem registro externo.
+
+**Veredito final: APPROVE_WITH_LOW_RISKS** para o SHA `117892a3`, no estado offline/shadow declarado. A condição que teria tornado o veredito REJECT para consumidores de biblioteca (R1) foi fechada e verificada por execução nos dois caminhos (biblioteca e CLI); a condição pré-merge (R2) foi fechada e os artefatos regenerados. O que resta são riscos de calibração e proveniência registrados acima, não falsos positivos econômicos.
