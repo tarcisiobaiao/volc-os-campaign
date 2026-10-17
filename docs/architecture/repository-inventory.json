@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-16T23:22:03-03:00",
+  "generated_at": "2026-10-16T23:24:03-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 1010,
+    "files": 1015,
     "markdown": 721,
-    "sql": 289,
-    "tracked": 1010,
+    "sql": 294,
+    "tracked": 1015,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
@@ -22,13 +22,13 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 42,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 173,
+      "sql-needs-review": 178,
       "sql-validation": 14
     },
     "sql_risk": {
       "high": 179,
       "medium": 72,
-      "read-only-or-ddl-free": 38
+      "read-only-or-ddl-free": 43
     }
   },
   "exact_duplicates": [
@@ -1675,9 +1675,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 26276,
-      "lines": 343,
-      "sha256": "b0f3cc082b6bf6d38409e07e568dc6ee49bff13da57994aefe9684e5893193e7",
+      "bytes": 28962,
+      "lines": 351,
+      "sha256": "fa947cbf057aab1e6ef65f25d5ecd9f191271b52e1ccb81689fc163f87040f80",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6543,6 +6543,66 @@
       "sql_risk": "read-only-or-ddl-free"
     },
     {
+      "path": "docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/meta.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 828,
+      "lines": 11,
+      "sha256": "37b12978c19a64780ec82d1f0014c492c31345cd20cf3acbd597da852eb61ad5",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "read-only-or-ddl-free"
+    },
+    {
+      "path": "docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/meta2.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 2452,
+      "lines": 18,
+      "sha256": "0450445a8b933c40cf13610ff0ef7378c7fa8c3fd3e1c3f164e6794cdff10e9e",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "read-only-or-ddl-free"
+    },
+    {
+      "path": "docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/re_agg.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 762,
+      "lines": 11,
+      "sha256": "68cdadce3bf94bfd8567b9777b7d96783d74f9175644f223fda1bb8f11b689da",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "read-only-or-ddl-free"
+    },
+    {
+      "path": "docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/re_meta.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 343,
+      "lines": 6,
+      "sha256": "c03c750bc57554d8ef50aba2eec8f46f39f548a91c2035001d4802f37c499d97",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "read-only-or-ddl-free"
+    },
+    {
+      "path": "docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/zstat.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 458,
+      "lines": 8,
+      "sha256": "d5e6f88a03b94ed0cdad3505896eb267d1ab275d39f00215268cf39b02cd56e6",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "read-only-or-ddl-free"
+    },
+    {
       "path": "docs/data-intelligence/handoffs/HANDOFF-NUCLEO-ECONOMICO-VALUE-KIND.md",
       "extension": ".md",
       "classification": "documentation",
@@ -9179,7 +9239,7 @@
       "lines": 288,
       "sha256": "ef29a7ea6cccdccb4c0af7a26b4fb3fbcbb00bcd896f0f9cfb7b839ce579b4da",
       "graph_nodes": 2,
-      "graph_degree": 6,
+      "graph_degree": 7,
       "sql_risk": "high"
     },
     {
@@ -9215,7 +9275,7 @@
       "lines": 109,
       "sha256": "282ee2ebd0ae220b17a3e2470213305d5a39d32b1ebed4c7ccbf3e8bef5fa291",
       "graph_nodes": 2,
-      "graph_degree": 6,
+      "graph_degree": 5,
       "sql_risk": "high"
     },
     {

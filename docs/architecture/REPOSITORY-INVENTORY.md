@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-16T23:22:03-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-16T23:24:03-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 1010 arquivos: 721 Markdown e 289 SQL;
-- 1010 versionados e 0 ainda não versionados;
+- 1015 arquivos: 721 Markdown e 294 SQL;
+- 1015 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 179 SQL com palavras de mutação de alto risco.
 
@@ -27,7 +27,7 @@ Gerado em `2026-10-16T23:22:03-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 173 |
+| `sql-needs-review` | 178 |
 | `sql-validation` | 14 |
 
 ## Duplicatas exatas
@@ -79,10 +79,10 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 7 |
 | `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | 3 | 6 |
 | `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | 2 | 2 |
-| `src/sql/get_rotated_campaign_highlights.sql` | `sql-needs-lineage` | 2 | 6 |
+| `src/sql/get_rotated_campaign_highlights.sql` | `sql-needs-lineage` | 2 | 7 |
 | `src/sql/get_rotated_campaign_highlights_FINAL.sql` | `sql-needs-lineage` | 3 | 10 |
 | `src/sql/get_rotated_campaign_highlights_WORKING.sql` | `sql-needs-lineage` | 3 | 10 |
-| `src/sql/get_rotated_campaign_highlights_read_only.sql` | `sql-needs-lineage` | 2 | 6 |
+| `src/sql/get_rotated_campaign_highlights_read_only.sql` | `sql-needs-lineage` | 2 | 5 |
 | `src/sql/get_rotated_campaign_highlights_simple.sql` | `sql-needs-lineage` | 3 | 8 |
 | `src/sql/get_rotated_campaign_highlights_v2.sql` | `sql-needs-lineage` | 3 | 10 |
 | `src/sql/joinads/01_joinads_metrics.sql` | `sql-migration-line` | 4 | 7 |
@@ -301,6 +301,11 @@ estejam errados, mas impede aplicação automática.
 | `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/lg_selects_qualidade.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
 | `docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/lh_hipoteses_r1.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
 | `docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/export_snapshot.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/meta.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/meta2.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/re_agg.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/re_meta.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/zstat.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
 | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_schema_observacao.down.sql` | `sql-needs-review` | high | 1 | 0 |
 | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_schema_observacao.sql` | `sql-needs-review` | high | 19 | 40 |
 | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0002_observacao_particionada.OPCIONAL.down.sql` | `sql-needs-review` | high | 2 | 2 |
@@ -340,11 +345,6 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/add_revenue_converted_column.sql` | `sql-needs-lineage` | high | 10 | 27 |
 | `src/sql/add_revshare_automation.sql` | `sql-needs-lineage` | high | 10 | 33 |
 | `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | high | 6 | 18 |
-| `src/sql/analysis_campaign_pool.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 1 | 0 |
-| `src/sql/auto_create_projects_trigger.sql` | `sql-needs-lineage` | high | 4 | 8 |
-| `src/sql/check_existing_triggers.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 1 | 0 |
-| `src/sql/create_campaign_highlights_table.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 2 | 10 |
-| `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | high | 5 | 14 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.
