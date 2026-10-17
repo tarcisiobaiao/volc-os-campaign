@@ -18,7 +18,7 @@ def _com(e, **kw):
 def test_senac_like_e_estruturalmente_inviavel_mesmo_sob_estresse():
     r = avaliar(entrada(perda="300", horizonte=14))
     assert isinstance(r, ResultadoViabilidade)
-    assert r.verdict is Veredito.STRUCTURALLY_UNVIABLE
+    assert r.verdict is Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS
     assert r.recomendacao is Recomendacao.REJEITAR_TESE_ECONOMICA
     assert r.confidence_class in (Confianca.MEDIUM, Confianca.HIGH)
     assert r.required_rpc_multiplier is not None and r.required_rpc_multiplier > 10
@@ -77,7 +77,7 @@ def test_receita_ausente_e_insufficient_nunca_zero():
 
 def test_receita_zero_observada_e_inviavel_nao_insuficiente():
     r = avaliar(entrada(receita="0", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.OBSERVED))
-    assert r.verdict is Veredito.STRUCTURALLY_UNVIABLE
+    assert r.verdict is Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS
 
 
 def test_receita_imatura_pede_maturacao_e_nao_decide():
@@ -96,7 +96,7 @@ def test_receita_projetada_nao_e_realizada():
 
 def test_limite_financeiro_ausente_impede_teto_mas_nao_o_diagnostico():
     r = avaliar(entrada(perda=None, horizonte=None))
-    assert r.verdict is Veredito.STRUCTURALLY_UNVIABLE   # Senac-like continua inviável
+    assert r.verdict is Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS   # Senac-like continua inviável
     assert r.max_experiment_spend is None and "perda_maxima_ausente" in r.missing_evidence
     e = entrada(receita="600", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda=None, horizonte=None)
     r2 = avaliar(e)
@@ -135,7 +135,7 @@ def test_saida_tem_hashes_trace_proibicoes_e_proximas_leituras():
     r = avaliar(entrada(perda="300", horizonte=14))
     assert len(r.input_hash) == 64 and r.trace and r.prohibited_actions and r.next_read_only_actions
     assert all("mutate" not in a.lower() for a in r.next_read_only_actions)
-    assert r.para_json()["verdict"] == "structurally_unviable"
+    assert r.para_json()["verdict"] == "unviable_under_declared_scenarios"
 
 
 def test_mesma_entrada_mesmo_resultado_e_hash():
@@ -146,7 +146,7 @@ def test_mesma_entrada_mesmo_resultado_e_hash():
 def test_veredito_muda_quando_a_mesma_fixture_recebe_economia_favoravel():
     base = avaliar(entrada(perda="300", horizonte=14))
     fav = avaliar(entrada(receita="900", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14))
-    assert base.verdict is Veredito.STRUCTURALLY_UNVIABLE and fav.verdict is Veredito.ALREADY_PROFITABLE
+    assert base.verdict is Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS and fav.verdict is Veredito.ALREADY_PROFITABLE
 
 
 def test_evidencia_mais_fraca_nunca_e_mais_permissiva():
@@ -222,3 +222,14 @@ def test_simulacao_em_moeda_diferente_sem_cambio_e_indisponivel_no_gate():
     r = avaliar(_com(e, simulacao=sim))
     assert r.simulacao["disponivel"] is False and r.simulacao["motivo"] == "moeda_incompativel"
     assert "simulacao_moeda_incompativel" in r.missing_evidence
+
+
+# ---------------------------------------------------------------- V2: veredito renomeado (fix 7)
+def test_veredito_inviavel_e_sob_os_cenarios_declarados():
+    assert Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS.value == "unviable_under_declared_scenarios"
+    assert "structurally_unviable" not in {v.value for v in Veredito}
+    r = avaliar(entrada(perda="300", horizonte=14))
+    assert r.verdict is Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS
+    assert r.recomendacao is Recomendacao.REJEITAR_TESE_ECONOMICA
+    assert any(m.codigo == "inviavel_sob_estresse" and "sob os cenários declarados" in m.detalhe for m in r.reasons)
+    assert Veredito.ordem(Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS) == 0

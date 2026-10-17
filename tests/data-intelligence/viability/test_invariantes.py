@@ -81,7 +81,7 @@ def test_inv4_cambio_estimado_nao_vira_viable_nem_already():
 def test_inv5_ausente_e_zero_produzem_vereditos_diferentes():
     ausente = avaliar(entrada(receita_none=True))
     zero = avaliar(entrada(receita="0", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.OBSERVED))
-    assert ausente.verdict is Veredito.INSUFFICIENT_EVIDENCE and zero.verdict is Veredito.STRUCTURALLY_UNVIABLE
+    assert ausente.verdict is Veredito.INSUFFICIENT_EVIDENCE and zero.verdict is Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS
     assert ausente.contribution_observed is None and zero.contribution_observed is not None
 
 
@@ -161,7 +161,7 @@ def test_inv14_nenhum_numero_da_senac_hardcoded_no_kernel():
 
 # ------------------------------------------------------------------ 15: veredito muda com economia favorável
 def test_inv15_veredito_muda_com_economia_favoravel():
-    assert avaliar(entrada(perda="300", horizonte=14)).verdict is Veredito.STRUCTURALLY_UNVIABLE
+    assert avaliar(entrada(perda="300", horizonte=14)).verdict is Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS
     assert avaliar(entrada(receita="900", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14)).verdict is Veredito.ALREADY_PROFITABLE
 
 

@@ -26,15 +26,18 @@ DIAS_CONFIANCA_ALTA = 7
 
 class Veredito(str, enum.Enum):
     INSUFFICIENT_EVIDENCE = "insufficient_evidence"
-    STRUCTURALLY_UNVIABLE = "structurally_unviable"
+    # Inviável SOB OS CENÁRIOS DECLARADOS (estresse enumerado); não é prova de inviabilidade estrutural.
+    UNVIABLE_UNDER_DECLARED_SCENARIOS = "unviable_under_declared_scenarios"
     TEST_WITH_CAP = "test_with_cap"
     VIABLE_CANDIDATE = "viable_candidate"
     ALREADY_PROFITABLE = "already_profitable"
+    # Alias de compatibilidade (mesmo membro) para código V1 ainda não migrado; remover na integração.
+    STRUCTURALLY_UNVIABLE = "unviable_under_declared_scenarios"
 
     @staticmethod
     def ordem(v: "Veredito") -> int:
         """Permissividade (quanto gasto o veredito admite). Inviável e insuficiente não admitem gasto."""
-        return {Veredito.STRUCTURALLY_UNVIABLE: 0, Veredito.INSUFFICIENT_EVIDENCE: 0, Veredito.TEST_WITH_CAP: 1,
+        return {Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS: 0, Veredito.INSUFFICIENT_EVIDENCE: 0, Veredito.TEST_WITH_CAP: 1,
                 Veredito.VIABLE_CANDIDATE: 2, Veredito.ALREADY_PROFITABLE: 3}[v]
 
 
@@ -322,18 +325,18 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
 
     # 1) inviável sob estresse (só com receita realizada e volume mínimo)
     if todos_negativos and realizada and not poucos:
-        reasons.append(Motivo("inviavel_sob_estresse", "nem receita×2, câmbio×1,5 e maturação×1,3 levam a contribuição >= 0", "bloqueante"))
+        reasons.append(Motivo("inviavel_sob_estresse", "inviável sob os cenários declarados: nem receita×2, câmbio×1,5 e maturação×1,3 levam a contribuição >= 0", "bloqueante"))
         next_actions.append("comparar RPC JoinAds por país/ad unit e CPC de pesquisa da vertical antes de qualquer nova campanha")
         comum.update(max_experiment_spend=None, max_experiment_clicks=None, max_experiment_days=None)
         c2 = Confianca.HIGH if (moeda_provada and conf is Confianca.HIGH) else (Confianca.MEDIUM if conf.ordem() >= 2 else Confianca.MEDIUM)
-        return _resultado(Veredito.STRUCTURALLY_UNVIABLE, c2, Recomendacao.REJEITAR_TESE_ECONOMICA, **comum)
+        return _resultado(Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS, c2, Recomendacao.REJEITAR_TESE_ECONOMICA, **comum)
 
     # 2) stop-loss: a perda LÍQUIDA madura (custo − receita comparável) já excede a tolerância do owner.
     #    O gasto bruto nunca é comparado com a tolerância. A perda líquida sob as premissas conservadoras
     #    (custo_cons − receita_cons) acima da tolerância é aviso, não parada: ainda não aconteceu.
     if teto_ok is not None and realizada and perda_liq_obs.micros > teto_ok.perda_maxima.micros:
         reasons.append(Motivo("stop_loss", f"perda líquida madura {perda_liq_obs.micros} micros > tolerância {teto_ok.perda_maxima.micros} micros", "bloqueante"))
-        return _resultado(Veredito.TEST_WITH_CAP if not todos_negativos else Veredito.STRUCTURALLY_UNVIABLE, conf, Recomendacao.PARAR_POR_STOP_LOSS, **comum)
+        return _resultado(Veredito.TEST_WITH_CAP if not todos_negativos else Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS, conf, Recomendacao.PARAR_POR_STOP_LOSS, **comum)
     if teto_ok is not None and realizada and perda_liq_cons.micros > teto_ok.perda_maxima.micros:
         reasons.append(Motivo("perda_conservadora_acima_da_tolerancia", f"perda líquida conservadora {perda_liq_cons.micros} micros > tolerância {teto_ok.perda_maxima.micros} micros (ainda não realizada)", "aviso"))
 
