@@ -412,9 +412,9 @@ class JanelaObservada:
 
     @classmethod
     def de_json(cls, d: Mapping[str, Any]) -> "JanelaObservada":
-        return cls(inicio=d["inicio"], fim=d["fim"], dias_maduros=int(d["dias_maduros"]), dias_imaturos=int(d.get("dias_imaturos", 0)),
-                   dias_custo_maduro=d.get("dias_custo_maduro"), dias_receita_madura=d.get("dias_receita_madura"),
-                   dias_custo_sem_receita=int(d.get("dias_custo_sem_receita", 0)), cobertura_receita_ppm=d.get("cobertura_receita_ppm"))
+        # só as chaves presentes: ausência cai no default do dataclass (None = não se sabe), nunca num literal aqui
+        extras = {k: d[k] for k in ("dias_imaturos", "dias_custo_maduro", "dias_receita_madura", "dias_custo_sem_receita", "cobertura_receita_ppm") if k in d}
+        return cls(inicio=d["inicio"], fim=d["fim"], dias_maduros=int(d["dias_maduros"]), **extras)
 
 
 # --------------------------------------------------------------------------- simulação
