@@ -1,6 +1,7 @@
 """Gate pré-campanha: avaliação tipada, sem mutação. Vereditos, confiança, recomendação, razões."""
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 from fractions import Fraction
 
@@ -233,3 +234,88 @@ def test_veredito_inviavel_e_sob_os_cenarios_declarados():
     assert r.recomendacao is Recomendacao.REJEITAR_TESE_ECONOMICA
     assert any(m.codigo == "inviavel_sob_estresse" and "sob os cenários declarados" in m.detalhe for m in r.reasons)
     assert Veredito.ordem(Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS) == 0
+
+
+# ---------------------------------------------------------------- V2: VIABLE_CANDIDATE alcançável (fix 8)
+FAV = dict(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14)
+
+
+def test_already_profitable_exige_500_cliques_e_7_dias_e_cobertura_completa():
+    r = avaliar(entrada(cliques=634, dias_maduros=16, **FAV))
+    assert r.verdict is Veredito.ALREADY_PROFITABLE and r.confidence_class is Confianca.HIGH
+
+
+def test_favoravel_com_poucos_cliques_para_alta_confianca_e_viable_candidate():
+    r = avaliar(entrada(cliques=300, custo="200", dias_maduros=16, **FAV))   # 200 <= 300 < 500
+    assert r.verdict is Veredito.VIABLE_CANDIDATE
+    assert r.confidence_class.ordem() <= Confianca.MEDIUM.ordem()
+    assert r.recomendacao is Recomendacao.PROPOR_TESTE_LIMITADO
+    assert r.max_experiment_spend is not None
+
+
+def test_favoravel_com_poucos_dias_maduros_e_viable_candidate():
+    r = avaliar(entrada(cliques=634, dias_maduros=5, **FAV))   # 3 <= 5 < 7
+    assert r.verdict is Veredito.VIABLE_CANDIDATE
+    assert r.verdict is not Veredito.ALREADY_PROFITABLE
+
+
+def test_viable_candidate_exige_moeda_provada_e_receita_realizada():
+    assert avaliar(entrada(cliques=300, custo="200", moeda_rec_ev=Evidencia.ATTESTED, **{k: v for k, v in FAV.items() if k != "moeda_rec_ev"})).verdict is Veredito.TEST_WITH_CAP
+    assert avaliar(entrada(cliques=300, custo="200", receita_ev=Evidencia.ATTESTED, **FAV)).verdict is Veredito.TEST_WITH_CAP
+
+
+def test_cobertura_de_receita_desconhecida_nao_vira_viable_nem_already():
+    r = avaliar(entrada(cliques=634, dias_maduros=16, cobertura_ppm=None, **FAV))
+    assert r.verdict is Veredito.TEST_WITH_CAP
+    assert any(m.codigo == "cobertura_receita_incompleta" for m in r.reasons)
+    r2 = avaliar(entrada(cliques=300, custo="200", cobertura_ppm=None, **FAV))
+    assert r2.verdict is Veredito.TEST_WITH_CAP
+
+
+# ---------------------------------------------------------------- V2: governança de evidência (fix 9)
+def test_custo_projetado_com_numeros_favoraveis_nao_e_already_profitable():
+    r = avaliar(entrada(custo_ev=Evidencia.PROJECTED, **FAV))
+    assert r.verdict not in (Veredito.ALREADY_PROFITABLE, Veredito.VIABLE_CANDIDATE)
+    assert r.confidence_class.ordem() <= Confianca.MEDIUM.ordem()
+    assert any(m.codigo == "custo_projected" for m in r.reasons)
+
+
+def test_cliques_estimados_com_numeros_favoraveis_nao_e_positivo():
+    r = avaliar(entrada(cliques_ev=Evidencia.ESTIMATED, **FAV))
+    assert r.verdict not in (Veredito.ALREADY_PROFITABLE, Veredito.VIABLE_CANDIDATE)
+    assert r.confidence_class is not Confianca.HIGH
+
+
+def test_receita_com_flag_invalid_nao_e_positiva():
+    r = avaliar(entrada(flags_medidas={"receita": ("invalid_schema",)}, **FAV))
+    assert r.verdict not in (Veredito.ALREADY_PROFITABLE, Veredito.VIABLE_CANDIDATE)
+    assert r.confidence_class is not Confianca.HIGH
+    assert "receita:invalid_schema" in r.invalid_evidence
+
+
+def test_medida_mais_velha_que_o_sla_e_stale_e_nao_e_positiva():
+    velha = AS_OF - timedelta(days=8)
+    r = avaliar(entrada(observado_em={"receita": velha}, **FAV))
+    assert r.verdict not in (Veredito.ALREADY_PROFITABLE, Veredito.VIABLE_CANDIDATE)
+    assert any(m.codigo == "stale" and "receita" in m.detalhe for m in r.reasons)
+    assert r.confidence_class is not Confianca.HIGH
+    fresca = avaliar(entrada(observado_em={"receita": AS_OF - timedelta(days=6)}, **FAV))
+    assert fresca.verdict is Veredito.ALREADY_PROFITABLE
+    sla_curto = avaliar(entrada(observado_em={"receita": AS_OF - timedelta(days=6)}, sla_dias=5, **FAV))
+    assert sla_curto.verdict is not Veredito.ALREADY_PROFITABLE
+
+
+def test_cobertura_parcial_com_totais_favoraveis_e_no_maximo_test_with_cap():
+    r = avaliar(entrada(cobertura_ppm=750_000, dias_custo_sem_receita=3, **FAV))
+    assert Veredito.ordem(r.verdict) <= Veredito.ordem(Veredito.TEST_WITH_CAP)
+    assert any(m.codigo == "cobertura_receita_incompleta" for m in r.reasons)
+    assert any(m.codigo == "dias_custo_sem_receita=3" for m in r.reasons)
+    assert r.confidence_class is not Confianca.HIGH
+
+
+def test_governanca_evidencia_de_custo_mais_fraca_nunca_e_mais_permissiva():
+    forte = avaliar(entrada(**FAV))
+    for ev in (Evidencia.ATTESTED, Evidencia.ESTIMATED, Evidencia.PROJECTED, Evidencia.IMMATURE):
+        fraca = avaliar(entrada(custo_ev=ev, **FAV))
+        assert Veredito.ordem(fraca.verdict) <= Veredito.ordem(forte.verdict)
+        assert fraca.confidence_class.ordem() <= forte.confidence_class.ordem()

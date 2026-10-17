@@ -9,6 +9,7 @@ from __future__ import annotations
 import enum
 import hashlib
 from dataclasses import dataclass, field
+from datetime import timedelta
 from fractions import Fraction
 from typing import Any, Optional
 
@@ -22,6 +23,10 @@ from .teto import MIN_CLIQUES_MADUROS, MIN_DIAS_MADUROS, MATURITY_WAIT_DIAS, Tet
 
 CLIQUES_CONFIANCA_ALTA = 500
 DIAS_CONFIANCA_ALTA = 7
+COBERTURA_COMPLETA_PPM = 1_000_000
+FRESHNESS_SLA_DIAS_PADRAO = 7
+# Evidência de custo/cliques/receita que NUNCA sustenta veredito positivo nem confiança alta.
+EVIDENCIA_NAO_DECISIVA = frozenset({Evidencia.PROJECTED, Evidencia.ESTIMATED, Evidencia.IMMATURE})
 
 
 class Veredito(str, enum.Enum):
@@ -172,17 +177,84 @@ def _teto_json(t: TetoExperimento) -> dict:
             "premissas": list(t.premissas)}
 
 
-def _confianca(env: Envelope, e: EntradaViabilidade) -> Confianca:
+@dataclass(frozen=True)
+class Governanca:
+    """Governança de evidência lida do contrato (V1 ou V2, via getattr): o que impede veredito positivo
+    (viable_candidate/already_profitable) e confiança alta, independentemente dos números."""
+    evidencia_fraca: tuple[str, ...]      # "custo_projected", "cliques_estimated", "receita_immature"...
+    stale: tuple[str, ...]                # medidas com observado_em < as_of − freshness_sla_dias
+    invalidas: tuple[str, ...]            # "receita:invalid_schema"
+    cobertura_receita_ppm: Optional[int]  # None = desconhecida (≠ completa)
+    dias_custo_sem_receita: int
+    freshness_sla_dias: int
+
+    @property
+    def cobertura_completa(self) -> bool:
+        return self.cobertura_receita_ppm is not None and self.cobertura_receita_ppm >= COBERTURA_COMPLETA_PPM
+
+    def bloqueia_positivo(self) -> bool:
+        return bool(self.evidencia_fraca or self.stale or self.invalidas) or not self.cobertura_completa
+
+    def impede_alta(self) -> bool:
+        return self.bloqueia_positivo()
+
+
+def _governanca(e: EntradaViabilidade) -> Governanca:
+    sla = getattr(e, "freshness_sla_dias", FRESHNESS_SLA_DIAS_PADRAO)
+    if not isinstance(sla, int) or isinstance(sla, bool) or sla <= 0:
+        sla = FRESHNESS_SLA_DIAS_PADRAO
+    limite = e.as_of - timedelta(days=sla)
+    fraca: list[str] = []
+    stale: list[str] = []
+    invalidas: list[str] = []
+    for nome in ("custo", "cliques", "receita", "visitas"):
+        m = getattr(e, nome)
+        if m is None:
+            continue
+        if nome != "visitas" and m.evidencia in EVIDENCIA_NAO_DECISIVA:
+            fraca.append(f"{nome}_{m.evidencia.value}")
+        obs = getattr(m, "observado_em", None)
+        if obs is not None and obs < limite:
+            stale.append(nome)
+        for flag in getattr(m, "flags_qualidade", ()) or ():
+            if str(flag).startswith("invalid"):
+                invalidas.append(f"{nome}:{flag}")
+    for flag in e.flags_qualidade:
+        if str(flag).startswith("invalid"):
+            invalidas.append(f"entrada:{flag}")
+    cobertura = getattr(e.janela, "cobertura_receita_ppm", None)
+    if cobertura is not None and (not isinstance(cobertura, int) or isinstance(cobertura, bool) or cobertura < 0):
+        cobertura = None
+    dias_sem = getattr(e.janela, "dias_custo_sem_receita", 0)
+    if not isinstance(dias_sem, int) or isinstance(dias_sem, bool) or dias_sem < 0:
+        dias_sem = 0
+    return Governanca(tuple(fraca), tuple(stale), tuple(invalidas), cobertura, dias_sem, sla)
+
+
+def _menor(a: Confianca, b: Confianca) -> Confianca:
+    return a if a.ordem() <= b.ordem() else b
+
+
+def _confianca(env: Envelope, e: EntradaViabilidade, gov: Governanca) -> Confianca:
+    """Classe de confiança. Evidência de custo e cliques entra junto com a de receita/moeda/câmbio;
+    governança (stale, flags inválidas, cobertura incompleta, evidência não decisiva) nunca permite `high`."""
     c = Confianca.HIGH
     if env.economia.moeda_evidencia is not Evidencia.OBSERVED or (env.economia.cambio_evidencia not in (None, Evidencia.OBSERVED)):
-        c = Confianca.MEDIUM
+        c = _menor(c, Confianca.MEDIUM)
+    for m in (e.custo, e.cliques):
+        if m.evidencia in EVIDENCIA_NAO_DECISIVA:
+            c = _menor(c, Confianca.LOW)
+        elif m.evidencia not in REALIZADA:
+            c = _menor(c, Confianca.MEDIUM)
     if env.economia.cliques < MIN_CLIQUES_MADUROS or e.janela.dias_maduros < DIAS_CONFIANCA_ALTA:
-        c = Confianca.LOW if c is Confianca.HIGH else Confianca.LOW
+        c = _menor(c, Confianca.LOW)
+    elif env.economia.cliques < CLIQUES_CONFIANCA_ALTA:
+        c = _menor(c, Confianca.MEDIUM)
     if not env.receita_realizada:
-        c = Confianca.LOW
-    if env.economia.cliques >= CLIQUES_CONFIANCA_ALTA and e.janela.dias_maduros >= DIAS_CONFIANCA_ALTA and c is Confianca.HIGH:
-        return Confianca.HIGH
-    return c if c is not Confianca.HIGH else Confianca.MEDIUM
+        c = _menor(c, Confianca.LOW)
+    if gov.impede_alta():
+        c = _menor(c, Confianca.MEDIUM)
+    return c
 
 
 def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
@@ -301,7 +373,26 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
                      max_experiment_days=teto_ok.day_cap, stop_loss=teto_ok.perda_maxima, maturity_wait=teto_ok.maturity_wait_dias,
                      max_loss=teto_ok.perda_maxima, spend_cap=teto_ok.spend_cap)
 
-    conf = _confianca(env, e)
+    gov = _governanca(e)
+    for item in gov.evidencia_fraca:
+        if not item.startswith("receita_"):   # receita não realizada já entra pelas limitações do envelope
+            reasons.append(Motivo(item, "evidência projetada/estimada/imatura não decide viabilidade", "aviso"))
+    for nome in gov.stale:
+        obs = getattr(getattr(e, nome), "observado_em")
+        reasons.append(Motivo("stale", f"{nome}: observado_em {obs.isoformat()} anterior a as_of − {gov.freshness_sla_dias} d", "bloqueante"))
+        missing.append(f"{nome}_fresco")
+    for item in gov.invalidas:
+        reasons.append(Motivo("invalid_flag", item, "bloqueante"))
+        invalid.append(item)
+    if not gov.cobertura_completa:
+        reasons.append(Motivo("cobertura_receita_incompleta", f"cobertura_receita_ppm={gov.cobertura_receita_ppm} (completa = {COBERTURA_COMPLETA_PPM}; None = desconhecida)", "aviso"))
+        missing.append("cobertura_receita_completa")
+    if gov.dias_custo_sem_receita > 0:
+        reasons.append(Motivo(f"dias_custo_sem_receita={gov.dias_custo_sem_receita}", "dias com custo observado e sem receita correspondente na janela", "aviso"))
+    trace.append({"passo": "governanca", "evidencia_fraca": list(gov.evidencia_fraca), "stale": list(gov.stale), "invalidas": list(gov.invalidas),
+                  "cobertura_receita_ppm": gov.cobertura_receita_ppm, "dias_custo_sem_receita": gov.dias_custo_sem_receita, "freshness_sla_dias": gov.freshness_sla_dias})
+
+    conf = _confianca(env, e, gov)
     imatura = eco.receita_evidencia is Evidencia.IMMATURE or e.janela.dias_maduros < MIN_DIAS_MADUROS
     if imatura:
         espera = max(MIN_DIAS_MADUROS, MATURITY_WAIT_DIAS - e.janela.dias_maduros)
@@ -311,9 +402,16 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
         comum.update(max_experiment_spend=None, max_experiment_clicks=None, max_experiment_days=None, stop_loss=None, maturity_wait=espera)
         return _resultado(Veredito.INSUFFICIENT_EVIDENCE, Confianca.INSUFFICIENT, Recomendacao.AGUARDAR_MATURACAO, **comum)
 
-    realizada = env.receita_realizada
+    # medidas inválidas ou velhas: nenhum veredito (nem rejeição) nasce delas
+    if gov.invalidas or gov.stale:
+        next_actions.append("recoletar as medidas marcadas (invalid/stale) pelo coletor canônico antes de decidir")
+        comum.update(max_experiment_spend=None, max_experiment_clicks=None, max_experiment_days=None)
+        return _resultado(Veredito.INSUFFICIENT_EVIDENCE, Confianca.INSUFFICIENT, Recomendacao.COLETAR_EVIDENCIA, **comum)
+
+    realizada = env.receita_realizada and not gov.evidencia_fraca   # custo/cliques projetados ou estimados também não realizam
     moeda_provada = eco.moeda_evidencia is Evidencia.OBSERVED and eco.cambio_evidencia in (None, Evidencia.OBSERVED)
     poucos = eco.cliques < MIN_CLIQUES_MADUROS
+    forte = eco.cliques >= CLIQUES_CONFIANCA_ALTA and e.janela.dias_maduros >= DIAS_CONFIANCA_ALTA
     if poucos:
         reasons.append(Motivo("poucos_cliques", f"{eco.cliques} cliques < {MIN_CLIQUES_MADUROS}", "aviso"))
         missing.append("cliques_minimos")
@@ -340,13 +438,18 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
     if teto_ok is not None and realizada and perda_liq_cons.micros > teto_ok.perda_maxima.micros:
         reasons.append(Motivo("perda_conservadora_acima_da_tolerancia", f"perda líquida conservadora {perda_liq_cons.micros} micros > tolerância {teto_ok.perda_maxima.micros} micros (ainda não realizada)", "aviso"))
 
-    # 3) lucrativa com evidência forte
-    if env.contribuicao_conservadora.micros >= 0 and realizada and moeda_provada and not poucos:
+    # 3) lucrativa com evidência forte e governança limpa: já lucrativa (volume e maturação altos) ou candidata viável
+    positivo_permitido = realizada and moeda_provada and not poucos and not gov.bloqueia_positivo()
+    if env.contribuicao_conservadora.micros >= 0 and positivo_permitido:
         reasons.append(Motivo("contribuicao_conservadora_positiva", "receita conservadora cobre o custo conservador", "info"))
         next_actions.append("ler campaign_simulation antes de qualquer expansão; expandir só até o último ponto sustentável")
-        return _resultado(Veredito.ALREADY_PROFITABLE, conf, Recomendacao.CONTINUAR_CAMPANHA_EXISTENTE, **comum)
+        if forte:
+            return _resultado(Veredito.ALREADY_PROFITABLE, conf, Recomendacao.CONTINUAR_CAMPANHA_EXISTENTE, **comum)
+        reasons.append(Motivo("volume_ou_maturacao_abaixo_do_limiar_alto", f"{eco.cliques} cliques / {e.janela.dias_maduros} dia(s) maduro(s); already_profitable exige >= {CLIQUES_CONFIANCA_ALTA} e >= {DIAS_CONFIANCA_ALTA}", "aviso"))
+        next_actions.append("manter a coleta até >= 500 cliques e >= 7 dias maduros para promover a candidata")
+        return _resultado(Veredito.VIABLE_CANDIDATE, _menor(conf, Confianca.MEDIUM), Recomendacao.PROPOR_TESTE_LIMITADO, **comum)
 
-    # 4) favorável mas evidência fraca (moeda atestada, câmbio estimado, poucos cliques, não realizada)
+    # 4) favorável mas evidência fraca (moeda atestada, câmbio estimado, poucos cliques, não realizada, cobertura incompleta)
     if env.contribuicao_conservadora.micros >= 0:
         if not moeda_provada:
             next_actions.append("obter moeda observada no payload e câmbio PTAX datado para promover a evidência")
