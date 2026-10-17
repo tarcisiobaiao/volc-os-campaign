@@ -241,8 +241,11 @@ FAV = dict(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia
 
 
 def test_already_profitable_exige_500_cliques_e_7_dias_e_cobertura_completa():
-    r = avaliar(entrada(cliques=634, dias_maduros=16, **FAV))
+    # R4: `high` exige também revshare e imposto OBSERVED (o helper constrói ATTESTED/UNKNOWN por padrão → medium)
+    r = avaliar(entrada(cliques=634, dias_maduros=16, **FAV, revshare_ev=Evidencia.OBSERVED, imposto="0", imposto_ev=Evidencia.OBSERVED))
     assert r.verdict is Veredito.ALREADY_PROFITABLE and r.confidence_class is Confianca.HIGH
+    r = avaliar(entrada(cliques=634, dias_maduros=16, **FAV))
+    assert r.verdict is Veredito.ALREADY_PROFITABLE and r.confidence_class is Confianca.MEDIUM
 
 
 def test_favoravel_com_poucos_cliques_para_alta_confianca_e_viable_candidate():
@@ -331,3 +334,69 @@ def test_r1_moeda_do_custo_atestada_nunca_e_veredito_positivo_nem_high():
     assert r.confidence_class is not Confianca.HIGH
     assert any(m.codigo == "moeda_custo_attested" for m in r.reasons)
     verificar_invariantes(e, r)  # o gate e o verificador concordam
+
+
+# ---------------------------------------------------------------- R4 (time vermelho): revshare/imposto não observados limitam a confiança a MEDIUM
+# O valor declarado continua aplicado exatamente como antes (nenhum desconto inventado); só a CLASSE de confiança
+# é limitada e o motivo tipado `revshare_<evidencia>` / `imposto_<evidencia>` aparece uma única vez.
+TAXAS_OBSERVADAS = dict(revshare="0.8", revshare_ev=Evidencia.OBSERVED, imposto="0.1", imposto_ev=Evidencia.OBSERVED)
+FAV_1200 = {**FAV, "receita": "1200"}  # com revshare 0,8 e imposto 0,1 a receita de 800 não cobre o custo conservador
+
+
+def _codigos(r):
+    return [m.codigo for m in r.reasons]
+
+
+def test_r4_controle_revshare_e_imposto_observados_mantem_high():
+    r = avaliar(entrada(cliques=634, dias_maduros=16, **FAV_1200, **TAXAS_OBSERVADAS))
+    assert r.verdict is Veredito.ALREADY_PROFITABLE and r.confidence_class is Confianca.HIGH
+    assert not any(c.startswith(("revshare_", "imposto_")) for c in _codigos(r))
+
+
+def test_r4_revshare_attested_limita_a_medium_com_motivo_tipado_unico():
+    r = avaliar(entrada(cliques=634, dias_maduros=16, **FAV_1200, revshare="0.8", imposto="0.1", imposto_ev=Evidencia.OBSERVED))  # revshare ATTESTED (default)
+    assert r.verdict is Veredito.ALREADY_PROFITABLE and r.confidence_class is Confianca.MEDIUM
+    motivos = [m for m in r.reasons if m.codigo == "revshare_attested"]
+    assert len(motivos) == 1 and motivos[0].severidade == "aviso"
+    assert _codigos(r).count("revshare_attested") == 1  # a limitação da economia e o teto do gate não duplicam o código
+
+
+def test_r4_imposto_unknown_limita_a_medium_com_motivo_tipado():
+    r = avaliar(entrada(cliques=634, dias_maduros=16, **FAV_1200, revshare="0.8", revshare_ev=Evidencia.OBSERVED))  # imposto UNKNOWN (default)
+    assert r.verdict is Veredito.ALREADY_PROFITABLE
+    assert r.confidence_class.ordem() <= Confianca.MEDIUM.ordem()
+    motivos = [m for m in r.reasons if m.codigo == "imposto_unknown"]
+    assert len(motivos) == 1 and motivos[0].severidade == "aviso"
+
+
+def test_r4_revshare_estimated_e_imposto_attested_limitam_a_medium():
+    r = avaliar(entrada(cliques=634, dias_maduros=16, **FAV_1200, revshare="0.8", revshare_ev=Evidencia.ESTIMATED, imposto="0.1", imposto_ev=Evidencia.ATTESTED))
+    assert r.verdict is Veredito.ALREADY_PROFITABLE and r.confidence_class is Confianca.MEDIUM
+    codigos = _codigos(r)
+    assert codigos.count("revshare_estimated") == 1 and codigos.count("imposto_attested") == 1
+
+
+def test_r4_inviavel_sob_estresse_tambem_perde_high_sem_taxas_observadas():
+    r = avaliar(entrada(cliques=634, dias_maduros=16, receita="0", receita_ev=Evidencia.OBSERVED, moeda_receita="BRL", taxa=None,
+                        moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14))
+    assert r.verdict is Veredito.UNVIABLE_UNDER_DECLARED_SCENARIOS and r.confidence_class is Confianca.MEDIUM
+    assert "revshare_attested" in _codigos(r) and "imposto_unknown" in _codigos(r)
+
+
+def test_r4_nenhum_desconto_inventado_numeros_identicos_ao_v2_aprovado():
+    """Números fixados em 34a5f960 (antes do R4): a evidência limita a confiança, nunca altera a economia."""
+    r = avaliar(entrada(cliques=634, dias_maduros=16, **FAV))
+    assert (r.contribution_observed.micros, r.contribution_conservative.micros) == (245_250_000, 137_512_500)
+    assert (r.observed_rpc, r.break_even_cpc, r.conservative_affordable_cpc, r.required_rpc_multiplier) == (
+        Fraction(400_000_000, 317), Fraction(400_000_000, 317), Fraction(360_000_000, 317), Fraction(2219, 2880))
+    r8 = avaliar(entrada(cliques=634, dias_maduros=16, **FAV, revshare="0.8"))
+    assert (r8.contribution_observed.micros, r8.contribution_conservative.micros, r8.observed_rpc) == (85_250_000, -6_487_500, Fraction(320_000_000, 317))
+    r81 = avaliar(entrada(cliques=634, dias_maduros=16, **FAV, revshare="0.8", imposto="0.1"))
+    assert (r81.contribution_observed.micros, r81.contribution_conservative.micros, r81.observed_rpc) == (21_250_000, -64_087_500, Fraction(288_000_000, 317))
+    # mesma taxa declarada, evidência diferente → mesma economia byte a byte
+    campos = ("contribution_observed", "contribution_conservative", "observed_cpc", "observed_rpc", "break_even_cpc",
+              "conservative_affordable_cpc", "required_rpc", "required_rpc_multiplier", "break_even_interval", "stress", "assumptions")
+    ro = avaliar(entrada(cliques=634, dias_maduros=16, **FAV, revshare="0.8", revshare_ev=Evidencia.OBSERVED, imposto="0.1", imposto_ev=Evidencia.OBSERVED))
+    for c in campos:
+        assert getattr(r81, c) == getattr(ro, c), c
+    assert [t for t in r81.trace if t.get("passo") == "envelope"] == [t for t in ro.trace if t.get("passo") == "envelope"]

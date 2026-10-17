@@ -28,12 +28,13 @@ def entrada(cliques=634, custo="554.75", receita="7.77", moeda_receita="USD", ta
             perda=None, horizonte=None, custo_ev=Evidencia.OBSERVED, cliques_ev=Evidencia.OBSERVED, receita_none=False, custo_none=False,
             autorizacao_perda=None, visitas=None, visitas_ev=Evidencia.OBSERVED, perda_moeda="BRL", janela=None,
             cobertura_ppm=1_000_000, dias_custo_sem_receita=0, observado_em=None, flags_medidas=None, sla_dias=None,
-            freshness_sla_dias=7, flags_qualidade=()):
+            freshness_sla_dias=7, flags_qualidade=(), revshare_ev=Evidencia.ATTESTED, imposto_ev=None):
     """Defaults = V1 (+ cobertura de receita completa, exigida pelo V2 para veredito positivo).
     `visitas=None` → sem medida; `visitas=int` → MedidaContagem (0 é valor válido).
     `observado_em={"receita": dt}` / `flags_medidas={"receita": ("invalid_schema",)}` gravam campos nas medidas;
     `cobertura_ppm`/`dias_custo_sem_receita` vão na janela (ignorados se `janela` for passada);
-    `sla_dias` sobrescreve `freshness_sla_dias` quando informado."""
+    `sla_dias` sobrescreve `freshness_sla_dias` quando informado.
+    `revshare_ev` (padrão ATTESTED) e `imposto_ev` (padrão ATTESTED quando `imposto` é informado; UNKNOWN sem valor) são a evidência das taxas."""
     observado_em = observado_em or {}
     flags_medidas = flags_medidas or {}
 
@@ -57,8 +58,8 @@ def entrada(cliques=634, custo="554.75", receita="7.77", moeda_receita="USD", ta
         receita=medida("receita", MedidaMonetaria(valor=None if receita_none else Dinheiro.de_decimal(receita, moeda_receita), evidencia=Evidencia.ABSENT if receita_none else receita_ev, moeda_evidencia=moeda_rec_ev, disponivel_em=AS_OF)),
         cambio=Cambio(taxa=None if taxa is None else Decimal(taxa), de="USD", para="BRL", proveniencia="literal_app" if taxa else "ausente", evidencia=cambio_ev if taxa else Evidencia.ABSENT,
                       effective_at=EFETIVO if taxa else None, disponivel_em=EFETIVO if taxa else None, versao="teste" if taxa else ""),
-        revshare=Taxa(valor=Decimal(revshare), evidencia=Evidencia.ATTESTED, proveniencia="tela", effective_at=EFETIVO, disponivel_em=EFETIVO, versao="teste"),
-        imposto=Taxa(valor=None if imposto is None else Decimal(imposto), evidencia=Evidencia.UNKNOWN if imposto is None else Evidencia.ATTESTED, proveniencia="x",
+        revshare=Taxa(valor=Decimal(revshare), evidencia=revshare_ev, proveniencia="tela", effective_at=EFETIVO, disponivel_em=EFETIVO, versao="teste"),
+        imposto=Taxa(valor=None if imposto is None else Decimal(imposto), evidencia=Evidencia.UNKNOWN if imposto is None else (imposto_ev or Evidencia.ATTESTED), proveniencia="x",
                      effective_at=None if imposto is None else EFETIVO, disponivel_em=None if imposto is None else EFETIVO, versao="" if imposto is None else "teste"),
         perda_maxima=PerdaMaxima(valor=None if perda is None else Dinheiro.de_decimal(perda, perda_moeda), horizonte_dias=horizonte,
                                  autorizacao=(autorizacao_perda or autorizacao()) if tem_perda else None),
