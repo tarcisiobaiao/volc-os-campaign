@@ -6,7 +6,10 @@ Regras do adapter de ledger (campanha × dia):
 - evidência agregada = a mais fraca entre as linhas; flags = união; observado_em = o mais antigo;
 - moedas heterogêneas numa mesma medida são erro de contrato (nunca "a primeira");
 - datas duplicadas são deduplicadas pela maior disponivel_em e viram flag; dias_* contam datas distintas;
-- `cliques` ausente num dia com custo ⇒ cliques agregado UNKNOWN (o custo é real, a contagem não é somável).
+- `cliques` ausente num dia com custo ⇒ cliques agregado UNKNOWN (o custo é real, a contagem não é somável);
+- moeda nunca é assumida: sem `custo_moeda`/`receita_moeda` em nenhuma linha a medida vira UNKNOWN com flag
+  `moeda_ausente` (fail-closed); linha com valor sem moeda enquanto outras declaram é `moeda_ausente_em_linha`;
+  o câmbio nunca inventa o par (de/para) e `de_pautador_card` exige `moeda`.
 """
 from __future__ import annotations
 
@@ -98,6 +101,74 @@ def test_ledger_moedas_heterogeneas_no_custo_ou_na_receita_sao_recusadas():
         de_ledger_campanha_dia("c", [linha("2026-10-01", 1, 1, 1), linha("2026-10-02", 1, 1, 1, receita_moeda="BRL")], as_of=AS_OF)
 
 
+# --------------------------------------------------------------------------- R7: moeda nunca é assumida
+def test_ledger_sem_moeda_em_nenhuma_linha_nao_assume_brl_nem_usd():
+    linhas = [linha("2026-10-01", 10_000_000, 10, 1_000_000, custo_moeda=None, receita_moeda=None),
+              linha("2026-10-02", 10_000_000, 10, 1_000_000, custo_moeda=None, receita_moeda=None)]
+    e = de_ledger_campanha_dia("c", linhas, as_of=AS_OF)
+    # custo sem moeda não é somável: nada de BRL por padrão
+    assert e.custo.valor is None and e.custo.evidencia is Evidencia.UNKNOWN and e.custo.moeda_evidencia is Evidencia.UNKNOWN
+    assert "moeda_ausente" in e.custo.flags_qualidade
+    # receita idem: nada de USD por padrão
+    assert e.receita.valor is None and e.receita.evidencia is Evidencia.UNKNOWN and e.receita.moeda_evidencia is Evidencia.UNKNOWN
+    assert "moeda_ausente" in e.receita.flags_qualidade and "moeda_ausente" in e.flags_qualidade
+    # a contagem de cliques e os dias continuam reais (não dependem de moeda)
+    assert e.cliques.valor == 20 and e.janela.dias_maduros == 2 and e.janela.dias_receita_madura == 2
+    # o par do câmbio nunca é inventado
+    assert e.cambio.evidencia is Evidencia.ABSENT and e.cambio.proveniencia == "moeda_desconhecida" and e.cambio.de == "" and e.cambio.para == ""
+
+
+def test_ledger_so_custo_sem_moeda_rebaixa_so_o_custo():
+    linhas = [linha("2026-10-01", 10_000_000, 10, 1_000_000, custo_moeda=None), linha("2026-10-02", 10_000_000, 10, 1_000_000, custo_moeda=None)]
+    e = de_ledger_campanha_dia("c", linhas, as_of=AS_OF)
+    assert e.custo.valor is None and e.custo.evidencia is Evidencia.UNKNOWN and "moeda_ausente" in e.custo.flags_qualidade
+    assert e.receita.valor == Dinheiro(2_000_000, "USD") and "moeda_ausente" not in e.receita.flags_qualidade
+    assert e.cambio.evidencia is Evidencia.ABSENT and e.cambio.proveniencia == "moeda_desconhecida"
+
+
+def test_ledger_linha_com_valor_sem_moeda_enquanto_outras_declaram_e_recusada():
+    with pytest.raises(ContratoViabilidadeViolado, match="moeda_ausente_em_linha em custo"):
+        de_ledger_campanha_dia("c", [linha("2026-10-01", 1, 1, 1), linha("2026-10-02", 1, 1, 1, custo_moeda=None)], as_of=AS_OF)
+    with pytest.raises(ContratoViabilidadeViolado, match="moeda_ausente_em_linha em receita"):
+        de_ledger_campanha_dia("c", [linha("2026-10-01", 1, 1, 1), linha("2026-10-02", 1, 1, 1, receita_moeda=None)], as_of=AS_OF)
+    # moeda declarada só em linha SEM valor, e ausente na linha COM valor: também é ausência em linha (a moeda existe no ledger)
+    with pytest.raises(ContratoViabilidadeViolado, match="moeda_ausente_em_linha em receita"):
+        de_ledger_campanha_dia("c", [linha("2026-10-01", 1, 1, None, receita_moeda="USD"), linha("2026-10-02", 1, 1, 1, receita_moeda=None)], as_of=AS_OF)
+
+
+def test_ledger_receita_sem_valor_nao_precisa_de_moeda():
+    linhas = [linha("2026-10-01", 1, 1, 1), linha("2026-10-02", 1, 1, None, receita_moeda=None)]
+    e = de_ledger_campanha_dia("c", linhas, as_of=AS_OF)
+    assert e.receita.valor == Dinheiro(1, "USD") and e.janela.dias_custo_sem_receita == 1
+
+
+def test_cambio_nunca_inventa_o_par():
+    sem_par = {k: v for k, v in CAMBIO.items() if k not in ("de", "para")}
+    sem_moeda = [linha("2026-10-01", 1, 1, 1, custo_moeda=None, receita_moeda=None)]
+    # taxa sem par e sem moedas nas linhas: não se sabe o que converte → câmbio ausente, nunca "USD→BRL"
+    c = de_ledger_campanha_dia("c", sem_moeda, as_of=AS_OF, cambio=sem_par).cambio
+    assert c.taxa is None and c.evidencia is Evidencia.ABSENT and c.proveniencia == "moeda_desconhecida" and (c.de, c.para) == ("", "")
+    # sem dict de câmbio e sem moedas: idem
+    c = de_ledger_campanha_dia("c", sem_moeda, as_of=AS_OF, cambio=None).cambio
+    assert c.taxa is None and c.proveniencia == "moeda_desconhecida" and (c.de, c.para) == ("", "")
+    # dict sem par mas moedas conhecidas nas linhas: o par vem das linhas (receita → custo)
+    c = de_ledger_campanha_dia("c", [linha("2026-10-01", 1, 1, 1)], as_of=AS_OF, cambio=sem_par).cambio
+    assert c.taxa == Decimal("5.25") and (c.de, c.para) == ("USD", "BRL")
+    # dict com par explícito: vale mesmo sem moedas nas linhas
+    c = de_ledger_campanha_dia("c", sem_moeda, as_of=AS_OF, cambio=CAMBIO).cambio
+    assert c.taxa == Decimal("5.25") and (c.de, c.para) == ("USD", "BRL")
+    # só UMA moeda conhecida: ainda não há par
+    c = de_ledger_campanha_dia("c", [linha("2026-10-01", 1, 1, 1, receita_moeda=None)], as_of=AS_OF, cambio=sem_par).cambio
+    assert c.taxa is None and c.proveniencia == "moeda_desconhecida"
+
+
+def test_pautador_card_exige_moeda_sem_padrao():
+    with pytest.raises(TypeError, match="moeda"):
+        de_pautador_card({"id": "card-65"}, as_of=AS_OF)  # type: ignore[call-arg]
+    e = de_pautador_card({"id": "card-65"}, as_of=AS_OF, moeda="USD")
+    assert (e.cambio.de, e.cambio.para) == ("USD", "USD")
+
+
 # --------------------------------------------------------------------------- fix 4: evidência por linha preservada
 def test_ledger_evidencia_agregada_e_a_mais_fraca_flags_uniao_observado_mais_antigo_fonte_propagada():
     antigo, recente = AS_OF - timedelta(days=5), AS_OF - timedelta(days=1)
@@ -187,7 +258,7 @@ def test_joinads_campanha_dia_marca_moeda_atestada_por_padrao():
 
 # --------------------------------------------------------------------------- fix 7: fronteira Pautador/Bia
 def test_pautador_card_sem_historico_so_pesquisa_e_tolerancia_com_autorizacao_ref():
-    e = de_pautador_card({"id": "card-65", "vertical": "financas", "pais": "BR"}, as_of=AS_OF,
+    e = de_pautador_card({"id": "card-65", "vertical": "financas", "pais": "BR"}, as_of=AS_OF, moeda="BRL",
                          cpc_intervalo=(Dinheiro(300_000, "BRL"), Dinheiro(600_000, "BRL")), rpc_intervalo=None,
                          autorizacao_ref=AUT, perda_maxima_valor=Dinheiro(300_000_000, "BRL"), perda_maxima_horizonte_dias=14)
     assert e.custo.valor is None and e.receita.valor is None and e.cliques.valor is None
@@ -196,15 +267,15 @@ def test_pautador_card_sem_historico_so_pesquisa_e_tolerancia_com_autorizacao_re
 
 
 def test_pautador_card_sem_autorizacao_nao_tem_tolerancia_e_com_valor_sem_ref_e_recusado():
-    e = de_pautador_card({"id": "card-65"}, as_of=AS_OF, autorizacao_ref=None)
+    e = de_pautador_card({"id": "card-65"}, as_of=AS_OF, moeda="BRL", autorizacao_ref=None)
     assert not e.perda_maxima.informada()
     with pytest.raises(ContratoViabilidadeViolado, match="autoriza"):
-        de_pautador_card({"id": "card-65"}, as_of=AS_OF, autorizacao_ref=None, perda_maxima_valor=Dinheiro(1, "BRL"), perda_maxima_horizonte_dias=1)
+        de_pautador_card({"id": "card-65"}, as_of=AS_OF, moeda="BRL", autorizacao_ref=None, perda_maxima_valor=Dinheiro(1, "BRL"), perda_maxima_horizonte_dias=1)
 
 
 @pytest.mark.parametrize("campo", ["perda_maxima", "cambio", "revshare", "imposto", "tolerancia", "orcamento", "lance", "autorizacao"])
 def test_bia_nao_pode_definir_nada_financeiro_nem_passar_autorizacao(campo):
-    base = de_pautador_card({"id": "card-65"}, as_of=AS_OF, autorizacao_ref=AUT, perda_maxima_valor=Dinheiro(300_000_000, "BRL"), perda_maxima_horizonte_dias=14)
+    base = de_pautador_card({"id": "card-65"}, as_of=AS_OF, moeda="BRL", autorizacao_ref=AUT, perda_maxima_valor=Dinheiro(300_000_000, "BRL"), perda_maxima_horizonte_dias=14)
     with pytest.raises(BiaNaoPodeDefinirFinanceiro):
         requisicao_bia(base, {campo: AUT.para_json() if campo == "autorizacao" else {"x": 1}})
     r = requisicao_bia(base, {"motivo": "pergunta do operador"})
