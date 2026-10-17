@@ -15,10 +15,11 @@ import hashlib
 import json
 import sys
 
-DELTA = "docs/data-intelligence/fundacao-20261016/handoffs/CURADORIA-DELTA-20261016.json"
+# argumentos opcionais (rodada de 17/10): caminho do delta e data de updated_at; sem eles, o comportamento original
+DELTA = sys.argv[1] if len(sys.argv) > 1 else "docs/data-intelligence/fundacao-20261016/handoffs/CURADORIA-DELTA-20261016.json"
 RP = "volc-os-workbook/ROADMAP-VIVO.json"
 CP = "docs/volc-os-graph/curadoria-operacional.json"
-HOJE = "2026-10-16"
+HOJE = sys.argv[2] if len(sys.argv) > 2 else "2026-10-16"
 
 
 def conferir_base(op: dict, antigo) -> None:
