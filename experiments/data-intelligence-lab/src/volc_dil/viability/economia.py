@@ -7,7 +7,7 @@ não são calibrações. Ausência propaga como `Indisponivel`, nunca como zero.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from decimal import ROUND_HALF_EVEN, Decimal
+from decimal import Decimal
 from fractions import Fraction
 from typing import Optional, Union
 
@@ -22,11 +22,25 @@ class Indisponivel:
     detalhe: str = ""
 
 
+def micros_de_fracao(fr: Fraction) -> int:
+    """Fraction → int com arredondamento half-even, SÓ com aritmética inteira (sem Decimal, sem float).
+
+    `divmod` em Python arredonda o quociente para −∞ e deixa o resto em [0, d); por isso a mesma
+    comparação `2·resto` vs `denominador` decide o empate para positivos e negativos.
+    """
+    n, d = fr.numerator, fr.denominator
+    q, r = divmod(n, d)
+    dobro = 2 * r
+    if dobro < d:
+        return q
+    if dobro > d:
+        return q + 1
+    return q if q % 2 == 0 else q + 1
+
+
 def _micros_x(micros: int, fator: Union[Fraction, Decimal]) -> int:
     f = Fraction(fator) if isinstance(fator, Decimal) else fator
-    v = Fraction(micros) * f
-    # HALF_EVEN sobre a fração exata (numerador/denominador em Decimal com precisão suficiente)
-    return int((Decimal(v.numerator) / Decimal(v.denominator)).quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
+    return micros_de_fracao(Fraction(micros) * f)
 
 
 # Premissas conservadoras (nome → fator). Declaradas, não calibradas.
@@ -53,6 +67,21 @@ class ReceitaComparavel:
     aplicados: tuple[str, ...]
 
 
+def _negativos(e: EntradaViabilidade) -> Optional[Indisponivel]:
+    """Custo, receita, cliques e visitas observados nunca são negativos. O contrato (V2) recusa na
+    construção; o kernel recusa de novo, defensivamente, para que a contribuição (que PODE ser
+    negativa) jamais nasça de uma entrada negativa."""
+    for nome in ("custo", "receita"):
+        m = getattr(e, nome)
+        if m.valor is not None and m.valor.micros < 0:
+            return Indisponivel("valor_negativo", f"{nome}={m.valor.micros} micros")
+    for nome in ("cliques", "visitas"):
+        m = getattr(e, nome)
+        if m is not None and m.valor is not None and m.valor < 0:
+            return Indisponivel("valor_negativo", f"{nome}={m.valor}")
+    return None
+
+
 def receita_liquida_comparavel(e: EntradaViabilidade) -> Union[ReceitaComparavel, Indisponivel]:
     r = e.receita
     if r.valor is None:
@@ -61,6 +90,9 @@ def receita_liquida_comparavel(e: EntradaViabilidade) -> Union[ReceitaComparavel
         return Indisponivel(f"custo_{e.custo.evidencia.value}")
     if r.moeda_evidencia is Evidencia.INVALID:
         return Indisponivel("moeda_receita_invalid")
+    neg = _negativos(e)
+    if neg is not None:
+        return neg
     limitacoes: list[str] = []
     aplicados: list[str] = []
     micros = r.valor.micros
@@ -121,6 +153,9 @@ def calcular_economia(e: EntradaViabilidade) -> Union[EconomiaObservada, Indispo
         return Indisponivel("cliques_zero")
     if e.custo.valor is None:
         return Indisponivel(f"custo_{e.custo.evidencia.value}")
+    neg = _negativos(e)
+    if neg is not None:
+        return neg
     rc = receita_liquida_comparavel(e)
     if isinstance(rc, Indisponivel):
         return rc
