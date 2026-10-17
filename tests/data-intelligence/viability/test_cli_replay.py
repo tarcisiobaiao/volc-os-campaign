@@ -26,7 +26,7 @@ FIXTURES_MINIMAS = {
 }
 # O veredito "structurally_unviable" (V1) vira "unviable_under_declared_scenarios" no gate v2 (subagente A).
 # O teste aceita o valor NOVO; o antigo fica só até o integrador juntar as duas branches.
-VEREDITO_INVIAVEL = {"unviable_under_declared_scenarios", "structurally_unviable"}
+VEREDITO_INVIAVEL = {"unviable_under_declared_scenarios"}
 CAMPOS_RECIBO = {"kernel_version", "codigo_sha256", "source_commit", "ambiente", "entrada", "input_hash", "result_hash",
                  "resultado_arquivo", "resultado_sha256", "relatorio_arquivo", "relatorio_sha256", "external_actions"}
 

@@ -176,19 +176,34 @@ def test_micros_x_usa_aritmetica_inteira_e_aceita_decimal():
 
 
 # ---------------------------------------------------------------- V2: entradas negativas (fix 4)
-def _negativo(e, campo, micros):
-    m = getattr(e, campo)
-    return e.__class__(**{**e.__dict__, campo: m.__class__(**{**m.__dict__, "valor": Dinheiro(micros, m.valor.moeda)})})
+def _negativo_bypass(e, campo, micros):
+    """Contrato V2 recusa valor negativo na construção; este helper contorna o contrato (object.__setattr__)
+    só para provar que o KERNEL também recusa, defensivamente."""
+    import copy
+    m = copy.copy(getattr(e, campo))
+    object.__setattr__(m, "valor", Dinheiro(micros, m.valor.moeda))
+    e2 = copy.copy(e)
+    object.__setattr__(e2, campo, m)
+    return e2
 
 
-def test_custo_negativo_e_indisponivel_valor_negativo():
-    e = _negativo(entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED), "custo", -1)
-    r = calcular_economia(e)
+def test_custo_negativo_e_recusado_pelo_contrato_e_pelo_kernel():
+    import pytest
+    from volc_dil.viability.contrato import ContratoViabilidadeViolado
+    base = entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED)
+    with pytest.raises(ContratoViabilidadeViolado):
+        base.__class__(**{**base.__dict__, "custo": base.custo.__class__(**{**base.custo.__dict__, "valor": Dinheiro(-1, "BRL")})})
+    r = calcular_economia(_negativo_bypass(base, "custo", -1))
     assert isinstance(r, Indisponivel) and r.motivo == "valor_negativo" and "custo" in r.detalhe
 
 
-def test_receita_negativa_e_indisponivel_valor_negativo():
-    e = _negativo(entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED), "receita", -5)
+def test_receita_negativa_e_recusada_pelo_contrato_e_pelo_kernel():
+    import pytest
+    from volc_dil.viability.contrato import ContratoViabilidadeViolado
+    base = entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED)
+    with pytest.raises(ContratoViabilidadeViolado):
+        base.__class__(**{**base.__dict__, "receita": base.receita.__class__(**{**base.receita.__dict__, "valor": Dinheiro(-5, "BRL")})})
+    e = _negativo_bypass(base, "receita", -5)
     r = calcular_economia(e)
     assert isinstance(r, Indisponivel) and r.motivo == "valor_negativo" and "receita" in r.detalhe
     assert isinstance(receita_liquida_comparavel(e), Indisponivel)

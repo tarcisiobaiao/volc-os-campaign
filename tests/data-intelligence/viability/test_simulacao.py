@@ -127,7 +127,7 @@ def test_moeda_igual_ou_nao_informada_nao_converte():
 
 
 def test_moeda_diferente_com_cambio_converte_o_custo_explicitamente_e_registra_no_json():
-    cambio = Cambio(taxa=Decimal("5"), de="USD", para="BRL", proveniencia="ptax", evidencia=Evidencia.OBSERVED)
+    cambio = Cambio(taxa=Decimal("5"), de="USD", para="BRL", proveniencia="ptax", evidencia=Evidencia.OBSERVED, effective_at=AS_OF, disponivel_em=AS_OF, versao="teste")
     s = v2(sim(ADR, moeda="USD"), cambio=cambio)
     fm = analisar_simulacao(s, RPC * 5, moeda="BRL")
     assert isinstance(fm, FronteiraMarginal)
@@ -140,6 +140,6 @@ def test_moeda_diferente_com_cambio_converte_o_custo_explicitamente_e_registra_n
 
 
 def test_cambio_com_par_errado_e_indisponivel():
-    cambio = Cambio(taxa=Decimal("5"), de="EUR", para="BRL", proveniencia="ptax", evidencia=Evidencia.OBSERVED)
+    cambio = Cambio(taxa=Decimal("5"), de="EUR", para="BRL", proveniencia="ptax", evidencia=Evidencia.OBSERVED, effective_at=AS_OF, disponivel_em=AS_OF, versao="teste")
     r = analisar_simulacao(v2(sim(ADR, moeda="USD"), cambio=cambio), RPC, moeda="BRL")
     assert isinstance(r, CurvaIndisponivel) and r.motivo == "moeda_incompativel"

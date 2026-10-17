@@ -1,6 +1,6 @@
 # Replay do kernel de viabilidade
 
-kernel `viability-kernel@1.0.0` · código `0056d0b1c786…` · replay_hash `9b9de21b16b7…`
+kernel `viability-kernel@1.0.0` · código `11a533a73e1f…` · replay_hash `565e467f7393…`
 
 | fixture | veredito | recomendação | confiança | manter | não lançar | igual | CPC médio | RPC médio | kernel marginal | invariantes |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -16,9 +16,9 @@ kernel `viability-kernel@1.0.0` · código `0056d0b1c786…` · replay_hash `9b9
 | proximo_do_equilibrio | test_with_cap | propor_teste_limitado | medium | continuar | parar | continuar_igual | continuar | continuar | sem_curva | ok |
 | receita_atrasada | insufficient_evidence | coletar_evidencia | insufficient | continuar | parar | continuar_igual | inconclusivo | inconclusivo | sem_curva | ok |
 | receita_ausente | insufficient_evidence | coletar_evidencia | insufficient | continuar | parar | continuar_igual | inconclusivo | inconclusivo | sem_curva | ok |
-| receita_zero_observada | structurally_unviable | rejeitar_tese_economica | high | continuar | parar | continuar_igual | parar | parar | sem_curva | ok |
+| receita_zero_observada | unviable_under_declared_scenarios | rejeitar_tese_economica | high | continuar | parar | continuar_igual | parar | parar | sem_curva | ok |
 | roas_medio_bom_marginal_destroi | already_profitable | continuar_campanha_existente | high | continuar | parar | continuar_igual | expandir | continuar | expandir_ate_100000 | ok |
-| senac_sanitizada | structurally_unviable | rejeitar_tese_economica | medium | continuar | parar | continuar_igual | parar | parar | sem_curva | ok |
+| senac_sanitizada | unviable_under_declared_scenarios | rejeitar_tese_economica | medium | continuar | parar | continuar_igual | parar | parar | sem_curva | ok |
 | simulacao_inexistente | already_profitable | continuar_campanha_existente | high | continuar | parar | continuar_igual | continuar | continuar | sem_curva | ok |
 | simulacao_nao_monotonica | already_profitable | continuar_campanha_existente | high | continuar | parar | continuar_igual | continuar | continuar | sem_curva | ok |
 | simulacao_pontos_duplicados | already_profitable | continuar_campanha_existente | high | continuar | parar | continuar_igual | continuar | continuar | sem_curva | ok |

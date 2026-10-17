@@ -37,7 +37,6 @@ class Veredito(str, enum.Enum):
     VIABLE_CANDIDATE = "viable_candidate"
     ALREADY_PROFITABLE = "already_profitable"
     # Alias de compatibilidade (mesmo membro) para código V1 ainda não migrado; remover na integração.
-    STRUCTURALLY_UNVIABLE = "unviable_under_declared_scenarios"
 
     @staticmethod
     def ordem(v: "Veredito") -> int:

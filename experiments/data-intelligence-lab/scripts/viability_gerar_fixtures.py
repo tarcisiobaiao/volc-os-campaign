@@ -69,7 +69,8 @@ def perda(v=None, h=None):
 
 def base(cid, **kw):
     d = dict(candidato_id=cid, vertical="generica", pais="BR", fonte_custo="google_ads", fonte_receita="joinads", as_of=AS_OF,
-             janela=JanelaObservada("2026-09-26", "2026-10-11", 16, 3), cliques=cnt(634), custo=mon("554.75", "BRL"),
+             janela=JanelaObservada("2026-09-26", "2026-10-11", 16, 3, dias_custo_maduro=16, dias_receita_madura=16, dias_custo_sem_receita=0, cobertura_receita_ppm=1_000_000),
+             cliques=cnt(634), custo=mon("554.75", "BRL"),
              receita=mon("40.79", "BRL"), cambio=cambio(), revshare=taxa(1), imposto=taxa(), perda_maxima=perda(300, 14))
     d.update(kw)
     return EntradaViabilidade(**d)
@@ -114,7 +115,7 @@ def fixtures() -> dict[str, tuple[EntradaViabilidade, dict]]:
         "receita_ausente": (base("cand-sem-receita", receita=mon(None, "USD", Evidencia.ABSENT, Evidencia.UNKNOWN), cambio=cambio("5.25")), {}),
         "receita_zero_observada": (base("cand-receita-zero", receita=mon("0", "BRL"), cambio=cambio(None, de="BRL", para="BRL")), {"nota": "zero confirmado ≠ ausente"}),
         "receita_atrasada": (base("cand-receita-late", receita=mon(None, "USD", Evidencia.UNKNOWN, Evidencia.ATTESTED), cambio=cambio("5.25"), flags_qualidade=("receita_late",)), {"nota": "esperada e não publicada"}),
-        "dados_imaturos": (base("cand-imaturo", janela=JanelaObservada("2026-10-13", "2026-10-15", 1, 2), receita=mon("60", "BRL", Evidencia.IMMATURE, Evidencia.OBSERVED), cambio=cambio(None, de="BRL", para="BRL")), {}),
+        "dados_imaturos": (base("cand-imaturo", janela=JanelaObservada("2026-10-13", "2026-10-15", 1, 2, dias_custo_maduro=1, dias_receita_madura=1, cobertura_receita_ppm=1_000_000), receita=mon("60", "BRL", Evidencia.IMMATURE, Evidencia.OBSERVED), cambio=cambio(None, de="BRL", para="BRL")), {}),
         "limite_financeiro_ausente": (base("cand-sem-perda", receita=mon("600", "BRL"), cambio=cambio(None, de="BRL", para="BRL"), perda_maxima=perda()), {}),
         "simulacao_inexistente": (base("cand-sem-sim", receita=mon("800", "BRL"), cambio=cambio(None, de="BRL", para="BRL")), {"nota": "sem pontos → diagnóstico, não erro"}),
         "simulacao_pontos_duplicados": (base("cand-sim-dup", receita=mon("800", "BRL"), cambio=cambio(None, de="BRL", para="BRL"),
