@@ -192,6 +192,60 @@ def test_verify_resultado_reescrito_exit_4(tmp_path):
     assert r.returncode == 4 and "resultado_sha256" in r.stderr
 
 
+# --------------------------------------------------------------------------- R8: o hash do código cobre os contratos de dinheiro e vocabulário
+def _copia_isolada_do_lab(destino: Path) -> Path:
+    """Cópia do lab (src/, scripts/, fixtures/viability, uv.lock) fora do repositório: o CLI resolve RAIZ_LAB pela
+    própria localização, então a cópia hasheia e verifica o SEU código. Sem git na cópia, source_commit é
+    "indisponivel" — isso é registrado, nunca comparado, e não faz o verify falhar."""
+    ignorar = shutil.ignore_patterns("__pycache__", "*.pyc")
+    shutil.copytree(LAB / "src", destino / "src", ignore=ignorar)
+    shutil.copytree(LAB / "scripts", destino / "scripts", ignore=ignorar)
+    shutil.copytree(FIX, destino / "fixtures" / "viability", ignore=ignorar)
+    shutil.copy2(LAB / "uv.lock", destino / "uv.lock")
+    return destino
+
+
+@pytest.mark.parametrize("arquivo", ["src/volc_dil/contracts/money.py", "src/volc_dil/contracts/vocab.py"])
+def test_recibo_codigo_sha256_cobre_contratos_money_e_vocab(tmp_path, arquivo):
+    lab = _copia_isolada_do_lab(tmp_path / "lab")
+    cli_tmp = lab / "scripts" / "viability_cli.py"
+
+    def run(*a):
+        return subprocess.run([sys.executable, "-I", str(cli_tmp), *a], capture_output=True, text=True, cwd=str(lab))
+
+    fixture = lab / "fixtures" / "viability" / "campanha_favoravel.json"
+    assert run("evaluate", str(fixture), "--saida", str(tmp_path / "antes")).returncode == 0
+    antes = _recibo(tmp_path / "antes")
+    assert antes["source_commit"] == "indisponivel" or re.fullmatch(r"[0-9a-f]{40}", antes["source_commit"])
+    v0 = run("verify", str(tmp_path / "antes" / "recibo.json"))
+    assert v0.returncode == 0, v0.stderr  # source_commit indisponível na cópia não é falha de verificação
+
+    # adulteração inofensiva (comentário) num contrato de que o kernel depende: o código mudou, o recibo não reproduz
+    with (lab / arquivo).open("a", encoding="utf-8") as f:
+        f.write("\n# comentário inofensivo acrescentado pelo teste (adulteração de código)\n")
+    v1 = run("verify", str(tmp_path / "antes" / "recibo.json"))
+    assert v1.returncode == 4 and "codigo_sha256" in v1.stderr, v1.stderr
+
+    assert run("evaluate", str(fixture), "--saida", str(tmp_path / "depois")).returncode == 0
+    depois = _recibo(tmp_path / "depois")
+    assert antes["codigo_sha256"] != depois["codigo_sha256"]
+    assert antes["result_hash"] == depois["result_hash"] and antes["input_hash"] == depois["input_hash"]  # a semântica não mudou, só o código
+    assert run("verify", str(tmp_path / "depois" / "recibo.json")).returncode == 0
+
+
+def test_recibo_codigo_sha256_bate_com_o_conjunto_documentado_de_arquivos(tmp_path):
+    """O conjunto é fechado: viability/*.py + contracts/money.py + contracts/vocab.py + o próprio CLI, ordenados pelo
+    caminho relativo ao lab, hash = sha256(caminho + NUL + bytes, …)."""
+    cli("evaluate", str(FIX / "campanha_favoravel.json"), "--saida", str(tmp_path))
+    arquivos = sorted(list((LAB / "src" / "volc_dil" / "viability").glob("*.py"))
+                      + [LAB / "src" / "volc_dil" / "contracts" / "money.py", LAB / "src" / "volc_dil" / "contracts" / "vocab.py", CLI],
+                      key=lambda p: p.relative_to(LAB).as_posix())
+    h = hashlib.sha256()
+    for p in arquivos:
+        h.update(p.relative_to(LAB).as_posix().encode()); h.update(b"\0"); h.update(p.read_bytes())
+    assert _recibo(tmp_path)["codigo_sha256"] == h.hexdigest()
+
+
 # --------------------------------------------------------------------------- frontier / simulation
 def test_frontier_e_simulation_subcomandos(tmp_path):
     assert cli("frontier", str(FIX / "senac_sanitizada.json"), "--saida", str(tmp_path / "f")).returncode == 0

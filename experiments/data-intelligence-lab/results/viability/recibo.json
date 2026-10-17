@@ -4,7 +4,7 @@
   "python": "3.13.0 (v3.13.0:60403a5409f, Oct  7 2024, 00:37:40) [Clang 15.0.0 (clang-1500.3.9.4)]",
   "uv_lock_sha256": "0b08edcbf0f39f2b5fe29567922a816cd5eb2e84128aa970c15dd6fffa18a006"
  },
- "codigo_sha256": "e69aed4f54f42c977c50eb5e02cd435fe6fd5258e52d74fa05f8358611bd9b41",
+ "codigo_sha256": "72ea491387ec10fbe8f814f3208ac7aa95259faa13a9cc2ac447f42701facd82",
  "external_actions": 0,
  "fixtures_dir": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/worktrees/fable-viability-kernel-v2r-B-20261017/experiments/data-intelligence-lab/fixtures/viability",
  "fixtures_sha256": {
@@ -30,10 +30,10 @@
  "kernel_version": "viability-kernel@2.0.0",
  "nota": "sha256 prova integridade e reprodutibilidade, não identidade nem autoria (sem assinatura)",
  "relatorio_arquivo": "replay.md",
- "relatorio_sha256": "57292f4d62181d619cd67678abc3db55bc0c13157e8cfee881f605a609cf7445",
- "replay_hash": "8599782c004bb8cc688cc18be37a3be46dd924d2ff8eb8dfd1edc808e4f322f3",
+ "relatorio_sha256": "976e653c0a5d416ebbf5739a0d2572b2ab3e4ec7a841279dab662fc70198f72f",
+ "replay_hash": "9726f8751e99646dff9180e5926a48827a25a7791a0875106e25261d60cc7f6a",
  "resultado_arquivo": "replay.json",
- "resultado_sha256": "2f1377300f379250d4cd871ff36bbd705c7feb317e98cdec3481a18f79be99df",
- "source_commit": "f343d3b4de908eb8aa1aa7b325dc24165787553d",
+ "resultado_sha256": "d166aea7a7788c1459833d67dc4062cc46f164ca600c28db90636e6599f487ea",
+ "source_commit": "c6b29343be61c12fdc43f00ae7ff971becae03de",
  "tipo": "replay"
 }

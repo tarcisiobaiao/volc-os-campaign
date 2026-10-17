@@ -37,16 +37,21 @@ from volc_dil.viability.invariantes import InvarianteViolada, verificar_invarian
 from volc_dil.viability.simulacao import CurvaIndisponivel, analisar_simulacao  # noqa: E402
 
 EXIT_OK, EXIT_ENTRADA_INVALIDA, EXIT_INSUFICIENTE, EXIT_INVARIANTE = 0, 2, 3, 4
-# O código que produz o recibo: os módulos do kernel E este CLI (o relatório/recibo são formatados aqui).
-MODULOS = sorted((RAIZ_LAB / "src" / "volc_dil" / "viability").glob("*.py")) + [Path(__file__).resolve()]
+# O código que produz o recibo: os módulos do kernel, os contratos de que ele depende (dinheiro em micros e
+# vocabulário de evidência) E este CLI (o relatório/recibo são formatados aqui). Conjunto fechado, documentado
+# em README-viability-cli.md; ordenado pelo caminho relativo ao lab para ser o mesmo em qualquer cópia.
+CONTRATOS = RAIZ_LAB / "src" / "volc_dil" / "contracts"
+MODULOS = sorted(list((RAIZ_LAB / "src" / "volc_dil" / "viability").glob("*.py")) + [CONTRATOS / "money.py", CONTRATOS / "vocab.py", Path(__file__).resolve()],
+                 key=lambda p: p.relative_to(RAIZ_LAB).as_posix())
 UV_LOCK = RAIZ_LAB / "uv.lock"
 INDISPONIVEL = "indisponivel"
 
 
 def codigo_sha256() -> str:
+    """sha256(caminho relativo ao lab + NUL + bytes) de cada arquivo de MODULOS, na ordem dos caminhos."""
     h = hashlib.sha256()
     for p in MODULOS:
-        h.update(p.name.encode()); h.update(p.read_bytes())
+        h.update(p.relative_to(RAIZ_LAB).as_posix().encode()); h.update(b"\0"); h.update(p.read_bytes())
     return h.hexdigest()
 
 
