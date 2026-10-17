@@ -1,0 +1,23 @@
+{
+ "gerador": "scripts/viability_gerar_fixtures.py",
+ "sha256": {
+  "cambio_ausente.json": "8157c89ae6993b5e656362373c1989dff32dee1dff960a3a2ecb6611e3d5e9a8",
+  "campanha_favoravel.json": "60de2c9f7bf37eee368fecabadc47bb79e4f4f2b2a675d83f86eec87ac64453f",
+  "campanha_nova_sem_historico.json": "5327052bffe3100ecdc2df09b519a466172888cb29710909113a5808036f98d2",
+  "curva_ultimos_20pct_destroem.json": "8cc9a15491fcdd5a823da36ffa497aec20843179a402f54120b0222ac38aab95",
+  "custo_ausente.json": "b57608fdc7c94d26e11d3736217e523eee0994dfcee1ad5e2e7df7830a43ba6b",
+  "dados_imaturos.json": "c8122cedbd3beac2e2ae1bb410aaeb9e3dd3535e0f368d09e14075fbe73674d8",
+  "limite_financeiro_ausente.json": "3d1e4decf3b0549319048131f5e7076a766c40d8c673a82dfb129a6a14779739",
+  "moeda_apenas_atestada.json": "277c4506ea7a12c9ed3295ce9a9dc566d5df75857fa6cbed83cecccdeae70883",
+  "moeda_desconhecida.json": "b0b441641f4a415e7c1a66821fd0b9e428139a924c997435946cff5098543a0e",
+  "proximo_do_equilibrio.json": "c160cf5339c5796fc5e92647ded30658901451a13970dec50d900bc0255a8119",
+  "receita_atrasada.json": "b5f35263d77d7ff459b532384801f6f1c40be5ae2a607ccc6c6f9eb5ab9b348c",
+  "receita_ausente.json": "dff8b1d90df3f90665454b810da7dad378b5f3e3e6ab77f93a5fcd82cf70a354",
+  "receita_zero_observada.json": "683fcc27479d8cc83fe6b1406038bef659a8ae96a9e7eb78019c3d27af094a91",
+  "roas_medio_bom_marginal_destroi.json": "770dc6652d2a0496c6570e4fab17d5f0e55ef0fa915e45b83bc1f802454b0138",
+  "senac_sanitizada.json": "c418c2a86a5292e2ef3dac57fefc9cba844ab3a42b569ec059caf86b133b817b",
+  "simulacao_inexistente.json": "bf1648e0fa707ab943ed784a116f522f6b202ba9e527e7909c93be5aefd5ec21",
+  "simulacao_nao_monotonica.json": "a22641e8384932f974fc218a34c4b0aced73bd5482781050ef923ac6b4fffcb9",
+  "simulacao_pontos_duplicados.json": "e5c1d27589fbe14c25d33109b8c9f66cb7965b52c2c01c9f1ed673b03617ba3b"
+ }
+}
