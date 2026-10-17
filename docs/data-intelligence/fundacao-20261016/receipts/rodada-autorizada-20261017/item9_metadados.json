@@ -1,0 +1,1132 @@
+{
+ "edge_function": {
+  "host_index_ts_igual_128b93ae": false,
+  "host_index_ts_igual_db65a78a": true,
+  "ls": [
+   "total 12",
+   "-rw-r--r-- 1 root root 6927 2026-10-16T16:04:59+0000 index.ts",
+   "-rw------- 1 root root 3187 2026-10-15T15:33:39+0000 index.ts.pre-volc-v3-20261015-153339",
+   "running 2026-10-16T16:05:09.723989453Z"
+  ],
+  "sha256_host": {
+   "index.ts": "624460c30592b3fd6ff3abfc23cb7158c009e709857c9d9f185e84b0ff92e5ae",
+   "index.ts.pre-volc-v3-20261015-153339": "b44a2d4d714ac4464655ef0d5581b671b5bf9f3acbe18a6e7cb03a3a9d9dc283"
+  },
+  "sha256_repo_index_ts": {
+   "128b93ae": "3739594b0fd30d963b0dd08fbc4527cacb1fde129fed5b43d48f8d94fc28a0ca",
+   "db65a78a": "624460c30592b3fd6ff3abfc23cb7158c009e709857c9d9f185e84b0ff92e5ae"
+  },
+  "stderr_linhas": 0
+ },
+ "gtm": {
+  "diff_v35_v36": {
+   "tags": {
+    "alterados": [],
+    "so_v35": [
+     "VOLC Sensor v3.0"
+    ],
+    "so_v36": [
+     "VOLC Sensor v3.1"
+    ]
+   },
+   "triggers": {
+    "alterados": [],
+    "so_v35": [],
+    "so_v36": []
+   },
+   "variables": {
+    "alterados": [],
+    "so_v35": [],
+    "so_v36": []
+   }
+  },
+  "live_e_v36": true,
+  "live_vs_repo_db65a78a": {
+   "VOLC Sensor v3.1": {
+    "igual": true,
+    "live": "8d348dd471bd195bce2aeda6e038d09b5bcc57035e4f92babd40b80afcc5078d",
+    "repo_db65a78a": "8d348dd471bd195bce2aeda6e038d09b5bcc57035e4f92babd40b80afcc5078d"
+   },
+   "WEBS Wrapper v2": {
+    "igual": true,
+    "live": "7e28baeea50ed27b224e8dcbc5dc6f13e287aa4119d71b125b20bb4ee6af3964",
+    "repo_db65a78a": "7e28baeea50ed27b224e8dcbc5dc6f13e287aa4119d71b125b20bb4ee6af3964"
+   }
+  },
+  "manifest_esperado": [
+   "36",
+   "VOLC Measurement v3.1 - 2026-10-16"
+  ],
+  "setTargeting_por_tag": "só 'WEBS Wrapper v2' chama setTargeting em v35 e v36 (varredura booleana do HTML)",
+  "v35_sensor_v3_0_vs_repo_128b93ae": {
+   "repo": "6258a6d3cd31859aae8a8dfff16948adf8d9d803b93b7d6b5ff0e8a0135a5689",
+   "v35": "6258a6d3cd31859aae8a8dfff16948adf8d9d803b93b7d6b5ff0e8a0135a5689"
+  },
+  "v35_wrapper_vs_repo_128b93ae": {
+   "igual": true,
+   "repo_128b93ae": "7e28baeea50ed27b224e8dcbc5dc6f13e287aa4119d71b125b20bb4ee6af3964",
+   "v35": "7e28baeea50ed27b224e8dcbc5dc6f13e287aa4119d71b125b20bb4ee6af3964"
+  },
+  "versoes": {
+   "35": {
+    "id": "35",
+    "n_tags": 13,
+    "n_triggers": 11,
+    "n_variaveis": 10,
+    "nome": "VOLC Measurement v3 - 2026-10-15",
+    "tags": {
+     "Busca Conversion Supabase": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": true,
+      "sha256": "84e8e538b0fec2c56fbef56dea9ac90b554b85456ef9a0c18eb3d2dade73c8f1",
+      "tipo": "html",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     },
+     "Correção de Imagens Elementor (Lazy Load)": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "c9e5c2b70a2d785fa550791f467e7a6da15659339c2734884d3a934ed4f77548",
+      "tipo": "html",
+      "triggers": [
+       "DOM Ready"
+      ]
+     },
+     "GA4 - Pageview": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "c99cba395dd8e2a0887fcb1abe7039d412f37c09e00322ec06b58d8e50727497",
+      "tipo": "googtag",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     },
+     "GA4 - adViewInterstitial": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "c72b0f28b8c19f6c4c78ba3753336aa626351fd471cf434764c5ab771dfc5277",
+      "tipo": "gaawe",
+      "triggers": [
+       "JoinAds - Impression Viewable - Interstitial"
+      ]
+     },
+     "GADS - Conversão Personalizada por Campanha": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": true,
+      "sha256": "85c380dbf72ad1f78a588d8bf6d6ad859c5e99f8e97829fd6858d267c3b1b704",
+      "tipo": "awct",
+      "triggers": [
+       "adViewInterstitial"
+      ]
+     },
+     "Google - Vinculador de Conversões": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "b40f50e5d75f92e9c5d7bb4e8b49e0d2f3431b7e460b2d077eb62f8fc686f68b",
+      "tipo": "gclidw",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     },
+     "Google Ads - Base - CreditUp": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "f041bafb2a28e3e7398b94b249d2dbf503a2861bdfb18657b35185b2688ccfe5",
+      "tipo": "googtag",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     },
+     "Google Ads - conversão adView": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "f58e419cb1200ab7d5efd3722eda1cd6d6108fbef8bc80e2b2bd992968cf728f",
+      "tipo": "awct",
+      "triggers": [
+       "JoinAds - Impression Viewable - Display"
+      ]
+     },
+     "Google Ads - conversão adViewInterstitial": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "1946f3ad81f1ca3050bd22aed158e4a4c396944d321f5f8bde90f774b580929c",
+      "tipo": "awct",
+      "triggers": [
+       "JoinAds - Impression Viewable - Interstitial"
+      ]
+     },
+     "Google Ads - conversão adViewRewarded": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "a34968f4ffaaa2fe4cfd013b2371d487c2055ec529287f024c3cfcd7955378b1",
+      "tipo": "awct",
+      "triggers": [
+       "JoinAds - Impression Viewable - Rewarded"
+      ]
+     },
+     "Tag seWCV - Tracking Corem título": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": true,
+      "sha256": "074b2c6bbddc5781fae65be495734e17b9f1d28035679583298c77d4c28e8023",
+      "tipo": "html",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     },
+     "VOLC Sensor v3.0": {
+      "consent_status": "needed",
+      "consentimento": [
+       "analytics_storage"
+      ],
+      "pausada": false,
+      "sha256": "6258a6d3cd31859aae8a8dfff16948adf8d9d803b93b7d6b5ff0e8a0135a5689",
+      "tipo": "html",
+      "triggers": [
+       "DOM Ready"
+      ]
+     },
+     "WEBS Wrapper v2": {
+      "consent_status": "needed",
+      "consentimento": [
+       "ad_storage",
+       "analytics_storage"
+      ],
+      "pausada": false,
+      "sha256": "7e28baeea50ed27b224e8dcbc5dc6f13e287aa4119d71b125b20bb4ee6af3964",
+      "tipo": "html",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     }
+    }
+   },
+   "36": {
+    "id": "36",
+    "n_tags": 13,
+    "n_triggers": 11,
+    "n_variaveis": 10,
+    "nome": "VOLC Measurement v3.1 - 2026-10-16",
+    "tags": {
+     "Busca Conversion Supabase": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": true,
+      "sha256": "84e8e538b0fec2c56fbef56dea9ac90b554b85456ef9a0c18eb3d2dade73c8f1",
+      "tipo": "html",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     },
+     "Correção de Imagens Elementor (Lazy Load)": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "c9e5c2b70a2d785fa550791f467e7a6da15659339c2734884d3a934ed4f77548",
+      "tipo": "html",
+      "triggers": [
+       "DOM Ready"
+      ]
+     },
+     "GA4 - Pageview": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "c99cba395dd8e2a0887fcb1abe7039d412f37c09e00322ec06b58d8e50727497",
+      "tipo": "googtag",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     },
+     "GA4 - adViewInterstitial": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "c72b0f28b8c19f6c4c78ba3753336aa626351fd471cf434764c5ab771dfc5277",
+      "tipo": "gaawe",
+      "triggers": [
+       "JoinAds - Impression Viewable - Interstitial"
+      ]
+     },
+     "GADS - Conversão Personalizada por Campanha": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": true,
+      "sha256": "85c380dbf72ad1f78a588d8bf6d6ad859c5e99f8e97829fd6858d267c3b1b704",
+      "tipo": "awct",
+      "triggers": [
+       "adViewInterstitial"
+      ]
+     },
+     "Google - Vinculador de Conversões": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "b40f50e5d75f92e9c5d7bb4e8b49e0d2f3431b7e460b2d077eb62f8fc686f68b",
+      "tipo": "gclidw",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     },
+     "Google Ads - Base - CreditUp": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "f041bafb2a28e3e7398b94b249d2dbf503a2861bdfb18657b35185b2688ccfe5",
+      "tipo": "googtag",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     },
+     "Google Ads - conversão adView": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "f58e419cb1200ab7d5efd3722eda1cd6d6108fbef8bc80e2b2bd992968cf728f",
+      "tipo": "awct",
+      "triggers": [
+       "JoinAds - Impression Viewable - Display"
+      ]
+     },
+     "Google Ads - conversão adViewInterstitial": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "1946f3ad81f1ca3050bd22aed158e4a4c396944d321f5f8bde90f774b580929c",
+      "tipo": "awct",
+      "triggers": [
+       "JoinAds - Impression Viewable - Interstitial"
+      ]
+     },
+     "Google Ads - conversão adViewRewarded": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": false,
+      "sha256": "a34968f4ffaaa2fe4cfd013b2371d487c2055ec529287f024c3cfcd7955378b1",
+      "tipo": "awct",
+      "triggers": [
+       "JoinAds - Impression Viewable - Rewarded"
+      ]
+     },
+     "Tag seWCV - Tracking Corem título": {
+      "consent_status": "notSet",
+      "consentimento": [],
+      "pausada": true,
+      "sha256": "074b2c6bbddc5781fae65be495734e17b9f1d28035679583298c77d4c28e8023",
+      "tipo": "html",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     },
+     "VOLC Sensor v3.1": {
+      "consent_status": "needed",
+      "consentimento": [
+       "analytics_storage"
+      ],
+      "pausada": false,
+      "sha256": "8d348dd471bd195bce2aeda6e038d09b5bcc57035e4f92babd40b80afcc5078d",
+      "tipo": "html",
+      "triggers": [
+       "DOM Ready"
+      ]
+     },
+     "WEBS Wrapper v2": {
+      "consent_status": "needed",
+      "consentimento": [
+       "ad_storage",
+       "analytics_storage"
+      ],
+      "pausada": false,
+      "sha256": "7e28baeea50ed27b224e8dcbc5dc6f13e287aa4119d71b125b20bb4ee6af3964",
+      "tipo": "html",
+      "triggers": [
+       "gatilho_embutido_gtm"
+      ]
+     }
+    }
+   }
+  }
+ },
+ "n8n": {
+  "ativos_com_error_workflow": 1,
+  "ids_documentados_ausentes": [],
+  "n_ativos": 72,
+  "n_workflows": 382,
+  "workflows_do_dominio": [
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 10
+    },
+    "id": null,
+    "nome": "ALERTA · Cobertura de placements (custo e receita)",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "30 9 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T12:30:00.180Z",
+    "updatedAt": "2026-10-06T14:31:46.301Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {},
+    "id": null,
+    "nome": "Apply Bidding - Webhook v2",
+    "schedules": [],
+    "timezone": null,
+    "ultima_execucao": null,
+    "updatedAt": "2025-12-23T13:03:21.000Z",
+    "webhooks": 1
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 20
+    },
+    "id": null,
+    "nome": "FORCE UPDATE GADS",
+    "schedules": [],
+    "timezone": null,
+    "ultima_execucao": "2026-10-16T21:28:34.418Z",
+    "updatedAt": "2025-09-15T21:57:52.000Z",
+    "webhooks": 1
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 20
+    },
+    "id": null,
+    "nome": "FORCE UPDATE GAM",
+    "schedules": [],
+    "timezone": null,
+    "ultima_execucao": "2026-10-16T21:28:44.128Z",
+    "updatedAt": "2025-09-20T11:16:42.000Z",
+    "webhooks": 1
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 20
+    },
+    "id": "hN15qFAVOqH0135q",
+    "nome": "G ADS - REPORT",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 6,12,18,23 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-17T02:00:00.360Z",
+    "updatedAt": "2026-08-28T16:24:31.369Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 14
+    },
+    "id": "tKUItcd0AoD9mozV",
+    "nome": "G ADS REPORT - DAY BEFORE OFICIAL",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "triggerAtHour": 6
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T09:00:22.040Z",
+    "updatedAt": "2026-09-29T22:26:17.753Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 1,
+     "success": 19
+    },
+    "id": null,
+    "nome": "GADS REPORT",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 6,12,18,23 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-17T02:00:00.213Z",
+    "updatedAt": "2026-07-20T10:41:26.425Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 3,
+     "success": 13
+    },
+    "id": null,
+    "nome": "GADS REPORT - DAY BEFORE OFICIAL",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "triggerAtHour": 5
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T08:00:08.150Z",
+    "updatedAt": "2026-10-16T00:54:24.067Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 20
+    },
+    "id": null,
+    "nome": "GAM + ADSENSE - PROJECTS REVENUE",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 6,12,18,23 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-17T02:00:00.280Z",
+    "updatedAt": "2026-10-06T15:35:33.722Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 15
+    },
+    "id": null,
+    "nome": "GAM + ADSENSE - PROJECTS REVENUE - DAY BEFORE",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "triggerAtHour": 6
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T09:00:45.845Z",
+    "updatedAt": "2026-10-06T15:35:34.561Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 20
+    },
+    "id": null,
+    "nome": "GAM - ECPM HOURLY",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 30 * * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-17T01:30:00.037Z",
+    "updatedAt": "2026-08-18T10:31:23.870Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 4,
+     "success": 16
+    },
+    "id": null,
+    "nome": "GAM - PLACEMENTES DISPLAY",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 6,12,18,23 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": null,
+    "ultima_execucao": "2026-10-16T21:00:00.274Z",
+    "updatedAt": "2026-10-06T12:07:25.419Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 1,
+     "success": 13
+    },
+    "id": null,
+    "nome": "GAM - PLACEMENTES DISPLAY - DAY BEFORE",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "triggerAtHour": 6
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T09:00:50.105Z",
+    "updatedAt": "2026-10-06T12:07:23.836Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 1,
+     "success": 19
+    },
+    "id": null,
+    "nome": "GAM REPORT - CAMPAIGN ID",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 6,12,18,23 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-17T02:00:00.150Z",
+    "updatedAt": "2026-10-06T09:54:00.672Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 15
+    },
+    "id": null,
+    "nome": "GAM REPORT - CAMPAIGN ID -  DAY BEFORE OFICIAL",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "triggerAtHour": 6
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T09:00:18.459Z",
+    "updatedAt": "2026-10-06T09:54:02.121Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 2,
+     "success": 16
+    },
+    "id": null,
+    "nome": "GAM · RECEITA POR ANÚNCIO META (utm_content)",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 6,12,18,23 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-17T02:00:00.347Z",
+    "updatedAt": "2026-10-13T20:29:18.835Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 3
+    },
+    "id": null,
+    "nome": "GAM · RECEITA POR ANÚNCIO META (utm_content) - DAY BEFORE",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "triggerAtHour": 6
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T09:00:15.054Z",
+    "updatedAt": "2026-10-13T20:29:19.146Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 20
+    },
+    "id": null,
+    "nome": "GOOGLE ADS - PLACEMENTS DISPLAY",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 0,6,12,18 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T21:00:00.144Z",
+    "updatedAt": "2026-08-18T11:06:32.182Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 14
+    },
+    "id": null,
+    "nome": "GOOGLE ADS - PLACEMENTS DISPLAY - DAY BEFORE",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "triggerAtHour": 7
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T10:00:24.037Z",
+    "updatedAt": "2026-10-06T14:19:56.384Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {},
+    "id": null,
+    "nome": "Google Ads - Ligações (Dashboard) - Positivo",
+    "schedules": [],
+    "timezone": null,
+    "ultima_execucao": null,
+    "updatedAt": "2026-07-14T14:56:11.097Z",
+    "webhooks": 1
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {},
+    "id": null,
+    "nome": "Google Ads Search - Clickup",
+    "schedules": [],
+    "timezone": null,
+    "ultima_execucao": null,
+    "updatedAt": "2026-02-24T19:57:51.055Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 15
+    },
+    "id": "RpxB9ppefxZWujEV",
+    "nome": "JOIN ADS - REPORT - DAY BEFORE",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 6 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T09:00:00.441Z",
+    "updatedAt": "2026-10-15T16:51:53.144Z",
+    "webhooks": 1
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 20
+    },
+    "id": "U0jEfGt30HqbUq1o",
+    "nome": "JOIN ADS - REPORT - INTRA DAY",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 6,12,18,23 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-17T02:00:00.309Z",
+    "updatedAt": "2026-10-15T16:51:45.051Z",
+    "webhooks": 1
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 1,
+     "success": 5
+    },
+    "id": "jDX397ViVcRQft4A",
+    "nome": "JOINADS V2 - CANONICAL D1 SHADOW",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "20 6 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T09:20:00.041Z",
+    "updatedAt": "2026-10-15T16:46:09.680Z",
+    "webhooks": 1
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 18
+    },
+    "id": "cpb6tNxt211UkAn2",
+    "nome": "JOINADS V2 - CANONICAL INTRADAY SHADOW",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "15 6-22/2 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-17T01:15:00.040Z",
+    "updatedAt": "2026-10-15T16:46:08.287Z",
+    "webhooks": 1
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 13,
+     "success": 7
+    },
+    "id": null,
+    "nome": "VOLC - Orakul - AI Agent - Webgo",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "30 6 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T09:30:00.131Z",
+    "updatedAt": "2026-10-13T14:42:25.564Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 4
+    },
+    "id": "7yxs1aOlzWkkkSf9",
+    "nome": "VOLC | Google Ads | Coleta Canônica D-1 | shadow",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "17 6,14 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T17:17:00.017Z",
+    "updatedAt": "2026-10-15T14:52:21.554Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 1,
+     "success": 19
+    },
+    "id": "Ps9yLfQkHeaAbyZZ",
+    "nome": "VOLC | Google Ads | Coleta Canônica D0 | shadow",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "7 6-23 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-17T01:07:00.015Z",
+    "updatedAt": "2026-10-15T14:52:20.939Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "error": 3,
+     "success": 13
+    },
+    "id": "TFlmThr4930oPneE",
+    "nome": "VOLC | Google Ads | Termos e Keywords | shadow read-only",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "23 */4 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": "2026-10-16T23:23:00.019Z",
+    "updatedAt": "2026-10-15T15:14:00.717Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": true,
+    "error_workflow": false,
+    "execucoes_20": {
+     "success": 14
+    },
+    "id": null,
+    "nome": "🚀 Google Ads Factory v3.0 - FIXED",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {}
+       ]
+      }
+     }
+    ],
+    "timezone": null,
+    "ultima_execucao": "2026-10-16T22:00:46.054Z",
+    "updatedAt": "2026-01-20T19:17:50.000Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": false,
+    "error_workflow": false,
+    "execucoes_20": {},
+    "id": "svJWqv5r1NSxB8MO",
+    "nome": "KW Optmization - Search Terms upgrade",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "0 6 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": null,
+    "updatedAt": "2026-02-19T23:47:16.388Z",
+    "webhooks": 0
+   },
+   {
+    "ativo": false,
+    "error_workflow": false,
+    "execucoes_20": {},
+    "id": "Q6IunKtTI0gY0KgX",
+    "nome": "ORAKUL V.OS AUTO ADJUST",
+    "schedules": [
+     {
+      "desativado": false,
+      "regra": {
+       "interval": [
+        {
+         "expression": "30 6,18 * * *",
+         "field": "cronExpression"
+        }
+       ]
+      }
+     }
+    ],
+    "timezone": "America/Sao_Paulo",
+    "ultima_execucao": null,
+    "updatedAt": "2026-02-19T23:47:42.876Z",
+    "webhooks": 0
+   }
+  ]
+ },
+ "nota": "Somente metadados. Nomes de workflow fora de mídia/receita omitidos (só contagens); ids só dos 11 já documentados em 01-INVENTARIO §8."
+}
