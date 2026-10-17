@@ -84,18 +84,20 @@ function currencyFromRow(row) {
 }
 
 function contractAttributes(row, qGross, qClient) {
+  // Moeda: a API não declara moeda. Vale a atestação operacional do dono (17/10/2026: earnings bruto da
+  // JoinAds é USD), registrada como tal — não é prova técnica. Conversão para BRL NÃO acontece no ledger:
+  // a cotação configurada no VOLC está congelada desde 18/02/2026 e não pode ser provada vigente; a conversão
+  // única fica para a camada de leitura, com taxa, fonte e vigência explícitas.
   const rowCurrency = currencyFromRow(row);
-  const attrs = {
-    currency_status: rowCurrency ? 'observed' : 'unproven',
-    currency_source: rowCurrency ? 'joinads_api:row' : null,
-  };
-  if (!rowCurrency) {
-    attrs.currency_column_note = 'currency_code e NOT NULL com default; sem prova da origem';
-    attrs.currency_attestation_candidate = 'docs/SPEC-ARBITRAGEM.md:10 (declaracao do dono, sem recibo da JoinAds)';
-  }
+  const attrs = rowCurrency
+    ? {currency_status: 'observed', currency_source: 'joinads_api:row', currency_original: rowCurrency}
+    : {currency_status: 'attested', currency_source: 'owner_attestation', currency_original: 'USD',
+       currency_attestation_ref: 'dono 2026-10-17T10:51Z; docs/SPEC-ARBITRAGEM.md:10'};
   if (qGross.original !== null || qClient.original !== null) {
     attrs.revenue_quantization = 'decimal_half_even_micros';
     attrs.revenue_original = {revenue_gross: qGross.original, revenue_client: qClient.original};
+    attrs.conversion = {status: 'nao_convertido', motivo: 'cotacao_vigente_nao_provada', currency_converted: 'BRL',
+      revenue_converted: null, taxa: null, fonte_taxa: null, vigencia: null};
   }
   return attrs;
 }

@@ -122,13 +122,15 @@ def test_joinads_fail_closed(tmp_path, bruto, motivo):
     assert any(w.get("code") == "row_rejected" and f"revenue_invalid:revenue_gross:{motivo}" in w.get("detail", "") for w in out["warnings"])
 
 
-def test_joinads_bruto_preservado_moeda_nao_provada_e_ausencia(tmp_path):
+def test_joinads_bruto_preservado_moeda_atestada_sem_conversao_e_ausencia(tmp_path):
     linha = {"date": "2026-10-16", "domain": "exemplo.test", "revenue": 12.340000000000002, "impressions": 5}
     out = joinads(tmp_path, [linha, {"date": "2026-10-16", "domain": "exemplo.test", "impressions": 3}])
     (lote,) = [b for b in out["raw_batches"] if b["endpoint"] == "earnings"]
     assert lote["payload"]["data"][0]["revenue"] == 12.340000000000002  # bruto intacto
     a, b = out["observations"]
-    assert a["attributes"]["currency_status"] == "unproven" and a["attributes"]["currency_source"] is None
+    assert (a["attributes"]["currency_status"], a["attributes"]["currency_source"], a["attributes"]["currency_original"]) == ("attested", "owner_attestation", "USD")
+    conv = a["attributes"]["conversion"]
+    assert conv["status"] == "nao_convertido" and conv["revenue_converted"] is None and conv["currency_converted"] == "BRL"
     assert b["revenue_gross"] is None and b["revenue_client"] is None and "revenue_original" not in b["attributes"]
     assert out["run"]["collector_version"] == 5 and out["run"]["receipt"]["contract"] == "item5-20261017"
 
