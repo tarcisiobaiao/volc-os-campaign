@@ -27,7 +27,7 @@ def test_red08a_cambio_do_futuro_e_rejeitado(sobrescrever, campo):
     não distingue os dois mundos. V2 deve datar o câmbio e recusar na construção da entrada.
     """
     e = entrada()  # receita USD, câmbio literal
-    cambio_futuro = sobrescrever(e.cambio, **{campo: DEPOIS})
+    cambio_futuro = sobrescrever(e.cambio, **{campo: DEPOIS}, hash="")  # hash="" → a V2 recalcula o canon; a V1 não tem o campo
     with pytest.raises(ContratoViabilidadeViolado):
         replace(e, cambio=cambio_futuro)
 
@@ -38,7 +38,7 @@ def test_red08b_taxa_revshare_do_futuro_e_rejeitada(sobrescrever, campo):
     V1 não tem data em `Taxa` (falha por construção). V2 deve recusar."""
     e = entrada()
     with pytest.raises(ContratoViabilidadeViolado):
-        replace(e, revshare=sobrescrever(e.revshare, **{campo: DEPOIS}))
+        replace(e, revshare=sobrescrever(e.revshare, **{campo: DEPOIS}, hash=""))
 
 
 @pytest.mark.parametrize("campo", ["disponivel_em", "effective_at"])
