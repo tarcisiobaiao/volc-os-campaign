@@ -14,7 +14,9 @@ AS_OF = datetime(2026, 10, 15, 12, 0, tzinfo=timezone.utc)
 
 def entrada(cliques=634, custo="554.75", receita="7.77", moeda_receita="USD", taxa="5.25", cambio_ev=Evidencia.ESTIMATED,
             receita_ev=Evidencia.RECONCILED, moeda_rec_ev=Evidencia.ATTESTED, revshare="1", imposto=None, dias_maduros=16,
-            perda=None, horizonte=None, custo_ev=Evidencia.OBSERVED, cliques_ev=Evidencia.OBSERVED, receita_none=False, custo_none=False):
+            perda=None, horizonte=None, custo_ev=Evidencia.OBSERVED, cliques_ev=Evidencia.OBSERVED, receita_none=False, custo_none=False,
+            visitas=None, visitas_ev=Evidencia.OBSERVED):
+    """Defaults = V1. `visitas=None` → sem medida de visitas; `visitas=int` → MedidaContagem observada (0 é valor válido)."""
     return EntradaViabilidade(
         candidato_id="cand-x", vertical="v", pais="BR", fonte_custo="google_ads", fonte_receita="joinads", as_of=AS_OF,
         janela=JanelaObservada(inicio="2026-09-26", fim="2026-10-11", dias_maduros=dias_maduros),
@@ -25,4 +27,5 @@ def entrada(cliques=634, custo="554.75", receita="7.77", moeda_receita="USD", ta
         revshare=Taxa(valor=Decimal(revshare), evidencia=Evidencia.ATTESTED, proveniencia="tela"),
         imposto=Taxa(valor=None if imposto is None else Decimal(imposto), evidencia=Evidencia.UNKNOWN if imposto is None else Evidencia.ATTESTED, proveniencia="x"),
         perda_maxima=PerdaMaxima(valor=None if perda is None else Dinheiro.de_decimal(perda, "BRL"), horizonte_dias=horizonte, proveniencia="owner" if perda else "ausente"),
+        visitas=None if visitas is None else MedidaContagem(valor=visitas, evidencia=visitas_ev, disponivel_em=AS_OF),
     )

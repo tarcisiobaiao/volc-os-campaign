@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from fractions import Fraction
 
 from volc_dil.contracts import Dinheiro
 from volc_dil.viability.contrato import Evidencia, PontoSimulacao, SimulacaoEntrada
@@ -153,3 +154,21 @@ def test_evidencia_mais_fraca_nunca_e_mais_permissiva():
     fraca = avaliar(entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.ATTESTED, perda="300", horizonte=14))
     assert Veredito.ordem(fraca.verdict) <= Veredito.ordem(forte.verdict)
     assert fraca.confidence_class.ordem() <= forte.confidence_class.ordem()
+
+
+# ---------------------------------------------------------------- V2: grão por clique na saída (fix 1)
+def test_saida_expoe_rpc_por_clique_e_rpc_por_visita_separados():
+    r = avaliar(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, visitas=50, perda="300", horizonte=14))
+    assert r.observed_cpc == Fraction(1_000_000)
+    assert r.observed_rpc == Fraction(750_000)            # por clique: é o grão do break-even
+    assert r.break_even_cpc == Fraction(750_000)
+    assert r.observed_rpc_per_visit == Fraction(1_500_000)
+    assert r.contribution_observed == Dinheiro(-25_000_000, "BRL")
+    j = r.para_json()
+    assert j["observed_rpc_micros"] == "750000" and j["observed_rpc_per_visit_micros"] == "1500000"
+
+
+def test_saida_com_visitas_zero_nao_usa_cliques_como_visitas():
+    r = avaliar(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, visitas=0, perda="300", horizonte=14))
+    assert r.observed_rpc == Fraction(750_000) and r.observed_rpc_per_visit is None
+    assert r.para_json()["observed_rpc_per_visit_unavailable"] == "visitas_zero"

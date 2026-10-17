@@ -130,20 +130,29 @@ def receita_liquida_comparavel(e: EntradaViabilidade) -> Union[ReceitaComparavel
 
 @dataclass(frozen=True)
 class EconomiaObservada:
+    """Grão da decisão é o CLIQUE: custo e receita são divididos pelos mesmos cliques, logo o break-even
+    por clique compara CPC com RPC por clique. RPC por visita é SÓ reportado (nunca entra no break-even);
+    sem visitas (None) ou com visitas == 0 ele fica indisponível com motivo e NUNCA cai para cliques."""
     moeda: str
     cliques: int
-    visitas_elegiveis: int
+    visitas_elegiveis: Optional[int]      # None = sem medida de visitas; 0 é valor observado válido
     custo: Dinheiro
     receita_liquida: Dinheiro
-    cpc: Fraction              # micros por clique
-    rpc: Fraction              # micros por visita elegível
+    cpc: Fraction                         # micros por clique
+    rpc: Fraction                         # micros por clique (== rpc_por_clique; grão do break-even)
     contribuicao: Dinheiro
-    break_even_cpc: Fraction   # = rpc (RPC conservador é aplicado no envelope)
+    break_even_cpc: Fraction              # = rpc por clique (RPC conservador é aplicado no envelope)
     receita_evidencia: Evidencia
     moeda_evidencia: Evidencia
     cambio_evidencia: Optional[Evidencia]
     limitacoes: tuple[str, ...]
     aplicados: tuple[str, ...]
+    rpc_por_visita: Optional[Fraction] = None            # só reportado
+    rpc_por_visita_indisponivel: Optional[str] = None    # "visitas_ausente" | "visitas_zero"
+
+    @property
+    def rpc_por_clique(self) -> Fraction:
+        return self.rpc
 
 
 def calcular_economia(e: EntradaViabilidade) -> Union[EconomiaObservada, Indisponivel]:
@@ -159,14 +168,22 @@ def calcular_economia(e: EntradaViabilidade) -> Union[EconomiaObservada, Indispo
     rc = receita_liquida_comparavel(e)
     if isinstance(rc, Indisponivel):
         return rc
-    visitas = e.visitas.valor if (e.visitas is not None and e.visitas.valor) else e.cliques.valor
     cpc = Fraction(e.custo.valor.micros, e.cliques.valor)
-    rpc = Fraction(rc.valor.micros, visitas)
+    rpc = Fraction(rc.valor.micros, e.cliques.valor)
+    visitas: Optional[int] = None if (e.visitas is None or e.visitas.valor is None) else e.visitas.valor
+    rpc_visita: Optional[Fraction] = None
+    rpc_visita_motivo: Optional[str] = None
+    if visitas is None:
+        rpc_visita_motivo = "visitas_ausente"
+    elif visitas == 0:
+        rpc_visita_motivo = "visitas_zero"
+    else:
+        rpc_visita = Fraction(rc.valor.micros, visitas)
     return EconomiaObservada(
         moeda=e.custo.valor.moeda, cliques=e.cliques.valor, visitas_elegiveis=visitas, custo=e.custo.valor,
         receita_liquida=rc.valor, cpc=cpc, rpc=rpc, contribuicao=rc.valor - e.custo.valor, break_even_cpc=rpc,
         receita_evidencia=rc.evidencia, moeda_evidencia=rc.moeda_evidencia, cambio_evidencia=rc.cambio_evidencia,
-        limitacoes=rc.limitacoes, aplicados=rc.aplicados,
+        limitacoes=rc.limitacoes, aplicados=rc.aplicados, rpc_por_visita=rpc_visita, rpc_por_visita_indisponivel=rpc_visita_motivo,
     )
 
 
@@ -309,5 +326,5 @@ def estresse(e: EntradaViabilidade) -> Union[list[Cenario], Indisponivel]:
     out: list[Cenario] = []
     for nome, fr, fc, rs, prem in cenarios:
         micros = _receita_cenario(e, eco, fr, fc, rs)
-        out.append(Cenario(nome, Dinheiro(micros - eco.custo.micros, eco.moeda), Fraction(micros, eco.visitas_elegiveis), prem))
+        out.append(Cenario(nome, Dinheiro(micros - eco.custo.micros, eco.moeda), Fraction(micros, eco.cliques), prem))
     return out

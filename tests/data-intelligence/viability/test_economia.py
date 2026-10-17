@@ -198,3 +198,37 @@ def test_contribuicao_pode_ser_negativa_embora_entradas_nao_possam():
     eco = calcular_economia(entrada(receita="0", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.OBSERVED))
     assert isinstance(eco, EconomiaObservada) and eco.contribuicao.micros < 0
     assert eco.custo.micros >= 0 and eco.receita_liquida.micros >= 0 and eco.cliques >= 0
+
+
+# ---------------------------------------------------------------- V2: grão por clique; visitas só reportadas (fixes 1 e 5)
+def test_break_even_e_por_clique_e_rpc_por_visita_e_so_reportado():
+    # 100 cliques, 50 visitas, custo 100, receita 75 BRL observada
+    eco = calcular_economia(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, visitas=50))
+    assert isinstance(eco, EconomiaObservada)
+    assert eco.cpc == Fraction(1_000_000)
+    assert eco.rpc_por_clique == Fraction(750_000) and eco.rpc == eco.rpc_por_clique and eco.break_even_cpc == Fraction(750_000)
+    assert eco.rpc_por_visita == Fraction(1_500_000)
+    assert eco.visitas_elegiveis == 50
+    assert eco.contribuicao == Dinheiro(-25_000_000, "BRL")   # nunca "prejuízo zero" por trocar o grão
+
+
+def test_visitas_ausentes_nao_calcula_rpc_por_visita():
+    eco = calcular_economia(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED))
+    assert eco.rpc_por_visita is None and eco.visitas_elegiveis is None
+    assert eco.rpc_por_visita_indisponivel == "visitas_ausente"
+    assert eco.rpc_por_clique == Fraction(750_000)
+
+
+def test_visitas_zero_e_valor_valido_e_nunca_cai_para_cliques():
+    eco = calcular_economia(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, visitas=0))
+    assert isinstance(eco, EconomiaObservada)
+    assert eco.visitas_elegiveis == 0
+    assert eco.rpc_por_visita is None and eco.rpc_por_visita_indisponivel == "visitas_zero"
+    assert eco.rpc_por_clique == Fraction(750_000) and eco.break_even_cpc == Fraction(750_000)
+    assert eco.contribuicao == Dinheiro(-25_000_000, "BRL")
+
+
+def test_estresse_usa_o_grao_por_clique():
+    s = estresse(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, visitas=50))
+    base = next(c for c in s if c.nome == "base")
+    assert base.rpc == Fraction(750_000) and base.contribuicao == Dinheiro(-25_000_000, "BRL")

@@ -120,6 +120,8 @@ class ResultadoViabilidade:
     input_hash: str
     trace: tuple[dict, ...]
     result_hash: str = ""
+    observed_rpc_per_visit: Optional[Fraction] = None          # só reportado; o break-even é por clique
+    observed_rpc_per_visit_unavailable: Optional[str] = None   # "visitas_ausente" | "visitas_zero"
 
     def para_json(self, com_hash: bool = True) -> dict:
         d = {
@@ -127,6 +129,8 @@ class ResultadoViabilidade:
             "verdict": self.verdict.value, "confidence_class": self.confidence_class.value, "recomendacao": self.recomendacao.value,
             "break_even_cpc_micros": _fr(self.break_even_cpc), "conservative_affordable_cpc_micros": _fr(self.conservative_affordable_cpc),
             "observed_cpc_micros": _fr(self.observed_cpc), "observed_rpc_micros": _fr(self.observed_rpc),
+            "observed_rpc_grain": "click", "observed_rpc_per_visit_micros": _fr(self.observed_rpc_per_visit),
+            "observed_rpc_per_visit_unavailable": self.observed_rpc_per_visit_unavailable,
             "required_rpc_micros": _fr(self.required_rpc), "required_rpc_multiplier": _fr(self.required_rpc_multiplier),
             "contribution_observed": _din(self.contribution_observed), "contribution_conservative": _din(self.contribution_conservative),
             "break_even_interval": self.break_even_interval, "probability_of_break_even": None,
@@ -270,6 +274,7 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
 
     comum = dict(
         break_even_cpc=eco.rpc, conservative_affordable_cpc=env.rpc_conservador, observed_cpc=eco.cpc, observed_rpc=eco.rpc,
+        observed_rpc_per_visit=eco.rpc_por_visita, observed_rpc_per_visit_unavailable=eco.rpc_por_visita_indisponivel,
         required_rpc=fr.required_rpc, required_rpc_multiplier=fr.required_rpc_multiplier,
         contribution_observed=eco.contribuicao, contribution_conservative=env.contribuicao_conservadora,
         stress=tuple(_cenarios_json(cs)), simulacao=sim_json,
