@@ -243,7 +243,8 @@ def _receita_cenario(e: EntradaViabilidade, eco: EconomiaObservada, f_receita: F
                      revshare: Optional[Fraction]) -> int:
     """Recalcula a receita comparável sob multiplicadores explícitos. Mantém as regras de ausência."""
     r = e.receita.valor
-    assert r is not None
+    if r is None:
+        raise ValueError("cenário de estresse sem receita: ausência não vira zero")
     micros = _micros_x(r.micros, f_receita)
     if r.moeda != eco.moeda:
         micros = _micros_x(micros, Fraction(e.cambio.taxa) * f_cambio)  # type: ignore[arg-type]
@@ -259,7 +260,9 @@ def estresse(e: EntradaViabilidade) -> Union[list[Cenario], Indisponivel]:
     eco = calcular_economia(e)
     if isinstance(eco, Indisponivel):
         return eco
-    converte = e.receita.valor is not None and e.receita.valor.moeda != eco.moeda
+    if e.receita.valor is None:
+        return Indisponivel(f"receita_{e.receita.evidencia.value}", "estresse exige receita com valor")
+    converte = e.receita.valor.moeda != eco.moeda
     cenarios = [
         ("base", Fraction(1), Fraction(1), None, ("sem_multiplicadores",)),
         ("receita_x2", Fraction(2), Fraction(1), None, ("receita×2",)),

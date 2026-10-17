@@ -248,8 +248,8 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
                   "receita_realizada": env.receita_realizada})
     fr = fronteira(e)
     assert isinstance(fr, Fronteira)
-    cs = estresse(e)
-    assert isinstance(cs, list)
+    cs_ = estresse(e)
+    cs: list[Cenario] = [] if isinstance(cs_, Indisponivel) else cs_
     trace.append({"passo": "estresse", "cenarios": {c.nome: c.contribuicao.micros for c in cs}})
     sim_json: Optional[dict] = None
     if e.simulacao is not None:
@@ -289,8 +289,8 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
         reasons.append(Motivo("receita_imatura", f"{e.janela.dias_maduros} dia(s) maduro(s); mínimo {MIN_DIAS_MADUROS}", "bloqueante"))
         missing.append("dias_maduros")
         next_actions.append("aguardar releituras D-1 (D-7..D-1) antes de decidir")
-        comum.update(max_experiment_spend=None, max_experiment_clicks=None, max_experiment_days=None, stop_loss=None)
-        return _resultado(Veredito.INSUFFICIENT_EVIDENCE, Confianca.INSUFFICIENT, Recomendacao.AGUARDAR_MATURACAO, maturity_wait=espera, **comum)
+        comum.update(max_experiment_spend=None, max_experiment_clicks=None, max_experiment_days=None, stop_loss=None, maturity_wait=espera)
+        return _resultado(Veredito.INSUFFICIENT_EVIDENCE, Confianca.INSUFFICIENT, Recomendacao.AGUARDAR_MATURACAO, **comum)
 
     realizada = env.receita_realizada
     moeda_provada = eco.moeda_evidencia is Evidencia.OBSERVED and eco.cambio_evidencia in (None, Evidencia.OBSERVED)
