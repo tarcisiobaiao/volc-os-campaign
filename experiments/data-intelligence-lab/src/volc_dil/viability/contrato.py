@@ -147,9 +147,15 @@ class Autorizacao:
                 raise ContratoViabilidadeViolado(f"autorizacao.{n} obrigatório")
         if not isinstance(self.issuer, str):
             raise ContratoViabilidadeViolado("autorizacao.issuer precisa ser string")
-        papel, sep, identidade = self.issuer.partition(":")
-        if self.issuer.strip().lower() in _PAPEIS_SEM_IDENTIDADE or not sep or not papel.strip() or not identidade.strip():
-            raise ContratoViabilidadeViolado("autorizacao.issuer sem identidade: use '<papel>:<identidade>' (ex.: 'owner:tarcisio@…')")
+        limpo = self.issuer.strip()
+        papel, sep, identidade = limpo.partition(":")
+        # aceito: '<papel>:<identidade>' com ambos não vazios, OU uma identidade endereçável nua (contém '@').
+        # recusado: papel nu (owner/bia/agente/chat/vazio), 'papel:' sem identidade, ':identidade' sem papel, texto livre sem '@'.
+        sem_identidade = (limpo.lower() in _PAPEIS_SEM_IDENTIDADE
+                          or (sep and (not papel.strip() or not identidade.strip()))
+                          or (not sep and "@" not in limpo))
+        if sem_identidade:
+            raise ContratoViabilidadeViolado("autorizacao.issuer sem identidade: use '<papel>:<identidade>' (ex.: 'owner:tarcisio@…') ou uma identidade endereçável")
         _instante("autorizacao.effective_at", self.effective_at)
         _instante("autorizacao.disponivel_em", self.disponivel_em)
         _instante_opcional("autorizacao.expires_at", self.expires_at)

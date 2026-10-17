@@ -159,6 +159,13 @@ def test_autorizacao_issuer_com_identidade_passa():
     assert _autorizacao(issuer="owner:tarcisio@exemplo").issuer == "owner:tarcisio@exemplo"
 
 
+def test_autorizacao_issuer_identidade_enderecavel_nua_passa_e_texto_livre_nao():
+    # reconciliação do integrador: uma identidade endereçável (contém '@') vale sem prefixo de papel
+    assert _autorizacao(issuer="tarcisio@exemplo").issuer == "tarcisio@exemplo"
+    with pytest.raises(ContratoViabilidadeViolado, match="issuer"):
+        _autorizacao(issuer="tarcisio")
+
+
 def test_autorizacao_datas_coerentes():
     with pytest.raises(ContratoViabilidadeViolado, match="effective_at"):
         _autorizacao(effective_at=EFETIVO + timedelta(days=1), disponivel_em=EFETIVO)
