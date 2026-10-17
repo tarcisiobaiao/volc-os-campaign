@@ -1,0 +1,155 @@
+"""Gate pré-campanha: avaliação tipada, sem mutação. Vereditos, confiança, recomendação, razões."""
+from __future__ import annotations
+
+from decimal import Decimal
+
+from volc_dil.contracts import Dinheiro
+from volc_dil.viability.contrato import Evidencia, PontoSimulacao, SimulacaoEntrada
+from volc_dil.viability.gate import Confianca, Recomendacao, ResultadoViabilidade, Veredito, avaliar
+
+from _entradas import AS_OF, entrada
+
+
+def _com(e, **kw):
+    return e.__class__(**{**e.__dict__, **kw})
+
+
+def test_senac_like_e_estruturalmente_inviavel_mesmo_sob_estresse():
+    r = avaliar(entrada(perda="300", horizonte=14))
+    assert isinstance(r, ResultadoViabilidade)
+    assert r.verdict is Veredito.STRUCTURALLY_UNVIABLE
+    assert r.recomendacao is Recomendacao.REJEITAR_TESE_ECONOMICA
+    assert r.confidence_class in (Confianca.MEDIUM, Confianca.HIGH)
+    assert r.required_rpc_multiplier is not None and r.required_rpc_multiplier > 10
+    assert any(m.codigo == "inviavel_sob_estresse" for m in r.reasons)
+    assert r.max_experiment_spend is None  # não propõe teste para tese rejeitada
+
+
+def test_campanha_favoravel_com_moeda_observada_e_viavel():
+    e = entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14)
+    r = avaliar(e)
+    assert r.verdict is Veredito.ALREADY_PROFITABLE
+    assert r.recomendacao is Recomendacao.CONTINUAR_CAMPANHA_EXISTENTE
+    assert r.contribution_observed.micros > 0
+
+
+def test_campanha_favoravel_com_moeda_so_atestada_nao_vira_viable_candidate():
+    e = entrada(receita="200", moeda_receita="USD", taxa="5.25", cambio_ev=Evidencia.ESTIMATED, moeda_rec_ev=Evidencia.ATTESTED, perda="300", horizonte=14)
+    r = avaliar(e)
+    assert r.verdict is Veredito.TEST_WITH_CAP
+    assert r.verdict not in (Veredito.VIABLE_CANDIDATE, Veredito.ALREADY_PROFITABLE)
+    assert any(m.codigo in ("moeda_receita_attested", "cambio_estimated") for m in r.reasons)
+    assert r.max_experiment_spend is not None
+
+
+def test_proximo_do_equilibrio_vira_teste_com_teto():
+    # rpc ≈ cpc: 634 cliques, custo 554.75, receita 600 BRL observada
+    e = entrada(receita="600", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14)
+    r = avaliar(e)
+    assert r.verdict in (Veredito.TEST_WITH_CAP, Veredito.VIABLE_CANDIDATE)
+    assert r.max_experiment_spend is not None and r.stop_loss is not None
+
+
+def test_moeda_desconhecida_e_insufficient():
+    e = entrada(moeda_rec_ev=Evidencia.UNKNOWN, taxa=None)
+    r = avaliar(e)
+    assert r.verdict is Veredito.INSUFFICIENT_EVIDENCE
+    assert "cambio_ausente" in r.missing_evidence or "receita_moeda_unknown" in r.missing_evidence
+    assert r.recomendacao is Recomendacao.COLETAR_EVIDENCIA
+
+
+def test_cambio_ausente_e_insufficient():
+    r = avaliar(entrada(taxa=None))
+    assert r.verdict is Veredito.INSUFFICIENT_EVIDENCE and "cambio_ausente" in r.missing_evidence
+
+
+def test_custo_ausente_e_insufficient():
+    r = avaliar(entrada(custo_none=True))
+    assert r.verdict is Veredito.INSUFFICIENT_EVIDENCE and "custo_absent" in r.missing_evidence
+
+
+def test_receita_ausente_e_insufficient_nunca_zero():
+    r = avaliar(entrada(receita_none=True))
+    assert r.verdict is Veredito.INSUFFICIENT_EVIDENCE and "receita_absent" in r.missing_evidence
+    assert r.contribution_observed is None
+
+
+def test_receita_zero_observada_e_inviavel_nao_insuficiente():
+    r = avaliar(entrada(receita="0", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.OBSERVED))
+    assert r.verdict is Veredito.STRUCTURALLY_UNVIABLE
+
+
+def test_receita_imatura_pede_maturacao_e_nao_decide():
+    r = avaliar(entrada(receita_ev=Evidencia.IMMATURE, dias_maduros=0))
+    assert r.verdict is Veredito.INSUFFICIENT_EVIDENCE
+    assert r.recomendacao is Recomendacao.AGUARDAR_MATURACAO
+    assert r.maturity_wait is not None and r.maturity_wait >= 3
+
+
+def test_receita_projetada_nao_e_realizada():
+    e = entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.PROJECTED, perda="300", horizonte=14)
+    r = avaliar(e)
+    assert r.verdict not in (Veredito.ALREADY_PROFITABLE, Veredito.VIABLE_CANDIDATE)
+    assert "receita_projected" in r.invalid_evidence or any(m.codigo == "receita_projected" for m in r.reasons)
+
+
+def test_limite_financeiro_ausente_impede_teto_mas_nao_o_diagnostico():
+    r = avaliar(entrada(perda=None, horizonte=None))
+    assert r.verdict is Veredito.STRUCTURALLY_UNVIABLE   # Senac-like continua inviável
+    assert r.max_experiment_spend is None and "perda_maxima_ausente" in r.missing_evidence
+    e = entrada(receita="600", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda=None, horizonte=None)
+    r2 = avaliar(e)
+    assert r2.verdict is Veredito.INSUFFICIENT_EVIDENCE and "perda_maxima_ausente" in r2.missing_evidence
+
+
+def test_campanha_nova_sem_historico_so_com_pesquisa_e_tolerancia_prepara_pausada():
+    e = entrada(receita_none=True, custo_none=True, cliques=None, perda="300", horizonte=14)
+    e = _com(e, cpc_intervalo=(Dinheiro.de_decimal("0.30", "BRL"), Dinheiro.de_decimal("0.60", "BRL")),
+             rpc_intervalo=(Dinheiro.de_decimal("0.70", "BRL"), Dinheiro.de_decimal("1.10", "BRL")))
+    r = avaliar(e)
+    assert r.verdict is Veredito.TEST_WITH_CAP
+    assert r.recomendacao is Recomendacao.PREPARAR_CAMPANHA_PAUSADA
+    assert r.confidence_class is Confianca.LOW
+    assert r.max_experiment_spend == Dinheiro.de_decimal("300", "BRL")
+
+
+def test_stop_loss_dispara_quando_gasto_madura_acima_do_teto_com_contribuicao_negativa():
+    e = entrada(receita="300", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="100", horizonte=14)
+    r = avaliar(e)
+    # custo 554.75 já supera a tolerância de 100 e a contribuição madura é negativa
+    assert r.recomendacao is Recomendacao.PARAR_POR_STOP_LOSS
+
+
+def test_simulacao_entra_na_saida_e_marginal_destrutivo_aparece_nas_razoes():
+    pontos = (PontoSimulacao(50_000, 500, 20_000_000), PontoSimulacao(100_000, 1000, 80_000_000), PontoSimulacao(200_000, 1300, 160_000_000))
+    sim = SimulacaoEntrada("CPC_BID", "BRL", pontos, AS_OF, "MANUAL_CPC")
+    # economia favorável (rpc≈0,16) mas último segmento destrutivo (0,40 marginal)
+    e = entrada(cliques=1000, custo="80.00", receita="160.00", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14)
+    r = avaliar(_com(e, simulacao=sim))
+    assert r.simulacao is not None and r.simulacao["disponivel"] is True
+    assert any(m.codigo == "expansao_marginal_destrutiva" for m in r.reasons)
+
+
+def test_saida_tem_hashes_trace_proibicoes_e_proximas_leituras():
+    r = avaliar(entrada(perda="300", horizonte=14))
+    assert len(r.input_hash) == 64 and r.trace and r.prohibited_actions and r.next_read_only_actions
+    assert all("mutate" not in a.lower() for a in r.next_read_only_actions)
+    assert r.para_json()["verdict"] == "structurally_unviable"
+
+
+def test_mesma_entrada_mesmo_resultado_e_hash():
+    a, b = avaliar(entrada(perda="300", horizonte=14)), avaliar(entrada(perda="300", horizonte=14))
+    assert a.para_json() == b.para_json() and a.result_hash == b.result_hash
+
+
+def test_veredito_muda_quando_a_mesma_fixture_recebe_economia_favoravel():
+    base = avaliar(entrada(perda="300", horizonte=14))
+    fav = avaliar(entrada(receita="900", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14))
+    assert base.verdict is Veredito.STRUCTURALLY_UNVIABLE and fav.verdict is Veredito.ALREADY_PROFITABLE
+
+
+def test_evidencia_mais_fraca_nunca_e_mais_permissiva():
+    forte = avaliar(entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14))
+    fraca = avaliar(entrada(receita="800", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.ATTESTED, perda="300", horizonte=14))
+    assert Veredito.ordem(fraca.verdict) <= Veredito.ordem(forte.verdict)
+    assert fraca.confidence_class.ordem() <= forte.confidence_class.ordem()
