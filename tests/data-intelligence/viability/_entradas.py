@@ -1,6 +1,8 @@
 """Construtores de entrada compartilhados pelos testes de viabilidade (não é módulo de produto)."""
 from __future__ import annotations
 
+import copy
+import dataclasses
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -15,7 +17,7 @@ AS_OF = datetime(2026, 10, 15, 12, 0, tzinfo=timezone.utc)
 def entrada(cliques=634, custo="554.75", receita="7.77", moeda_receita="USD", taxa="5.25", cambio_ev=Evidencia.ESTIMATED,
             receita_ev=Evidencia.RECONCILED, moeda_rec_ev=Evidencia.ATTESTED, revshare="1", imposto=None, dias_maduros=16,
             perda=None, horizonte=None, custo_ev=Evidencia.OBSERVED, cliques_ev=Evidencia.OBSERVED, receita_none=False, custo_none=False,
-            visitas=None, visitas_ev=Evidencia.OBSERVED):
+            visitas=None, visitas_ev=Evidencia.OBSERVED, perda_moeda="BRL"):
     """Defaults = V1. `visitas=None` → sem medida de visitas; `visitas=int` → MedidaContagem observada (0 é valor válido)."""
     return EntradaViabilidade(
         candidato_id="cand-x", vertical="v", pais="BR", fonte_custo="google_ads", fonte_receita="joinads", as_of=AS_OF,
@@ -26,6 +28,19 @@ def entrada(cliques=634, custo="554.75", receita="7.77", moeda_receita="USD", ta
         cambio=Cambio(taxa=None if taxa is None else Decimal(taxa), de="USD", para="BRL", proveniencia="literal_app" if taxa else "ausente", evidencia=cambio_ev if taxa else Evidencia.ABSENT),
         revshare=Taxa(valor=Decimal(revshare), evidencia=Evidencia.ATTESTED, proveniencia="tela"),
         imposto=Taxa(valor=None if imposto is None else Decimal(imposto), evidencia=Evidencia.UNKNOWN if imposto is None else Evidencia.ATTESTED, proveniencia="x"),
-        perda_maxima=PerdaMaxima(valor=None if perda is None else Dinheiro.de_decimal(perda, "BRL"), horizonte_dias=horizonte, proveniencia="owner" if perda else "ausente"),
+        perda_maxima=PerdaMaxima(valor=None if perda is None else Dinheiro.de_decimal(perda, perda_moeda), horizonte_dias=horizonte, proveniencia="owner" if perda else "ausente"),
         visitas=None if visitas is None else MedidaContagem(valor=visitas, evidencia=visitas_ev, disponivel_em=AS_OF),
     )
+
+
+def v2(obj, **campos):
+    """Define campos do contrato V2 (observado_em, flags_qualidade, cobertura_receita_ppm, cambio da simulação...)
+    sem depender da versão do contrato: com o campo declarado usa `dataclasses.replace`; sem ele (contrato V1)
+    copia o objeto e grava o atributo, para que o kernel (que lê por `getattr`) enxergue o valor."""
+    nomes = {f.name for f in dataclasses.fields(obj)}
+    if all(k in nomes for k in campos):
+        return dataclasses.replace(obj, **campos)
+    novo = copy.copy(obj)
+    for k, v in campos.items():
+        object.__setattr__(novo, k, v)
+    return novo

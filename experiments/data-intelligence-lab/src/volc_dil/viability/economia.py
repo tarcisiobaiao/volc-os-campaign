@@ -201,6 +201,12 @@ class Envelope:
     premissas: tuple[tuple[str, str], ...]   # (nome, valor) aplicados
     limitacoes: tuple[str, ...]
     economia: EconomiaObservada
+    custo_conservador: Optional[Dinheiro] = None     # custo × margem de reconciliação
+    receita_conservadora: Optional[Dinheiro] = None  # receita líquida × fatores de evidência
+
+    def perda_liquida_conservadora(self) -> Dinheiro:
+        """max(0, custo_cons − receita_cons): perda líquida sob as premissas; nunca o gasto bruto."""
+        return Dinheiro(max(0, -self.contribuicao_conservadora.micros), self.moeda)
 
 
 def _fator_receita(eco: EconomiaObservada) -> tuple[Fraction, list[tuple[str, str]], list[str], bool]:
@@ -253,6 +259,7 @@ def envelope_conservador(e: EntradaViabilidade) -> Union[Envelope, Indisponivel]
         moeda=eco.moeda, cpc_central=eco.cpc, cpc_conservador=cpc_cons, rpc_central=eco.rpc, rpc_conservador=rpc_cons,
         rpc_otimista=eco.rpc * f_otim, contribuicao_central=eco.contribuicao, contribuicao_conservadora=rec_cons - custo_cons,
         receita_realizada=realizada, premissas=tuple(prem), limitacoes=tuple(lim), economia=eco,
+        custo_conservador=custo_cons, receita_conservadora=rec_cons,
     )
 
 

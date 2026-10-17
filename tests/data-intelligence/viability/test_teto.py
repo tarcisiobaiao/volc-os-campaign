@@ -59,3 +59,21 @@ def test_condicoes_de_parada_continuidade_e_inconclusao_sao_tipadas():
     t = calcular_teto(entrada(perda="300", horizonte=14))
     assert t.parada.gatilhos and t.continuidade.gatilhos and t.inconclusao.gatilhos
     assert t.maturity_wait_dias >= 3
+
+
+# ---------------------------------------------------------------- V2: moeda da tolerância (fix 3)
+def test_perda_maxima_em_moeda_diferente_do_custo_e_indisponivel_sem_conversao_implicita():
+    r = calcular_teto(entrada(perda="300", horizonte=14, perda_moeda="USD"))
+    assert isinstance(r, Indisponivel) and r.motivo == "perda_maxima_moeda_incompativel"
+
+
+def test_perda_maxima_em_moeda_diferente_do_cpc_de_pesquisa_e_indisponivel():
+    e = entrada(receita_none=True, custo_none=True, cliques=None, perda="300", horizonte=14, perda_moeda="USD")
+    e2 = e.__class__(**{**e.__dict__, "cpc_intervalo": (Dinheiro.de_decimal("0.50", "BRL"), Dinheiro.de_decimal("1.20", "BRL"))})
+    r = calcular_teto(e2)
+    assert isinstance(r, Indisponivel) and r.motivo == "perda_maxima_moeda_incompativel"
+
+
+def test_teto_expoe_perda_maxima_e_spend_cap_como_campos_distintos():
+    t = calcular_teto(entrada(perda="300", horizonte=14))
+    assert t.perda_maxima == Dinheiro.de_decimal("300", "BRL") and t.spend_cap != t.perda_maxima

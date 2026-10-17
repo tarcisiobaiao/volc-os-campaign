@@ -13,7 +13,8 @@ from decimal import Decimal
 from fractions import Fraction
 from typing import Optional, Union
 
-from .contrato import PontoSimulacao, SimulacaoEntrada
+from .contrato import COM_VALOR, PontoSimulacao, SimulacaoEntrada
+from .economia import micros_de_fracao
 
 TIPOS_SUPORTADOS = frozenset({"CPC_BID", "BUDGET"})
 
@@ -68,10 +69,13 @@ class FronteiraMarginal:
     faixa_observada: tuple[int, int]
     extrapolacao_permitida: bool
     normalizacao: Optional[Normalizacao]
+    moeda_original: Optional[str] = None   # moeda em que a simulação foi reportada (== moeda quando não houve conversão)
+    conversao: Optional[dict] = None       # recibo da conversão explícita do custo (None = nenhuma)
 
     def para_json(self) -> dict:
         return {
-            "disponivel": True, "tipo": self.tipo, "moeda": self.moeda, "rpc_conservador_micros": str(self.rpc_conservador),
+            "disponivel": True, "tipo": self.tipo, "moeda": self.moeda, "moeda_original": self.moeda_original or self.moeda,
+            "conversao": self.conversao, "rpc_conservador_micros": str(self.rpc_conservador),
             "pontos": [{"modificacao_micros": p.modificacao_micros, "cliques": p.cliques, "custo_micros": p.custo_micros,
                         "cpc_medio_micros": str(p.cpc_medio), "contribuicao_media_micros": p.contribuicao_media_micros,
                         "conversoes": None if p.conversoes is None else str(p.conversoes)} for p in self.pontos],
@@ -121,14 +125,36 @@ def _nao_monotonicos(pontos: list[PontoSimulacao]) -> list[int]:
     return ruins
 
 
-def analisar_simulacao(s: Optional[SimulacaoEntrada], rpc_conservador: Fraction, *, normalizar_nao_monotonica: bool = False
-                       ) -> Union[FronteiraMarginal, CurvaIndisponivel]:
+def _converter_moeda(s: SimulacaoEntrada, pontos: list[PontoSimulacao], moeda: Optional[str]
+                     ) -> Union[tuple[list[PontoSimulacao], str, Optional[dict]], CurvaIndisponivel]:
+    """`moeda` é a moeda do RPC conservador (a do custo observado). Simulação em outra moeda só entra com
+    `simulacao.cambio` (de=moeda da simulação, para=moeda) e a conversão do custo fica registrada; o lance
+    (`modificacao_micros`) permanece na moeda da conta porque é a alavanca, não um valor comparado."""
+    if moeda is None or s.moeda == moeda:
+        return pontos, s.moeda, None
+    c = getattr(s, "cambio", None)
+    if c is None or c.taxa is None or c.evidencia not in COM_VALOR:
+        return CurvaIndisponivel("moeda_incompativel", f"simulação em {s.moeda}, custo em {moeda}, sem câmbio na simulação")
+    if c.de != s.moeda or c.para != moeda:
+        return CurvaIndisponivel("moeda_incompativel", f"câmbio {c.de}->{c.para} não cobre {s.moeda}->{moeda}")
+    taxa = Fraction(c.taxa)
+    convertidos = [PontoSimulacao(p.modificacao_micros, p.cliques, micros_de_fracao(Fraction(p.custo_micros) * taxa), p.impressoes, p.conversoes)  # type: ignore[arg-type]
+                   for p in pontos]
+    recibo = {"de": s.moeda, "para": moeda, "taxa": str(c.taxa), "proveniencia": c.proveniencia, "evidencia": c.evidencia.value, "campos": ["custo_micros"]}
+    return convertidos, moeda, recibo
+
+
+def analisar_simulacao(s: Optional[SimulacaoEntrada], rpc_conservador: Fraction, *, normalizar_nao_monotonica: bool = False,
+                       moeda: Optional[str] = None) -> Union[FronteiraMarginal, CurvaIndisponivel]:
     if s is None:
         return CurvaIndisponivel("simulacao_ausente", "nenhum ponto de campaign_simulation informado")
     v = _validar(s)
     if isinstance(v, CurvaIndisponivel):
         return v
-    pontos = v
+    conv = _converter_moeda(s, v, moeda)
+    if isinstance(conv, CurvaIndisponivel):
+        return conv
+    pontos, moeda_saida, conversao = conv
     normalizacao: Optional[Normalizacao] = None
     ruins = _nao_monotonicos(pontos)
     if ruins:
@@ -164,9 +190,9 @@ def analisar_simulacao(s: Optional[SimulacaoEntrada], rpc_conservador: Fraction,
         ultimo_sust = None
         primeiro_destr = avaliados[0] if primeiro_destr is None else primeiro_destr
     return FronteiraMarginal(
-        tipo=s.tipo, moeda=s.moeda, rpc_conservador=rpc_conservador, pontos=tuple(avaliados), segmentos=tuple(segmentos),
+        tipo=s.tipo, moeda=moeda_saida, rpc_conservador=rpc_conservador, pontos=tuple(avaliados), segmentos=tuple(segmentos),
         ultimo_ponto_sustentavel=ultimo_sust, primeiro_ponto_destrutivo=primeiro_destr,
         expansao_aceitavel_ate_modificacao=None if ultimo_sust is None else ultimo_sust.modificacao_micros,
         faixa_observada=(avaliados[0].modificacao_micros, avaliados[-1].modificacao_micros), extrapolacao_permitida=False,
-        normalizacao=normalizacao,
+        normalizacao=normalizacao, moeda_original=s.moeda, conversao=conversao,
     )

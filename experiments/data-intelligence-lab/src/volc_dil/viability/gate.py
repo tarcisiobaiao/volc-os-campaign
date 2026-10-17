@@ -122,6 +122,10 @@ class ResultadoViabilidade:
     result_hash: str = ""
     observed_rpc_per_visit: Optional[Fraction] = None          # só reportado; o break-even é por clique
     observed_rpc_per_visit_unavailable: Optional[str] = None   # "visitas_ausente" | "visitas_zero"
+    max_loss: Optional[Dinheiro] = None                        # tolerância do owner (perda_maxima.valor); nunca é teto de gasto
+    spend_cap: Optional[Dinheiro] = None                       # teto de gasto do experimento (== max_experiment_spend)
+    net_loss_observed: Optional[Dinheiro] = None               # max(0, custo − receita líquida) observado/maduro
+    net_loss_conservative: Optional[Dinheiro] = None           # max(0, custo_cons − receita_cons) sob as premissas
 
     def para_json(self, com_hash: bool = True) -> dict:
         d = {
@@ -136,6 +140,8 @@ class ResultadoViabilidade:
             "break_even_interval": self.break_even_interval, "probability_of_break_even": None,
             "max_experiment_spend": _din(self.max_experiment_spend), "max_experiment_clicks": self.max_experiment_clicks,
             "max_experiment_days": self.max_experiment_days, "stop_loss": _din(self.stop_loss), "maturity_wait_days": self.maturity_wait,
+            "max_loss": _din(self.max_loss), "spend_cap": _din(self.spend_cap),
+            "net_loss_observed": _din(self.net_loss_observed), "net_loss_conservative": _din(self.net_loss_conservative),
             "missing_evidence": list(self.missing_evidence), "invalid_evidence": list(self.invalid_evidence),
             "assumptions": list(self.assumptions), "reasons": [m.para_json() for m in self.reasons],
             "next_read_only_actions": list(self.next_read_only_actions), "prohibited_actions": list(self.prohibited_actions),
@@ -237,7 +243,8 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
             return _resultado(Veredito.TEST_WITH_CAP, Confianca.LOW, Recomendacao.PREPARAR_CAMPANHA_PAUSADA,
                               break_even_cpc=teto_ok.rpc_conservador, conservative_affordable_cpc=teto_ok.rpc_conservador,
                               max_experiment_spend=teto_ok.spend_cap, max_experiment_clicks=teto_ok.click_cap,
-                              max_experiment_days=teto_ok.day_cap, stop_loss=teto_ok.perda_maxima, maturity_wait=teto_ok.maturity_wait_dias)
+                              max_experiment_days=teto_ok.day_cap, stop_loss=teto_ok.perda_maxima, maturity_wait=teto_ok.maturity_wait_dias,
+                              max_loss=teto_ok.perda_maxima, spend_cap=teto_ok.spend_cap)
         if sem_historico and (e.cpc_intervalo is None or e.rpc_intervalo is None):
             missing.extend(x for x, v in (("cpc_intervalo", e.cpc_intervalo), ("rpc_intervalo", e.rpc_intervalo)) if v is None)
         return _resultado(Veredito.INSUFFICIENT_EVIDENCE, Confianca.INSUFFICIENT, Recomendacao.COLETAR_EVIDENCIA)
@@ -257,7 +264,7 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
     trace.append({"passo": "estresse", "cenarios": {c.nome: c.contribuicao.micros for c in cs}})
     sim_json: Optional[dict] = None
     if e.simulacao is not None:
-        fm = analisar_simulacao(e.simulacao, env.rpc_conservador)
+        fm = analisar_simulacao(e.simulacao, env.rpc_conservador, moeda=eco.moeda)
         sim_json = fm.para_json()
         if isinstance(fm, CurvaIndisponivel):
             reasons.append(Motivo(f"simulacao_{fm.motivo}", fm.detalhe or fm.motivo, "aviso"))
@@ -283,9 +290,13 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
         comum["break_even_interval"] = {"contribuicao_por_clique_micros": {"conservadora": str(env.rpc_conservador - env.cpc_conservador),
                                                                            "central": str(eco.rpc - eco.cpc), "otimista": str(env.rpc_otimista - eco.cpc)},
                                         "nota": "intervalo por premissas declaradas; não é probabilidade"}
+    perda_liq_obs = Dinheiro(max(0, -eco.contribuicao.micros), eco.moeda)
+    perda_liq_cons = env.perda_liquida_conservadora()
+    comum.update(net_loss_observed=perda_liq_obs, net_loss_conservative=perda_liq_cons)
     if teto_ok is not None:
         comum.update(max_experiment_spend=teto_ok.spend_cap, max_experiment_clicks=teto_ok.click_cap,
-                     max_experiment_days=teto_ok.day_cap, stop_loss=teto_ok.perda_maxima, maturity_wait=teto_ok.maturity_wait_dias)
+                     max_experiment_days=teto_ok.day_cap, stop_loss=teto_ok.perda_maxima, maturity_wait=teto_ok.maturity_wait_dias,
+                     max_loss=teto_ok.perda_maxima, spend_cap=teto_ok.spend_cap)
 
     conf = _confianca(env, e)
     imatura = eco.receita_evidencia is Evidencia.IMMATURE or e.janela.dias_maduros < MIN_DIAS_MADUROS
@@ -317,10 +328,14 @@ def avaliar(e: EntradaViabilidade) -> ResultadoViabilidade:
         c2 = Confianca.HIGH if (moeda_provada and conf is Confianca.HIGH) else (Confianca.MEDIUM if conf.ordem() >= 2 else Confianca.MEDIUM)
         return _resultado(Veredito.STRUCTURALLY_UNVIABLE, c2, Recomendacao.REJEITAR_TESE_ECONOMICA, **comum)
 
-    # 2) stop-loss: gasto observado já excede a tolerância e a contribuição madura é negativa
-    if teto_ok is not None and realizada and eco.custo.micros > teto_ok.perda_maxima.micros and eco.contribuicao.micros < 0:
-        reasons.append(Motivo("stop_loss", f"custo observado {eco.custo.micros} micros > tolerância {teto_ok.perda_maxima.micros} com contribuição negativa", "bloqueante"))
+    # 2) stop-loss: a perda LÍQUIDA madura (custo − receita comparável) já excede a tolerância do owner.
+    #    O gasto bruto nunca é comparado com a tolerância. A perda líquida sob as premissas conservadoras
+    #    (custo_cons − receita_cons) acima da tolerância é aviso, não parada: ainda não aconteceu.
+    if teto_ok is not None and realizada and perda_liq_obs.micros > teto_ok.perda_maxima.micros:
+        reasons.append(Motivo("stop_loss", f"perda líquida madura {perda_liq_obs.micros} micros > tolerância {teto_ok.perda_maxima.micros} micros", "bloqueante"))
         return _resultado(Veredito.TEST_WITH_CAP if not todos_negativos else Veredito.STRUCTURALLY_UNVIABLE, conf, Recomendacao.PARAR_POR_STOP_LOSS, **comum)
+    if teto_ok is not None and realizada and perda_liq_cons.micros > teto_ok.perda_maxima.micros:
+        reasons.append(Motivo("perda_conservadora_acima_da_tolerancia", f"perda líquida conservadora {perda_liq_cons.micros} micros > tolerância {teto_ok.perda_maxima.micros} micros (ainda não realizada)", "aviso"))
 
     # 3) lucrativa com evidência forte
     if env.contribuicao_conservadora.micros >= 0 and realizada and moeda_provada and not poucos:

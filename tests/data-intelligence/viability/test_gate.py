@@ -8,7 +8,7 @@ from volc_dil.contracts import Dinheiro
 from volc_dil.viability.contrato import Evidencia, PontoSimulacao, SimulacaoEntrada
 from volc_dil.viability.gate import Confianca, Recomendacao, ResultadoViabilidade, Veredito, avaliar
 
-from _entradas import AS_OF, entrada
+from _entradas import AS_OF, entrada, v2
 
 
 def _com(e, **kw):
@@ -172,3 +172,53 @@ def test_saida_com_visitas_zero_nao_usa_cliques_como_visitas():
     r = avaliar(entrada(cliques=100, custo="100", receita="75", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, visitas=0, perda="300", horizonte=14))
     assert r.observed_rpc == Fraction(750_000) and r.observed_rpc_per_visit is None
     assert r.para_json()["observed_rpc_per_visit_unavailable"] == "visitas_zero"
+
+
+# ---------------------------------------------------------------- V2: stop-loss compara perda LÍQUIDA, nunca gasto bruto (fix 2)
+def test_stop_loss_nao_dispara_quando_a_perda_liquida_cabe_na_tolerancia():
+    # gasto 1000 > tolerância 100, mas receita 950 observada na mesma moeda: perda líquida 50 <= 100
+    e = entrada(custo="1000", receita="950", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.OBSERVED, perda="100", horizonte=14)
+    r = avaliar(e)
+    assert r.recomendacao is not Recomendacao.PARAR_POR_STOP_LOSS
+    assert not any(m.codigo == "stop_loss" for m in r.reasons)
+    assert r.max_loss == Dinheiro.de_decimal("100", "BRL")
+    assert r.net_loss_observed == Dinheiro.de_decimal("50", "BRL")
+    assert r.contribution_observed == Dinheiro.de_decimal("-50", "BRL")
+    assert r.spend_cap is not None and r.spend_cap == r.max_experiment_spend
+    j = r.para_json()
+    assert {"max_loss", "spend_cap", "net_loss_observed", "net_loss_conservative", "contribution_observed", "contribution_conservative"} <= set(j)
+    assert j["max_loss"] != j["spend_cap"]
+
+
+def test_stop_loss_dispara_quando_a_perda_liquida_observada_excede_a_tolerancia():
+    e = entrada(custo="1000", receita="850", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.OBSERVED, perda="100", horizonte=14)
+    r = avaliar(e)
+    assert r.recomendacao is Recomendacao.PARAR_POR_STOP_LOSS
+    assert r.net_loss_observed == Dinheiro.de_decimal("150", "BRL")
+    motivo = next(m for m in r.reasons if m.codigo == "stop_loss")
+    assert "líquida" in motivo.detalhe and "1000" not in motivo.detalhe.split("perda")[0]
+
+
+def test_stop_loss_nunca_usa_gasto_bruto_mesmo_com_contribuicao_negativa_minima():
+    e = entrada(custo="1000", receita="999", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.OBSERVED, perda="100", horizonte=14)
+    r = avaliar(e)
+    assert r.contribution_observed.micros < 0
+    assert r.recomendacao is not Recomendacao.PARAR_POR_STOP_LOSS
+
+
+def test_perda_liquida_conservadora_acima_da_tolerancia_e_aviso_nao_stop_loss():
+    e = entrada(custo="1000", receita="950", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, receita_ev=Evidencia.OBSERVED, perda="100", horizonte=14)
+    r = avaliar(e)
+    assert r.net_loss_conservative.micros > r.max_loss.micros       # 1050 − 855 = 195 > 100
+    assert any(m.codigo == "perda_conservadora_acima_da_tolerancia" and m.severidade == "aviso" for m in r.reasons)
+    assert r.recomendacao is not Recomendacao.PARAR_POR_STOP_LOSS
+
+
+# ---------------------------------------------------------------- V2: moeda da simulação (fix 3)
+def test_simulacao_em_moeda_diferente_sem_cambio_e_indisponivel_no_gate():
+    pontos = (PontoSimulacao(50_000, 500, 20_000_000), PontoSimulacao(100_000, 1000, 80_000_000))
+    sim = SimulacaoEntrada("CPC_BID", "USD", pontos, AS_OF, "MANUAL_CPC")
+    e = entrada(cliques=1000, custo="80.00", receita="160.00", moeda_receita="BRL", taxa=None, moeda_rec_ev=Evidencia.OBSERVED, perda="300", horizonte=14)
+    r = avaliar(_com(e, simulacao=sim))
+    assert r.simulacao["disponivel"] is False and r.simulacao["motivo"] == "moeda_incompativel"
+    assert "simulacao_moeda_incompativel" in r.missing_evidence
