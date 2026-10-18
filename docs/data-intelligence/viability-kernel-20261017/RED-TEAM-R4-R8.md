@@ -65,3 +65,19 @@ continua 58/58 no mesmo SHA; a suíte de viabilidade inteira dá 271 PASS + este
 
 Reexecutar exatamente o mesmo comando contra o SHA corrigido. Alterações na suíte entre as duas rodadas: somente
 correções puras de nome de API pedidas explicitamente pelo integrador, registradas no commit.
+
+## Resultado após as correções
+
+A suíte da rodada 2 foi preservada e reexecutada contra a candidata integrada. Os 46 testes passaram. A suíte
+adversarial completa passou em **104/104**, e a suíte inteira do kernel passou em **332/332**.
+
+Na revisão final apareceu uma inconsistência que o merge dos subagentes não havia fechado: uma taxa de câmbio sem
+`de`/`para` ainda herdava o par das moedas do ledger. O teste R7d a detectou. O adapter foi corrigido para descartar a
+taxa ambígua e devolver câmbio ausente, mesmo quando o ledger conhece as duas moedas; o teste de compatibilidade antigo
+foi alinhado ao contrato fail-closed. Correção em `127d9670`.
+
+Estado dos riscos desta rodada:
+
+- **R4, R5, R7 e R8:** fechados por código e testes.
+- **R6:** permanece uma escolha de política explícita, fora do escopo desta correção.
+- **R3:** permanece como limite de arquitetura: o hash prova integridade da referência de autorização, não autoria.
