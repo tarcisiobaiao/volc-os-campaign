@@ -69,6 +69,14 @@ def _cambio(d: Optional[Mapping[str, Any]], de: Optional[str], para: Optional[st
     explicitamente. Sem par conhecido o câmbio é ABSENT/"moeda_desconhecida" mesmo que o dict traga uma taxa:
     uma taxa sem par não converte nada (e o kernel dirá `cambio_ausente` quando precisar converter)."""
     d = d or {}
+    # Uma taxa é uma afirmação sobre um par específico. As moedas observadas no
+    # ledger podem dizer se uma conversão seria necessária, mas não podem
+    # completar silenciosamente o contrato de uma cotação. Sem o par explícito,
+    # descartamos a taxa e devolvemos câmbio ausente (fail-closed, preservando o
+    # contrato público do adapter).
+    if d.get("taxa") is not None and (not d.get("de") or not d.get("para")):
+        return Cambio(taxa=None, de=MOEDA_DESCONHECIDA, para=MOEDA_DESCONHECIDA,
+                      proveniencia="moeda_desconhecida", evidencia=Evidencia.ABSENT)
     de_ = str(d["de"]) if d.get("de") else de
     para_ = str(d["para"]) if d.get("para") else para
     if not de_ or not para_:

@@ -151,9 +151,10 @@ def test_cambio_nunca_inventa_o_par():
     # sem dict de câmbio e sem moedas: idem
     c = de_ledger_campanha_dia("c", sem_moeda, as_of=AS_OF, cambio=None).cambio
     assert c.taxa is None and c.proveniencia == "moeda_desconhecida" and (c.de, c.para) == ("", "")
-    # dict sem par mas moedas conhecidas nas linhas: o par vem das linhas (receita → custo)
+    # Mesmo com moedas conhecidas nas linhas, uma taxa sem par continua ambígua:
+    # o ledger não pode completar silenciosamente o contrato da cotação.
     c = de_ledger_campanha_dia("c", [linha("2026-10-01", 1, 1, 1)], as_of=AS_OF, cambio=sem_par).cambio
-    assert c.taxa == Decimal("5.25") and (c.de, c.para) == ("USD", "BRL")
+    assert c.taxa is None and c.evidencia is Evidencia.ABSENT and (c.de, c.para) == ("", "")
     # dict com par explícito: vale mesmo sem moedas nas linhas
     c = de_ledger_campanha_dia("c", sem_moeda, as_of=AS_OF, cambio=CAMBIO).cambio
     assert c.taxa == Decimal("5.25") and (c.de, c.para) == ("USD", "BRL")
