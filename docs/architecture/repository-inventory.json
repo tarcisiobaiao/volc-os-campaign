@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-17T20:31:08-03:00",
+  "generated_at": "2026-10-17T21:20:24-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 1031,
-    "markdown": 727,
-    "sql": 304,
-    "tracked": 1030,
-    "untracked": 1,
+    "files": 1045,
+    "markdown": 736,
+    "sql": 309,
+    "tracked": 1045,
+    "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 58,
-      "documentation": 534,
+      "documentation": 542,
       "generated": 2,
-      "module-guide": 46,
+      "module-guide": 47,
       "product-document": 23,
       "project-control": 4,
       "reference": 12,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 42,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 188,
+      "sql-needs-review": 193,
       "sql-validation": 14
     },
     "sql_risk": {
-      "high": 179,
+      "high": 184,
       "medium": 72,
       "read-only-or-ddl-free": 53
     }
@@ -1675,9 +1675,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 29223,
+      "bytes": 29801,
       "lines": 351,
-      "sha256": "9ffe188b8667583f6479fa166dc3063b3dce3c36866d5476b5807d0f12c14e2b",
+      "sha256": "d310f06fcd5d1441ec11fb74f1666b7c1a01f134a7af3e75990d743cfcde2814",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6399,6 +6399,42 @@
       "sql_risk": null
     },
     {
+      "path": "docs/data-intelligence/fundacao-20261016/propostas/CONTRATO-COTACAO-USD-BRL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4222,
+      "lines": 53,
+      "sha256": "d631ccae0c6ce6eacd76bc79d76adc782015e71d436ed77b4f2a40eed9dd836f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/data-intelligence/fundacao-20261016/propostas/MIGRATION-RUN-ABANDONED.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2838,
+      "lines": 40,
+      "sha256": "6acd8613ef8142e0982b20b035e2262644d49cd1c018aaf5214d60075fb2a9d0",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/data-intelligence/fundacao-20261016/propostas/PLANO-DEVELOPER-TOKEN-GOOGLE-ADS.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3229,
+      "lines": 41,
+      "sha256": "f810033b9efd110fce104984a95fcf9f65b1441d1c8030208f4460f516ef1598",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/data-intelligence/fundacao-20261016/receipts/PROVA-ZERO-PRODUCAO.md",
       "extension": ".md",
       "classification": "documentation",
@@ -6450,7 +6486,7 @@
       "path": "docs/data-intelligence/fundacao-20261016/receipts/item5-20261017/VEREDITO-ITEM5.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 9933,
       "lines": 144,
       "sha256": "a87a92696fc54195f011f11a18eb2d601a9fc4c96d38e5651ffe2f74b8d9f276",
@@ -6802,6 +6838,54 @@
       "bytes": 2643,
       "lines": 33,
       "sha256": "123c30c4d53a79c7280e88ffb447b6099ca2bf8dc95135b3fd149cd886da0120",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/data-intelligence/viability-kernel-20261017/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 13813,
+      "lines": 104,
+      "sha256": "d5f2ad4d1c5532ec8543beb9f9f41d003a77aa4fec77e7ab2ddc5d151c2e4f4d",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/data-intelligence/viability-kernel-20261017/RED-TEAM-R4-R8.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 9235,
+      "lines": 84,
+      "sha256": "3367babdfc982e8f77e88ae0536c2806cb0d444110d45a2d29b82c39cb91069f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/data-intelligence/viability-kernel-20261017/RED-TEAM-V1.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 12790,
+      "lines": 94,
+      "sha256": "1ce5bf325637d3807e297965b729c4c9988a083adb033073b111d758c24f16b7",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/data-intelligence/viability-kernel-20261017/RED-TEAM-V2-VERDICT.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 15281,
+      "lines": 113,
+      "sha256": "90272c2f0d58d0722300d2a2c46658db61bd11c58abd9459028cbc7cb426db4d",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7995,6 +8079,66 @@
       "sql_risk": "high"
     },
     {
+      "path": "experiments/data-intelligence-lab/migrations_candidatas/item5_0001_google_ads_run_abandoned.down.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1228,
+      "lines": 20,
+      "sha256": "a90d4e189359e932161164c7b3b987b61ce7eb2d53c9967d7e752d1ee5c641d4",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "experiments/data-intelligence-lab/migrations_candidatas/item5_0001_google_ads_run_abandoned.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 8703,
+      "lines": 129,
+      "sha256": "9440d3ff208144e59c28d910a6289250fbbe54b749ec6168adbd7182717f49c9",
+      "graph_nodes": 3,
+      "graph_degree": 4,
+      "sql_risk": "high"
+    },
+    {
+      "path": "experiments/data-intelligence-lab/migrations_candidatas/item5_0002_cotacao_usd_brl.down.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 907,
+      "lines": 16,
+      "sha256": "ed764e7fd38dae794ad557eb369f2788f4f8d4748bab558b63810e64e1973a24",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "experiments/data-intelligence-lab/migrations_candidatas/item5_0002_cotacao_usd_brl.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 7513,
+      "lines": 119,
+      "sha256": "fa57dbd876403a0790b190e0e0388024e734ceb718ea69d4ce4d58233cef8b90",
+      "graph_nodes": 7,
+      "graph_degree": 14,
+      "sql_risk": "high"
+    },
+    {
+      "path": "experiments/data-intelligence-lab/migrations_candidatas/item5_base_producao_reconstruida.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 7722,
+      "lines": 119,
+      "sha256": "39f71bace4517998db11afeb4a816f2806d492e04e0d1a5a6d395178255c25fc",
+      "graph_nodes": 5,
+      "graph_degree": 12,
+      "sql_risk": "high"
+    },
+    {
       "path": "experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/00_prelude_somente_teste.sql",
       "extension": ".sql",
       "classification": "sql-needs-review",
@@ -8254,6 +8398,30 @@
       "bytes": 79481,
       "lines": 779,
       "sha256": "364366433ebcc71d5e3723ee5e471f3eff0bdb8c73a3bf2a8263537ead786da1",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "experiments/data-intelligence-lab/results/viability/replay.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3466,
+      "lines": 27,
+      "sha256": "b665fa8720d2ff3485bc8419032568fcb05085c6aee510f990f6cd2fdee3d6cc",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "experiments/data-intelligence-lab/scripts/README-viability-cli.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 6358,
+      "lines": 110,
+      "sha256": "9be8ee59dc37ee560d0b4ed4343c6410518bb59e652bb3d457ae2cc1b248b183",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -8951,7 +9119,7 @@
       "lines": 20,
       "sha256": "1641ec2764efea0a6a45dc4c86808defc2f8d0ccddcb9b10c42870c76c05e7c4",
       "graph_nodes": 2,
-      "graph_degree": 7,
+      "graph_degree": 5,
       "sql_risk": "high"
     },
     {
@@ -9359,7 +9527,7 @@
       "lines": 107,
       "sha256": "0c9651b029995150ba40cd768f5af562ed1527534dd9a183cf2dd44dfe338a57",
       "graph_nodes": 2,
-      "graph_degree": 3,
+      "graph_degree": 2,
       "sql_risk": "high"
     },
     {
@@ -9371,7 +9539,7 @@
       "lines": 137,
       "sha256": "b76a5cf091a9c7e60ce36c9e9dce95e717b1ad2a0ed2e33b2e2c37ff2c5fd57e",
       "graph_nodes": 3,
-      "graph_degree": 7,
+      "graph_degree": 8,
       "sql_risk": "high"
     },
     {

@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-17T20:31:08-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-17T21:20:24-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 1031 arquivos: 727 Markdown e 304 SQL;
-- 1030 versionados e 1 ainda não versionados;
+- 1045 arquivos: 736 Markdown e 309 SQL;
+- 1045 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 179 SQL com palavras de mutação de alto risco.
+- 184 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,9 +17,9 @@ Gerado em `2026-10-17T20:31:08-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 58 |
-| `documentation` | 534 |
+| `documentation` | 542 |
 | `generated` | 2 |
-| `module-guide` | 46 |
+| `module-guide` | 47 |
 | `product-document` | 23 |
 | `project-control` | 4 |
 | `reference` | 12 |
@@ -27,7 +27,7 @@ Gerado em `2026-10-17T20:31:08-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 188 |
+| `sql-needs-review` | 193 |
 | `sql-validation` | 14 |
 
 ## Duplicatas exatas
@@ -46,6 +46,11 @@ estejam errados, mas impede aplicação automática.
 | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_schema_observacao.sql` | `sql-needs-review` | 19 | 40 |
 | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0002_observacao_particionada.OPCIONAL.down.sql` | `sql-needs-review` | 2 | 2 |
 | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0002_observacao_particionada.OPCIONAL.sql` | `sql-needs-review` | 3 | 4 |
+| `experiments/data-intelligence-lab/migrations_candidatas/item5_0001_google_ads_run_abandoned.down.sql` | `sql-needs-review` | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/item5_0001_google_ads_run_abandoned.sql` | `sql-needs-review` | 3 | 4 |
+| `experiments/data-intelligence-lab/migrations_candidatas/item5_0002_cotacao_usd_brl.down.sql` | `sql-needs-review` | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/item5_0002_cotacao_usd_brl.sql` | `sql-needs-review` | 7 | 14 |
+| `experiments/data-intelligence-lab/migrations_candidatas/item5_base_producao_reconstruida.sql` | `sql-needs-review` | 5 | 12 |
 | `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/20261015163704_joinads_collection_canonical.sql` | `sql-needs-review` | 4 | 6 |
 | `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/v21_01_google_ads_coleta_canonica.sql` | `sql-needs-review` | 3 | 4 |
 | `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/dq_01_views_qualidade.down.sql` | `sql-needs-review` | 1 | 0 |
@@ -58,7 +63,7 @@ estejam errados, mas impede aplicação automática.
 | `scripts/provas-v12_04.sql` | `sql-needs-review` | 6 | 12 |
 | `scripts/verificar-anon-w4.sql` | `sql-needs-review` | 1 | 0 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | 1 | 0 |
-| `sql/add_user_campaigns.sql` | `sql-needs-review` | 2 | 7 |
+| `sql/add_user_campaigns.sql` | `sql-needs-review` | 2 | 5 |
 | `sql/archive/campaign-highlights/APLICAR_NO_SUPABASE.sql` | `archived` | 0 | 0 |
 | `sql/archive/campaign-highlights/test_rotacao.sql` | `archived` | 0 | 0 |
 | `sql/archive/incidents/eleicoes-org/fix_eleicoes_project.sql` | `archived` | 0 | 0 |
@@ -75,8 +80,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | 6 | 18 |
 | `src/sql/auto_create_projects_trigger.sql` | `sql-needs-lineage` | 4 | 8 |
 | `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | 5 | 14 |
-| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 3 |
-| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 7 |
+| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 2 |
+| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 8 |
 | `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | 3 | 6 |
 | `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/get_rotated_campaign_highlights.sql` | `sql-needs-lineage` | 2 | 7 |
@@ -320,6 +325,11 @@ estejam errados, mas impede aplicação automática.
 | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0001_schema_observacao.sql` | `sql-needs-review` | high | 19 | 40 |
 | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0002_observacao_particionada.OPCIONAL.down.sql` | `sql-needs-review` | high | 2 | 2 |
 | `experiments/data-intelligence-lab/migrations_candidatas/dil_obs_0002_observacao_particionada.OPCIONAL.sql` | `sql-needs-review` | high | 3 | 4 |
+| `experiments/data-intelligence-lab/migrations_candidatas/item5_0001_google_ads_run_abandoned.down.sql` | `sql-needs-review` | high | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/item5_0001_google_ads_run_abandoned.sql` | `sql-needs-review` | high | 3 | 4 |
+| `experiments/data-intelligence-lab/migrations_candidatas/item5_0002_cotacao_usd_brl.down.sql` | `sql-needs-review` | high | 1 | 0 |
+| `experiments/data-intelligence-lab/migrations_candidatas/item5_0002_cotacao_usd_brl.sql` | `sql-needs-review` | high | 7 | 14 |
+| `experiments/data-intelligence-lab/migrations_candidatas/item5_base_producao_reconstruida.sql` | `sql-needs-review` | high | 5 | 12 |
 | `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/00_prelude_somente_teste.sql` | `sql-needs-review` | medium | 2 | 2 |
 | `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/20261015163704_joinads_collection_canonical.sql` | `sql-needs-review` | high | 4 | 6 |
 | `experiments/data-intelligence-lab/migrations_candidatas/views_qualidade/base_real/v21_01_google_ads_coleta_canonica.sql` | `sql-needs-review` | high | 3 | 4 |
@@ -340,11 +350,6 @@ estejam errados, mas impede aplicação automática.
 | `scripts/provas-v17_01.sql` | `sql-needs-review` | medium | 3 | 4 |
 | `scripts/provas-v17_04.sql` | `sql-needs-review` | medium | 1 | 0 |
 | `scripts/verificar-anon-w4.sql` | `sql-needs-review` | high | 1 | 0 |
-| `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | high | 1 | 0 |
-| `sql/add_user_campaigns.sql` | `sql-needs-review` | high | 2 | 7 |
-| `sql/fix_marliseac_password_final.sql` | `sql-needs-review` | medium | 1 | 0 |
-| `sql/fix_user_campaigns_campaign_id.sql` | `sql-needs-review` | high | 1 | 0 |
-| `sql/fix_user_campaigns_reference.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.
