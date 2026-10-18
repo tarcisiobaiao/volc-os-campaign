@@ -6,7 +6,7 @@
  },
  "codigo_sha256": "8276f4850d6f7dbd93bde783af1345f3608f4cd633cde30ea957eefb6c559378",
  "external_actions": 0,
- "fixtures_dir": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/worktrees/fable-viability-kernel-v2-20261017/experiments/data-intelligence-lab/fixtures/viability",
+ "fixtures_dir": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/worktrees/integration-data-foundation-viability-v2-20261017/experiments/data-intelligence-lab/fixtures/viability",
  "fixtures_sha256": {
   "cambio_ausente": "055992e5db5f9545e6756b1e069bbdac46dd0bab802c1c69914b9a556189ce0e",
   "campanha_favoravel": "86468ee3c43baa704f7cffba9a748c6cf68279f5edd010354492232565f03c13",
@@ -34,6 +34,6 @@
  "replay_hash": "e76284c8e3293091119d16402009151b2e33ea713d71e889b9be87680f46590a",
  "resultado_arquivo": "replay.json",
  "resultado_sha256": "aab30f1bd5ea7b67777686743ac5ae9ea74d766c3e1e3293df222974f75b166c",
- "source_commit": "127d967031bd9e4e9b127e62fffd24efe7917848",
+ "source_commit": "62854151b541cb49a6d8b8b2090fea2814698190",
  "tipo": "replay"
 }
