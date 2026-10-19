@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-19T12:42:10-03:00",
+  "generated_at": "2026-10-19T13:08:13-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 1071,
     "markdown": 757,
     "sql": 314,
-    "tracked": 1070,
-    "untracked": 1,
+    "tracked": 1071,
+    "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
@@ -1701,7 +1701,7 @@
       "tracked": true,
       "bytes": 31185,
       "lines": 361,
-      "sha256": "c3d691650c41e70e4ae477c37661751372b0193f233e8b32829dfd1f9621e212",
+      "sha256": "f0b47e0ff889a7f142281962c828c58f69b608b730269106adc45bd29cfcb8ba",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7554,10 +7554,10 @@
       "path": "docs/operations/VOLC-MEASUREMENT-V33-CONSENT-BR-2026-10-19.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
-      "bytes": 3439,
-      "lines": 77,
-      "sha256": "07ed099b547f30d862ae0c36e0b09d58b394cee71f3d1c0d9a1b2c51be69c4e4",
+      "tracked": true,
+      "bytes": 6685,
+      "lines": 133,
+      "sha256": "0b32dec495ccede13891a26d7d91fe0e90f37b2924781815b2c9b9294e331721",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

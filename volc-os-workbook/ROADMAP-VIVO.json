@@ -1353,9 +1353,9 @@
         {
           "id": "P08-T12",
           "title": "Desacoplar a medição first-party VOLC do aviso nativo no Brasil",
-          "status": "partial",
+          "status": "done",
           "priority": 1,
-          "proof": "19/10/2026 · GTM v38 publicado a partir da v37 em workspace isolado, alterando somente WEBS Wrapper (tag 23) e VOLC Sensor v3.3 (tag 39). As duas tags ficaram sem requisito adicional de Consent Mode; triggers, tags Google e conversões permaneceram intocados. Quick preview sem erro, hashes live iguais ao repositório e canário com estado final analytics_storage/ad_storage=denied gravou quatro eventos posteriores no Supabase oficial. Termos, Privacidade e Cookies foram atualizados e relidos em produção; QA 390×844 e 1440×900 sem overflow. Recibo: docs/operations/VOLC-MEASUREMENT-V33-CONSENT-BR-2026-10-19.md.",
+          "proof": "19/10/2026 · GTM v38 publicado a partir da v37 em workspace isolado, alterando somente WEBS Wrapper (tag 23) e VOLC Sensor v3.3 (tag 39). As duas tags ficaram sem requisito adicional de Consent Mode; triggers, tags Google e conversões permaneceram intocados. Quick preview sem erro, hashes live iguais ao repositório e canário com estado final analytics_storage/ad_storage=denied gravou quatro eventos posteriores no Supabase oficial. Termos, Privacidade e Cookies foram atualizados e relidos em produção. No fechamento da mesma data, Belvedere 1.39.5 foi auditado (ZIP seguro, 54 PHP sem erro), instalado e ativado com backup integral e rollback; wgc3 ficou instalado. Logo, menus, cores, home, rodapé e aviso foram configurados sem editar o tema. O MU-plugin antigo foi removido da execução e preservado no backup. O wrapper opcional do tema e seus campos de script ficaram desligados. A LP Elementor passou a carregar o shell normal apenas para wp_head/wp_footer e aviso nativo, mantendo o layout full-screen por CSS adicional. QA Chromium em 390 px provou zero overflow, um aviso, clique Entendi persistido, GTM/Sensor ativos e rotas 200. Canário institucional pós-cutover preservou campaign/content numéricos e gravou 8 eventos no Supabase oficial. Recibo: docs/operations/VOLC-MEASUREMENT-V33-CONSENT-BR-2026-10-19.md.",
           "explanation": "A operação brasileira trata a medição comportamental própria, minimizada e sem PII como parte da operação e melhoria do portal; o aviso nativo informa a prática, mas não controla Sensor ou Wrapper. GPC e opt-out explícito do Sensor permanecem. Esta é uma decisão operacional do owner, não um parecer jurídico.",
           "acceptance": [
             "Sensor e Wrapper não consultam Consent Mode nem exigem consentimento adicional no GTM",
@@ -1375,7 +1375,7 @@
             "docs/operations/creditoup-legal-v20261019/termos.html",
             "docs/operations/creditoup-legal-v20261019/cookies.html"
           ],
-          "gaps": "GTM e páginas jurídicas estão live. Continua partial porque o tema ativo ainda é wgc3 com o MU-plugin de consentimento antigo; o Belvedere atualizado ainda não passou pelo cutover e QA final.",
+          "gaps": "Nenhuma lacuna restante nos critérios desta tarefa. Revisão jurídica continua externa à prova técnica. O warning PHP legado do plugin JoinAds, anterior ao cutover, deve ser tratado em tarefa própria.",
           "graph_nodes": [
             "cap_behavior",
             "concept:tracking_control_plane"
