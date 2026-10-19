@@ -1,0 +1,409 @@
+<script>
+/*
+ * VOLC Sensor v3.1 — analytics comportamental first-party, privacy-by-design
+ *
+ * SETUP NO GTM (obrigatório para o compliance funcionar):
+ *  1. Tag "HTML personalizado" com este código.
+ *  2. Configurações avançadas > Configurações de consentimento >
+ *     "Exigir consentimento adicional para a tag disparar": analytics_storage
+ *     (é o GTM que resolve consentimento por região — EEE/UK/CH).
+ *  3. Acionadores: "Todas as páginas" (DOM pronto) + o evento que sua CMP
+ *     dispara depois que o usuário aceita. O guard __VOLC_S3 evita execução dupla.
+ *  4. Divulgue esta coleta na Política de Privacidade (LGPD / GDPR).
+ *
+ * O QUE ESTE SCRIPT NÃO FAZ (de propósito):
+ *  - Não lê, altera nem rastreia cliques dentro de anúncios / iframes.
+ *  - Não coleta advertiser / creative / line item IDs do GPT.
+ *  - Não coleta texto digitado, texto livre de parágrafos, query strings,
+ *    URL completa do referrer, IP, fingerprint, cookies ou localStorage.
+ *  - Não escreve atributos no DOM e não envia nada ao Google (nem ao dataLayer).
+ */
+(function (w, d) {
+  'use strict';
+  if (w.__VOLC_S3) return;
+
+  var CFG = {
+    endpoint: 'https://database.agenciavolc.com.br/functions/v1/volc-ingest',
+    v: '3.1',
+    scroll: [25, 50, 75, 100],
+    engaged: [10, 30, 60, 120],
+    idleMs: 30000,
+    flushMs: 10000,
+    maxBatch: 20,
+    maxBytes: 60000,          // sendBeacon aceita ~64KB
+    adRatio: 0.5,             // 50% visível...
+    adMs: 1000,               // ...por 1s (critério MRC display)
+    adScan: [1200, 4000, 10000],
+    contentDelay: 1500
+  };
+
+  var nav = w.navigator || {};
+
+  // ---------- GATES DE PRIVACIDADE ----------
+  // Global Privacy Control: o usuário pediu para não ser rastreado.
+  if (nav.globalPrivacyControl === true) return;
+
+  // Lê o último estado de analytics_storage enviado via gtag('consent', ...).
+  // Defaults com "region" são ignorados aqui porque o GTM já os resolve (passo 2);
+  // este check cobre negação global e revogação durante a sessão.
+  function consent() {
+    var dl = w.dataLayer, st = null;
+    if (!dl || !dl.length) return null;
+    for (var i = 0; i < dl.length; i++) {
+      var a = dl[i];
+      if (!a || a[0] !== 'consent' || !a[2] || !a[2].analytics_storage) continue;
+      if (a[1] === 'default' && a[2].region) continue;
+      st = a[2].analytics_storage;
+    }
+    return st;
+  }
+  if (consent() === 'denied') return;
+
+  w.__VOLC_S3 = 1;
+
+  // ---------- UTILITÁRIOS ----------
+  var WM = typeof WeakMap === 'function';
+  var IO = WM && 'IntersectionObserver' in w;
+
+  // Remove qualquer coisa com cara de dado pessoal antes de sair do navegador.
+  var PII = [
+    /[^\s@]+@[^\s@]+\.[a-z]{2,}/gi,                 // e-mail
+    /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g,    // CNPJ
+    /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g,            // CPF
+    /\+?\d[\d\s().-]{8,}\d/g                        // telefone, cartão, sequências longas
+  ];
+  function clean(s, max) {
+    s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+    for (var i = 0; i < PII.length; i++) s = s.replace(PII[i], '[x]');
+    return s.slice(0, max || 60);
+  }
+  function now() { return Date.now(); }
+  function rid() {
+    try { if (w.crypto && w.crypto.randomUUID) return w.crypto.randomUUID(); } catch (e) {}
+    return now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+  function bareHost(h) { return (h || '').replace(/^www\./, ''); }
+
+  // ID de sessão first-party, escopo da aba, some ao fechar. Sem cookie, sem cross-site.
+  function sid() {
+    try {
+      var k = 'volc_sid', v = sessionStorage.getItem(k);
+      if (!v) { v = rid(); sessionStorage.setItem(k, v); }
+      return v;
+    } catch (e) { return rid(); }
+  }
+
+  // Qualquer coisa dentro ou em volta de anúncio fica fora do rastreio de cliques.
+  var AD_AREA = '[data-volc-slot], ins.adsbygoogle, .google-auto-placed, [id^="google_ads"], [id^="div-gpt-ad"], iframe';
+  function inAd(el) { try { return !!el.closest(AD_AREA); } catch (e) { return false; } }
+
+  function desc(el) {
+    var c = (typeof el.className === 'string' ? el.className : '').trim().split(/\s+/)[0] || '';
+    return clean(el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (c ? '.' + c : ''), 80);
+  }
+
+  // Mesma normalização do WEBS Wrapper (key-values do Ad Manager): é a chave de junção
+  // entre os dados deste sensor e os relatórios de receita. Valor com PII é descartado.
+  function utmValue(v) {
+    v = String(v == null ? '' : v).trim().toLowerCase();
+    if (!v || clean(v, 200) !== v.replace(/\s+/g, ' ')) return '';
+    if (v.normalize) v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // sem acentos
+    return v.replace(/["'=!+#*~;^()<>\[\],]/g, '').replace(/\s+/g, '_').slice(0, 40);
+  }
+
+  // Origem da sessão: só UTMs (allowlist) + flag de clique pago, nunca o valor do gclid.
+  // Fica no sessionStorage para que as páginas seguintes continuem atribuídas à campanha.
+  function campaign() {
+    var k = 'volc_utm', o = null, q = null;
+    try { q = new URL(location.href).searchParams; } catch (e) {}
+    if (q) {
+      var f = {}, any = false;
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (p) {
+        var v = utmValue(q.get(p));
+        if (v) { f[p.slice(4)] = v; any = true; }
+      });
+      if (q.has('gclid') || q.has('gbraid') || q.has('wbraid')) { f.paid = 1; any = true; }
+      if (any) o = f;
+    }
+    try {
+      if (o) sessionStorage.setItem(k, JSON.stringify(o));
+      else o = JSON.parse(sessionStorage.getItem(k) || 'null');
+    } catch (e) {}
+    o = o || {};
+    o.paid = o.paid ? 1 : 0;
+    return o;
+  }
+
+  // ---------- FILA E ENVIO ----------
+  var SID = sid(), PID = rid();
+  var PATH = clean(location.pathname || '/', 200);
+  var HOST = location.hostname || '';
+  var REF = (function () {
+    try { return d.referrer ? new URL(d.referrer).hostname : ''; } catch (e) { return ''; }
+  })();
+  var Q = [], timers = [], observers = [], stopped = false, eventSeq = 0;
+
+  function enq(e, p) {
+    if (stopped) return;
+    Q.push({ e: e, ts: now(), seq: ++eventSeq, sid: SID, pid: PID, path: PATH, host: HOST, ref: REF, p: p || {} });
+    if (Q.length >= CFG.maxBatch) flush('max');
+  }
+
+  function send(r, items) {
+    var body = JSON.stringify({
+      event: 'volc_batch', r: r, n: items.length, sid: SID, pid: PID,
+      path: PATH, t: now(), v: CFG.v, batch: items
+    });
+    if (body.length > CFG.maxBytes && items.length > 1) {
+      var h = Math.ceil(items.length / 2);
+      send(r, items.slice(0, h));
+      send(r, items.slice(h));
+      return;
+    }
+    try {
+      if (nav.sendBeacon && nav.sendBeacon(CFG.endpoint, new Blob([body], { type: 'text/plain' }))) return;
+    } catch (e) {}
+    try {
+      fetch(CFG.endpoint, {
+        method: 'POST', mode: 'no-cors', keepalive: true, credentials: 'omit',
+        headers: { 'content-type': 'text/plain' }, body: body
+      });
+    } catch (e) {}
+  }
+
+  function flush(r) {
+    if (stopped || !Q.length) return;
+    if (consent() === 'denied') { stop(); return; }   // revogou no meio da sessão
+    send(r || 'i', Q.splice(0, Q.length));
+  }
+
+  function stop() {
+    stopped = true;
+    Q.length = 0;
+    for (var i = 0; i < timers.length; i++) clearInterval(timers[i]);
+    for (var j = 0; j < observers.length; j++) { try { observers[j].disconnect(); } catch (e) {} }
+  }
+
+  // Para a CMP chamar na revogação: window.volcOptOut()
+  w.volcOptOut = function () {
+    try { sessionStorage.removeItem('volc_sid'); } catch (e) {}
+    stop();
+  };
+
+  timers.push(setInterval(function () { flush('i'); }, CFG.flushMs));
+  w.addEventListener('pagehide', function () { closeDwell(); flush('ph'); }, true);
+  d.addEventListener('visibilitychange', function () {
+    if (d.visibilityState === 'hidden') { closeDwell(); flush('hd'); }
+    else reopenDwell();
+  }, true);
+
+  // ---------- SCROLL DEPTH (throttled por rAF) ----------
+  var sFired = {}, sTick = false;
+  var raf = w.requestAnimationFrame || function (f) { return setTimeout(f, 50); };
+
+  function scrollPct() {
+    var de = d.documentElement, b = d.body || de;
+    var st = w.pageYOffset || de.scrollTop || b.scrollTop || 0;
+    var den = Math.max(b.scrollHeight, de.scrollHeight) - (de.clientHeight || w.innerHeight || 0);
+    return den <= 0 ? 100 : Math.min(100, Math.max(0, st / den * 100));
+  }
+  function checkScroll() {
+    sTick = false;
+    if (stopped) return;
+    var pct = scrollPct();
+    for (var i = 0; i < CFG.scroll.length; i++) {
+      var m = CFG.scroll[i];
+      if (!sFired[m] && pct >= m) { sFired[m] = 1; enq('volc_scroll_mark', { m: m, p: Math.round(pct) }); }
+    }
+  }
+  w.addEventListener('scroll', function () {
+    if (!sTick) { sTick = true; raf(checkScroll); }
+  }, { passive: true });
+
+  // ---------- ENGAGED TIME (aba visível + usuário ativo) ----------
+  var lastAct = now(), secs = 0, eFired = {};
+  function act() { lastAct = now(); }
+  ['pointerdown', 'keydown', 'scroll', 'mousemove', 'touchstart'].forEach(function (t) {
+    w.addEventListener(t, act, { passive: true, capture: true });
+  });
+  timers.push(setInterval(function () {
+    if (d.visibilityState !== 'visible' || now() - lastAct > CFG.idleMs) return;
+    secs++;
+    for (var i = 0; i < CFG.engaged.length; i++) {
+      var m = CFG.engaged[i];
+      if (!eFired[m] && secs >= m) { eFired[m] = 1; enq('volc_engaged_mark', { m: m, s: secs }); }
+    }
+  }, 1000));
+
+  // ---------- AD SLOTS: viewability dos SEUS containers (somente leitura) ----------
+  // Observa apenas o wrapper [data-volc-slot] que você controla. O único dado lido do
+  // anúncio é data-ad-status do <ins> (atributo documentado pelo AdSense: filled/unfilled).
+  function adSlots() {
+    var seen = new WeakMap(), done = new WeakMap(), tmr = new WeakMap();
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (x) {
+        var el = x.target;
+        if (done.get(el)) return;
+        if (x.intersectionRatio >= CFG.adRatio) {
+          if (tmr.get(el)) return;
+          tmr.set(el, setTimeout(function () {
+            tmr.delete(el);
+            if (stopped || d.visibilityState !== 'visible') return;
+            done.set(el, 1);
+            try { io.unobserve(el); } catch (e) {}
+            var r = el.getBoundingClientRect(), ins = el.querySelector('ins.adsbygoogle');
+            enq('volc_ad_view', {
+              slot: clean(el.getAttribute('data-volc-slot'), 60), id: clean(el.id, 60),
+              ratio: CFG.adRatio, ms: CFG.adMs,
+              fill: ins ? (ins.getAttribute('data-ad-status') || '') : '',
+              vw: w.innerWidth || 0, vh: w.innerHeight || 0, top: Math.round(r.top)
+            });
+          }, CFG.adMs));
+        } else if (tmr.get(el)) {
+          clearTimeout(tmr.get(el));
+          tmr.delete(el);
+        }
+      });
+    }, { threshold: [CFG.adRatio] });
+    observers.push(io);
+
+    // Re-scan para slots lazy-load / injetados depois do load.
+    function scan() {
+      if (stopped) return;
+      var ns = d.querySelectorAll('[data-volc-slot]');
+      for (var i = 0; i < ns.length; i++) {
+        if (!seen.get(ns[i])) { seen.set(ns[i], 1); try { io.observe(ns[i]); } catch (e) {} }
+      }
+    }
+    CFG.adScan.forEach(function (ms) { setTimeout(scan, ms); });
+  }
+
+  // ---------- AD MANAGER: eventos oficiais do GPT ----------
+  // Usa só a API pública do googletag. Não coleta advertiserId/creativeId/lineItemId.
+  function gpt() {
+    w.googletag.cmd.push(function () {
+      var pa = w.googletag.pubads();
+      pa.addEventListener('slotRenderEnded', function (ev) {
+        enq('volc_gpt_render', {
+          id: clean(ev.slot.getSlotElementId(), 80), unit: clean(ev.slot.getAdUnitPath(), 120),
+          empty: ev.isEmpty ? 1 : 0, size: ev.size ? String(ev.size) : ''
+        });
+      });
+      pa.addEventListener('impressionViewable', function (ev) {
+        enq('volc_gpt_viewable', {
+          id: clean(ev.slot.getSlotElementId(), 80), unit: clean(ev.slot.getAdUnitPath(), 120)
+        });
+      });
+    });
+  }
+
+  // ---------- CONTEÚDO: dwell time por H2 + primeira exibição de CTA ----------
+  var ent = WM ? new WeakMap() : null, ctaSeen = WM ? new WeakMap() : null, vis = [];
+  var CTA = 'a.elementor-button, a.wp-block-button__link, a.wp-element-button';
+
+  function emitDwell(el) {
+    var t = ent.get(el);
+    if (!t) return;
+    ent.set(el, 0);
+    var s = Math.round((now() - t) / 1000);
+    if (s >= 1 && s <= 1800) {
+      enq('volc_dwell_time', { block: clean(el.innerText || el.textContent, 40), tag: el.tagName, sec: s });
+    }
+  }
+  function closeDwell() { if (ent) for (var i = 0; i < vis.length; i++) emitDwell(vis[i]); }
+  function reopenDwell() { if (ent) for (var i = 0, t = now(); i < vis.length; i++) ent.set(vis[i], t); }
+
+  function content() {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (x) {
+        var el = x.target, i = vis.indexOf(el);
+        if (el.tagName === 'A') {
+          if (x.isIntersecting && !ctaSeen.get(el)) ctaSeen.set(el, now());
+          return;
+        }
+        if (x.isIntersecting) {
+          if (i < 0) { vis.push(el); ent.set(el, now()); }
+        } else if (i >= 0) {
+          emitDwell(el);
+          vis.splice(i, 1);
+        }
+      });
+    }, { threshold: [0, 0.5] });
+    observers.push(io);
+    var ns = d.querySelectorAll('h2, ' + CTA);
+    for (var i = 0; i < ns.length; i++) { try { io.observe(ns[i]); } catch (e) {} }
+  }
+
+  // ---------- CLIQUES: rage, dead e navegação interna ----------
+  var rage = [], dcAt = WM ? new WeakMap() : null;
+  var INTERACTIVE = 'a, button, input, select, textarea, label, summary, details, [role="button"], [role="link"], [tabindex], [onclick], .su-accordion';
+
+  function internalClick(a, ts) {
+    var u;
+    try { u = new URL(a.href, location.href); } catch (e) { return; }
+    if (bareHost(u.hostname) !== bareHost(location.hostname)) return;
+    var dest = u.pathname || '/';
+    if (dest.replace(/\/$/, '') === (location.pathname || '/').replace(/\/$/, '')) return;
+
+    var tipo = 'link';
+    if (a.closest('.elementor-button, .elementor-button-link')) tipo = 'elementor_button';
+    else if (a.matches('.wp-block-button__link, .wp-element-button')) tipo = 'wp_button';
+
+    var span = a.querySelector('.elementor-button-text');
+    var text = clean(span ? (span.innerText || span.textContent) : (a.innerText || a.textContent), 100);
+
+    var seenAt = ctaSeen && ctaSeen.get(a);
+    enq('volc_internal_click', {
+      dest: clean(dest, 200), text: text, tipo: tipo,
+      vw: w.innerWidth || 0, vh: w.innerHeight || 0,
+      ttc: seenAt ? Math.round((ts - seenAt) / 1000) : -1
+    });
+    flush('clk');
+  }
+
+  d.addEventListener('click', function (e) {
+    var t = e.target;
+    if (stopped || !t || !t.closest || inAd(t)) return;
+    var ts = now();
+
+    // Rage click: 3+ cliques em 2s dentro de um raio de 50px
+    rage = rage.filter(function (c) {
+      return ts - c.t < 2000 && Math.abs(c.x - e.clientX) < 50 && Math.abs(c.y - e.clientY) < 50;
+    });
+    rage.push({ x: e.clientX, y: e.clientY, t: ts });
+    if (rage.length >= 3) {
+      rage = [];
+      enq('volc_rage_click', {
+        x: Math.round(e.clientX), y: Math.round(e.clientY),
+        vw: w.innerWidth || 0, tag: t.tagName, el: desc(t)
+      });
+    }
+
+    var link = t.closest('a[href]');
+    if (link) { internalClick(link, ts); return; }
+
+    // Dead click: clicou em algo não interativo esperando reação.
+    // Texto só de títulos e alt de imagem (conteúdo do site), nunca de parágrafos/divs.
+    if (t.closest(INTERACTIVE) || !/^(IMG|H1|H2|H3|H4|P|SPAN|DIV|LI|STRONG|EM)$/.test(t.tagName)) return;
+    if (t.tagName !== 'IMG' && !(t.textContent || '').trim()) return;
+    var prev = dcAt && dcAt.get(t);
+    if (prev && ts - prev < 2000) return;
+    if (dcAt) dcAt.set(t, ts);
+    var txt = t.tagName === 'IMG' ? t.alt : (/^H[1-4]$/.test(t.tagName) ? (t.innerText || t.textContent) : '');
+    enq('volc_dead_click', { tag: t.tagName, el: desc(t), text: clean(txt, 40) });
+  }, true);
+
+  // ---------- START ----------
+  if (IO) {
+    adSlots();
+    setTimeout(content, CFG.contentDelay);
+  }
+  if (w.googletag && w.googletag.cmd) gpt();
+
+  enq('volc_sensor_ready', {
+    s: CFG.scroll, e: CFG.engaged, r: CFG.adRatio, ms: CFG.adMs,
+    bot: nav.webdriver ? 1 : 0, utm: campaign(),
+    vw: w.innerWidth || 0, vh: w.innerHeight || 0
+  });
+})(window, document);
+</script>
