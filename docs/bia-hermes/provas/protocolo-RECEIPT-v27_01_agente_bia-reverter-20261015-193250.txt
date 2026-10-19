@@ -1,0 +1,27 @@
+== preflight 20261015-193250 · reverter v27_01_agente_bia · alvo docker:volc-freedom-lab-bia · aprovador lab-bia
+sha ok  v27_01_rollback.sql  04560c174f4fb801298a1b01c1c5ef3dbefac9ebd893840c8dd13815b6e09719
+estado  aplicada|d8b03f4d095bb3343821a9acd3953dd1a3f412f82cf0a5dfae465bfae143c51c|04560c174f4fb801298a1b01c1c5ef3dbefac9ebd893840c8dd13815b6e09719
+fingerprint antes  0dc60c8a32dc85846628dce418e84cea
+reverte v27_01_agente_bia
+ set_config
+------------
+ lab-bia
+(1 row)
+
+WARNING:  there is already a transaction in progress
+NOTICE:  drop cascades to 9 other objects
+DETAIL:  drop cascades to table agente_bia.conversa
+drop cascades to table agente_bia.execucao
+drop cascades to table agente_bia.evento
+drop cascades to function agente_bia.guarda_execucao()
+drop cascades to function agente_bia.evento_append_only()
+drop cascades to function agente_bia.json_conversa(agente_bia.conversa)
+drop cascades to function agente_bia.json_execucao(agente_bia.execucao)
+drop cascades to function agente_bia.evento(uuid,text,text,text,jsonb)
+drop cascades to function agente_bia.expurgar(integer)
+WARNING:  there is no transaction in progress
+== postflight
+fingerprint depois 41df1c10bad10c5ace9296ba4ed79564
+  3 v27_01_agente_bia reverter 04560c174f4f lab-bia
+  1 v27_01_agente_bia aplicar d8b03f4d095b lab-bia
+== fim · recibo: /private/tmp/claude-502/-Users-mac-Desktop-VOLC-OS-CAMPAIGN/fc62e2c1-3a6a-4497-bc7c-a96978e27250/scratchpad/lab-protocolo2/RECEIPT-v27_01_agente_bia-reverter-20261015-193250.txt

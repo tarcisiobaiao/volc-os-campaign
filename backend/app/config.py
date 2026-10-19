@@ -268,6 +268,28 @@ class Settings(BaseSettings):
     # ganha equivalente VITE_*. Ver app/seguranca/identidade.py.
     volc_service_key: Optional[str] = None
 
+    # ---- Bia / Hermes (conversa de consulta; ver app/agente_bia/) -------------
+    # Flag estrita: só "1" monta as rotas `/api/agent/*` em modo operante. Fora
+    # disso elas respondem 404 antes de tocar no auth ou no Hermes.
+    bia_enabled: str = ""
+    # Base do API Server do profile `default` do Hermes (a mesma Bia do
+    # Telegram), pelo túnel SSH local. Só loopback em http; qualquer outro host
+    # exige https (ver agente_bia/configuracao.py).
+    bia_hermes_base_url: Optional[str] = None
+    # ⚠️ API_SERVER_KEY do profile `default`. Dá acesso administrativo ao API
+    # Server do Hermes (sessões, jobs): server-side apenas, nunca VITE_*.
+    bia_hermes_api_key: Optional[str] = None
+    # Origens EXATAS do front que podem chamar `/api/agent/*`. Sem curinga.
+    bia_allowed_origins: str = ""
+    bia_hermes_timeout_s: float = 120.0
+    bia_limite_por_minuto: int = 6
+    bia_max_caracteres: int = 4000
+    # Executor do cérebro (VPS): comando forçado de SSH de um usuário sem shell
+    # útil. Destino `usuario@host` e caminho da chave PRIVADA dedicada (0600, só
+    # neste host). Ausentes = a gravação pela web fica desligada (503).
+    bia_cerebro_ssh_destino: Optional[str] = None
+    bia_cerebro_ssh_chave: Optional[str] = None
+
     # ---- Behaviour ------------------------------------------------------------
     pautador_persist_default: bool = True  # persist to Supabase when creds exist
     pautador_default_count: int = 40

@@ -1,0 +1,18 @@
+== preflight 20261015-194750 · aplicar v20_01_ledger_migrations · alvo producao · aprovador Tarcisio
+sha ok  v20_01_ledger_migrations  7bac398ed09473b50ed61e49dbd070461faf33ac484987bcc4ad89aea28b6e49
+sha ok  v20_01_rollback.sql  b3002fa8f1cba66dafbd53b49a9cb4b45f0d86cd2ddf8c3a35fe46f2ddbb2c4d
+fingerprint antes  (sem ledger)
+== backup
+-rw-r--r-- 1 root root 5818930 Oct 15 22:47 /root/backups/pre-v20_01_ledger_migrations-20261015-194750.dump
+backup  /root/backups/pre-v20_01_ledger_migrations-20261015-194750.dump
+aplica  v20_01_ledger_migrations
+ set_config | set_config
+------------+------------
+ Tarcisio   | 2026-10-15
+(1 row)
+
+WARNING:  there is already a transaction in progress
+WARNING:  there is no transaction in progress
+== postflight
+fingerprint depois 58e2c4304ec8951c19b83a395289b8ff
+== fim · recibo: docs/bia-hermes/provas/producao/RECEIPT-v20_01_ledger_migrations-aplicar-20261015-194750.txt

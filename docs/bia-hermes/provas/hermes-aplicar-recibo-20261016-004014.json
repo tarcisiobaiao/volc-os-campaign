@@ -1,0 +1,159 @@
+{
+ "carimbo": "20261016-004014",
+ "backup": "/root/.hermes/backups-bia/20261016-004014",
+ "antes": {
+  "unit_ativa": "active",
+  "unit_execstart_gateway_run": true,
+  "gateway_state_mtime": 1792099105.1682153,
+  "main_pid": "943025",
+  "gateway_state": "running",
+  "gateway_state_pid": 943025,
+  "telegram": "connected",
+  "active_agents": 0,
+  "processos_gateway_run": 1,
+  "sha_config": "8812656a2114621657c761e93c976aa842ac603714a8cd79351c9fd15f02f495",
+  "sha_env": "2d0e6f2229272ba9e93f29161372e9f2f366b6beb7e8b61bb3ad84c156f6fb3d",
+  "env_api_server": [],
+  "env_telegram_presente": true,
+  "toolsets_telegram": [
+   "browser",
+   "clarify",
+   "code_execution",
+   "computer_use",
+   "cronjob",
+   "delegation",
+   "file",
+   "image_gen",
+   "kanban",
+   "memory",
+   "session_search",
+   "skills",
+   "terminal",
+   "todo",
+   "tts",
+   "vision",
+   "web"
+  ],
+  "toolsets_api_server": [
+   "browser",
+   "code_execution",
+   "cronjob",
+   "delegation",
+   "file",
+   "image_gen",
+   "memory",
+   "session_search",
+   "skills",
+   "terminal",
+   "todo",
+   "vision",
+   "web"
+  ],
+  "mcp_servers": 0,
+  "platform_toolsets_api_server": "AUSENTE",
+  "ouvintes_8642": [],
+  "profiles": [],
+  "sessoes": {
+   "por_source": {
+    "cli": 1,
+    "subagent": 11,
+    "telegram": 18
+   },
+   "telegram_ativas": [
+    {
+     "id_sha": "95583f6986cd",
+     "mensagens": 137
+    },
+    {
+     "id_sha": "9b9cef8c2895",
+     "mensagens": 90
+    }
+   ]
+  }
+ },
+ "sha_depois": {
+  "config": "3ef53b81acef24e1c6d686f3763483571af00721442cceef1f1354121122fe43",
+  "env": "0c1978a5924e526bd3defbfa4ed8c98fdbfa2894684db18eab1229c23fdc0554"
+ },
+ "restart_rc": 0,
+ "gates": {
+  "unit_ativa": true,
+  "pid_novo": true,
+  "estado_do_pid_atual": true,
+  "estado_fresco": true,
+  "telegram_igual_antes": true,
+  "gateway_running": true,
+  "um_so_gateway": true,
+  "loopback_8642": true,
+  "health_200": true,
+  "toolsets_api_zero": true,
+  "models_sem_chave_401": true,
+  "toolsets_telegram_iguais": true,
+  "mcp_zero": true,
+  "modelo": "hermes-agent",
+  "foto": {
+   "unit_ativa": "active",
+   "unit_execstart_gateway_run": true,
+   "gateway_state_mtime": 1792111232.8565135,
+   "main_pid": "1537673",
+   "gateway_state": "running",
+   "gateway_state_pid": 1537673,
+   "telegram": "connected",
+   "active_agents": 0,
+   "processos_gateway_run": 1,
+   "sha_config": "3ef53b81acef24e1c6d686f3763483571af00721442cceef1f1354121122fe43",
+   "sha_env": "0c1978a5924e526bd3defbfa4ed8c98fdbfa2894684db18eab1229c23fdc0554",
+   "env_api_server": [
+    "API_SERVER_ENABLED",
+    "API_SERVER_HOST",
+    "API_SERVER_KEY",
+    "API_SERVER_PORT"
+   ],
+   "env_telegram_presente": true,
+   "toolsets_telegram": [
+    "browser",
+    "clarify",
+    "code_execution",
+    "computer_use",
+    "cronjob",
+    "delegation",
+    "file",
+    "image_gen",
+    "kanban",
+    "memory",
+    "session_search",
+    "skills",
+    "terminal",
+    "todo",
+    "tts",
+    "vision",
+    "web"
+   ],
+   "toolsets_api_server": [],
+   "mcp_servers": 0,
+   "platform_toolsets_api_server": [],
+   "ouvintes_8642": [
+    "127.0.0.1:8642"
+   ],
+   "profiles": [],
+   "sessoes": {
+    "por_source": {
+     "cli": 1,
+     "subagent": 11,
+     "telegram": 18
+    },
+    "telegram_ativas": [
+     {
+      "id_sha": "95583f6986cd",
+      "mensagens": 137
+     },
+     {
+      "id_sha": "9b9cef8c2895",
+      "mensagens": 90
+     }
+    ]
+   }
+  },
+  "ok": true
+ }
+}

@@ -1,0 +1,66 @@
+  ✓ v27_01 aplica como supabase_admin
+  ✓ fingerprint public mudou (RPCs novas)
+  ✓ reaplicar por cima é recusado
+  ✓ anon sem EXECUTE em volc_agente_listar_conversas
+  ✓ anon sem EXECUTE em volc_agente_reservar
+  ✓ anon sem acesso ao schema agente_bia
+  ✓ authenticated sem EXECUTE em volc_agente_listar_conversas
+  ✓ authenticated sem EXECUTE em volc_agente_reservar
+  ✓ authenticated sem acesso ao schema agente_bia
+  ✓ service_role não lê a tabela direto
+  ✓ service_role executa a RPC
+  ✓ nenhum grant de RPC para anon/authenticated/PUBLIC
+  ✓ 11 RPCs SECURITY DEFINER com search_path fixo
+  ✓ RLS ligada nas 3 tabelas
+  ✓ dois usuários sintéticos no auth
+  ✓ conversa criada (id público uuid)
+  ✓ sessão Hermes não sai no histórico
+  ✓ dono B não lê conversa de A
+  ✓ sessão fora do formato recusada
+  ✓ reserva nova
+  ✓ mesmo request_id e conteúdo: repetida
+  ✓ mesmo request_id, outro conteúdo: conflito
+  ✓ conversa de outro dono: inexistente
+  ✓ segunda em voo do mesmo dono: ocupado
+  ✓ outro dono não inicia
+  ✓ iniciar devolve a sessão só ao backend
+  ✓ iniciar duas vezes não reabre
+  ✓ concluir running → succeeded
+  ✓ conclusão tardia não sobrescreve
+  ✓ conclusão tardia registrada
+  ✓ concluir não aceita cancelled
+  ✓ segunda no minuto (limite 2): nova
+  ✓ conversa com incerta bloqueia novo envio
+  ✓ incerta é conferida antes do limite
+  ✓ limite por minuto
+  ✓ incerta é reconciliável
+  ✓ reconciliar uncertain → succeeded
+  ✓ só incerta é reconciliada
+  ✓ reserva para expirar
+  ✓ expirar pega a órfã
+  ✓ queued órfã vira cancelled (nunca saiu)
+  ✓ reserva para expirar em voo
+  ✓ running órfã vira uncertain (nunca replay)
+  ✓ postgres lê só via pg_read_all_data (papel administrativo da imagem)
+  ✓ postgres não escreve no schema
+  ✓ cancelled → running recusado até para o dono
+  ✓ uncertain → cancelled recusado (timeout nunca vira cancelamento)
+  ✓ entrada da execução é imutável
+  ✓ evento: UPDATE recusado
+  ✓ evento: TRUNCATE recusado
+  ✓ execução não pode apontar para conversa de outro dono
+  ✓ 1ª sessão reserva
+  ✓ 2ª sessão concorrente recebe ocupado
+  ✓ 2ª sessão esperou a trava (2 s)
+  ✓ apagar o usuário apaga as conversas dele
+  ✓ retenção mínima de 30 dias
+  ✓ service_role não executa expurgo
+  ✓ rollback com dado é recusado
+  ✓ rollback recusado é atômico (schema intacto)
+  ✓ rollback com declaração explícita remove o schema
+  ✓ rollback remove as 11 RPCs
+  ✓ fingerprint volta ao anterior
+  ✓ rollback é idempotente
+  ✓ reaplica depois do rollback
+  ✓ reaplicar dá o mesmo fingerprint public
+  ✓ reaplicar dá o mesmo fingerprint do schema privado

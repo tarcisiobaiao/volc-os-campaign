@@ -62,3 +62,6 @@ pytest-asyncio>=0.24
 # nada se o driver não existir no interpretador do gate. Declarar aqui é o que
 # faz o gate oficial cobrir o adapter de produção.
 psycopg[binary]>=3.1
+
+# A suíte da Bia gera PDFs reais para provar a extração do runtime.
+PyMuPDF>=1.24

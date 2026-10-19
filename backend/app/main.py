@@ -269,6 +269,14 @@ app.include_router(cofre_ativos.router)
 # daqui ate alguem chamar `/despachar`. A separacao e o contrato — gerar nao e
 # aprovar, e aprovar nao e publicar.
 app.include_router(publicacao_organica.router)
+# Bia V1 (P09-T04/P09-T06): conversa de consulta com o Hermes privado e o VOLC
+# Agent Gateway só leitura. Flag `BIA_ENABLED=1` + ADMIN; sem a flag as rotas
+# respondem 404. O CORS dela é EXATO e montado por fora do global (`*`), por
+# isso o `add_middleware` vem depois do CORSMiddleware: o último é o mais externo.
+from app.agente_bia import rotas as agente_bia_rotas  # noqa: E402
+from app.agente_bia.cors import CorsExatoDaBia  # noqa: E402
+app.include_router(agente_bia_rotas.router)
+app.add_middleware(CorsExatoDaBia)
 
 
 @app.get("/health")

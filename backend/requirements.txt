@@ -16,6 +16,9 @@ python-dotenv==1.0.1
 # Briefing de funil em DOCX (padrão VOLC) + anexo no ClickUp. Import: `docx`.
 # Traz lxml (wheel manylinux — instala na Vercel sem compilar).
 python-docx==1.2.0
+# Extração segura de texto dos PDFs anexados à Bia. Sem esta dependência o
+# backend recusa PDF com `pdf_indisponivel` em um ambiente limpo.
+pypdf>=6.0,<7
 # Only needed for GOOGLE_ADS_AUTH_MODE=service_account (RS256 JWT signing).
 # OAuth-refresh-token mode and the mock path do not import it.
 cryptography>=42.0
