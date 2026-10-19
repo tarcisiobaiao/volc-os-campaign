@@ -20,7 +20,10 @@ PATTERNS = {
     "google-api-key": re.compile(rb"AIza[0-9A-Za-z_-]{30,}"),
     "openai-key": re.compile(rb"\bsk-[A-Za-z0-9_-]{24,}"),
     "hardcoded-service-role": re.compile(
-        rb"(?:SUPABASE_SERVICE_ROLE_KEY|supabaseKey)\s*=\s*['\"][^'\"\n]{32,}['\"]",
+        # Uma expansão de ambiente entre aspas ("${SERVICE_ROLE_KEY:?...}")
+        # pode ser longa, mas não é um segredo hardcoded. O negativo depois da
+        # aspa mantém a detecção de literais e evita redigir o próprio runbook.
+        rb"(?:SUPABASE_SERVICE_ROLE_KEY|supabaseKey)\s*=\s*['\"](?!\$)[^'\"\n]{32,}['\"]",
         re.I,
     ),
     # ── a classe de segredo que o trilho Meta introduz ──────────────────────

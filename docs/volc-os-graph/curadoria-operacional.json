@@ -288,9 +288,9 @@
       "id": "cap_bia_copilot",
       "label": "Bia — copiloto operacional contextual",
       "cluster": "decision",
-      "state": "todo",
+      "state": "partial",
       "summary": "Camada conversacional contextual sobre o VOLC O.S.: interpreta fatos, frescor, relações, playbooks e decisões; começa somente leitura e nunca executa ação externa sem confirmação.",
-      "evidence": "Hermes Agent declarado pelo dono em 26/08/2026, rodando em VPS com API compatível com /v1/chat/completions. Integração VOLC, gateway e contratos ainda não implementados."
+      "evidence": "Hermes Agent declarado pelo dono em 26/08/2026. · 19/10/2026 · candidata local integration/release-candidate-20261019: gateway FastAPI e widget web integrados de f26220e2, com streaming, anexos, comandos governados, persistência candidata e contexto de campanha somente leitura. Provas na candidata: 176 backend (4 skips), 50 frontend (1 skip), typecheck/build/bundle verdes; a missão original registrou 12 provas reais com o Hermes. Segue partial porque a candidata não foi mesclada/deployada nesta rodada, a migration não foi aplicada por esta integração e o capability gateway único Telegram↔web com ferramentas operacionais autorizadas ainda não está fechado. Tarefa P09-T04."
     },
     {
       "id": "cap_asset_vault",
@@ -580,7 +580,7 @@
       "cluster": "platform",
       "state": "live",
       "summary": "Runtime do agente Bia, com API compatível com chat completions e acesso a skills e cérebros operacionais.",
-      "evidence": "Serviço e endpoint local 127.0.0.1:8642 declarados pela proprietária do agente em 26/08/2026; conectividade a partir do VOLC O.S. ainda não foi provada."
+      "evidence": "Serviço e endpoint local 127.0.0.1:8642 declarados pela proprietária do agente em 26/08/2026. A frente Bia/Hermes registrou 12 provas reais de chat, streaming, anexos, continuidade, incerteza e preservação do Telegram; o código correspondente está integrado apenas na candidata local de 19/10/2026. O runtime continua live, mas o caminho VOLC permanece partial até merge, deploy e QA do owner."
     },
     {
       "id": "concept:attention_ecosystem",
@@ -996,7 +996,7 @@
       "cluster": "decision",
       "state": "partial",
       "summary": "Projeta na página canônica uma recomendação reproduzível de experimento real, sem botão, valor sugerido ou autoridade de escrita.",
-      "evidence": "Main local 577d2c2f: rota ADMIN-only, hashes conferidos, artefato empacotado no backend, estados distintos para ausência/quebra/ambiguidade/fonte/expiração e validade padrão de 7 dias. Prova Senac real em replay sem API; 100 testes backend focais, 20 frontend, TypeScript, lint e build verdes. Continua partial porque não há ledger longitudinal, comparação previsão×ocorrido, deploy nem QA autenticado."
+      "evidence": "Main local 577d2c2f: rota ADMIN-only, hashes conferidos, artefato empacotado no backend, estados distintos para ausência/quebra/ambiguidade/fonte/expiração e validade padrão de 7 dias. Prova Senac real em replay sem API. · 19/10/2026 · candidata integration/release-candidate-20261019: W13 adicionou carteira shadow, um experimento por campanha, preservando expiração individual e rotas ADMIN-only; 33 testes backend, 55 freedom-lab, 27 frontend e 17/1 da agenda em Linux com flock. Continua partial porque não há deploy, cron produtivo, ledger longitudinal, comparação previsão×ocorrido madura ou QA autenticado."
     },
     {
       "id": "concept:google_technology_radar",
@@ -1629,7 +1629,7 @@
       "cluster": "data",
       "state": "inactive",
       "summary": "Laboratório isolado (experiments/data-intelligence-lab) que testa contrato append-only/as_of, replay, shadow, simulador, modelos, health contracts e o kernel econômico de viabilidade. É referência sem autoridade operacional: nada foi aplicado em banco operacional, publicado, agendado em shadow ou autorizado a gastar.",
-      "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): HEAD 85aa7ab2 (mais commits só de documentação); 915 testes coletados em tests/data-intelligence (172 herdados + 743 da fundação: observação e schema 230, simulador 115, identidade 91, qualidade 81, modelos 77, shadow 76, capacidade 73); o integrador relata 914 verdes e 1 pulado (medição grande opcional) — este curador não reexecutou a suíte. Duas revisões adversarais independentes respondidas pelos donos: R1 (26 achados confirmados, 1 bloqueante) e R2 (23 achados: 3 altos, 12 médios, 5 baixos; entre eles o aplicador de migration com ADMIN OPTION residual, a dedup do shadow que quebrava a ordem de versão e o portão de cobertura que aprovava corte sem earnings); a verificação das respostas da R2 é a suíte e as provas reexecutadas pelas frentes, não uma terceira revisão. Estado máximo: testado com sintético. Replay com dado real e shadow: nenhum (a exportação do snapshot foi negada pela permissão da sessão). · 17/10/2026, rodada autorizada: um replay com dado real sobre snapshot read-only pseudonimizado (3 dias de custo, 9 de receita; todas as políticas em 'insuficiente'; anti-baseline null→0 bloqueada em 180 de 180); shadow agendado: nenhum (doc:rodada-autorizada-20261017). · 17/10/2026, candidata local integration/data-foundation-viability-v2-20261017 em 62854151: kernel de viabilidade V2 com economia em micros/Fraction, fronteira, teto governado, simulação marginal, gate fail-closed, invariantes e recibos; 104 testes adversariais, 332 do kernel e suíte completa com 1287 passed/3 skipped. Replay sintético de 18 casos é reproduzível (e76284c8e329). A revisão final fechou inferência silenciosa de par de câmbio. Produção não acessada; zero migration, deploy, push, shadow agendado ou autoridade de gasto. As leituras externas read-only de 16/10 calibraram só premissas. Plano de promoção em 12-PLANO-DE-PROMOCAO.md; ideias futuras e hipóteses: 10-BACKLOG-OUROS.md, cobertas por P14-T11 a P14-T19."
+      "evidence": "· 16/10/2026 · lab/data-foundation-20261016: fundação com contrato append-only/as_of, replay, shadow, simulador, modelos e health contracts; duas revisões adversariais respondidas. · 17/10/2026, rodada autorizada: replay real read-only pseudonimizado com 3 dias de custo e 9 de receita; todas as políticas ficaram insuficientes e a anti-baseline null→0 foi bloqueada em 180/180. · 17/10/2026, kernel de viabilidade V2: economia em micros/Fraction, fronteira, teto governado, simulação marginal, gate fail-closed, invariantes e recibos; 104 adversariais, 332 do kernel e replay sintético reproduzível de 18 casos. · 19/10/2026 · candidata integration/release-candidate-20261019: fundação, Item 5 e kernel V2 unificados com Measurement, Bia, W13 e D1; suíte Data Intelligence reexecutada integralmente: 1287 passed/3 skipped. Produção não foi escrita; zero migration, deploy, shadow agendado ou autoridade de gasto. O estado permanece inactive como capacidade operacional porque o pacote continua laboratório/referência até promoção explícita. Plano: docs/data-intelligence/fundacao-20261016/12-PLANO-DE-PROMOCAO.md; backlog: 10-BACKLOG-OUROS.md."
     },
     {
       "id": "concept:observation_append_only_contract",

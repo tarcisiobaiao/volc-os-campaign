@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-19T07:53:00-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-19T08:56:16-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 1046 arquivos: 737 Markdown e 309 SQL;
-- 1046 versionados e 0 ainda não versionados;
+- 1069 arquivos: 755 Markdown e 314 SQL;
+- 1068 versionados e 1 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 184 SQL com palavras de mutação de alto risco.
+- 189 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,9 +17,9 @@ Gerado em `2026-10-19T07:53:00-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 58 |
-| `documentation` | 543 |
+| `documentation` | 558 |
 | `generated` | 2 |
-| `module-guide` | 47 |
+| `module-guide` | 50 |
 | `product-document` | 23 |
 | `project-control` | 4 |
 | `reference` | 12 |
@@ -27,7 +27,7 @@ Gerado em `2026-10-19T07:53:00-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 193 |
+| `sql-needs-review` | 198 |
 | `sql-validation` | 14 |
 
 ## Duplicatas exatas
@@ -63,7 +63,7 @@ estejam errados, mas impede aplicação automática.
 | `scripts/provas-v12_04.sql` | `sql-needs-review` | 6 | 12 |
 | `scripts/verificar-anon-w4.sql` | `sql-needs-review` | 1 | 0 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | 1 | 0 |
-| `sql/add_user_campaigns.sql` | `sql-needs-review` | 2 | 7 |
+| `sql/add_user_campaigns.sql` | `sql-needs-review` | 2 | 5 |
 | `sql/archive/campaign-highlights/APLICAR_NO_SUPABASE.sql` | `archived` | 0 | 0 |
 | `sql/archive/campaign-highlights/test_rotacao.sql` | `archived` | 0 | 0 |
 | `sql/archive/incidents/eleicoes-org/fix_eleicoes_project.sql` | `archived` | 0 | 0 |
@@ -80,12 +80,12 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | 6 | 18 |
 | `src/sql/auto_create_projects_trigger.sql` | `sql-needs-lineage` | 4 | 8 |
 | `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | 5 | 14 |
-| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 3 |
-| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 7 |
+| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 2 |
+| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 8 |
 | `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | 3 | 6 |
 | `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | 2 | 2 |
-| `src/sql/get_rotated_campaign_highlights.sql` | `sql-needs-lineage` | 2 | 7 |
-| `src/sql/get_rotated_campaign_highlights_FINAL.sql` | `sql-needs-lineage` | 3 | 10 |
+| `src/sql/get_rotated_campaign_highlights.sql` | `sql-needs-lineage` | 2 | 6 |
+| `src/sql/get_rotated_campaign_highlights_FINAL.sql` | `sql-needs-lineage` | 3 | 11 |
 | `src/sql/get_rotated_campaign_highlights_WORKING.sql` | `sql-needs-lineage` | 3 | 10 |
 | `src/sql/get_rotated_campaign_highlights_read_only.sql` | `sql-needs-lineage` | 2 | 5 |
 | `src/sql/get_rotated_campaign_highlights_simple.sql` | `sql-needs-lineage` | 3 | 8 |
@@ -150,6 +150,9 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260909215941_creative_pack_append_revisions.sql` | `sql-needs-review` | 6 | 12 |
 | `supabase/migrations/20260909234342_creative_generation_versions.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/20260910143000_gam_attribution_grain_router.sql` | `sql-needs-review` | 5 | 20 |
+| `supabase/migrations/20261015153301_harden_volc_measurement.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/20261016155958_measurement_event_id_v31.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/rollback_20261016155958_measurement_event_id_v31.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | 33 | 126 |
@@ -212,6 +215,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v23_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v25_01_conversao_offline_ledger.sql` | `sql-needs-review` | 14 | 48 |
 | `supabase/migrations/v25_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v27_01_agente_bia.sql` | `sql-needs-review` | 23 | 76 |
+| `supabase/migrations/v27_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | 1 | 0 |

@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-19T07:53:00-03:00",
+  "generated_at": "2026-10-19T08:56:16-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 1046,
-    "markdown": 737,
-    "sql": 309,
-    "tracked": 1046,
-    "untracked": 0,
+    "files": 1069,
+    "markdown": 755,
+    "sql": 314,
+    "tracked": 1068,
+    "untracked": 1,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 58,
-      "documentation": 543,
+      "documentation": 558,
       "generated": 2,
-      "module-guide": 47,
+      "module-guide": 50,
       "product-document": 23,
       "project-control": 4,
       "reference": 12,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 42,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 193,
+      "sql-needs-review": 198,
       "sql-validation": 14
     },
     "sql_risk": {
-      "high": 184,
+      "high": 189,
       "medium": 72,
       "read-only-or-ddl-free": 53
     }
@@ -843,6 +843,18 @@
       "sql_risk": null
     },
     {
+      "path": "deploy/sombra-carteira/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 6612,
+      "lines": 114,
+      "sha256": "178b38a0953aeaa05eaf4e7a868345cf81fee34c0e4655ec309a91d482e6e063",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "design.md",
       "extension": ".md",
       "classification": "documentation",
@@ -1138,6 +1150,18 @@
       "bytes": 7341,
       "lines": 121,
       "sha256": "2e3a6bc4c2402423004fc4009377d516c0564666cd4afe3450889c93d66b9946",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/architecture/ADR-BIA-HERMES-VOLC-V1.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 10496,
+      "lines": 116,
+      "sha256": "e213c650dceceac874e783cc4065d2dff7ecdab25662580748bd7ff6d3a563be",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1675,9 +1699,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 30726,
-      "lines": 356,
-      "sha256": "bec44e64b3a606bee0a9cb4c16de77d697564b6b49a485c66ba0a58f5f3b5a5b",
+      "bytes": 31185,
+      "lines": 361,
+      "sha256": "2df25462c3a5792899bf18a4ba8218d69fcaefca235fe5deaf3eb522225b2f63",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2626,6 +2650,162 @@
       "bytes": 9238,
       "lines": 137,
       "sha256": "e168c9bf26c817c342696e46048c20e8184e32d45cd15ef1305c501a30dfedf9",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/ANEXOS-E-STREAMING.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 6535,
+      "lines": 76,
+      "sha256": "80925ce6b7e678b4f9a228882682e6c8b5d03ed417a974616a5e062a793e43ec",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/CATALOGO-COMANDOS.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 21889,
+      "lines": 179,
+      "sha256": "0e7f703bfb0db846cb404de39a68114cf16146e7eb56313d6b51f34e4141c02b",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/CATALOGO-TOOLS.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4670,
+      "lines": 59,
+      "sha256": "569fd5004fca6c223bc18c4510b30e775f1aa944eaecefaebc0e7c1b6aa053ab",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/CEREBRO-WEB.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 7019,
+      "lines": 88,
+      "sha256": "70500f59d1fb0009562138fc8b2293f89bd6094e1e86618ae6f627e5f44e3f60",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/CONTRATO-ROTAS.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 8540,
+      "lines": 150,
+      "sha256": "e07af83062d38196fc44c6220a1d0ea1de20ba196d70dd6db8f414d401d68485",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/HANDOFF-INTEGRADOR.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 7377,
+      "lines": 82,
+      "sha256": "8fded49101f0e4f7305737911d76d76f005c372e9efbe4f282c7947299eea3f2",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 11242,
+      "lines": 165,
+      "sha256": "42fe6e48d38e4be7f5b5182d19238b9ae66314b6b83ed840e57c9346f2e16d74",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 3017,
+      "lines": 38,
+      "sha256": "20e2820cd7c393be0c2ef2edf8ddf7ec0678960bec8d703f8a96e9146f951323",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/RUNBOOK-IMPLANTACAO.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 9970,
+      "lines": 190,
+      "sha256": "fff1297dc872a02b7ff4652c8c5acbda43aed71dcc6a1fd42ab92104d9dfedc9",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/RUNBOOK-ROLLBACK-ROTACAO.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3877,
+      "lines": 74,
+      "sha256": "68b58d4b75b0218a315a7596a91bb92061bd90f45e2334947d1cbc1898db259f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/THREAT-MODEL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 14317,
+      "lines": 80,
+      "sha256": "cbb2bf10e340ffb966eb61067fbbe909452b146d1eac9c7e39d88044d684d4fa",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/provas/PROVA-CHAT-20261015.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4830,
+      "lines": 42,
+      "sha256": "b8b901917b8603dacf7a198c8a10b81697e1005af9a1d27b573f32f74c81e3f0",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/bia-hermes/provas/PROVA-REAL-20261015.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5826,
+      "lines": 57,
+      "sha256": "678d20d50d50562f6e6e408cf076892b4b264ad26d4f1ba6039601364980c444",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7335,6 +7515,30 @@
       "sql_risk": null
     },
     {
+      "path": "docs/operations/RELEASE-CANDIDATE-UNIFICADA-20261019.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 4483,
+      "lines": 73,
+      "sha256": "da05b6601ffc9f8364adedd152900207bb54d1286021323f43ac1e2c687c0cd0",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/operations/VOLC-MEASUREMENT-V3-2026-10-15.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4273,
+      "lines": 88,
+      "sha256": "1558c8ba6b875852eb60ddf9114bcae899e85835afc559c5412c7a1e2cbcfc76",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/operations/creditoup-ssh.md",
       "extension": ".md",
       "classification": "documentation",
@@ -8013,7 +8217,7 @@
       "tracked": true,
       "bytes": 1714,
       "lines": 32,
-      "sha256": "ecb866bf7bb84c0eb4347e970a36480a39eed79e6683e9aed4114fa0d02b4de6",
+      "sha256": "8e48f31a3083cbe40f00d41a24f9e6950ab686ed7d9cbd9da06cfdee8557710e",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -8907,6 +9111,18 @@
       "sql_risk": null
     },
     {
+      "path": "measurement/gtm/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 2355,
+      "lines": 59,
+      "sha256": "eab555342cc7e584e88b142c72fbde69d4e52111eeb124b21b0e2bb2262d39a5",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "research/data-intelligence/MANIFEST.md",
       "extension": ".md",
       "classification": "documentation",
@@ -9131,7 +9347,7 @@
       "lines": 20,
       "sha256": "1641ec2764efea0a6a45dc4c86808defc2f8d0ccddcb9b10c42870c76c05e7c4",
       "graph_nodes": 2,
-      "graph_degree": 7,
+      "graph_degree": 5,
       "sql_risk": "high"
     },
     {
@@ -9539,7 +9755,7 @@
       "lines": 107,
       "sha256": "0c9651b029995150ba40cd768f5af562ed1527534dd9a183cf2dd44dfe338a57",
       "graph_nodes": 2,
-      "graph_degree": 3,
+      "graph_degree": 2,
       "sql_risk": "high"
     },
     {
@@ -9551,7 +9767,7 @@
       "lines": 137,
       "sha256": "b76a5cf091a9c7e60ce36c9e9dce95e717b1ad2a0ed2e33b2e2c37ff2c5fd57e",
       "graph_nodes": 3,
-      "graph_degree": 7,
+      "graph_degree": 8,
       "sql_risk": "high"
     },
     {
@@ -9611,7 +9827,7 @@
       "lines": 288,
       "sha256": "ef29a7ea6cccdccb4c0af7a26b4fb3fbcbb00bcd896f0f9cfb7b839ce579b4da",
       "graph_nodes": 2,
-      "graph_degree": 7,
+      "graph_degree": 6,
       "sql_risk": "high"
     },
     {
@@ -9623,7 +9839,7 @@
       "lines": 226,
       "sha256": "6d5b6aac6db1f7441ba0c1ec7994857a2f9cbe6c9c7a1caa7b2fa5c2b217a895",
       "graph_nodes": 3,
-      "graph_degree": 10,
+      "graph_degree": 11,
       "sql_risk": "high"
     },
     {
@@ -11067,6 +11283,30 @@
       "sql_risk": "high"
     },
     {
+      "path": "supabase/migrations/20261015153301_harden_volc_measurement.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 988,
+      "lines": 24,
+      "sha256": "dcae6aa49e03c4e167a357eb2a7c576497e206f48f0bf4929b01601454b6dbba",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/20261016155958_measurement_event_id_v31.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1088,
+      "lines": 37,
+      "sha256": "059942751891a8dd431eae0b141ccc2fe679c371f8d427a9a1bf44fca0a92f6f",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
       "path": "supabase/migrations/PLANO-v11_03.md",
       "extension": ".md",
       "classification": "documentation",
@@ -11089,6 +11329,18 @@
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
+    },
+    {
+      "path": "supabase/migrations/rollback_20261016155958_measurement_event_id_v31.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 767,
+      "lines": 30,
+      "sha256": "1dfd59fe864366779d181c71cc47c0f88edbfaed53b67679807b18770025dd8f",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
     },
     {
       "path": "supabase/migrations/v10_01_intencao_e_lote.sql",
@@ -11929,6 +12181,30 @@
       "graph_nodes": 2,
       "graph_degree": 3,
       "sql_risk": "medium"
+    },
+    {
+      "path": "supabase/migrations/v27_01_agente_bia.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 23017,
+      "lines": 436,
+      "sha256": "d8b03f4d095bb3343821a9acd3953dd1a3f412f82cf0a5dfae465bfae143c51c",
+      "graph_nodes": 23,
+      "graph_degree": 76,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v27_01_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 2239,
+      "lines": 46,
+      "sha256": "04560c174f4fb801298a1b01c1c5ef3dbefac9ebd893840c8dd13815b6e09719",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
     },
     {
       "path": "supabase/migrations/v8_01_app_auth_schema_and_roles.sql",
