@@ -303,7 +303,10 @@ export const BiaWidget: React.FC<Props> = ({ userId, api }) => {
             setVista('chat');
             anexos.adicionar(Array.from(e.dataTransfer.files));
           }}
-          style={isMobile && vv ? { height: vv.altura, top: vv.topo } : undefined}
+          style={{
+            display: aberto ? undefined : 'none',
+            ...(isMobile && vv ? { height: vv.altura, top: vv.topo } : {}),
+          }}
           className={cn(
             'fixed z-[50] flex flex-col overflow-hidden bg-card text-foreground',
             'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200',
