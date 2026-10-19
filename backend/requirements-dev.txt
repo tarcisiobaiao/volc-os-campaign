@@ -12,6 +12,11 @@ uvicorn[standard]==0.34.0
 # Test runner (pytest discovers backend/tests/test_*.py).
 pytest>=8.0
 
+# Provas baseadas em propriedades do W14 (conversões offline). Sem esta
+# dependência a suíte inteira para durante a coleta e pode parecer verde em
+# ambientes que não executam esse arquivo.
+hypothesis>=6.0
+
 # ⚠️ DEPENDÊNCIA DA SUÍTE, e ela faltava aqui.
 #
 # `volc_ads` importa o SDK do Google no topo, e DOIS módulos de teste dependem
