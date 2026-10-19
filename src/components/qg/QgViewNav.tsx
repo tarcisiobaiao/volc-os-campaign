@@ -5,13 +5,13 @@ import type { QgView } from "@/features/work-road/url-state";
 import { QG_VIEWS } from "@/features/work-road/url-state";
 
 const ITEMS: Array<{ id: QgView; label: string; icon: typeof Target }> = [
-  { id: "agora", label: "Agora", icon: Target },
-  { id: "timeline", label: "Timeline", icon: Route },
-  { id: "kanban", label: "Kanban", icon: KanbanSquare },
-  { id: "lista", label: "Lista", icon: ListChecks },
-  { id: "grafo", label: "Grafo", icon: GitFork },
-  { id: "execucoes", label: "Execuções", icon: Activity },
-  { id: "inbox", label: "Inbox", icon: Inbox },
+  { id: "agora", label: "Visão geral", icon: Target },
+  { id: "timeline", label: "Por etapas", icon: Route },
+  { id: "kanban", label: "Quadro", icon: KanbanSquare },
+  { id: "lista", label: "Todas as tarefas", icon: ListChecks },
+  { id: "grafo", label: "Relações", icon: GitFork },
+  { id: "execucoes", label: "Agentes", icon: Activity },
+  { id: "inbox", label: "Ideias", icon: Inbox },
 ];
 
 export function QgViewNav({

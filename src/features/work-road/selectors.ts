@@ -325,6 +325,62 @@ export function fallbackStatusLabel(status: RoadmapTaskStatus): string {
   }
 }
 
+/**
+ * Vocabulário para o dono da operação. Os rótulos editoriais continuam na
+ * fonte e nos recibos; a interface principal traduz o estado para a decisão
+ * que ele representa.
+ */
+export function plainStatusLabel(status: RoadmapTaskStatus): string {
+  switch (status) {
+    case "done":
+      return "Pronto e comprovado";
+    case "partial":
+      return "Já começou, falta fechar";
+    case "risk":
+      return "Precisa de atenção";
+    case "todo":
+      return "Ainda não começou";
+    case "reserved":
+      return "Guardado para depois";
+  }
+}
+
+export function plainStatusLabels(): Record<RoadmapTaskStatus, string> {
+  return {
+    done: plainStatusLabel("done"),
+    partial: plainStatusLabel("partial"),
+    risk: plainStatusLabel("risk"),
+    todo: plainStatusLabel("todo"),
+    reserved: plainStatusLabel("reserved"),
+  };
+}
+
+export function taskPlainExplanation(row: FlatTask): string {
+  const own = row.task.explanation?.trim();
+  if (own) return own;
+  if (row.task.status === "risk") {
+    return `Há um risco registrado nesta entrega. Ela faz parte de “${row.initiative.title}”.`;
+  }
+  if (row.task.status === "partial") {
+    return `Uma parte já existe, mas a entrega ainda não foi comprovada por completo. Ela faz parte de “${row.initiative.title}”.`;
+  }
+  if (row.task.status === "todo") {
+    return `Este trabalho ainda precisa ser executado e comprovado. Ele faz parte de “${row.initiative.title}”.`;
+  }
+  if (row.task.status === "reserved") {
+    return `A ideia foi preservada para depois e não compete com o trabalho atual. Ela faz parte de “${row.initiative.title}”.`;
+  }
+  return `A entrega foi concluída e possui prova registrada em “${row.initiative.title}”.`;
+}
+
+export function taskRemaining(task: RoadmapTask): string[] | null {
+  const acceptance = textList(task.acceptance);
+  if (acceptance?.length) return acceptance;
+  const gaps = task.gaps?.trim();
+  if (gaps) return [gaps];
+  return null;
+}
+
 export type ExecutionKind = "ativo" | "ocioso" | "concluido" | "falho" | "desatualizado" | "heartbeat_atrasado";
 
 export function classifyExecution(execution: WorkRoadExecution): {

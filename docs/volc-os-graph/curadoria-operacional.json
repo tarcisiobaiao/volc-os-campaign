@@ -250,7 +250,7 @@
       "cluster": "governance",
       "state": "partial",
       "summary": "Sala de comando que lê a fonte versionada do Work Road, mostra prioridades, ondas, tarefas, provas e progresso, e falha fechado se a fonte não puder ser validada.",
-      "evidence": "Integração Codex em 29/08/2026: /settings/qg-agentico tem Agora, Timeline, Kanban, Lista, Grafo, Execuções e Inbox; cada tarefa tem URL própria; exporta JSON/HTML/PDF selecionável. O Inbox é serializado entre processos, append-only por recibo e separado do percentual; reordenação ADMIN usa hash esperado e recusa sobrescrever uma fonte nova. Commits d2ed5cb, 5445c5e, 230214c, 28b7b50, 81f9f69, e4699a9 e 0f3bf60. Em 07/10/2026 a consolidação do QG foi promovida para main e origin/main no commit 41e3396, com backup recuperável da linha remota anterior e deploy Vercel de produção Ready. A edição completa de conteúdo das tarefas pela interface e o heartbeat unificado de todos os provedores continuam pendentes; por isso permanece partial."
+      "evidence": "Integração Codex em 29/08/2026: /settings/qg-agentico tem Agora, Timeline, Kanban, Lista, Grafo, Execuções e Inbox; cada tarefa tem URL própria; exporta JSON/HTML/PDF selecionável. O Inbox é serializado entre processos, append-only por recibo e separado do percentual; reordenação ADMIN usa hash esperado e recusa sobrescrever uma fonte nova. Commits d2ed5cb, 5445c5e, 230214c, 28b7b50, 81f9f69, e4699a9 e 0f3bf60. Em 07/10/2026 a consolidação do QG foi promovida para main e origin/main no commit 41e3396, com backup recuperável da linha remota anterior e deploy Vercel de produção Ready. Em 19/10/2026, a visão principal foi convertida em uma leitura executiva da mesma fonte viva: explica cada entrega, o motivo, a pendência e o critério de conclusão; códigos, hashes e caminhos permanecem disponíveis apenas na rastreabilidade técnica. O veredito de frescor do grafo também passou a usar o digest oficial dos insumos e apenas informa, sem falso bloqueio, quando o SHA de geração é anterior. A edição completa de conteúdo das tarefas pela interface e o heartbeat unificado de todos os provedores continuam pendentes; por isso permanece partial."
     },
     {
       "id": "cap_knowledge_graph",
@@ -556,7 +556,7 @@
       "cluster": "governance",
       "state": "implemented",
       "summary": "Fonte estruturada e versionada para iniciativas, estados, dependências, tarefas e provas. Alimenta QG, grafo e Workbook sem manter um snapshot paralelo no navegador.",
-      "evidence": "volc-os-workbook/ROADMAP-VIVO.json continua a fonte editorial, validada por backend/app/routers/work_road.py e relida automaticamente pelo QG. INBOX-ROADMAP.json é a fila anterior, tem recibos e não entra no percentual. Reordenação exige ADMIN, permutação exata e expected_sha256; alteração concorrente responde conflito em vez de apagar trabalho. A ingestão automática de commits continua fora deste fechamento."
+      "evidence": "volc-os-workbook/ROADMAP-VIVO.json continua a fonte editorial, validada por backend/app/routers/work_road.py e relida automaticamente pelo QG. INBOX-ROADMAP.json é a fila anterior, tem recibos e não entra no percentual. Reordenação exige ADMIN, permutação exata e expected_sha256; alteração concorrente responde conflito em vez de apagar trabalho. Desde 19/10/2026, a apresentação executiva traduz estados e pendências sem criar uma segunda fonte ou esconder a rastreabilidade técnica. A ingestão automática de commits continua fora deste fechamento."
     },
     {
       "id": "concept:agent_completion_protocol",

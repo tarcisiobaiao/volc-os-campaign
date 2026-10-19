@@ -1,13 +1,13 @@
 import { cn } from "@/lib/utils";
 import type { WorkRoadSummary } from "@/features/work-road/live";
 import { ROADMAP_TASK_STATUSES } from "@/features/work-road/live";
-import { statusLabel } from "@/features/work-road/selectors";
+import { plainStatusLabel } from "@/features/work-road/selectors";
 import type { WorkRoadLive } from "@/features/work-road/live";
 import { QgAbsentSummary } from "./QgStates";
 
 export function QgPulse({
   summary,
-  labels,
+  labels: _labels,
   className,
 }: {
   summary: WorkRoadSummary | null;
@@ -24,10 +24,10 @@ export function QgPulse({
       <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-3">
         <PulseCell
           value={`${summary.progress_percent}%`}
-          label="índice editorial da fonte"
+          label="do trabalho documentado já avançou"
         />
-        <PulseCell value={summary.initiatives} label="iniciativas" />
-        <PulseCell value={summary.tasks} label="tarefas na fonte" />
+        <PulseCell value={summary.initiatives} label="frentes organizadas" />
+        <PulseCell value={summary.tasks} label="entregas acompanhadas" />
       </div>
       <ul className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-5">
         {ROADMAP_TASK_STATUSES.map((status) => (
@@ -36,11 +36,14 @@ export function QgPulse({
               {summary.counts[status]}
             </span>
             <span className="text-xs leading-4 text-muted-foreground">
-              {statusLabel(status, labels).toLocaleLowerCase("pt-BR")}
+              {plainStatusLabel(status).toLocaleLowerCase("pt-BR")}
             </span>
           </li>
         ))}
       </ul>
+      <p className="border-t border-border bg-card px-4 py-3 text-xs leading-5 text-muted-foreground">
+        Este percentual mede organização e evidência do roadmap. Não significa que o sistema inteiro está pronto nem que a operação já gera lucro.
+      </p>
     </section>
   );
 }

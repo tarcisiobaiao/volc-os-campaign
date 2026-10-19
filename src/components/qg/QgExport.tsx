@@ -57,7 +57,7 @@ export function QgExport({ filters }: { filters: QgUrlState }) {
         >
           <option value="pdf">PDF imprimível</option>
           <option value="html">HTML imprimível</option>
-          <option value="docx">DOCX existente</option>
+          <option value="docx">DOCX arquivado</option>
           <option value="json">JSON de evidência</option>
         </select>
       </label>
@@ -67,7 +67,7 @@ export function QgExport({ filters }: { filters: QgUrlState }) {
         disabled={pending}
         className="inline-flex min-h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-transform duration-150 ease-out active:scale-[0.96] disabled:opacity-60 motion-reduce:transition-none"
       >
-        {pending ? "Gerando" : "Exportar workbook"}
+        {pending ? "Gerando" : "Baixar relatório"}
       </button>
       {status ? <p className="text-xs text-foreground" role="status">{status}</p> : null}
     </div>

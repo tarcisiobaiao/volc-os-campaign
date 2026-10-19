@@ -204,10 +204,10 @@ function makeCatalog(taskCount: number): WorkRoadLive {
 describe("QG Operacional", () => {
   it("lê a fonte viva e não apresenta o snapshot local antigo", async () => {
     mount();
-    expect(await screen.findByRole("heading", { name: "QG Operacional" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Plano de trabalho" })).toBeTruthy();
     expect(await screen.findByText(/volc-os-workbook\/ROADMAP-VIVO\.json/)).toBeTruthy();
     expect(screen.getByText("25%")).toBeTruthy();
-    expect(screen.getByText(/Fechar a fonte do trabalho/)).toBeTruthy();
+    expect(screen.getAllByText(/Fechar a fonte do trabalho/).length).toBeGreaterThan(0);
     expect(screen.queryByText("Protótipo local, sem falsa sincronização")).toBeNull();
   });
 
@@ -233,7 +233,7 @@ describe("QG Operacional", () => {
 
   it("deriva progresso da iniciativa pelos pesos da fonte", async () => {
     mount("/settings/qg-agentico?visao=roadmap");
-    expect(await screen.findByRole("heading", { name: "Sequência operacional" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Frentes na ordem planejada" })).toBeTruthy();
     // P01: done=1, partial=0, risk=0.25, todo=0, reserved fora → (1+0+0.25+0)/4 = 31.3
     expect(screen.getByLabelText(/Progresso 31\.3 por cento/)).toBeTruthy();
     expect(screen.queryByLabelText(/Progresso 75 por cento/)).toBeNull();
@@ -257,7 +257,7 @@ describe("QG Operacional", () => {
     expect(screen.queryByText("Implementar Display")).toBeNull();
     expect(screen.getByText("1 de 6")).toBeTruthy();
     expect(screen.getByTestId("qg-qs").textContent).toContain("status=done");
-    fireEvent.change(screen.getByLabelText("Buscar por título ou ID"), { target: { value: "Display" } });
+    fireEvent.change(screen.getByLabelText("Buscar uma entrega"), { target: { value: "Display" } });
     expect(screen.getByText(/Nenhuma tarefa neste recorte/)).toBeTruthy();
     expect(screen.getByTestId("qg-qs").textContent).toContain("busca=Display");
   });
@@ -275,11 +275,11 @@ describe("QG Operacional", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 0 } } });
     vi.mocked(pautadorApi.workRoad).mockResolvedValueOnce(ROADMAP);
     mount("/settings/qg-agentico", client);
-    expect(await screen.findByText(/Fechar a fonte do trabalho/)).toBeTruthy();
+    expect((await screen.findAllByText(/Fechar a fonte do trabalho/)).length).toBeGreaterThan(0);
     vi.mocked(pautadorApi.workRoad).mockRejectedValue(new Error("timeout"));
     await client.invalidateQueries({ queryKey: ["work-road", "live"] });
     expect(await screen.findByText(/Dados desatualizados/, {}, { timeout: 4000 })).toBeTruthy();
-    expect(screen.getByText(/Fechar a fonte do trabalho/)).toBeTruthy();
+    expect(screen.getAllByText(/Fechar a fonte do trabalho/).length).toBeGreaterThan(0);
   });
 
   it("ausência de resumo não vira zero", async () => {
@@ -287,7 +287,7 @@ describe("QG Operacional", () => {
     mount();
     expect(await screen.findByText(/resumo quantitativo não veio/i)).toBeTruthy();
     expect(screen.queryByText("25%")).toBeNull();
-    expect(screen.queryByText("0%")).toBeNull();
+    expect(screen.queryByLabelText("Pulso do Roadmap Vivo")).toBeNull();
   });
 
   it("roadmap vazio é ausência de catálogo, não uma fila zerada", async () => {
@@ -318,41 +318,43 @@ describe("QG Operacional", () => {
     expect("updateWorkRoad" in pautadorApi).toBe(false);
   });
 
-  it("abre o drawer com evidência, reserva, risco, parcial e copiar ID", async () => {
+  it("abre o drawer com evidência e estados em linguagem simples", async () => {
     mount("/settings/qg-agentico?visao=tarefas&tarefa=T-empty");
     expect(await screen.findByText("Tarefa sem evidência na fonte.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Copiar ID T-empty" })).toBeTruthy();
+    expect(screen.getByText("Detalhes técnicos e rastreabilidade")).toBeTruthy();
     cleanup();
     mount("/settings/qg-agentico?visao=tarefas&tarefa=T-res");
-    expect(await screen.findAllByText("Capacidade reservada")).toHaveLength(2);
+    expect((await screen.findAllByText("Guardado para depois")).length).toBeGreaterThan(0);
     cleanup();
     mount("/settings/qg-agentico?visao=tarefas&tarefa=T-risk");
-    expect((await screen.findAllByText("Existe com risco")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Precisa de atenção")).length).toBeGreaterThan(0);
     cleanup();
     mount("/settings/qg-agentico?visao=tarefas&tarefa=T2");
-    expect((await screen.findAllByText("Parcial")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Já começou, falta fechar")).length).toBeGreaterThan(0);
   });
 
   it("expõe nomes acessíveis e navegação por teclado nas visões", async () => {
     mount();
-    const agora = await screen.findByRole("tab", { name: "Agora" });
+    const agora = await screen.findByRole("tab", { name: "Visão geral" });
     expect(agora.getAttribute("aria-selected")).toBe("true");
     fireEvent.keyDown(agora, { key: "ArrowRight" });
-    expect(screen.getByRole("tab", { name: "Timeline" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByRole("tab", { name: "Lista" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Kanban" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Inbox" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Execuções" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Por etapas" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Todas as tarefas" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Quadro" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Ideias" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Agentes" })).toBeTruthy();
   });
 
   it("claro, escuro e viewport estreita não escondem as ações", async () => {
     const view = mount("/settings/qg-agentico?visao=tarefas");
     expect(await screen.findByRole("button", { name: /Abrir tarefa T1/ })).toBeTruthy();
-    expect(screen.getByLabelText("Buscar por título ou ID")).toBeTruthy();
+    expect(screen.getByLabelText("Buscar uma entrega")).toBeTruthy();
     expect(screen.getByLabelText("Estado")).toBeTruthy();
-    view.container.querySelector(".dark") ?? view.container.classList.add("dark");
-    expect(screen.getByRole("tab", { name: "Agora" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Lista" })).toBeTruthy();
+    if (!view.container.querySelector(".dark")) {
+      view.container.classList.add("dark");
+    }
+    expect(screen.getByRole("tab", { name: "Visão geral" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Todas as tarefas" })).toBeTruthy();
     expect(screen.getByLabelText("Iniciativa")).toBeTruthy();
     expect(screen.getByLabelText("Onda")).toBeTruthy();
   });
@@ -478,7 +480,7 @@ describe("QG Operacional", () => {
 
   it("Kanban é um board genuíno: colunas nomeadas, ids únicos e rolagem acessível", async () => {
     mount("/settings/qg-agentico?visao=kanban");
-    expect(await screen.findByRole("heading", { name: "Kanban da fonte" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Quadro do trabalho" })).toBeTruthy();
     // O board é uma região nomeada e rolável; nenhuma coluna é escondida atrás de tabs.
     const board = screen.getByRole("region", { name: /board do kanban/i });
     expect(board.className).toContain("overflow-x-auto");
@@ -497,7 +499,7 @@ describe("QG Operacional", () => {
 
   it("Kanban usa card compacto legível: ID e estado no topo, hairline semântica e subordinação visual", async () => {
     mount("/settings/qg-agentico?visao=kanban");
-    await screen.findByRole("heading", { name: "Kanban da fonte" });
+    await screen.findByRole("heading", { name: "Quadro do trabalho" });
     const card = screen.getByRole("button", { name: "Abrir tarefa T1: Criar o Roadmap Vivo" }).closest("article");
     expect(card).toBeTruthy();
     expect(card?.className).toContain("rounded-lg");
@@ -517,7 +519,7 @@ describe("QG Operacional", () => {
 
   it("Kanban expõe subir/descer compactos com disabled correto e anuncia a reordenação", async () => {
     mount("/settings/qg-agentico?visao=kanban");
-    expect(await screen.findByRole("heading", { name: "Kanban da fonte" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Quadro do trabalho" })).toBeTruthy();
     const upT1 = screen.getByRole("button", { name: "Subir T1" });
     const downT1 = screen.getByRole("button", { name: "Descer T1" });
     // T1 é o primeiro da iniciativa P01: sobe desabilitado, desce habilitado.
@@ -548,7 +550,7 @@ describe("QG Operacional", () => {
       ],
     });
     mount("/settings/qg-agentico?visao=kanban");
-    expect(await screen.findByRole("heading", { name: "Kanban da fonte" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Quadro do trabalho" })).toBeTruthy();
     const riskColumn = screen.getByRole("region", { name: /Com risco/ });
     expect(within(riskColumn).getByText("Nenhuma tarefa neste estado.")).toBeTruthy();
     const ids = Array.from(document.querySelectorAll("[data-task-id]")).map((node) => node.getAttribute("data-task-id"));

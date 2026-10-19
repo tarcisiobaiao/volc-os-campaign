@@ -34,7 +34,7 @@ _ROADMAP = _RAIZ / "volc-os-workbook" / "ROADMAP-VIVO.json"
 _INBOX = _RAIZ / "volc-os-workbook" / "INBOX-ROADMAP.json"
 _INBOX_RECIBOS = _RAIZ / "volc-os-workbook" / "INBOX-ROADMAP.receipts.jsonl"
 _COBERTURA = _RAIZ / "volc-os-workbook" / "INBOX-COVERAGE.json"
-_GRAFO_STATUS = _RAIZ / "graphify-out" / "UPDATE_STATUS.json"
+_GRAFO_STATUS = _RAIZ / "docs" / "volc-os-graph" / "BUILD-STATUS.json"
 _HARNESS_RUNS = _RAIZ / "tools" / "agent-harness" / "runs"
 _WORKTREE_ROOTS = (
     _RAIZ / ".claude" / "worktrees",
@@ -621,11 +621,17 @@ async def status_do_grafo() -> JSONResponse:
     commit = str(status.get("built_at_commit") or status.get("commit") or status.get("git_commit") or "")
     current = status.get("current")
     commit_diverge = bool(head is not None and commit and commit != head)
-    stale = (current is False) or (not commit) or commit_diverge
-    if current is False:
+    digest_gravado = str(status.get("input_sha256") or "")
+    digest_atual = _digest_atual_do_grafo() if digest_gravado else None
+    digest_diverge = digest_atual is not None and digest_atual != digest_gravado
+    usa_digest = bool(digest_gravado and digest_atual)
+    stale = (current is False) or digest_diverge or (not usa_digest and ((not commit) or commit_diverge))
+    if current is False or digest_diverge:
         motivo = str(status.get("reason") or "Os insumos do grafo estão defasados.")
+    elif commit_diverge and usa_digest:
+        motivo = "O snapshot foi gerado em commit anterior, mas o digest dos insumos permanece idêntico."
     elif commit_diverge:
-        motivo = "O snapshot foi gerado em outro commit; confirme os insumos antes de tratá-lo como atual."
+        motivo = "O snapshot foi gerado em outro commit e este manifesto antigo não permite conferir o digest."
     elif not commit:
         motivo = "O status não informa o commit usado na geração."
     else:
@@ -640,10 +646,26 @@ async def status_do_grafo() -> JSONResponse:
             "generated_at": status.get("generated_at") or status.get("updated_at"),
             "reason": motivo,
             "authority": "docs/volc-os-graph/curadoria-operacional.json",
-            "raw": {chave: status[chave] for chave in status if chave in {"built_at_commit", "commit", "generated_at", "updated_at", "current", "reason"}},
+            "raw": {chave: status[chave] for chave in status if chave in {"built_at_commit", "commit", "generated_at", "updated_at", "current", "reason", "input_sha256"}},
         },
         headers={"Cache-Control": "no-store"},
     )
+
+
+def _digest_atual_do_grafo() -> str | None:
+    """Confere os mesmos insumos do gate oficial sem usar o SHA como frescor.
+
+    O import é tardio para o backend continuar inicializando em um artefato que
+    não empacote ``scripts/``. Nesse ambiente legado, a rota falha fechado pela
+    regra antiga de commit em vez de declarar o grafo atual sem prova.
+    """
+    try:
+        from scripts.atualizar_grafo_volc_os import input_digest
+
+        digest, _ = input_digest()
+        return digest
+    except (ImportError, OSError, subprocess.SubprocessError):
+        return None
 
 
 @router.get("/export")

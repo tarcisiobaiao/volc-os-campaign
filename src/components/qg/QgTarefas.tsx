@@ -8,7 +8,9 @@ import {
   classifyTaskKind,
   kindLabel,
   listedTextCount,
+  plainStatusLabels,
   statusLabel,
+  taskPlainExplanation,
   wavesFrom,
 } from "@/features/work-road/selectors";
 import type { QgUrlState } from "@/features/work-road/url-state";
@@ -41,7 +43,7 @@ export function QgTarefas({
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Catálogo completo</p>
           <h2 id="qg-tasks-heading" className="mt-1 font-display text-2xl font-semibold tracking-tight">
-            Tarefas da operação
+            Todas as entregas do plano
           </h2>
         </div>
         {countLabel ? (
@@ -57,13 +59,13 @@ export function QgTarefas({
 
       <div className="mt-5 grid gap-3 border-y border-border py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <label className="relative block w-full max-w-xl" htmlFor="qg-task-search">
-          <span className="sr-only">Buscar por título ou ID</span>
+          <span className="sr-only">Buscar uma entrega</span>
           <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             id="qg-task-search"
             value={filters.busca}
             onChange={(event) => onFilters({ busca: event.target.value })}
-            placeholder="ID, título ou explicação"
+            placeholder="Título, explicação ou frente"
             className="h-10 min-h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </label>
@@ -76,7 +78,7 @@ export function QgTarefas({
               { value: "all", label: "Todos os estados" },
               ...ROADMAP_TASK_STATUSES.map((status) => ({
                 value: status,
-                label: `${statusLabel(status, workRoad.status_labels)}${
+                label: `${statusLabel(status, plainStatusLabels())}${
                   workRoad.summary ? ` (${workRoad.summary.counts[status]})` : ""
                 }`,
               })),
@@ -90,7 +92,7 @@ export function QgTarefas({
               { value: "all", label: "Todas as iniciativas" },
               ...initiatives.map((initiative) => ({
                 value: initiative.id,
-                label: `${initiative.id} · ${initiative.title}`,
+                label: initiative.title,
               })),
             ]}
           />
@@ -171,23 +173,23 @@ export function QgTarefas({
                 onClick={() => onOpenTask(row.task.id)}
                 aria-label={`Abrir tarefa ${row.task.id}: ${row.task.title}`}
                 className={cn(
-                  "grid w-full gap-2 py-3 text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[7.5rem_minmax(0,1fr)_auto] sm:items-start",
+                  "grid w-full gap-2 py-3 text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start",
                   row.task.status === "done" && "opacity-65",
                 )}
               >
-                <span className="font-mono text-xs font-semibold text-primary">{row.task.id}</span>
                 <span className="min-w-0">
                   <span className={cn("block text-sm font-medium", row.task.status === "done" && "text-muted-foreground")}>
                     {row.task.title}
                   </span>
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    {row.initiative.id} · rank {row.initiative.rank} · {row.initiative.wave}
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    {taskPlainExplanation(row)}
                   </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">Frente: {row.initiative.title}</span>
                   <span className="mt-1 inline-flex">
                     <QgKindMark label={kindLabel(classifyTaskKind(row.task.status))} />
                   </span>
                 </span>
-                <QgStatusMark status={row.task.status} labels={workRoad.status_labels} />
+                <QgStatusMark status={row.task.status} labels={plainStatusLabels()} />
               </button>
             </li>
           ))}

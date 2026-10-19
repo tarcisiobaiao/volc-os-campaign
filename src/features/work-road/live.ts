@@ -36,6 +36,7 @@ export interface RoadmapTask {
   order?: number | null;
   owner?: string | null;
   explanation?: string | null;
+  gaps?: string | null;
   acceptance?: string | string[] | null;
   checklist?: RoadmapChecklistItem[] | null;
   dependencies?: string[] | null;

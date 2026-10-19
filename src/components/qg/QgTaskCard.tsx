@@ -7,6 +7,8 @@ import {
   declaredDependencies,
   evidenceText,
   executionsForTask,
+  plainStatusLabels,
+  taskPlainExplanation,
 } from "@/features/work-road/selectors";
 import { taskPath } from "@/features/work-road/url-state";
 import { cn } from "@/lib/utils";
@@ -30,7 +32,7 @@ const SUBORDINATE: ReadonlySet<RoadmapTaskStatus> = new Set(["done", "reserved"]
 
 export function QgTaskCard({
   row,
-  labels,
+  labels: _labels,
   executions = [],
   reason,
   compact = false,
@@ -72,14 +74,14 @@ export function QgTaskCard({
           className="block w-full p-3 text-left outline-none transition-colors duration-150 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
         >
           <span className="flex flex-wrap items-start justify-between gap-2">
-            <span className="font-mono text-xs font-semibold text-primary">{row.task.id}</span>
-            <QgStatusMark status={row.task.status} labels={labels} />
+            <span className="text-xs font-medium text-muted-foreground">{row.initiative.title}</span>
+            <QgStatusMark status={row.task.status} labels={plainStatusLabels()} />
           </span>
           <span className="mt-2 block text-sm font-medium leading-5 text-foreground text-pretty break-words">
             {row.task.title}
           </span>
           <span className="mt-1.5 block text-xs leading-5 text-muted-foreground break-words">
-            {row.initiative.id} · {row.initiative.title}
+            {taskPlainExplanation(row)}
           </span>
           {reason ? (
             <span className="mt-1 block text-xs leading-5 text-foreground/75 break-words">{reason}</span>
@@ -112,13 +114,12 @@ export function QgTaskCard({
         type="button"
         onClick={open}
         aria-label={`Abrir tarefa ${row.task.id}: ${row.task.title}`}
-        className="grid w-full gap-2 text-left outline-none transition-colors duration-150 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none sm:grid-cols-[7.5rem_minmax(0,1fr)_auto] sm:items-start"
+        className="grid w-full gap-2 text-left outline-none transition-colors duration-150 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
       >
-        <span className="font-mono text-xs font-semibold text-primary">{row.task.id}</span>
         <span className="min-w-0">
           <span className="block text-sm font-medium text-foreground text-pretty">{row.task.title}</span>
           <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-            {row.initiative.id} · {row.initiative.title}
+            {taskPlainExplanation(row)}
           </span>
           {reason ? <span className="mt-1 block text-xs leading-5 text-foreground/75">{reason}</span> : null}
           {!compact && progress ? (
@@ -140,7 +141,7 @@ export function QgTaskCard({
             </span>
           ))}
         </span>
-        <QgStatusMark status={row.task.status} labels={labels} />
+        <QgStatusMark status={row.task.status} labels={plainStatusLabels()} />
       </button>
     </article>
   );

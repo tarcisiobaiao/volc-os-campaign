@@ -70,7 +70,7 @@
           "id": "P01-T07",
           "title": "QG Operacional V3: visões, página de tarefa, inbox, grafo e workbook",
           "status": "done",
-          "proof": "Integração Codex em integration/codex-qg-redator-convergence: d2ed5cb Inbox, 5445c5e página da tarefa e manifesto ADK, 230214c Timeline/Kanban/Lista, 28b7b50 grafo, 81f9f69 export HTML/PDF/JSON, e4699a9 fechamento das visões, 28f646f/4d93cbf acabamento visual e 0f3bf60 proteção concorrente da fonte. A convergência global incorporou 4430a4f/c33f4ae para tornar o Kanban legível sem alterar sua autoridade editorial. Gates após integração: 53 testes QG, build Vite verde e zero erro novo no ownership.",
+          "proof": "Integração Codex em integration/codex-qg-redator-convergence: d2ed5cb Inbox, 5445c5e página da tarefa e manifesto ADK, 230214c Timeline/Kanban/Lista, 28b7b50 grafo, 81f9f69 export HTML/PDF/JSON, e4699a9 fechamento das visões, 28f646f/4d93cbf acabamento visual e 0f3bf60 proteção concorrente da fonte. A convergência global incorporou 4430a4f/c33f4ae para tornar o Kanban legível sem alterar sua autoridade editorial. Gates após integração: 53 testes QG, build Vite verde e zero erro novo no ownership. · 19/10/2026, integration/release-candidate-20261019: a visão principal passou a traduzir a fonte viva em linguagem de operação — o que é cada entrega, por que importa, o que falta e quando pode ser considerada pronta. Códigos, hashes e caminhos ficaram recolhidos em detalhes técnicos; todas as frentes e tarefas abertas continuam vindo do ROADMAP-VIVO e sendo relidas automaticamente. O frescor do grafo passou a seguir o digest oficial dos insumos, sem falso alerta apenas porque o commit avançou. Gates: 32/32 testes focais de frontend, 15/15 testes do contrato QG/backend, lint dos arquivos tocados, build Vite e diff check verdes.",
           "order": 7,
           "priority": 1,
           "owner": "qg-operacional",
@@ -80,7 +80,8 @@
             "Cada tarefa da fonte tem URL própria",
             "Nenhuma dependência é inventada por ordem editorial",
             "Workbook/PDF é um documento selecionável, não uma captura raster",
-            "Grafo operacional distingue prioridade, dependência e relação"
+            "Grafo operacional distingue prioridade, dependência e relação",
+            "A visão principal explica o trabalho em linguagem simples e recolhe códigos técnicos sem perder rastreabilidade"
           ],
           "checklist": [
             {
@@ -103,6 +104,13 @@
               "done": true,
               "proof": "5445c5e; rota /settings/qg-agentico/tarefas/:taskId e guardas em src/features/work-road/mission.ts",
               "acceptance": "Campos ausentes aparecem como ausência"
+            },
+            {
+              "id": "P01-T07-C04",
+              "description": "Visão executiva em linguagem simples, alimentada pela fonte viva",
+              "done": true,
+              "proof": "src/components/qg/QgAgora.tsx, src/features/work-road/selectors.ts, backend/app/routers/work_road.py e testes focais; 32/32 frontend, 15/15 backend, lint e build Vite verdes em 19/10/2026",
+              "acceptance": "O dono entende o que está em andamento, o que falta e o critério de conclusão sem precisar interpretar IDs, hashes ou nomes internos"
             }
           ],
           "links": [
@@ -125,7 +133,7 @@
           "graph_nodes": [
             "cap_work_road"
           ],
-          "updated_at": "2026-08-29"
+          "updated_at": "2026-10-19"
         },
         {
           "id": "P01-T08",

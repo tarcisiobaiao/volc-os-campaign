@@ -15,17 +15,18 @@ import {
   editorialPredecessors,
   evidenceText,
   kindLabel,
+  plainStatusLabels,
   statusLabel,
-  textList,
+  taskPlainExplanation,
+  taskRemaining,
 } from "@/features/work-road/selectors";
-import { QgCopyId } from "./QgCopyId";
 import { QgKindMark, QgStatusMark } from "./QgStatusMark";
 import { taskPath } from "@/features/work-road/url-state";
 import { QgMissingField } from "./QgStates";
 
 export function QgTaskDrawer({
   row,
-  labels,
+  labels: _labels,
   open,
   onClose,
 }: {
@@ -39,7 +40,7 @@ export function QgTaskDrawer({
   const evidence = task ? evidenceText(task) : null;
   const deps = task ? declaredDependencies(task) : null;
   const prior = row ? editorialPredecessors(row) : [];
-  const acceptance = task ? textList(task.acceptance) : null;
+  const acceptance = task ? taskRemaining(task) : null;
   const graph = task?.graph_nodes?.length ? task.graph_nodes : initiative?.graph_nodes ?? [];
 
   return (
@@ -49,57 +50,49 @@ export function QgTaskDrawer({
         className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-lg"
         aria-describedby="qg-task-drawer-desc"
       >
+        <SheetDescription id="qg-task-drawer-desc" className="sr-only">
+          O que esta entrega resolve, o que já existe e o que ainda falta.
+        </SheetDescription>
         {row && task && initiative ? (
           <>
             <SheetHeader className="space-y-3 border-b border-border px-6 py-5 text-left">
-              <p className="font-mono text-xs font-semibold text-primary">{task.id}</p>
               <SheetTitle className="font-display text-xl font-semibold leading-7 text-balance">
                 {task.title}
               </SheetTitle>
-              <SheetDescription id="qg-task-drawer-desc" className="text-pretty">
-                Detalhe somente leitura da tarefa no Roadmap Vivo.
-              </SheetDescription>
+              <p className="text-sm text-muted-foreground text-pretty">
+                O que esta entrega resolve, o que já existe e o que ainda falta.
+              </p>
               <div className="flex flex-wrap items-center gap-2">
-                <QgStatusMark status={task.status} labels={labels} />
+                <QgStatusMark status={task.status} labels={plainStatusLabels()} />
                 <QgKindMark label={kindLabel(classifyTaskKind(task.status))} />
               </div>
             </SheetHeader>
 
             <dl className="grid gap-5 px-6 py-5 text-sm">
               <Fact label="Iniciativa">
-                {initiative.id} · {initiative.title}
-              </Fact>
-              <Fact label="Onda">{initiative.wave}</Fact>
-              <Fact label="Prioridade / rank">
-                Rank {initiative.rank} na fonte viva.
+                {initiative.title}
               </Fact>
               <Fact label="Estado">
-                {statusLabel(task.status, labels)}
+                {statusLabel(task.status, plainStatusLabels())}
               </Fact>
-              <Fact label="Explicação">
-                {task.explanation?.trim() ? (
-                  task.explanation
-                ) : (
-                  <QgMissingField>
-                    A fonte não envia explicação própria desta tarefa. O motivo da iniciativa: {initiative.why}
-                  </QgMissingField>
-                )}
+              <Fact label="O que é">
+                {taskPlainExplanation(row)}
               </Fact>
-              <Fact label="Aceite">
+              <Fact label="O que falta para considerar pronto">
                 {acceptance ? (
                   <ul className="list-disc space-y-1 pl-4">
                     {acceptance.map((item) => <li key={item}>{item}</li>)}
                   </ul>
                 ) : (
                   <QgMissingField>
-                    Aceite da tarefa não declarado. Pronto da iniciativa: {initiative.done_when}
+                    O critério final desta entrega ainda não foi descrito em linguagem simples. Pronto da frente: {initiative.done_when}
                   </QgMissingField>
                 )}
               </Fact>
-              <Fact label="Dependências">
+              <Fact label="O que pode impedir o avanço">
                 {deps && deps.length > 0 ? (
                   <ul className="list-disc space-y-1 pl-4">
-                    {deps.map((item) => <li key={item} className="font-mono text-xs">{item}</li>)}
+                    {deps.map((item) => <li key={item}>Existe uma entrega anterior ainda aberta. A referência técnica é {item}.</li>)}
                   </ul>
                 ) : (
                   <QgMissingField>A fonte não declara dependências desta tarefa.</QgMissingField>
@@ -110,35 +103,30 @@ export function QgTaskDrawer({
                   Anterior na ordem editorial, sem prova de dependência: {prior.map((item) => item.id).join(", ")}.
                 </Fact>
               ) : null}
-              <Fact label="Evidência">
+              <Fact label="O que já existe">
                 {evidence ? (
                   evidence
                 ) : (
                   <QgMissingField>Tarefa sem evidência na fonte.</QgMissingField>
                 )}
               </Fact>
-              <Fact label="Grafo">
-                {graph.length > 0 ? (
-                  <ul className="flex flex-wrap gap-1.5">
-                    {graph.map((node) => (
-                      <li key={node} className="rounded-full border border-border px-2 py-0.5 font-mono text-[11px]">
-                        {node}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <QgMissingField>Nenhum nó de grafo veio nesta leitura.</QgMissingField>
-                )}
-              </Fact>
             </dl>
 
+            <details className="mx-6 mb-5 border-y border-border py-3 text-xs text-muted-foreground">
+              <summary className="cursor-pointer font-medium text-foreground">Detalhes técnicos e rastreabilidade</summary>
+              <dl className="mt-3 space-y-2">
+                <div><dt className="inline font-medium">Referência: </dt><dd className="inline font-mono">{task.id}</dd></div>
+                <div><dt className="inline font-medium">Frente: </dt><dd className="inline font-mono">{initiative.id} · posição {initiative.rank} · {initiative.wave}</dd></div>
+                <div><dt className="inline font-medium">Nós do grafo: </dt><dd className="inline font-mono">{graph.length > 0 ? graph.join(", ") : "não declarados"}</dd></div>
+              </dl>
+            </details>
+
             <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-border px-6 py-4">
-              <QgCopyId value={task.id} />
               <Link
                 to={taskPath(task.id)}
                 className="inline-flex min-h-10 items-center text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                Página completa {task.id}
+                Abrir histórico completo
               </Link>
             </div>
           </>

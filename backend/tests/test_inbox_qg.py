@@ -342,6 +342,25 @@ def test_graph_status_le_built_at_commit(tmp_path, monkeypatch):
     assert "outro commit" in corpo["reason"]
 
 
+def test_graph_status_digest_atual_supera_divergencia_de_commit(tmp_path, monkeypatch):
+    status = tmp_path / "BUILD-STATUS.json"
+    status.write_text(json.dumps({
+        "schema_version": 2,
+        "built_at_commit": "commit-de-geracao",
+        "generated_at": "2026-10-19T16:00:00-03:00",
+        "input_sha256": "digest-atual",
+    }), encoding="utf-8")
+    monkeypatch.setattr(work_road, "_GRAFO_STATUS", status)
+    monkeypatch.setattr(work_road, "_git", lambda args, cwd=work_road._RAIZ: "head-atual\n" if args[-1] == "HEAD" else "head-at\n")
+    monkeypatch.setattr(work_road, "_digest_atual_do_grafo", lambda: "digest-atual")
+    app = FastAPI()
+    app.include_router(work_road.router)
+    app.dependency_overrides[exigir_usuario] = lambda: _Admin()
+    corpo = TestClient(app).get("/api/work-road/graph-status").json()
+    assert corpo["stale"] is False
+    assert "digest dos insumos permanece idêntico" in corpo["reason"]
+
+
 def test_export_docx_ausente_e_honesto(tmp_path, monkeypatch):
     caminho = tmp_path / "ROADMAP-VIVO.json"
     caminho.write_text(json.dumps({

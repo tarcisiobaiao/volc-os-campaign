@@ -74,24 +74,29 @@ export function QGAgenticoContent() {
             <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
               <Target className="h-3.5 w-3.5" aria-hidden />
             </span>
-            sala de comando
+            visão executiva viva
           </div>
           <h1 className="font-display text-3xl font-bold tracking-tight leading-[1.05] text-foreground sm:text-4xl">
-            QG <span className="text-aurora">Operacional</span>
+            Plano de <span className="text-aurora">trabalho</span>
           </h1>
           <div className="mt-3 aurora-rule w-16" />
           <p className="mt-3 max-w-3xl text-pretty text-sm text-muted-foreground">
-            Uma tarefa dominante, a sequência da fonte, e um Inbox que não finge captura automática.
+            O que já está pronto, o que ainda falta e por que cada entrega importa, sempre sincronizado com o Roadmap Vivo.
           </p>
         </div>
         <div className="space-y-3">
           {workRoad ? (
-            <div className="text-xs text-muted-foreground lg:text-right">
-              <p className="font-medium text-foreground">Fonte viva · {workRoad.source.path}</p>
-              <p className="mt-1">Atualizada em {formatDate(workRoad.updated_at)}</p>
+            <div className="text-xs text-muted-foreground lg:text-right" aria-live="polite">
+              <p className="font-medium text-success">Atualização automática ligada</p>
+              <p className="mt-1">Roadmap revisado em {formatDate(workRoad.updated_at)}</p>
               <p className="mt-1">
-                {reading.atualizando ? "Conferindo atualização" : `Lida em ${formatDate(workRoad.source.read_at)}`}
+                {reading.atualizando ? "Buscando mudanças agora" : `Última leitura: ${formatDate(workRoad.source.read_at)}`}
               </p>
+              <details className="mt-2 lg:ml-auto">
+                <summary className="cursor-pointer font-medium text-foreground">Detalhes técnicos da fonte</summary>
+                <p className="mt-1 font-mono">{workRoad.source.path}</p>
+                <p className="mt-1 font-mono">{workRoad.source.sha256.slice(0, 12)}</p>
+              </details>
             </div>
           ) : null}
           <QgExport filters={filters} />
@@ -191,8 +196,8 @@ export function QGAgenticoContent() {
       />
 
       <footer className="flex flex-col gap-2 border-t border-border py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <span>O agente atualiza a fonte; o QG reflete a mudança em até 15 segundos.</span>
-        <span>Inbox e reordenação ADMIN deixam recibo. Conversa não vira tarefa sozinha.</span>
+        <span>Quando o Roadmap Vivo muda, esta página reflete a alteração em até 15 segundos.</span>
+        <span>Ideias e conversas só entram no plano depois de triagem e registro.</span>
       </footer>
     </div>
   );

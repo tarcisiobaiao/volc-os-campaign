@@ -19,14 +19,13 @@ export function QgTimeline({
   return (
     <section aria-labelledby="qg-timeline-heading">
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {hasDates ? "Timeline" : "Sequência operacional"}
+        {hasDates ? "Histórico por etapas" : "Sequência do plano"}
       </p>
       <h2 id="qg-timeline-heading" className="mt-1 font-display text-2xl font-semibold tracking-tight text-balance">
-        {hasDates ? "Linha do tempo da fonte" : "Sequência operacional"}
+        {hasDates ? "Quando cada entrega mudou" : "Frentes na ordem planejada"}
       </h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground text-pretty">
-        Sem datas confiáveis a ordem segue onda, rank, prioridade explícita e ordem editorial persistida.
-        Proximidade visual não é dependência.
+        Quando uma data não está disponível, usamos a ordem registrada no Roadmap Vivo. Estar perto na lista não significa depender do item anterior.
       </p>
       <div className="mt-8 space-y-10">
         {waves.map((wave) => {
@@ -51,7 +50,6 @@ export function QgTimeline({
                   <article key={initiative.id} className="mt-5 border-t border-border pt-4">
                     <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem] lg:items-start">
                       <div>
-                        <p className="font-mono text-xs font-semibold text-primary">{initiative.id}</p>
                         <h4 className="mt-1 font-display text-lg font-semibold">{initiative.title}</h4>
                         <p className="mt-1 text-sm text-muted-foreground text-pretty">{initiative.why}</p>
                       </div>
@@ -67,7 +65,7 @@ export function QgTimeline({
                             reason={
                               declaredDependencies(row.task)
                                 ? `Dependência declarada: ${declaredDependencies(row.task)?.join(", ")}`
-                                : `Rank ${row.initiative.rank} · ordem editorial ${row.task.order ?? row.indexInInitiative + 1}`
+                                : "Posição registrada no Roadmap Vivo"
                             }
                           />
                         </li>

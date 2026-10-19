@@ -109,14 +109,13 @@ export function QgKanban({
 
   return (
     <section aria-labelledby="qg-kanban-heading">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Estados da fonte</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Situação das entregas</p>
       <h2 id="qg-kanban-heading" className="mt-1 font-display text-2xl font-semibold tracking-tight">
-        Kanban da fonte
+        Quadro do trabalho
       </h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground text-pretty">
-        As colunas são o estado editorial. Execução de agente é um indicador no card, não uma coluna.
-        Arrastar no navegador não altera a autoridade. Use subir/descer e confirme.
-        Em telas estreitas o board rola horizontalmente; nenhuma coluna é comprimida abaixo do legível.
+        Cada coluna mostra uma situação real do roadmap. Um agente trabalhando aparece como informação adicional, não como conclusão.
+        Para mudar a ordem, use subir ou descer e confirme a alteração.
       </p>
       <p className="sr-only" role="status">{announcement}</p>
       {ids.length !== ordered.length ? (
