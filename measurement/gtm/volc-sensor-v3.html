@@ -1,6 +1,6 @@
 <script>
 /*
- * VOLC Sensor v3.1 — analytics comportamental first-party, privacy-by-design
+ * VOLC Sensor v3.2 — analytics comportamental first-party, privacy-by-design
  *
  * SETUP NO GTM (obrigatório para o compliance funcionar):
  *  1. Tag "HTML personalizado" com este código.
@@ -24,6 +24,7 @@
 
   var CFG = {
     endpoint: 'https://database.agenciavolc.com.br/functions/v1/volc-ingest',
+    // O protocolo permanece 3.1: v3.2 muda apenas a normalizacao das UTMs.
     v: '3.1',
     scroll: [25, 50, 75, 100],
     engaged: [10, 30, 60, 120],
