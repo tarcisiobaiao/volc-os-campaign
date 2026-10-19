@@ -1349,6 +1349,38 @@
             "D06",
             "DAT-07"
           ]
+        },
+        {
+          "id": "P08-T12",
+          "title": "Desacoplar a medição first-party VOLC do aviso nativo no Brasil",
+          "status": "partial",
+          "priority": 1,
+          "proof": "19/10/2026 · GTM v38 publicado a partir da v37 em workspace isolado, alterando somente WEBS Wrapper (tag 23) e VOLC Sensor v3.3 (tag 39). As duas tags ficaram sem requisito adicional de Consent Mode; triggers, tags Google e conversões permaneceram intocados. Quick preview sem erro, hashes live iguais ao repositório e canário com estado final analytics_storage/ad_storage=denied gravou quatro eventos posteriores no Supabase oficial. Termos, Privacidade e Cookies foram atualizados e relidos em produção; QA 390×844 e 1440×900 sem overflow. Recibo: docs/operations/VOLC-MEASUREMENT-V33-CONSENT-BR-2026-10-19.md.",
+          "explanation": "A operação brasileira trata a medição comportamental própria, minimizada e sem PII como parte da operação e melhoria do portal; o aviso nativo informa a prática, mas não controla Sensor ou Wrapper. GPC e opt-out explícito do Sensor permanecem. Esta é uma decisão operacional do owner, não um parecer jurídico.",
+          "acceptance": [
+            "Sensor e Wrapper não consultam Consent Mode nem exigem consentimento adicional no GTM",
+            "Filtros de PII, GPC, volcOptOut, triggers e tags Google permanecem preservados",
+            "Termos e políticas descrevem com fidelidade campos, finalidades e armazenamento",
+            "No cutover do Belvedere, o aviso nativo é provado em preview e o MU-plugin antigo é removido sem alterar o tema",
+            "Canário pós-cutover confirma Sensor, Wrapper, campanha numérica e páginas jurídicas em mobile"
+          ],
+          "dependencies": [
+            "P06-T07",
+            "P08-T11"
+          ],
+          "links": [
+            "docs/operations/VOLC-MEASUREMENT-V33-CONSENT-BR-2026-10-19.md",
+            "measurement/gtm/manifest.json",
+            "docs/operations/creditoup-legal-v20261019/privacidade.html",
+            "docs/operations/creditoup-legal-v20261019/termos.html",
+            "docs/operations/creditoup-legal-v20261019/cookies.html"
+          ],
+          "gaps": "GTM e páginas jurídicas estão live. Continua partial porque o tema ativo ainda é wgc3 com o MU-plugin de consentimento antigo; o Belvedere atualizado ainda não passou pelo cutover e QA final.",
+          "graph_nodes": [
+            "cap_behavior",
+            "concept:tracking_control_plane"
+          ],
+          "updated_at": "2026-10-19"
         }
       ]
     },

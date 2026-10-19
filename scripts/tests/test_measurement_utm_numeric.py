@@ -9,6 +9,7 @@ import textwrap
 RAIZ = Path(__file__).resolve().parents[2]
 SENSOR = RAIZ / "measurement" / "gtm" / "volc-sensor-v3.html"
 WRAPPER = RAIZ / "measurement" / "gtm" / "webs-wrapper-v2.html"
+MANIFESTO = RAIZ / "measurement" / "gtm" / "manifest.json"
 
 
 def _node(programa: str) -> dict:
@@ -109,3 +110,23 @@ def test_wrapper_nao_herda_campanha_antiga_quando_nova_utm_esta_presente() -> No
     assert resultado["numerico"]["salvo"]["targeting"]["utm_campaign"] == "20000000011"
     assert "utm_campaign" not in resultado["invalido"]["targeting"]
     assert "utm_campaign" not in resultado["invalido"]["salvo"]["targeting"]
+
+
+def test_tags_volc_nao_dependem_do_consent_mode_e_preservam_saidas_explicitas() -> None:
+    sensor = SENSOR.read_text(encoding="utf-8")
+    wrapper = WRAPPER.read_text(encoding="utf-8")
+    manifesto = json.loads(MANIFESTO.read_text(encoding="utf-8"))
+
+    assert "function consent()" not in sensor
+    assert "consent() === 'denied'" not in sensor
+    assert "globalPrivacyControl" in sensor
+    assert "w.volcOptOut = function" in sensor
+
+    assert "function consentDenied()" not in wrapper
+    assert "var persist =" not in wrapper
+    assert "sessionStorage.setItem('webs'" in wrapper
+
+    assert {tag["name"]: tag["consent"] for tag in manifesto["tags"]} == {
+        "WEBS Wrapper v2": [],
+        "VOLC Sensor v3.3": [],
+    }

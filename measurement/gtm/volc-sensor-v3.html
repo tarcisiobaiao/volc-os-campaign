@@ -1,15 +1,14 @@
 <script>
 /*
- * VOLC Sensor v3.2 — analytics comportamental first-party, privacy-by-design
+ * VOLC Sensor v3.3 — analytics comportamental first-party, privacy-by-design
  *
- * SETUP NO GTM (obrigatório para o compliance funcionar):
+ * SETUP NO GTM:
  *  1. Tag "HTML personalizado" com este código.
  *  2. Configurações avançadas > Configurações de consentimento >
- *     "Exigir consentimento adicional para a tag disparar": analytics_storage
- *     (é o GTM que resolve consentimento por região — EEE/UK/CH).
- *  3. Acionadores: "Todas as páginas" (DOM pronto) + o evento que sua CMP
- *     dispara depois que o usuário aceita. O guard __VOLC_S3 evita execução dupla.
- *  4. Divulgue esta coleta na Política de Privacidade (LGPD / GDPR).
+ *     "Não definido" (sem exigência adicional de Consent Mode).
+ *  3. Acionador: "Todas as páginas" (DOM pronto). O guard __VOLC_S3 evita
+ *     execução dupla.
+ *  4. Divulgue esta coleta first-party nos Termos e na Política de Privacidade.
  *
  * O QUE ESTE SCRIPT NÃO FAZ (de propósito):
  *  - Não lê, altera nem rastreia cliques dentro de anúncios / iframes.
@@ -40,25 +39,9 @@
 
   var nav = w.navigator || {};
 
-  // ---------- GATES DE PRIVACIDADE ----------
-  // Global Privacy Control: o usuário pediu para não ser rastreado.
+  // ---------- SAÍDAS EXPLÍCITAS DE PRIVACIDADE ----------
+  // GPC continua sendo respeitado independentemente do Consent Mode do Google.
   if (nav.globalPrivacyControl === true) return;
-
-  // Lê o último estado de analytics_storage enviado via gtag('consent', ...).
-  // Defaults com "region" são ignorados aqui porque o GTM já os resolve (passo 2);
-  // este check cobre negação global e revogação durante a sessão.
-  function consent() {
-    var dl = w.dataLayer, st = null;
-    if (!dl || !dl.length) return null;
-    for (var i = 0; i < dl.length; i++) {
-      var a = dl[i];
-      if (!a || a[0] !== 'consent' || !a[2] || !a[2].analytics_storage) continue;
-      if (a[1] === 'default' && a[2].region) continue;
-      st = a[2].analytics_storage;
-    }
-    return st;
-  }
-  if (consent() === 'denied') return;
 
   w.__VOLC_S3 = 1;
 
@@ -178,7 +161,6 @@
 
   function flush(r) {
     if (stopped || !Q.length) return;
-    if (consent() === 'denied') { stop(); return; }   // revogou no meio da sessão
     send(r || 'i', Q.splice(0, Q.length));
   }
 
@@ -189,7 +171,7 @@
     for (var j = 0; j < observers.length; j++) { try { observers[j].disconnect(); } catch (e) {} }
   }
 
-  // Para a CMP chamar na revogação: window.volcOptOut()
+  // Saída explícita para o site chamar quando necessário: window.volcOptOut()
   w.volcOptOut = function () {
     try { sessionStorage.removeItem('volc_sid'); } catch (e) {}
     stop();
