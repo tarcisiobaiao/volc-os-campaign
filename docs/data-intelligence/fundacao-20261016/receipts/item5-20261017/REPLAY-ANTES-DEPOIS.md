@@ -32,6 +32,9 @@ sintetizado antigo. O número que separa as duas coisas é o veredito do adaptad
 
 ## Por que continua `insuficiente` (motivos do ledger, pós-cutover)
 
+Resultado por política (E e H): quatro `insuficiente` (equal, greedy conservador, regra de margem madura, guardião
+72 h), a baseline `manter` e a anti-baseline null→zero com 290 propostas de pausa, todas bloqueadas pelo kernel.
+
 | Política | E (estrito) | H (moeda atestada, câmbio-parâmetro) |
 |---|---|---|
 | equal, greedy conservador | 289 cortes "sem custo fechado > 0 em D-1"; **1 corte** "universo BRL com 1 campanha: nada a realocar" | 246 / 44 |
