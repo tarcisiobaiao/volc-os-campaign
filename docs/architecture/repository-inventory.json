@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-19T08:57:50-03:00",
+  "generated_at": "2026-10-19T11:33:48-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 1069,
-    "markdown": 755,
+    "files": 1070,
+    "markdown": 756,
     "sql": 314,
     "tracked": 1069,
-    "untracked": 0,
+    "untracked": 1,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 58,
-      "documentation": 558,
+      "documentation": 559,
       "generated": 2,
       "module-guide": 50,
       "product-document": 23,
@@ -1701,7 +1701,7 @@
       "tracked": true,
       "bytes": 31185,
       "lines": 361,
-      "sha256": "be6e0f0b1b396680b2ff69e74eea171c1d8e46ea695b5416ad1715581c64a2d3",
+      "sha256": "72ebebda70a69fed94e7a07f38a6b074022ca48205fc762868cb2a3e7afa1ccc",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7534,6 +7534,18 @@
       "bytes": 4273,
       "lines": 88,
       "sha256": "1558c8ba6b875852eb60ddf9114bcae899e85835afc559c5412c7a1e2cbcfc76",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/operations/VOLC-MEASUREMENT-V32-2026-10-19.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 2008,
+      "lines": 53,
+      "sha256": "ca0e49e44d690c38a09b75acf0e23f8846132f3cc2fe11dfa30d60e2d896265d",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

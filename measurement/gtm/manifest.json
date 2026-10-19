@@ -2,8 +2,8 @@
   "account_id": "6334941389",
   "container_id": "241170721",
   "public_id": "GTM-N4KS27ZV",
-  "live_version_id": "36",
-  "live_version_name": "VOLC Measurement v3.1 - 2026-10-16",
+  "live_version_id": "37",
+  "live_version_name": "VOLC Measurement v3.2 - 2026-10-19",
   "ingest_url": "https://database.agenciavolc.com.br/functions/v1/volc-ingest",
   "heartbeat_event": "volc_sensor_ready",
   "measurement_version": "3.1",
@@ -24,7 +24,7 @@
       ]
     },
     {
-      "name": "VOLC Sensor v3.1",
+      "name": "VOLC Sensor v3.2",
       "source": "measurement/gtm/volc-sensor-v3.html",
       "paused": false,
       "consent": [

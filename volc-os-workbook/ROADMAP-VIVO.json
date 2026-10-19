@@ -1314,7 +1314,7 @@
         {
           "id": "P08-T11",
           "title": "Preservar o campaign.id numérico no Sensor v3 e no WEBS Wrapper sem reabrir PII",
-          "status": "todo",
+          "status": "partial",
           "proof": "16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): o filtro de PII (regex de telefone/sequência longa em measurement/gtm/volc-sensor-v3.html linhas 73 e 107-112, e safeValue em webs-wrapper-v2.html linhas 38 e 77; wip/historico-measurement-20261015, ausentes de main) descarta o valor INTEIRO de qualquer UTM com 10 ou mais dígitos — inclui o campaign.id (11 dígitos) de utm_campaign={campaignid} e, por inferência (comprimento real não lido), o ad_group.id de utm_content={adgroupid}. Reproduzido executando em Node o JS real extraído dos arquivos (3.076 vetores, 0 divergências contra a réplica Python volc_dil.fundacao.identidade; test_campaign_id_real_e_descartado_como_pii) e medido em produção, read-only: 0 de 28 sessões pagas de 15–16/10 com utm.campaign; no health contract, 0 de 19 (15/10) e 0 de 14 (16/10). O sensor hoje só carrega source, medium, term e paid. A receita da JoinAds por campanha NÃO foi afetada (razão receita por campanha / earnings 0,968–1,000 em 08–16/10): o mecanismo que entrega o id numérico à JoinAds não foi identificado. Nada foi publicado em GTM. [Reconciliado em 17/10: a v36 live (VOLC Sensor v3.1, publicada pela frente de medição) mantém o mesmo filtro, com sha256 igual a db65a78a; no Sensor v3.1 (GTM v36), 0 de 13 sessões pagas com utm.campaign em 16/10 13:05–22:57.]",
           "explanation": "Sem campaign.id no sensor, sessão, navegação e funil não juntam com campanha: o tráfego por campanha × dia sai 'nao_atribuivel', nunca zero. A correção proposta é uma allowlist por chave que isenta apenas utm_campaign e utm_content, apenas quando o valor casa ^\\d{6,20}$, mantendo o filtro para texto livre. Ids do backlog de ouros (10-BACKLOG-OUROS.md) cobertos por esta tarefa: D06, DAT-07.",
           "acceptance": [
@@ -1336,15 +1336,15 @@
             "docs/data-intelligence/fundacao-20261016/receipts/leituras-externas/RECIBO-LEITURAS-20261016.md",
             "tests/data-intelligence/fundacao/test_identidade_normalizacao.py"
           ],
-          "gaps": "Exige PUBLICAÇÃO de GTM, ato proibido nesta missão e dependente de autorização do dono. Leitura L6 feita em 17/10 sobre v35 e v36: só o WEBS Wrapper define key-values e ele descarta o id numérico, então o setter do key-value numérico da JoinAds está fora do GTM (inferido, não identificado). Comprimento real de ad_group.id não lido. Click id (gclid) em raw_events e chave de sessão na receita ficam FORA: alto risco de privacidade, não recomendados.",
-          "integration_evidence": "19/10/2026 · candidata local integration/release-candidate-20261019: o código correspondente à GTM v36, Sensor v3.1, WEBS Wrapper v2, event_seq, verificador e volc-ingest foi integrado a partir de db65a78a; 5 testes focais de Measurement verdes, sem publicação no GTM, Edge deploy ou escrita em produção. A integração protege a fonte e o rollback, mas NÃO corrige o campaign.id descartado; por isso a tarefa permanece todo/risk até canário e cobertura de sete dias.",
+          "gaps": "A publicação e o canário numérico foram concluídos. Falta observar dq_cobertura_atribuicao_sensor >= 0,90 por sete dias e integrar a branch da correção ao ponto de partida canônico. Click id (gclid) em raw_events e chave de sessão na receita continuam FORA por desenho.",
+          "integration_evidence": "19/10/2026 · fix/measurement-p08-t11-20261019: GTM v37 (VOLC Measurement v3.2) publicado com somente VOLC Sensor e WEBS Wrapper alterados; 19 testes focados verdes, quick preview sem erro e verificador live íntegro. Canário público sem clique em anúncio preservou campaign=987654321098 e content=876543210987 da LP para a pré-sell e em duas linhas raw_events; valor inválido não herdou campanha antiga. Rollback é a v36. Recibo: docs/operations/VOLC-MEASUREMENT-V32-2026-10-19.md.",
           "graph_nodes": [
             "risk:sensor_campaign_id_pii_filter",
             "cap_behavior",
             "cap_attribution",
             "concept:tracking_control_plane"
           ],
-          "updated_at": "2026-10-16",
+          "updated_at": "2026-10-19",
           "backlog_ids": [
             "D06",
             "DAT-07"

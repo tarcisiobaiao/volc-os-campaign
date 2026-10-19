@@ -116,11 +116,19 @@ class MotivoDescarte(str, enum.Enum):
     LONGO_DEMAIS = "longo_demais"  # > 200 unidades UTF-16 depois de colapsar espaços
 
 
-def diagnosticar_utm_sensor_v3(valor: object) -> tuple[str, MotivoDescarte]:
+def _id_numerico_de_atribuicao(chave: Optional[str], valor: str) -> bool:
+    return chave in {"utm_campaign", "utm_content"} and bool(re.fullmatch(r"[0-9]{6,20}", valor))
+
+
+def diagnosticar_utm_sensor_v3(
+    valor: object, chave: Optional[str] = None
+) -> tuple[str, MotivoDescarte]:
     """`utmValue(v)` do sensor v3 (:107-112), com o motivo quando o resultado é vazio."""
     v = _js_trim(_js_str(valor)).lower()
     if not v:
         return "", MotivoDescarte.VAZIO
+    if _id_numerico_de_atribuicao(chave, v):
+        return v, MotivoDescarte.MANTIDO
     colapsado = _WS_RUN.sub(" ", v)
     if _clean(v, LIMITE_CHECAGEM_PII) != colapsado:
         if _js_len(_js_trim(colapsado)) > LIMITE_CHECAGEM_PII and not any(
@@ -131,9 +139,9 @@ def diagnosticar_utm_sensor_v3(valor: object) -> tuple[str, MotivoDescarte]:
     return _sanear(v), MotivoDescarte.MANTIDO
 
 
-def normalizar_utm_sensor_v3(valor: object) -> str:
+def normalizar_utm_sensor_v3(valor: object, chave: Optional[str] = None) -> str:
     """Valor exatamente como o sensor v3 grava em `payload.utm.*` ('' = descartado)."""
-    return diagnosticar_utm_sensor_v3(valor)[0]
+    return diagnosticar_utm_sensor_v3(valor, chave)[0]
 
 
 def chave_sem_corte_sensor_v3(valor: object) -> str:
@@ -144,7 +152,7 @@ def chave_sem_corte_sensor_v3(valor: object) -> str:
     return _sanear(_js_trim(_js_str(valor)).lower(), None)
 
 
-def normalizar_valor_wrapper_v2(valor: object) -> str:
+def normalizar_valor_wrapper_v2(valor: object, chave: Optional[str] = None) -> str:
     """`safeValue(v)` do WEBS Wrapper v2 (:74-80): key-value enviado ao GPT ('' = não enviado).
 
     Diverge do sensor em um ponto: não tem o teto de 200 (valor longo é truncado, não descartado).
@@ -152,6 +160,8 @@ def normalizar_valor_wrapper_v2(valor: object) -> str:
     v = _js_trim(_js_str(valor)).lower()
     if not v:
         return ""
+    if _id_numerico_de_atribuicao(chave, v):
+        return v
     if any(rx.search(v) for rx in _PII_WRAPPER):
         return ""
     return _sanear(v)
@@ -216,7 +226,7 @@ def utm_da_pagina_sensor_v3(
     q = parse_query_urlsearchparams(query)
     f: dict = {}
     for p in CHAVES_UTM_SENSOR:
-        v = normalizar_utm_sensor_v3(q.get(p))
+        v = normalizar_utm_sensor_v3(q.get(p), p)
         if v:
             f[p[4:]] = v
     if any(k in q for k in CLICK_IDS_SENSOR):

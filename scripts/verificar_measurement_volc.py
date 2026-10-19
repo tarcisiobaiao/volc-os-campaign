@@ -32,7 +32,11 @@ class FalhaDeProva(RuntimeError):
 
 
 def _normalizar_html(valor: str) -> str:
-    return valor.replace("\r\n", "\n").strip()
+    # O editor do GTM preserva linhas vazias como um espaco. Isso nao altera o
+    # JavaScript e nao deve produzir um falso drift; espacos dentro da linha
+    # continuam significativos e seguem sendo comparados.
+    linhas = valor.replace("\r\n", "\n").splitlines()
+    return "\n".join(linha.rstrip() for linha in linhas).strip()
 
 
 def _sha256_texto(valor: str) -> str:

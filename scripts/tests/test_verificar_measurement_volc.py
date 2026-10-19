@@ -18,12 +18,13 @@ SPEC.loader.exec_module(MOD)
 class MeasurementContractTest(unittest.TestCase):
     def test_normalizacao_ignora_so_bordas_e_quebra_windows(self) -> None:
         self.assertEqual(MOD._normalizar_html("\r\n<script>ok</script>\r\n"), "<script>ok</script>")
+        self.assertEqual(MOD._normalizar_html("<script>\n \n</script>"), "<script>\n\n</script>")
         self.assertNotEqual(MOD._normalizar_html("<script> a </script>"), MOD._normalizar_html("<script>a</script>"))
 
     def test_sha_do_manifesto_bate_com_as_fontes(self) -> None:
         manifesto = json.loads((RAIZ / "measurement" / "gtm" / "manifest.json").read_text())
         fontes = {item["name"]: RAIZ / item["source"] for item in manifesto["tags"]}
-        self.assertEqual(set(fontes), {"VOLC Sensor v3.1", "WEBS Wrapper v2"})
+        self.assertEqual(set(fontes), {"VOLC Sensor v3.2", "WEBS Wrapper v2"})
         self.assertTrue(all(caminho.is_file() for caminho in fontes.values()))
         self.assertTrue(all(len(MOD._sha256_texto(caminho.read_text())) == 64 for caminho in fontes.values()))
 
