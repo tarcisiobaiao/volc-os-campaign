@@ -157,8 +157,9 @@ BIA_ALLOWED_ORIGINS=http://localhost:8080
 # 4. front (.env.local)
 VITE_BIA_ENABLED=true
 
-# 5. subir
-./start-dev.sh
+# 5. subir (caminho canônico atual: abre/reutiliza o túnel, busca a chave
+# server-side sem gravá-la e liga as duas flags)
+./start-dev.sh --com-bia
 ```
 
 Endurecimento recomendado, não aplicado: uma chave SSH dedicada ao túnel, com `permitopen="127.0.0.1:8642",no-pty,command="/bin/false"` em `authorized_keys`.

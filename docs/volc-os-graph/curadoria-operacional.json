@@ -290,7 +290,7 @@
       "cluster": "decision",
       "state": "partial",
       "summary": "Camada conversacional contextual sobre o VOLC O.S.: interpreta fatos, frescor, relações, playbooks e decisões; começa somente leitura e nunca executa ação externa sem confirmação.",
-      "evidence": "Hermes Agent declarado pelo dono em 26/08/2026. · 19/10/2026 · candidata local integration/release-candidate-20261019: gateway FastAPI e widget web integrados de f26220e2, com streaming, anexos, comandos governados, persistência candidata e contexto de campanha somente leitura. Provas na candidata: 176 backend (4 skips), 50 frontend (1 skip), typecheck/build/bundle verdes; a missão original registrou 12 provas reais com o Hermes. Segue partial porque a candidata não foi mesclada/deployada nesta rodada, a migration não foi aplicada por esta integração e o capability gateway único Telegram↔web com ferramentas operacionais autorizadas ainda não está fechado. Tarefa P09-T04."
+      "evidence": "Hermes Agent declarado pelo dono em 26/08/2026. · 19/10/2026 · candidata local integration/release-candidate-20261019: gateway FastAPI e widget web integrados de f26220e2, com streaming, anexos, comandos governados, v27_01 aplicada na implantação original e contexto de campanha somente leitura. Provas: 176 backend (4 skips), 50 frontend (1 skip), typecheck/build/bundle verdes e 12 provas reais anteriores. QA autenticado repetido nesta candidata: launcher/painel em localhost:8082, rotas estado/comandos 200, Hermes default v0.18.0 por túnel loopback e zero toolsets web. start-dev.sh --com-bia reproduz o boot sem gravar a chave no Git ou no navegador. Segue partial porque a candidata ainda não foi mesclada/deployada fora do Mac e o gateway único Telegram↔web com ferramentas operacionais autorizadas ainda não está fechado. Tarefa P09-T04."
     },
     {
       "id": "cap_asset_vault",
@@ -580,7 +580,7 @@
       "cluster": "platform",
       "state": "live",
       "summary": "Runtime do agente Bia, com API compatível com chat completions e acesso a skills e cérebros operacionais.",
-      "evidence": "Serviço e endpoint local 127.0.0.1:8642 declarados pela proprietária do agente em 26/08/2026. A frente Bia/Hermes registrou 12 provas reais de chat, streaming, anexos, continuidade, incerteza e preservação do Telegram; o código correspondente está integrado apenas na candidata local de 19/10/2026. O runtime continua live, mas o caminho VOLC permanece partial até merge, deploy e QA do owner."
+      "evidence": "Serviço e endpoint local 127.0.0.1:8642 declarados pela proprietária do agente em 26/08/2026. A frente Bia/Hermes registrou 12 provas reais de chat, streaming, anexos, continuidade, incerteza e preservação do Telegram. Em 19/10/2026 o runtime foi relido: gateway ativo, API do profile default escutando apenas no loopback, v0.18.0 e zero toolsets na superfície web; a candidata abriu o widget com QA autenticado do owner e rotas 200. O caminho VOLC permanece partial até merge/deploy fora do Mac e fechamento das capacidades operacionais governadas."
     },
     {
       "id": "concept:attention_ecosystem",

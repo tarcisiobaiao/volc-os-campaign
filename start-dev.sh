@@ -16,6 +16,11 @@
 #                                  abre SOMENTE execution_options=validate_only
 #                                  da receita Meta P0. Ainda exige clique e a
 #                                  rota não possui create, approve nem enable.
+#   ./start-dev.sh --com-bia
+#                                  liga o widget da Bia e o backend /api/agent/*
+#                                  usando a MESMA Bia do Telegram (profile
+#                                  default), por túnel SSH local. A chave fica
+#                                  só no processo e nunca é gravada no browser.
 #
 # Portas: front 8080  ·  api Node 3001  ·  backend Pautador 8010
 # O Vite faz proxy de /api e /health -> Express (3001), que fala com o Supabase
@@ -52,10 +57,12 @@ libera_porta() {
 PERMITIR_ESCRITA=0
 PERMITIR_PROVA_DEMAND_GEN=0
 PERMITIR_PROVA_META=0
+COM_BIA=0
 for arg in "$@"; do
   if [ "$arg" = "--permitir-escrita" ]; then PERMITIR_ESCRITA=1; fi
   if [ "$arg" = "--demand-gen-validate-only" ]; then PERMITIR_PROVA_DEMAND_GEN=1; fi
   if [ "$arg" = "--meta-validate-only" ]; then PERMITIR_PROVA_META=1; fi
+  if [ "$arg" = "--com-bia" ]; then COM_BIA=1; fi
 done
 if [ "$PERMITIR_ESCRITA" -eq 1 ]; then
   export FORGE_PERMITIR_ESCRITA=1
@@ -73,6 +80,33 @@ fi
 if [ "$PERMITIR_PROVA_META" -eq 1 ]; then
   export META_VALIDATE_ONLY_ENABLED=1
   echo "  ✓ Meta validate_only habilitado: somente após clique; zero criação."
+fi
+
+if [ "$COM_BIA" -eq 1 ]; then
+  command -v ssh >/dev/null 2>&1 || {
+    echo "❌ --com-bia exige o cliente SSH." >&2
+    exit 1
+  }
+  if ! ssh -G hermes >/dev/null 2>&1; then
+    echo "❌ --com-bia exige o alias SSH 'hermes' configurado neste Mac." >&2
+    exit 1
+  fi
+
+  # A credencial administrativa do API Server nunca entra em arquivo, argumento
+  # de processo, bundle Vite ou saída. Ela vive só no ambiente do FastAPI.
+  BIA_HERMES_API_KEY="$(
+    ssh -o BatchMode=yes -o ConnectTimeout=8 hermes \
+      "awk -F= '\$1==\"API_SERVER_KEY\"{sub(/^[^=]*=/,\"\"); print; exit}' /root/.hermes/.env"
+  )"
+  if [ -z "$BIA_HERMES_API_KEY" ]; then
+    echo "❌ API_SERVER_KEY do profile default do Hermes não foi encontrada." >&2
+    exit 1
+  fi
+  export BIA_HERMES_API_KEY
+  export BIA_ENABLED=1
+  export BIA_HERMES_BASE_URL=http://127.0.0.1:18642
+  export BIA_ALLOWED_ORIGINS="http://localhost:$FRONT_PORT"
+  export VITE_BIA_ENABLED=true
 fi
 
 # --stop: encerra tudo e sai
@@ -113,6 +147,53 @@ cleanup() {
   exit 0
 }
 trap cleanup INT TERM
+
+if [ "$COM_BIA" -eq 1 ]; then
+  if lsof -nP -iTCP:18642 -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "▶ Bia      → reutilizando túnel local 127.0.0.1:18642"
+  else
+    ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes \
+      -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \
+      -L 127.0.0.1:18642:127.0.0.1:8642 hermes &
+    pids+=($!)
+    for _ in {1..40}; do
+      lsof -nP -iTCP:18642 -sTCP:LISTEN >/dev/null 2>&1 && break
+      sleep 0.1
+    done
+    if ! lsof -nP -iTCP:18642 -sTCP:LISTEN >/dev/null 2>&1; then
+      echo "❌ O túnel da Bia não abriu em 127.0.0.1:18642." >&2
+      for pid in "${pids[@]:-}"; do kill "$pid" 2>/dev/null || true; done
+      exit 1
+    fi
+    echo "▶ Bia      → Hermes default por túnel local 127.0.0.1:18642"
+  fi
+
+  # Não basta haver algo escutando na porta: prove que é o Hermes autenticado
+  # e que a superfície web continua sem ferramentas antes de abrir o widget.
+  if ! python3 - <<'PY'
+import json
+import os
+import urllib.request
+
+requisicao = urllib.request.Request(
+    os.environ["BIA_HERMES_BASE_URL"].rstrip("/") + "/v1/toolsets",
+    headers={"Authorization": "Bearer " + os.environ["BIA_HERMES_API_KEY"]},
+)
+with urllib.request.urlopen(requisicao, timeout=8) as resposta:
+    corpo = json.load(resposta)
+linhas = corpo.get("data") if isinstance(corpo, dict) else corpo
+if not isinstance(linhas, list) or any(
+    isinstance(item, dict) and item.get("enabled") for item in linhas
+):
+    raise SystemExit("superfície web do Hermes fora do contrato de zero ferramentas")
+PY
+  then
+    echo "❌ O portão da Bia falhou: Hermes indisponível ou com ferramentas web habilitadas." >&2
+    for pid in "${pids[@]:-}"; do kill "$pid" 2>/dev/null || true; done
+    exit 1
+  fi
+  echo "  ✓ Hermes autenticado; superfície web com zero ferramentas"
+fi
 
 echo "▶ API      → http://localhost:$API_PORT   (server/index.js → Supabase)"
 node server/index.js & pids+=($!)

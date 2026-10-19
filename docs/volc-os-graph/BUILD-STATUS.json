@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-10-19T16:45:02-03:00",
-  "built_at_commit": "5ab4e54ca954ce58f058656d22c3d41c9d200929",
+  "generated_at": "2026-10-19T16:58:28-03:00",
+  "built_at_commit": "3bf1c7d4ca801605f06a2162317b850fca0df6cf",
   "working_tree_dirty_at_build": true,
-  "input_sha256": "d1cd54dbb6b7844a4997db19db0cc255b67aa2f5fc465ed45a1695e9a113be71",
+  "input_sha256": "f4a5ee160a7b39ae89dc1d3031c7bd374d4533fa0349c30dfd3df7c09527a1e1",
   "input_file_count": 3006,
   "graphify_version": "0.9.48",
   "live_sources_refreshed": false,
