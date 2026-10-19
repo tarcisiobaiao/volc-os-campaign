@@ -10,6 +10,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/lib/pautadorApi', () => ({ pautadorApi: {} }));
+
 import type { LeituraDoInventario } from '@/hooks/useInventario';
 import type { QuadroDeAlertas } from '@/types/trafego';
 
@@ -208,7 +210,7 @@ describe('as quatro abas', () => {
   it('Nova campanha é ação primária visível e abre o trabalho em Preparar', () => {
     montar();
     const nova = screen.getByRole('button', { name: 'Nova campanha' });
-    expect(nova.className).toMatch(/bg-primary/);
+    expect(nova.className).toMatch(/btn-volc-primary/);
     fireEvent.click(nova);
     expect(screen.getByRole('tab', { name: /preparar/ }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByText('quadro de oportunidades')).toBeTruthy();

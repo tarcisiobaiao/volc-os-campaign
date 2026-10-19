@@ -22,7 +22,8 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { LeituraDoInventario } from '@/hooks/useInventario';
@@ -118,12 +119,12 @@ describe('1 · carregando', () => {
     const aviso = screen.getByRole('status');
     expect(within(aviso).getByText('lendo o inventário das contas')).toBeTruthy();
     expect(aviso.getAttribute('aria-live')).toBe('polite');
-    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(3);
+    expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(3);
 
-    // O esqueleto respeita quem pediu menos movimento — e continua sendo
-    // esqueleto, porque a informação está na forma, não na animação.
-    for (const osso of container.querySelectorAll('.animate-pulse')) {
-      expect(osso.className).toContain('motion-reduce:animate-none');
+    // O esqueleto continua reconhecível pela forma. A redução de movimento é
+    // global em index.css, em vez de depender de cada osso lembrar uma classe.
+    for (const osso of container.querySelectorAll('.skeleton')) {
+      expect(osso.className).toContain('skeleton');
     }
   });
 });
@@ -183,11 +184,13 @@ describe('4 · falha parcial', () => {
 
     // A conta que falhou continua com o último dado bom, com a idade dele.
     const falha = screen.getByLabelText('conta PMUNDO+');
+    fireEvent.click(within(falha).getByRole('button', { name: /PMUNDO\+/i }));
     expect(within(falha).getByText('BR - Consignado INSS')).toBeTruthy();
     expect(within(falha).getAllByText(/última leitura boa há 7 h/).length).toBeGreaterThan(0);
 
     // E a conta saudável ao lado não foi contaminada por ela.
     const boa = screen.getByLabelText('conta Crédito Up');
+    fireEvent.click(within(boa).getByRole('button', { name: /Crédito Up/i }));
     expect(within(boa).getByText('BR - Maquininha de Cartão')).toBeTruthy();
     expect(within(boa).getAllByText('leitura recente').length).toBeGreaterThan(0);
   });
@@ -318,6 +321,8 @@ describe('9 · conta não identificada', () => {
     leitura = { ...leituraBase, inventario: inventarioDeAusencias() };
     render(<InventarioDeCampanhas />);
 
+    const semConta = screen.getByLabelText('conta Sem conta identificada');
+    fireEvent.click(within(semConta).getByRole('button', { name: /Sem conta identificada/i }));
     expect(screen.getByText('BR - Cartão de Crédito (sem conta vinculada)')).toBeTruthy();
     expect(screen.getAllByText('conta não identificada').length).toBeGreaterThan(0);
     expect(
@@ -433,7 +438,11 @@ describe('10 · estado que o servidor conhece e este pacote não', () => {
         verificadas: 2,
       }),
     };
-    render(<FilaDeAtencao foco={null} />);
+    render(
+      <MemoryRouter initialEntries={['/trafego']}>
+        <FilaDeAtencao foco={null} />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('ligada e sem impressão')).toBeTruthy();
     expect(screen.getByText('condição não reconhecida')).toBeTruthy();
@@ -517,7 +526,15 @@ describe('as mesmas onze respostas nas duas formas', () => {
     const { container } = render(<InventarioDeCampanhas />);
 
     expect(container.querySelector('table')).toBeNull();
-    expect(screen.getAllByRole('listitem').length).toBe(4);
+    // A primeira conta abre; as demais preservam espaço até o operador pedir.
+    expect(screen.getAllByRole('listitem').length).toBe(3);
+    expect(screen.getAllByText('não encontrada').length).toBeGreaterThan(0);
+    const semConta = screen.getByLabelText('conta Sem conta identificada');
+    fireEvent.click(within(semConta).getByRole('button', { name: /Sem conta identificada/i }));
+    // O acordeão mantém uma conta aberta por vez: três itens foram conferidos
+    // na primeira conta e um na segunda, sem renderizar duas listas duplicadas.
+    expect(screen.getAllByRole('listitem').length).toBe(1);
+    expect(screen.getByText('BR - Cartão de Crédito (sem conta vinculada)')).toBeTruthy();
 
     // Rolagem horizontal é o jeito de uma tabela caber num telefone sem caber:
     // comparar custo arrastando já é não conseguir comparar.
@@ -526,7 +543,6 @@ describe('as mesmas onze respostas nas duas formas', () => {
     }
 
     // E os estados continuam nomeados, não abreviados por falta de espaço.
-    expect(screen.getAllByText('não encontrada').length).toBeGreaterThan(0);
     expect(screen.getAllByText('conta não identificada').length).toBeGreaterThan(0);
   });
 

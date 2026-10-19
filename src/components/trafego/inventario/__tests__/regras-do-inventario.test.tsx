@@ -6,7 +6,9 @@
  * `null` viraria `0` sem ninguém notar, que um número perderia a data, e que
  * uma conta velha ficaria nova por estar ao lado de uma recente.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/lib/pautadorApi', () => ({ pautadorApi: {} }));
 
 import { mesclarPaginas, piorFrescor } from '@/hooks/useInventario';
 import type { Inventario } from '@/types/trafego';

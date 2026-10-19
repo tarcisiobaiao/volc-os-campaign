@@ -18,6 +18,7 @@
  *     urgente das que valem para ela.
  */
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { LeituraDoInventario } from '@/hooks/useInventario';
@@ -102,6 +103,12 @@ beforeEach(() => {
   Object.defineProperty(window, 'innerWidth', { value: 1440, writable: true, configurable: true });
 });
 afterEach(cleanup);
+
+const fila = (foco: string | null) => (
+  <MemoryRouter initialEntries={['/trafego']}>
+    <FilaDeAtencao foco={foco} />
+  </MemoryRouter>
+);
 
 // ── os sintomas, um a um ────────────────────────────────────────────────────
 
@@ -249,7 +256,7 @@ describe('B · sem vínculo e sem procedência NÃO pedem atenção', () => {
 
   it('e a palavra "sem vínculo" não aparece na fila renderizada', () => {
     leitura = { ...leituraBase, inventario: inventarioSaudavel() };
-    render(<FilaDeAtencao foco={null} />);
+    render(fila(null));
     expect(screen.queryByText(/sem vínculo/i)).toBeNull();
     expect(screen.queryByText(/sem procedência/i)).toBeNull();
   });
@@ -337,7 +344,7 @@ describe('o endereço externo só existe quando há conta em que procurar', () =
 describe('a fila, na tela', () => {
   it('cada item abre no lugar, com aria-expanded — nunca em modal', () => {
     leitura = { ...leituraBase, inventario: inventarioSaudavel() };
-    render(<FilaDeAtencao foco={null} />);
+    render(fila(null));
 
     const grupo = screen.getByRole('region', { name: 'ligada e sem impressão' });
     const [gatilho] = within(grupo).getAllByRole('button', { expanded: false });
@@ -352,7 +359,7 @@ describe('a fila, na tela', () => {
   it('o item indicado pelo sino chega REVELADO, focado e destacado', () => {
     leitura = { ...leituraBase, inventario: inventarioSaudavel() };
     const foco = '8017851692-24156373085';
-    render(<FilaDeAtencao foco={foco} />);
+    render(fila(foco));
 
     const alvo = document.getElementById(`alerta-${foco}`);
     expect(alvo).toBeTruthy();
@@ -364,7 +371,7 @@ describe('a fila, na tela', () => {
 
   it('a lista incompleta é dita, e o contador vira piso em vez de total', () => {
     leitura = { ...leituraBase, inventario: inventarioSaudavel(), temMais: true };
-    render(<FilaDeAtencao foco={null} />);
+    render(fila(null));
     expect(screen.getByText(/condições ativas encontradas até agora/)).toBeTruthy();
     expect(screen.getByText(/O contador acima é o que\s+deu para ver, não um total/)).toBeTruthy();
   });

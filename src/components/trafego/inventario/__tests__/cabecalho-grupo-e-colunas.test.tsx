@@ -17,6 +17,8 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/lib/pautadorApi', () => ({ pautadorApi: {} }));
+
 import type { LeituraDoInventario } from '@/hooks/useInventario';
 import type { QuadroDeAlertas } from '@/types/trafego';
 

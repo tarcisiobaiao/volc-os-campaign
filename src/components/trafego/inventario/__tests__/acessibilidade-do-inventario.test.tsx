@@ -27,6 +27,8 @@ import { MemoryRouter } from 'react-router-dom';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/lib/pautadorApi', () => ({ pautadorApi: {} }));
+
 import type { LeituraDoInventario } from '@/hooks/useInventario';
 import type { Frescor, QuadroDeAlertas } from '@/types/trafego';
 

@@ -92,6 +92,15 @@ function largura(px: number) {
   Object.defineProperty(window, 'innerWidth', { value: px, writable: true, configurable: true });
 }
 
+function abrirConta(nome: RegExp): HTMLElement {
+  const grupo = screen.getByLabelText(new RegExp(`conta ${nome.source}`, nome.flags));
+  const botao = within(grupo).getByRole('button', {
+    name: new RegExp(nome.source, nome.flags),
+  });
+  if (botao.getAttribute('aria-expanded') === 'false') fireEvent.click(botao);
+  return grupo;
+}
+
 const MONITOR = 1440;
 const TABLET = 1024;
 const TELEFONE = 390;
@@ -225,6 +234,7 @@ describe('todo estado tem palavra, não só cor', () => {
     expect(screen.getAllByText('sem procedência').length).toBeGreaterThan(0);
     expect(screen.getAllByText('sem vínculo').length).toBeGreaterThan(0);
     expect(screen.getAllByText('registrada').length).toBeGreaterThan(0);
+    abrirConta(/Sem conta identificada/i);
     expect(screen.getAllByText('legado não reconciliado').length).toBeGreaterThan(0);
     expect(screen.getAllByText('sincronização falhou').length).toBeGreaterThan(0);
   });
@@ -234,6 +244,7 @@ describe('todo estado tem palavra, não só cor', () => {
     expect(
       screen.getAllByText(/não sabemos como esta campanha entrou no registro/i).length,
     ).toBeGreaterThan(0);
+    abrirConta(/PMUNDO\+/i);
     expect(
       screen.getAllByText(/não dá para afirmar presença nem ausência/i).length,
     ).toBeGreaterThan(0);
@@ -271,7 +282,7 @@ describe('falha de uma conta não contamina as outras', () => {
 
   it('preserva o último dado bom da conta que não respondeu', () => {
     render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
-    const grupo = screen.getByLabelText('conta PMUNDO+');
+    const grupo = abrirConta(/PMUNDO\+/i);
     expect(within(grupo).getByText('BR - Consignado INSS')).toBeTruthy();
     expect(within(grupo).getAllByText(/última leitura boa há 7 h/).length).toBeGreaterThan(0);
   });
@@ -311,7 +322,7 @@ describe('carregando e vazio', () => {
     const { container } = render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getByRole('status')).toBeTruthy();
     expect(screen.getByText('lendo o inventário das contas')).toBeTruthy();
-    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(3);
+    expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(3);
   });
 
   it('o vazio ensina o que aquilo mostraria', () => {

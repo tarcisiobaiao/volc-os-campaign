@@ -41,6 +41,11 @@ import {
   quadroDeAlertasDeProva,
 } from '@/components/trafego/inventario/fixtureDeProvas';
 
+// `useInventario` também exporta as funções puras exercitadas abaixo, mas o
+// módulo importa o cliente HTTP real. Esta suíte prova projeção e mescla, não
+// transporte nem credenciais do Supabase.
+vi.mock('@/lib/pautadorApi', () => ({ pautadorApi: {} }));
+
 // ⚠️ `{ wrapper: MemoryRouter }` nas montagens avulsas.
 //
 // As linhas do inventário navegam com `<Link>` para rotas DESTE aplicativo
@@ -206,14 +211,19 @@ describe('LinhaDeCampanha:414 — a regra A não valia na tabela ampla', () => {
 
 describe('FilaDeAtencao:62 — o foco reaplicava sozinho a cada releitura', () => {
   const FOCO = '8017851692-24155134757';
+  const fila = (foco: string) => (
+    <MemoryRouter initialEntries={['/trafego']}>
+      <FilaDeAtencao foco={foco} />
+    </MemoryRouter>
+  );
 
   it('foca uma vez quando o sino manda para cá', () => {
-    render(<FilaDeAtencao foco={FOCO} />);
+    render(fila(FOCO));
     expect(document.activeElement).toBe(document.getElementById(`alerta-${FOCO}`));
   });
 
   it('não rouba o cursor quando a consulta se repete sozinha', () => {
-    const { rerender } = render(<FilaDeAtencao foco={FOCO} />);
+    const { rerender } = render(fila(FOCO));
     expect(document.activeElement).toBe(document.getElementById(`alerta-${FOCO}`));
 
     // O operador saiu de onde o sino o deixou e foi trabalhar noutro controle.
@@ -225,18 +235,18 @@ describe('FilaDeAtencao:62 — o foco reaplicava sozinho a cada releitura', () =
     // devolve um OBJETO NOVO com o mesmo conteúdo. Era esta identidade nova que
     // reexecutava o efeito e arrancava o cursor de onde ele estivesse.
     notificacoes = { ...notificacoes, data: quadroDeAlertasDeProva() };
-    rerender(<FilaDeAtencao foco={FOCO} />);
+    rerender(fila(FOCO));
 
     expect(document.activeElement).toBe(outro);
   });
 
   it('um foco NOVO no endereço volta a mover o cursor', () => {
-    const { rerender } = render(<FilaDeAtencao foco={FOCO} />);
+    const { rerender } = render(fila(FOCO));
     const outro = screen.getByRole('button', { name: /conferir de novo/ });
     outro.focus();
 
     const segundo = '8017851692-24156373085';
-    rerender(<FilaDeAtencao foco={segundo} />);
+    rerender(fila(segundo));
     expect(document.activeElement).toBe(document.getElementById(`alerta-${segundo}`));
   });
 });
