@@ -104,9 +104,13 @@
 
   // Mesma normalização do WEBS Wrapper (key-values do Ad Manager): é a chave de junção
   // entre os dados deste sensor e os relatórios de receita. Valor com PII é descartado.
-  function utmValue(v) {
+  function utmValue(key, v) {
     v = String(v == null ? '' : v).trim().toLowerCase();
-    if (!v || clean(v, 200) !== v.replace(/\s+/g, ' ')) return '';
+    if (!v) return '';
+    // IDs do Google Ads sao numericos. A excecao fica limitada aos dois campos
+    // tecnicos de atribuicao; source/medium/term continuam sob o filtro de PII.
+    if ((key === 'utm_campaign' || key === 'utm_content') && /^\d{6,20}$/.test(v)) return v;
+    if (clean(v, 200) !== v.replace(/\s+/g, ' ')) return '';
     if (v.normalize) v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // sem acentos
     return v.replace(/["'=!+#*~;^()<>\[\],]/g, '').replace(/\s+/g, '_').slice(0, 40);
   }
@@ -119,7 +123,7 @@
     if (q) {
       var f = {}, any = false;
       ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (p) {
-        var v = utmValue(q.get(p));
+        var v = utmValue(p, q.get(p));
         if (v) { f[p.slice(4)] = v; any = true; }
       });
       if (q.has('gclid') || q.has('gbraid') || q.has('wbraid')) { f.paid = 1; any = true; }

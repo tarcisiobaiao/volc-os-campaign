@@ -63,6 +63,10 @@ def test_vetores_aleatorios_3000(vetores):
 
 def test_cenarios_campaign_com_sessionstorage(vetores):
     for c in vetores["cenarios_campaign"]:
+        # Os vetores arquivados preservam a v3.1 anterior. Os cenarios numericos
+        # da v3.2 sao cobertos abaixo e pela prova que executa o JavaScript real.
+        if "utm_campaign=20000000011" in c["href"]:
+            continue
         arm = json.loads(c["armazenado"]) if c["armazenado"] else None
         utm, novo = utm_da_pagina_sensor_v3(urlsplit(c["href"]).query, arm)
         esperado_depois = json.loads(c["armazenado_depois"]) if c["armazenado_depois"] else None
@@ -70,25 +74,33 @@ def test_cenarios_campaign_com_sessionstorage(vetores):
         assert novo == esperado_depois, c["href"]
 
 
-def test_campaign_id_real_e_descartado_como_pii():
-    # A contradição do roadmap em uma linha: o sensor LÊ utm_campaign, mas o id de 11 dígitos
-    # casa a regex de telefone/CPF e vira ''.
+def test_numero_longo_so_passa_nos_campos_de_atribuicao():
+    # A regra generica continua bloqueando sequencias longas.
     assert diagnosticar_utm_sensor_v3("20000000011") == ("", MotivoDescarte.PII)
     assert normalizar_valor_wrapper_v2("20000000011") == ""
-    # Até 9 dígitos sobrevive; 10 já cai.
+    # A excecao e estritamente por chave, para IDs de campanha e grupo.
+    assert normalizar_utm_sensor_v3("20000000011", "utm_campaign") == "20000000011"
+    assert normalizar_utm_sensor_v3("165432109876", "utm_content") == "165432109876"
+    assert normalizar_valor_wrapper_v2("20000000011", "utm_campaign") == "20000000011"
+    assert normalizar_valor_wrapper_v2("165432109876", "utm_content") == "165432109876"
+    assert normalizar_utm_sensor_v3("20000000011", "utm_source") == ""
+    assert normalizar_valor_wrapper_v2("20000000011", "utm_term") == ""
+    # Ate 9 digitos sobrevive na regra antiga; 10 cai fora dos campos liberados.
     assert normalizar_utm_sensor_v3("200000001") == "200000001"
     assert normalizar_utm_sensor_v3("2000000001") == ""
-    # Prefixo textual não salva: a regex não é ancorada.
+    # Prefixo textual nao e um ID tecnico e continua bloqueado.
     assert normalizar_utm_sensor_v3("c20000000011") == ""
 
 
-def test_url_real_do_template_perde_campaign_e_content():
+def test_url_real_do_template_preserva_campaign_e_content_sem_click_id():
     url = ("https://site.exemplo/r/guia-exemplo/?utm_source=google&utm_medium=cpc"
            "&utm_campaign=20000000011&utm_term=cursos%20tecnicos&utm_content=165432109876"
            "&utm_device=m&vc_match=e&gclid=SINTETICO")
     utm, armazenado = utm_da_pagina_sensor_v3(urlsplit(url).query)
-    assert utm == UtmSessao(source="google", medium="cpc", term="cursos_tecnicos", paid=1)
-    assert utm.campaign is None and utm.content is None
+    assert utm == UtmSessao(
+        source="google", medium="cpc", campaign="20000000011",
+        content="165432109876", term="cursos_tecnicos", paid=1,
+    )
     assert "SINTETICO" not in json.dumps(armazenado)  # o valor do gclid nunca sai
 
 

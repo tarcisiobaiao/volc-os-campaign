@@ -71,9 +71,12 @@
     k = String(k || '').toLowerCase();
     return /^[a-z][a-z0-9_]{0,19}$/.test(k) && !BLOCKED_KEY.test(k) ? k : '';
   }
-  function safeValue(v) {
+  function safeValue(key, v) {
     v = String(v == null ? '' : v).trim().toLowerCase();
     if (!v) return '';
+    // IDs do Google Ads sao numericos. A excecao fica limitada aos campos de
+    // atribuicao conhecidos; os demais valores continuam sob o filtro de PII.
+    if ((key === 'utm_campaign' || key === 'utm_content') && /^\d{6,20}$/.test(v)) return v;
     for (var i = 0; i < PII.length; i++) if (PII[i].test(v)) return '';
     if (v.normalize) v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // sem acentos
     return v.replace(/["'=!+#*~;^()<>\[\],]/g, '').replace(/\s+/g, '_').slice(0, 40);
@@ -81,7 +84,7 @@
 
   function targeting() {
     var keys = (cfg.targeting || []).map(safeKey).filter(Boolean).slice(0, 10);
-    var pageKey = safeKey(cfg.pageKey || 'pg'), pageVal = safeValue(cfg.page);
+    var pageKey = safeKey(cfg.pageKey || 'pg'), pageVal = safeValue(pageKey, cfg.page);
     if (!keys.length && !(pageKey && pageVal)) return;
 
     var params;
@@ -96,7 +99,9 @@
 
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
-      var v = safeValue(params.get(k)) || safeValue(saved[k]);   // re-sanitiza o que veio do storage
+      // Parametro presente sempre vence, inclusive quando for invalido/vazio.
+      // Assim uma campanha nova rejeitada nunca herda a campanha antiga da aba.
+      var v = params.has(k) ? safeValue(k, params.get(k)) : safeValue(k, saved[k]);
       if (v) { tg[k] = v; n++; }
     }
 
