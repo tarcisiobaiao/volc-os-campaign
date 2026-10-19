@@ -2208,6 +2208,19 @@
       "source": "Curadoria humana, atualizada em 2026-10-19"
     },
     {
+      "id": "concept:belvedere_gutenberg_contract",
+      "label": "Contrato Belvedere/Gutenberg para funis editoriais",
+      "type": "concept",
+      "cluster": "production",
+      "cluster_label": "Conteúdo & publicação",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "Padrão de publicação que combina o tema Belvedere sem modificá-lo, blocos Gutenberg, CTAs destacados, links externos só nas soluções e zonas neutras ao redor dos slots de anúncio.",
+      "evidence": "19/10/2026: Belvedere 1.39.5 ativo com rollback; LP Elementor 2306 preservada; pré-sell 2309 e soluções 2312/2315/2318 publicadas no padrão aprovado, com IDs/slugs preservados. A pré-sell tem zero link externo; as soluções concentram links oficiais. code-block-1 e code-block-2 ficaram fora de contêineres editoriais decorados. Entre 14:00 e 15:15 BRT, as cinco URLs do funil enviaram 151 eventos first-party ao Supabase oficial. Tarefa P08-T13 permanece partial até o padrão virar contrato reutilizável do FunnelForge e ser provado num funil novo em draft.",
+      "source": "Curadoria humana, atualizada em 2026-10-19"
+    },
+    {
       "id": "concept:creative-job-contract",
       "label": "Contrato de job criativo",
       "type": "concept",
@@ -7931,6 +7944,19 @@
       "source": "Curadoria humana, atualizada em 2026-10-19"
     },
     {
+      "id": "doc:status-operacional-20261019",
+      "label": "Status operacional de tema, funil Senac e medição — 19/10/2026",
+      "type": "document",
+      "cluster": "production",
+      "cluster_label": "Conteúdo & publicação",
+      "state": "reference",
+      "state_label": "Referência",
+      "tier": 3,
+      "summary": "Painel consolidado do cutover Belvedere, páginas ativas do funil Senac, GTM v38, eventos recebidos e fila curta de tarefas.",
+      "evidence": "docs/operations/STATUS-OPERACIONAL-20261019.md; verificador live GTM/Supabase ok; leitura agregada de 151 eventos nas cinco URLs entre 14:00 e 15:15 BRT.",
+      "source": "Curadoria humana, atualizada em 2026-10-19"
+    },
+    {
       "id": "db:incubator_articles",
       "label": "incubator_articles",
       "type": "table_or_view",
@@ -10592,6 +10618,27 @@
       "confidence": "curated"
     },
     {
+      "source": "concept:belvedere_gutenberg_contract",
+      "target": "cap_behavior",
+      "relation": "foi_observado_por",
+      "evidence": "151 eventos first-party nas cinco URLs depois da implantação.",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:belvedere_gutenberg_contract",
+      "target": "cap_funnel",
+      "relation": "padroniza_publicacao_de",
+      "evidence": "Quatro páginas internas do funil Senac publicadas no padrão; automação no motor ainda pendente.",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:belvedere_gutenberg_contract",
+      "target": "cap_publisher_quality",
+      "relation": "define_guardas_de",
+      "evidence": "Links, CTAs, mobile, rollback e zonas neutras dos slots de anúncio.",
+      "confidence": "curated"
+    },
+    {
       "source": "concept:brand_media_ecosystem",
       "target": "cap_asset_vault",
       "relation": "depende_de_inventario_em",
@@ -12255,6 +12302,20 @@
       "target": "cap_decision",
       "relation": "documenta",
       "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "doc:status-operacional-20261019",
+      "target": "concept:belvedere_gutenberg_contract",
+      "relation": "documenta",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "doc:status-operacional-20261019",
+      "target": "concept:tracking_control_plane",
+      "relation": "registra_prova_de",
+      "evidence": "GTM v38 live, tags ativas, heartbeat recente e fronteira first-party íntegra.",
       "confidence": "curated"
     },
     {

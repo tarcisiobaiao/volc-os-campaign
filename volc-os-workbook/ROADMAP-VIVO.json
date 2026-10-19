@@ -865,7 +865,7 @@
           "title": "Remediar e reauditar destinos pagos /r antes de retomar mídia",
           "status": "partial",
           "priority": 1,
-          "proof": "03/09/2026 · A espinha v2 tornou o contrato de política chamável nas três barreiras e adicionou reauditoria pública em duas etapas, vinculando confirmação humana ao mesmo hash observado. A evidência pública sanitizada da Crédito Up preserva conta suspensa, ausência de cloaking material na amostra e sinais de destino que exigem remediação, sem publicar termos/IDs crus. Continua partial porque nenhum recibo `live` foi gravado no Supabase oficial, oito destinos históricos não foram reavaliados na lane e a causa literal da suspensão não foi fornecida pelo Google. Nenhuma LP viva foi alterada, nenhum recurso foi enviado e nenhuma campanha foi reativada por esta consolidação.",
+          "proof": "03/09/2026 · A espinha v2 tornou o contrato de política chamável nas três barreiras e adicionou reauditoria pública em duas etapas, vinculando confirmação humana ao mesmo hash observado. A evidência pública sanitizada da Crédito Up preserva conta suspensa, ausência de cloaking material na amostra e sinais de destino que exigem remediação, sem publicar termos/IDs crus. Continua partial porque nenhum recibo `live` foi gravado no Supabase oficial, oito destinos históricos não foram reavaliados na lane e a causa literal da suspensão não foi fornecida pelo Google. Nenhuma LP viva foi alterada, nenhum recurso foi enviado e nenhuma campanha foi reativada por esta consolidação. · 19/10/2026: Belvedere foi ativado com rollback e as quatro páginas internas do funil Senac foram reescritas/publicadas; a pré-sell ficou sem link externo e as soluções concentram os links oficiais. A LP paga 2306 foi deliberadamente preservada em Elementor. Portanto, a remediação editorial interna avançou, mas o critério continua partial até reauditar a própria LP `/r/guia-cursos-senac/`, emitir o recibo `paid_destination_ready` e reconciliar a URL final usada pela campanha.",
           "explanation": "Conter o incidente sem transformar hipótese em fato: corrigir cada destino na origem, provar identidade, transparência, congruência, segurança e estabilidade, e somente depois pedir nova revisão humana da mídia.",
           "acceptance": [
             "Notificação literal da suspensão preservada e causa classificada sem inferência indevida",
@@ -882,8 +882,10 @@
           "links": [
             "docs/closure/hermes-redator-google-ads-policy-incident-v1/LIVE-REMEDIATION-PLAN.md",
             "docs/closure/hermes-redator-google-ads-policy-incident-v1/GATE-RECEIPTS.json",
-            "docs/closure/hermes-redator-google-ads-policy-incident-v1/APPEAL-EVIDENCE-PACK.md"
-          ]
+            "docs/closure/hermes-redator-google-ads-policy-incident-v1/APPEAL-EVIDENCE-PACK.md",
+            "docs/operations/STATUS-OPERACIONAL-20261019.md"
+          ],
+          "updated_at": "2026-10-19"
         }
       ]
     },
@@ -1222,7 +1224,20 @@
           "id": "P08-T02",
           "title": "Fechar vínculo campanha → funil → URLs",
           "status": "partial",
-          "proof": "parte das campanhas ainda não possui elo completo"
+          "proof": "Parte das campanhas ainda não possui elo completo. · 19/10/2026: o funil Senac ativo foi inventariado com cinco destinos estáveis: LP 2306 (`/r/guia-cursos-senac/`), pré-sell 2309 e soluções 2312, 2315 e 2318. Os quatro posts internos foram relidos publicados, com IDs/slugs preservados; a pré-sell tem zero link externo e as soluções concentram os links oficiais. Na janela 14:00–15:15 BRT, as cinco URLs enviaram 151 eventos first-party ao Supabase oficial. Isso prova URL → comportamento, não prova ainda o vínculo canônico da campanha ativa ao funil em `trafego_vinculo`/`campaign_funnel_urls`; por isso segue partial.",
+          "explanation": "O mapa de URLs agora é conhecido e observado, mas a atribuição só fecha quando a campanha, o funil e cada destino compartilham uma identidade canônica persistida e relida.",
+          "acceptance": "Campanha ativa ligada a um funil canônico e às cinco URLs; leitura reversa campanha→funil→URL e URL→funil→campanha; eventos comportamentais carregam a campanha preservada quando a sessão é paga; ausência continua desconhecida, nunca zero.",
+          "gaps": "Persistir e reler o vínculo da campanha Senac com o funil e as cinco URLs; reconciliar o ID da campanha observado pelo Sensor com a autoridade do Google Ads; não inferir vínculo apenas porque a URL recebeu tráfego.",
+          "links": [
+            "docs/operations/STATUS-OPERACIONAL-20261019.md",
+            "docs/operations/VOLC-MEASUREMENT-V32-2026-10-19.md"
+          ],
+          "graph_nodes": [
+            "cap_attribution",
+            "cap_behavior",
+            "cap_funnel"
+          ],
+          "updated_at": "2026-10-19"
         },
         {
           "id": "P08-T03",
@@ -1337,7 +1352,7 @@
             "tests/data-intelligence/fundacao/test_identidade_normalizacao.py"
           ],
           "gaps": "A publicação e o canário numérico foram concluídos. Falta observar dq_cobertura_atribuicao_sensor >= 0,90 por sete dias e integrar a branch da correção ao ponto de partida canônico. Click id (gclid) em raw_events e chave de sessão na receita continuam FORA por desenho.",
-          "integration_evidence": "19/10/2026 · fix/measurement-p08-t11-20261019: GTM v37 (VOLC Measurement v3.2) publicado com somente VOLC Sensor e WEBS Wrapper alterados; 19 testes focados verdes, quick preview sem erro e verificador live íntegro. Canário público sem clique em anúncio preservou campaign=987654321098 e content=876543210987 da LP para a pré-sell e em duas linhas raw_events; valor inválido não herdou campanha antiga. Rollback é a v36. Recibo: docs/operations/VOLC-MEASUREMENT-V32-2026-10-19.md.",
+          "integration_evidence": "19/10/2026 · fix/measurement-p08-t11-20261019: GTM v37 (VOLC Measurement v3.2) publicado com somente VOLC Sensor e WEBS Wrapper alterados; 19 testes focados verdes, quick preview sem erro e verificador live íntegro. Canário público sem clique em anúncio preservou campaign=987654321098 e content=876543210987 da LP para a pré-sell e em duas linhas raw_events; valor inválido não herdou campanha antiga. Rollback é a v36. Recibo: docs/operations/VOLC-MEASUREMENT-V32-2026-10-19.md. · 19/10/2026, pós-Belvedere e pós-reescrita das páginas: v38 live e hashes íntegros; 151 eventos nas cinco URLs entre 14:00 e 15:15 BRT, com `volc_sensor_ready` em todas e quatro eventos com campaign/content numéricos. A amostra confirma continuidade, mas não substitui o critério de sete dias.",
           "graph_nodes": [
             "risk:sensor_campaign_id_pii_filter",
             "cap_behavior",
@@ -1379,6 +1394,37 @@
           "graph_nodes": [
             "cap_behavior",
             "concept:tracking_control_plane"
+          ],
+          "updated_at": "2026-10-19"
+        },
+        {
+          "id": "P08-T13",
+          "title": "Consolidar o padrão Belvedere/Gutenberg do funil Senac sem envelopar anúncios",
+          "status": "partial",
+          "priority": 1,
+          "proof": "19/10/2026 · produção: Belvedere 1.39.5 ativo sem edição do tema, com logo, cores, menus, home, rodapé e aviso nativo configurados; wgc3 e backup integral preservados para rollback. A LP Elementor 2306 foi mantida. Pré-sell 2309 e soluções 2312, 2315 e 2318 foram reescritas/publicadas no padrão Gutenberg aprovado, com títulos/slugs/IDs preservados, botões destacados, leitura mobile e links externos restritos às soluções. Os slots JoinAds code-block-1/code-block-2 ficaram fora de grupos, colunas, cards e fundos decorados. A releitura pública confirmou status publish e o Sensor registrou eventos nas cinco URLs após o cutover. Recibo consolidado: docs/operations/STATUS-OPERACIONAL-20261019.md.",
+          "explanation": "O padrão visual e editorial está provado neste funil real, mas ainda é uma implantação assistida. Para virar capacidade do VOLC, o contrato de blocos, espaçamento, botões, links e zonas neutras de anúncio precisa ser consumido pelo FunnelForge e reprovado num funil novo.",
+          "acceptance": [
+            "Padrão de blocos Gutenberg, tipografia, cores, espaçamento e CTAs versionado sem editar o tema Belvedere",
+            "LP/pré-sell sem links externos e soluções com links oficiais explícitos",
+            "Slots de anúncio fora de contêiner editorial decorado, com prova DOM em desktop e mobile",
+            "FunnelForge gera um novo funil em draft usando o padrão, relê o WordPress e produz QA visual",
+            "Rollback por post e por tema documentado e exercitável"
+          ],
+          "dependencies": [
+            "P08-T02",
+            "P10-T22"
+          ],
+          "links": [
+            "docs/operations/STATUS-OPERACIONAL-20261019.md",
+            "docs/operations/VOLC-MEASUREMENT-V33-CONSENT-BR-2026-10-19.md"
+          ],
+          "gaps": "Transformar a implantação manual aprovada em contrato reutilizável do motor; testar novo funil como draft; manter a LP 2306 fora desta mudança até a reauditoria do destino pago.",
+          "graph_nodes": [
+            "cap_funnel",
+            "cap_publisher_quality",
+            "cap_behavior",
+            "concept:belvedere_gutenberg_contract"
           ],
           "updated_at": "2026-10-19"
         }

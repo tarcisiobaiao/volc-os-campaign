@@ -1646,6 +1646,14 @@
       "state": "inactive",
       "summary": "Contratos de saúde por coletor (frescor por slot, completude, runs órfãos, falha silenciosa, duplicação, zero sintetizado, reconciliações, deriva, schema drift, substituição de fonte, cobertura de atribuição do sensor) como funções Python puras e views candidatas read-only, com alertas decididos por função pura e sem envio.",
       "evidence": "· 16/10/2026 · lab/data-foundation-20261016 (local, sem push, não integrado): 81 testes (66 da entrega + 15 da resposta à R2; PostgreSQL 16 descartável, equivalência Python × SQL, falso alarme do detector de deriva até 2%); os SELECTs gerados das views rodaram UMA vez em produção, read-only (16/10 ~13:04 UTC): 5 coletores frescos, 3 runs órfãos, zero sintetizado 80%, cobertura do sensor 0, reconciliação receita ok, custo D0 × D-1 ok; depois da R2 a reconciliação de receita é por domínio × dia, dead letter tardio e run só de dead letters alertam, o estado de dil_obs é o vigente e confirmações D2' contam como linhas escritas. Nenhuma view foi criada em produção, nada está agendado, nenhum alerta foi enviado e os limiares não foram calibrados com dado real. Tarefa: P10-T29."
+    },
+    {
+      "id": "concept:belvedere_gutenberg_contract",
+      "label": "Contrato Belvedere/Gutenberg para funis editoriais",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Padrão de publicação que combina o tema Belvedere sem modificá-lo, blocos Gutenberg, CTAs destacados, links externos só nas soluções e zonas neutras ao redor dos slots de anúncio.",
+      "evidence": "19/10/2026: Belvedere 1.39.5 ativo com rollback; LP Elementor 2306 preservada; pré-sell 2309 e soluções 2312/2315/2318 publicadas no padrão aprovado, com IDs/slugs preservados. A pré-sell tem zero link externo; as soluções concentram links oficiais. code-block-1 e code-block-2 ficaram fora de contêineres editoriais decorados. Entre 14:00 e 15:15 BRT, as cinco URLs do funil enviaram 151 eventos first-party ao Supabase oficial. Tarefa P08-T13 permanece partial até o padrão virar contrato reutilizável do FunnelForge e ser provado num funil novo em draft."
     }
   ],
   "documents": [
@@ -2103,6 +2111,14 @@
       "documenta": "concept:data_intelligence_lab",
       "summary": "Exportação read-only pseudonimizada de v21 campaign_day e JoinAds v2, replay as_of horário com três variantes, e leituras só de metadados de GTM (v35 e v36), n8n (workflows, schedules, error workflows, execuções) e do hash da Edge Function volc-ingest.",
       "evidence": "docs/data-intelligence/fundacao-20261016/receipts/rodada-autorizada-20261017/ (recibo, SQL, scripts e resumos agregados; nenhum identificador real)."
+    },
+    {
+      "id": "doc:status-operacional-20261019",
+      "label": "Status operacional de tema, funil Senac e medição — 19/10/2026",
+      "cluster": "production",
+      "documenta": "concept:belvedere_gutenberg_contract",
+      "summary": "Painel consolidado do cutover Belvedere, páginas ativas do funil Senac, GTM v38, eventos recebidos e fila curta de tarefas.",
+      "evidence": "docs/operations/STATUS-OPERACIONAL-20261019.md; verificador live GTM/Supabase ok; leitura agregada de 151 eventos nas cinco URLs entre 14:00 e 15:15 BRT."
     }
   ],
   "edges": [
@@ -4373,6 +4389,30 @@
       "target": "cap_health",
       "relation": "informa_saude",
       "evidence": "Recibo de saúde e alertas propostos (não enviados)."
+    },
+    {
+      "source": "concept:belvedere_gutenberg_contract",
+      "target": "cap_funnel",
+      "relation": "padroniza_publicacao_de",
+      "evidence": "Quatro páginas internas do funil Senac publicadas no padrão; automação no motor ainda pendente."
+    },
+    {
+      "source": "concept:belvedere_gutenberg_contract",
+      "target": "cap_publisher_quality",
+      "relation": "define_guardas_de",
+      "evidence": "Links, CTAs, mobile, rollback e zonas neutras dos slots de anúncio."
+    },
+    {
+      "source": "concept:belvedere_gutenberg_contract",
+      "target": "cap_behavior",
+      "relation": "foi_observado_por",
+      "evidence": "151 eventos first-party nas cinco URLs depois da implantação."
+    },
+    {
+      "source": "doc:status-operacional-20261019",
+      "target": "concept:tracking_control_plane",
+      "relation": "registra_prova_de",
+      "evidence": "GTM v38 live, tags ativas, heartbeat recente e fronteira first-party íntegra."
     }
   ],
   "priorities": [
