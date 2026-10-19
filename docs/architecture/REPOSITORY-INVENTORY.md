@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-17T21:20:24-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-19T07:53:00-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 1045 arquivos: 736 Markdown e 309 SQL;
-- 1045 versionados e 0 ainda não versionados;
+- 1046 arquivos: 737 Markdown e 309 SQL;
+- 1046 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 184 SQL com palavras de mutação de alto risco.
 
@@ -17,7 +17,7 @@ Gerado em `2026-10-17T21:20:24-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 58 |
-| `documentation` | 542 |
+| `documentation` | 543 |
 | `generated` | 2 |
 | `module-guide` | 47 |
 | `product-document` | 23 |
@@ -63,7 +63,7 @@ estejam errados, mas impede aplicação automática.
 | `scripts/provas-v12_04.sql` | `sql-needs-review` | 6 | 12 |
 | `scripts/verificar-anon-w4.sql` | `sql-needs-review` | 1 | 0 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | 1 | 0 |
-| `sql/add_user_campaigns.sql` | `sql-needs-review` | 2 | 5 |
+| `sql/add_user_campaigns.sql` | `sql-needs-review` | 2 | 7 |
 | `sql/archive/campaign-highlights/APLICAR_NO_SUPABASE.sql` | `archived` | 0 | 0 |
 | `sql/archive/campaign-highlights/test_rotacao.sql` | `archived` | 0 | 0 |
 | `sql/archive/incidents/eleicoes-org/fix_eleicoes_project.sql` | `archived` | 0 | 0 |
@@ -80,8 +80,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | 6 | 18 |
 | `src/sql/auto_create_projects_trigger.sql` | `sql-needs-lineage` | 4 | 8 |
 | `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | 5 | 14 |
-| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 2 |
-| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 8 |
+| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 3 |
+| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 7 |
 | `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | 3 | 6 |
 | `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/get_rotated_campaign_highlights.sql` | `sql-needs-lineage` | 2 | 7 |

@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-17T21:20:24-03:00",
+  "generated_at": "2026-10-19T07:53:00-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 1045,
-    "markdown": 736,
+    "files": 1046,
+    "markdown": 737,
     "sql": 309,
-    "tracked": 1045,
+    "tracked": 1046,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 58,
-      "documentation": 542,
+      "documentation": 543,
       "generated": 2,
       "module-guide": 47,
       "product-document": 23,
@@ -1675,9 +1675,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 29801,
-      "lines": 351,
-      "sha256": "d310f06fcd5d1441ec11fb74f1666b7c1a01f134a7af3e75990d743cfcde2814",
+      "bytes": 30726,
+      "lines": 356,
+      "sha256": "bec44e64b3a606bee0a9cb4c16de77d697564b6b49a485c66ba0a58f5f3b5a5b",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6463,9 +6463,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 3669,
-      "lines": 50,
-      "sha256": "bf277666a9855419159632b188596268eb65fd4007755fd1930bf038412b18ef",
+      "bytes": 3902,
+      "lines": 53,
+      "sha256": "1d94912c1ece13b484e76891a3febfcabb0c63975c76df45b01e661d76bd0fef",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6487,9 +6487,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 9933,
-      "lines": 144,
-      "sha256": "a87a92696fc54195f011f11a18eb2d601a9fc4c96d38e5651ffe2f74b8d9f276",
+      "bytes": 12930,
+      "lines": 178,
+      "sha256": "e5cfe9de4103ec2c6bfdd9ba35fe63c1441bab62e913ac06c5992aa8ebcdf4c0",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6838,6 +6838,18 @@
       "bytes": 2643,
       "lines": 33,
       "sha256": "123c30c4d53a79c7280e88ffb447b6099ca2bf8dc95135b3fd149cd886da0120",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/data-intelligence/viability-kernel-20261017/INTEGRATION-RECEIPT.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2744,
+      "lines": 56,
+      "sha256": "f89181fc993dfe500070c3bfa6d00c7bf5560b359e90976bb9bd656238e38dc3",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -9119,7 +9131,7 @@
       "lines": 20,
       "sha256": "1641ec2764efea0a6a45dc4c86808defc2f8d0ccddcb9b10c42870c76c05e7c4",
       "graph_nodes": 2,
-      "graph_degree": 5,
+      "graph_degree": 7,
       "sql_risk": "high"
     },
     {
@@ -9527,7 +9539,7 @@
       "lines": 107,
       "sha256": "0c9651b029995150ba40cd768f5af562ed1527534dd9a183cf2dd44dfe338a57",
       "graph_nodes": 2,
-      "graph_degree": 2,
+      "graph_degree": 3,
       "sql_risk": "high"
     },
     {
@@ -9539,7 +9551,7 @@
       "lines": 137,
       "sha256": "b76a5cf091a9c7e60ce36c9e9dce95e717b1ad2a0ed2e33b2e2c37ff2c5fd57e",
       "graph_nodes": 3,
-      "graph_degree": 8,
+      "graph_degree": 7,
       "sql_risk": "high"
     },
     {
